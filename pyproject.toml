@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fluency-next"
+version = "0.0.1"
+description = "Local-first language learning pipeline and application"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = []
+
+[project.scripts]
+fluency = "fluency.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
