@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/card.schema.json",
+  "title": "Fluency surface card",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "card_id",
+    "identity_version",
+    "language",
+    "unit_type",
+    "surface_key",
+    "display_form",
+    "status"
+  ],
+  "properties": {
+    "card_id": {
+      "type": "string",
+      "pattern": "^card_[a-z]{2,3}_[0-9a-f]{32}$"
+    },
+    "identity_version": {
+      "const": "surface-card/v1"
+    },
+    "language": {
+      "type": "string",
+      "pattern": "^[a-z]{2,3}$"
+    },
+    "unit_type": {
+      "const": "surface"
+    },
+    "surface_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "display_form": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": ["active", "retired", "merged"]
+    },
+    "redirect_card_id": {
+      "type": "string",
+      "pattern": "^card_[a-z]{2,3}_[0-9a-f]{32}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "merged"
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["redirect_card_id"]
+      },
+      "else": {
+        "not": {
+          "required": ["redirect_card_id"]
+        }
+      }
+    }
+  ]
+}
+
