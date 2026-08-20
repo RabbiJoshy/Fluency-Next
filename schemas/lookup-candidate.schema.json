@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/lookup-candidate.schema.json",
+  "title": "Fluency dictionary lookup candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_version",
+    "card_id",
+    "surface_key",
+    "lookup_form",
+    "relation",
+    "priority",
+    "reason"
+  ],
+  "properties": {
+    "record_version": {"const": "lookup-candidate/v1"},
+    "card_id": {
+      "type": "string",
+      "pattern": "^card_fr_[0-9a-f]{32}$"
+    },
+    "surface_key": {"type": "string", "minLength": 1},
+    "lookup_form": {"type": "string", "minLength": 1},
+    "relation": {"enum": ["exact", "elision_expansion"]},
+    "priority": {"type": "integer", "minimum": 0},
+    "reason": {"type": "string", "minLength": 1}
+  }
+}
+

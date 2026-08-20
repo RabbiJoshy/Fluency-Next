@@ -1,0 +1,71 @@
+[
+  {
+    "name": "ordinary elisions",
+    "text": "Je n'aime pas l'homme.",
+    "known_surfaces": [],
+    "expected": [
+      ["je", "word", true, null],
+      ["n’", "elided_clitic", true, null],
+      ["aime", "word", true, null],
+      ["pas", "word", true, null],
+      ["l’", "elided_clitic", true, null],
+      ["homme", "word", true, null]
+    ]
+  },
+  {
+    "name": "approved apostrophe vocabulary",
+    "text": "Aujourd'hui quelqu'un d'abord.",
+    "known_surfaces": ["aujourd’hui", "quelqu’un", "d’abord"],
+    "expected": [
+      ["aujourd’hui", "known_surface", true, null],
+      ["quelqu’un", "known_surface", true, null],
+      ["d’abord", "known_surface", true, null]
+    ]
+  },
+  {
+    "name": "lexical and grammatical hyphens",
+    "text": "Peut-être va-t-il et donne-moi.",
+    "known_surfaces": ["peut-être"],
+    "expected": [
+      ["peut-être", "known_surface", true, null],
+      ["va", "word", true, null],
+      [null, "inversion_marker", false, "euphonic_inversion_marker"],
+      ["il", "word", true, null],
+      ["et", "word", true, null],
+      ["donne", "word", true, null],
+      ["moi", "word", true, null]
+    ]
+  },
+  {
+    "name": "longest approved expressions",
+    "text": "Est-ce que tu viens parce que oui?",
+    "known_surfaces": ["est-ce que", "parce que"],
+    "expected": [
+      ["est-ce que", "known_surface", true, null],
+      ["tu", "word", true, null],
+      ["viens", "word", true, null],
+      ["parce que", "known_surface", true, null],
+      ["oui", "word", true, null]
+    ]
+  },
+  {
+    "name": "quarantined source fragments",
+    "text": "parce qu; est-ce qu",
+    "known_surfaces": ["parce qu", "est-ce qu"],
+    "expected": [
+      [null, "source_fragment", false, "incomplete_elision_fragment"],
+      [null, "source_fragment", false, "incomplete_elision_fragment"]
+    ]
+  },
+  {
+    "name": "proper nouns and nonlexical evidence",
+    "text": "Paris 2026 abc123.",
+    "known_surfaces": [],
+    "expected": [
+      ["paris", "word", true, null],
+      [null, "number", false, "numeric_token"],
+      [null, "mixed", false, "mixed_alphanumeric_token"]
+    ]
+  }
+]
+

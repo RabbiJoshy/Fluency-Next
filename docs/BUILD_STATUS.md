@@ -8,11 +8,12 @@
   surface identity normalization.
 - Gate 4: defined and initialized the external workspace, content-addressed
   artifacts, and run/stage manifest contracts.
+- Gate 5: defined French tokenization, elision and hyphen routing, contractions,
+  lookup candidates, and retained rejection evidence.
 
 ## Not started
 
 - Core schema contracts beyond card identity.
-- French tokenization, contractions, and dictionary lookup normalization.
 - Source ingestion and evidence registries.
 - Embeddings, WSD, calibration, and example selection.
 - Release generation and app integration.

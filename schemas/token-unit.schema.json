@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/token-unit.schema.json",
+  "title": "Fluency token unit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_version",
+    "observed_text",
+    "surface_key",
+    "start",
+    "end",
+    "token_class",
+    "decision",
+    "eligible"
+  ],
+  "properties": {
+    "record_version": {"const": "token-unit/v1"},
+    "observed_text": {"type": "string", "minLength": 1},
+    "surface_key": {
+      "oneOf": [
+        {"type": "string", "minLength": 1},
+        {"type": "null"}
+      ]
+    },
+    "start": {"type": "integer", "minimum": 0},
+    "end": {"type": "integer", "minimum": 1},
+    "token_class": {
+      "enum": [
+        "word",
+        "known_surface",
+        "elided_clitic",
+        "number",
+        "mixed",
+        "inversion_marker",
+        "unresolved_hyphenated",
+        "source_fragment"
+      ]
+    },
+    "decision": {
+      "enum": [
+        "ordinary_token",
+        "approved_surface_longest_match",
+        "french_elision_split",
+        "french_hyphen_split",
+        "retained_nonlexical",
+        "quarantined_source_fragment",
+        "unresolved_hyphenation"
+      ]
+    },
+    "eligible": {"type": "boolean"},
+    "parent_text": {"type": "string", "minLength": 1},
+    "rejection_reason": {"type": "string", "minLength": 1}
+  }
+}
+

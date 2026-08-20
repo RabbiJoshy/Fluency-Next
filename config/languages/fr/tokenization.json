@@ -1,0 +1,61 @@
+{
+  "schema_version": "fr-tokenization/v1",
+  "elision_expansions": {
+    "c’": ["ce"],
+    "d’": ["de"],
+    "j’": ["je"],
+    "l’": ["le", "la"],
+    "m’": ["me"],
+    "n’": ["ne"],
+    "qu’": ["que"],
+    "s’": ["se"],
+    "t’": ["te"]
+  },
+  "contractions": {
+    "au": {
+      "components": ["à", "le"],
+      "grammatical_roles": ["contraction", "definite_article"]
+    },
+    "aux": {
+      "components": ["à", "les"],
+      "grammatical_roles": ["contraction", "definite_article"]
+    },
+    "du": {
+      "components": ["de", "le"],
+      "grammatical_roles": ["contraction", "partitive_determiner"]
+    },
+    "des": {
+      "components": ["de", "les"],
+      "grammatical_roles": [
+        "contraction",
+        "indefinite_determiner",
+        "partitive_determiner"
+      ]
+    }
+  },
+  "hyphen_clitics": [
+    "ce",
+    "elle",
+    "elles",
+    "en",
+    "il",
+    "ils",
+    "je",
+    "la",
+    "le",
+    "les",
+    "leur",
+    "lui",
+    "moi",
+    "nous",
+    "on",
+    "toi",
+    "tu",
+    "vous",
+    "y"
+  ],
+  "inversion_pronouns": ["elle", "elles", "il", "ils", "on"],
+  "inversion_marker": "t",
+  "quarantined_fragments": ["est-ce qu", "parce qu"]
+}
+
