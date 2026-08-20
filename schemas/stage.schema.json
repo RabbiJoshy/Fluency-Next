@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/stage.schema.json",
+  "title": "Fluency pipeline stage",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "stage_name",
+    "stage_version",
+    "cache_key",
+    "implementation_hash",
+    "config_hash",
+    "status",
+    "started_at",
+    "inputs",
+    "model_revisions",
+    "random_seed",
+    "outputs"
+  ],
+  "properties": {
+    "manifest_version": {"const": "stage/v1"},
+    "stage_name": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*$"},
+    "stage_version": {"type": "string", "minLength": 1},
+    "cache_key": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "implementation_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "config_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "status": {"enum": ["running", "complete", "failed", "interrupted"]},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "inputs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      }
+    },
+    "model_revisions": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "random_seed": {"type": "integer"},
+    "outputs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      }
+    }
+  }
+}
+

@@ -27,7 +27,14 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(args.host, "127.0.0.2")
         self.assertEqual(args.port, 5000)
 
+    def test_workspace_command_accepts_explicit_path(self) -> None:
+        args = build_parser().parse_args(
+            ["workspace", "doctor", "--path", "/tmp/fluency-workspace"]
+        )
+        self.assertEqual(args.command, "workspace")
+        self.assertEqual(args.workspace_command, "doctor")
+        self.assertEqual(args.path, "/tmp/fluency-workspace")
+
 
 if __name__ == "__main__":
     unittest.main()
-

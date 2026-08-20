@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/artifact.schema.json",
+  "title": "Fluency immutable artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "artifact_id",
+    "media_type",
+    "schema",
+    "filename",
+    "byte_size",
+    "created_by_stage"
+  ],
+  "properties": {
+    "manifest_version": {"const": "artifact/v1"},
+    "artifact_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "media_type": {"type": "string", "minLength": 1},
+    "schema": {"type": "string", "minLength": 1},
+    "filename": {"type": "string", "minLength": 1},
+    "byte_size": {"type": "integer", "minimum": 0},
+    "row_count": {"type": "integer", "minimum": 0},
+    "created_by_stage": {"type": "string", "minLength": 1}
+  }
+}
+
