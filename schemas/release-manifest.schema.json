@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/release-manifest.schema.json",
+  "title": "Fluency compact release manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "release_id",
+    "language",
+    "locale",
+    "mode",
+    "created_at",
+    "publication_status",
+    "card_count",
+    "deck_path",
+    "deck_content_id",
+    "progress_namespace",
+    "wsd"
+  ],
+  "properties": {
+    "manifest_version": {
+      "const": "release-manifest/v1"
+    },
+    "release_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "language": {
+      "const": "fr"
+    },
+    "locale": {
+      "const": "fr-FR"
+    },
+    "mode": {
+      "const": "speech"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "publication_status": {
+      "const": "curated_fixture"
+    },
+    "card_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "deck_path": {
+      "const": "deck.json"
+    },
+    "deck_content_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "progress_namespace": {
+      "const": "pilot"
+    },
+    "wsd": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "status"],
+      "properties": {
+        "enabled": {
+          "const": false
+        },
+        "status": {
+          "const": "not_connected"
+        }
+      }
+    }
+  }
+}

@@ -7,10 +7,12 @@ import json
 import os
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Sequence
+from urllib.parse import unquote, urlsplit
 
 from fluency.core.workspace import Workspace
+from fluency.release.pilot import build_pilot_release
 
 
 DEFAULT_HOST = "127.0.0.1"
@@ -39,6 +41,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=int(os.environ.get("FLUENCY_PORT", DEFAULT_PORT)),
         help="port to bind (default: %(default)s)",
     )
+    dev.add_argument(
+        "--workspace",
+        default=os.environ.get("FLUENCY_WORKSPACE"),
+        help="workspace whose releases are mounted at /releases/",
+    )
 
     workspace = subparsers.add_parser(
         "workspace", help="initialize and inspect the external data workspace"
@@ -57,6 +64,19 @@ def build_parser() -> argparse.ArgumentParser:
             default=os.environ.get("FLUENCY_WORKSPACE"),
             help="workspace root (or set FLUENCY_WORKSPACE)",
         )
+
+    pilot = subparsers.add_parser(
+        "pilot", help="build the hand-curated French Speech pilot"
+    )
+    pilot_actions = pilot.add_subparsers(dest="pilot_command", required=True)
+    pilot_build = pilot_actions.add_parser(
+        "build", help="publish the deterministic pilot release"
+    )
+    pilot_build.add_argument(
+        "--workspace",
+        default=os.environ.get("FLUENCY_WORKSPACE"),
+        help="workspace root (or set FLUENCY_WORKSPACE)",
+    )
     return parser
 
 
@@ -90,14 +110,65 @@ def handle_workspace(command: str, raw_path: str | None) -> int:
     raise AssertionError(f"Unhandled workspace command: {command}")
 
 
-def serve_app(host: str, port: int) -> None:
+def handle_pilot(command: str, raw_workspace: str | None) -> int:
+    workspace = Workspace.load(_workspace_path(raw_workspace))
+    if command == "build":
+        release_directory = build_pilot_release(workspace)
+        print(f"Published French Speech pilot: {release_directory}")
+        print("Cards: 25")
+        print("WSD: disabled (curated fixture)")
+        return 0
+    raise AssertionError(f"Unhandled pilot command: {command}")
+
+
+class FluencyRequestHandler(SimpleHTTPRequestHandler):
+    """Serve app code plus a read-only release mount from the workspace."""
+
+    def __init__(
+        self,
+        *args: object,
+        directory: str,
+        releases_directory: Path,
+        **kwargs: object,
+    ) -> None:
+        self.releases_directory = releases_directory.resolve()
+        super().__init__(*args, directory=directory, **kwargs)
+
+    def translate_path(self, path: str) -> str:
+        request_path = unquote(urlsplit(path).path)
+        if not request_path.startswith("/releases/"):
+            return super().translate_path(path)
+
+        relative = PurePosixPath(request_path.removeprefix("/releases/"))
+        if any(part in {"", ".", ".."} for part in relative.parts):
+            return str(self.releases_directory / ".invalid-release-path")
+        candidate = self.releases_directory.joinpath(*relative.parts).resolve()
+        try:
+            candidate.relative_to(self.releases_directory)
+        except ValueError:
+            return str(self.releases_directory / ".invalid-release-path")
+        return str(candidate)
+
+    def end_headers(self) -> None:
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
+
+def serve_app(host: str, port: int, raw_workspace: str | None) -> None:
     app_directory = project_root() / "app"
     if not app_directory.is_dir():
         raise SystemExit(f"App directory does not exist: {app_directory}")
+    workspace = Workspace.load(_workspace_path(raw_workspace))
+    releases_directory = workspace.root / "releases"
 
-    handler = partial(SimpleHTTPRequestHandler, directory=str(app_directory))
+    handler = partial(
+        FluencyRequestHandler,
+        directory=str(app_directory),
+        releases_directory=releases_directory,
+    )
     server = ThreadingHTTPServer((host, port), handler)
     print(f"Serving Fluency Next from {app_directory}")
+    print(f"Mounting releases read-only from {releases_directory}")
     print(f"Open http://{host}:{port}")
     try:
         server.serve_forever()
@@ -110,10 +181,12 @@ def serve_app(host: str, port: int) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "dev":
-        serve_app(args.host, args.port)
+        serve_app(args.host, args.port, args.workspace)
         return 0
     if args.command == "workspace":
         return handle_workspace(args.workspace_command, args.path)
+    if args.command == "pilot":
+        return handle_pilot(args.pilot_command, args.workspace)
     raise AssertionError(f"Unhandled command: {args.command}")
 
 

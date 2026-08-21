@@ -1,46 +1,252 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="app-booting">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Fluency Next — Local Bootstrap</title>
-    <style>
-      :root {
-        color-scheme: light dark;
-        font-family: system-ui, sans-serif;
-      }
-
-      body {
-        display: grid;
-        min-height: 100vh;
-        margin: 0;
-        place-items: center;
-        background: #111827;
-        color: #f9fafb;
-      }
-
-      main {
-        width: min(36rem, calc(100% - 3rem));
-        padding: 2.5rem;
-        border: 1px solid #374151;
-        border-radius: 1rem;
-        background: #1f2937;
-      }
-
-      strong {
-        color: #86efac;
-      }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#090c11">
+    <title>Fluency</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles/tokens.css">
+    <link rel="stylesheet" href="/styles/base.css">
+    <link rel="stylesheet" href="/styles/shell.css">
+    <link rel="stylesheet" href="/styles/setup.css">
+    <link rel="stylesheet" href="/styles/study.css">
+    <link rel="stylesheet" href="/styles/dialogs.css">
+    <link rel="stylesheet" href="/styles/themes.css">
+    <script type="module" src="/src/boot.js"></script>
   </head>
-  <body>
-    <main>
-      <p><strong>Local bootstrap is working.</strong></p>
-      <h1>Fluency Next</h1>
-      <p>
-        No language pipeline, production data, service worker, or remote service
-        is connected yet.
-      </p>
+  <body data-theme="french">
+    <section class="boot-screen" id="boot-screen" aria-live="polite">
+      <span class="fluency-glyph" aria-hidden="true">F</span>
+      <div>
+        <strong>Getting things ready</strong>
+        <span id="boot-detail">Loading your language and release…</span>
+      </div>
+    </section>
+
+    <section class="welcome-screen" id="welcome-screen" hidden aria-labelledby="welcome-title">
+      <div class="welcome-card">
+        <span class="welcome-rule" aria-hidden="true"></span>
+        <span class="fluency-glyph" aria-hidden="true">F</span>
+        <p class="eyebrow">Welcome to Fluency</p>
+        <h1 id="welcome-title">Learn from language<br>you actually hear.</h1>
+        <p>Build useful vocabulary from speech and lyrics, one finishable set at a time.</p>
+        <button class="welcome-action" id="continue-local" type="button">
+          <span><strong>Explore locally</strong><small>Use the rebuilt app without remote progress</small></span>
+          <span aria-hidden="true">→</span>
+        </button>
+        <button class="welcome-secondary" id="welcome-about" type="button">About this rebuild</button>
+      </div>
+    </section>
+
+    <main class="app-container" id="app-container" hidden>
+      <section class="setup-view" id="setup-view" aria-label="Fluency setup">
+        <header class="setup-topbar panel">
+          <button class="topbar-text" id="help-button" type="button">How to<br>start</button>
+          <button class="status-pill" id="release-status-button" type="button">
+            <span aria-hidden="true"></span>
+            Local release
+          </button>
+          <div class="topbar-spacer"></div>
+          <button class="icon-button" id="diagnostics-button" type="button" aria-label="Release diagnostics" title="Release diagnostics">i</button>
+          <button class="icon-button" id="setup-settings-button" type="button" aria-label="Settings" title="Settings">⚙</button>
+        </header>
+
+        <section class="setup-step panel language-step" id="language-step">
+          <header class="step-header">
+            <span class="step-number">1</span>
+            <div>
+              <p class="step-eyebrow">Learning from speech</p>
+              <h2>Language</h2>
+            </div>
+          </header>
+          <button class="source-card" id="language-picker-button" type="button" aria-haspopup="dialog">
+            <span class="source-flag" id="selected-language-flag">🇫🇷</span>
+            <span class="source-copy">
+              <strong id="selected-language-name">French</strong>
+              <small>Choose another language</small>
+            </span>
+            <span class="source-arrow" aria-hidden="true">›</span>
+          </button>
+          <div class="source-actions">
+            <span>Speech</span>
+            <button type="button" id="artist-preview-button">Browse Lyrics</button>
+          </div>
+        </section>
+
+        <section class="pilot-callout" aria-label="Pilot release notice">
+          <strong>French pipeline pilot</strong>
+          <p>These cards exercise the real Fluency application path. No frequency, coverage, or WSD result is being claimed yet.</p>
+        </section>
+
+        <section class="setup-step panel level-step">
+          <header class="step-header">
+            <span class="step-number">2</span>
+            <div>
+              <p class="step-eyebrow">Choose level</p>
+              <h2>Pilot</h2>
+            </div>
+            <button class="info-button" id="level-info-button" type="button" aria-label="About this level">?</button>
+          </header>
+          <div class="level-summary">
+            <div>
+              <strong>Pilot</strong>
+              <span>Curated integration deck</span>
+            </div>
+            <div class="level-count"><strong id="pilot-card-count">25</strong><span>surface cards</span></div>
+          </div>
+          <div class="level-track" role="radiogroup" aria-label="Level scrubber">
+            <button type="button" role="radio" aria-checked="true" class="level-marker selected">Pilot</button>
+          </div>
+          <p class="level-evidence">Frequency levels will appear here when the inventory layer is approved.</p>
+        </section>
+
+        <section class="setup-step panel set-step">
+          <header class="step-header">
+            <span class="step-number">3</span>
+            <div>
+              <p class="step-eyebrow">Continue Pilot</p>
+              <h2>Study set</h2>
+            </div>
+          </header>
+          <div class="set-progress-heading">
+            <strong id="set-progress-title">0 of 1 sets seen</strong>
+            <span>New cards stay separate from review</span>
+          </div>
+          <div class="set-legend" aria-label="Set progress colours">
+            <span><i class="known"></i>Known</span>
+            <span><i class="review"></i>Review</span>
+            <span><i class="unseen"></i>Unseen</span>
+          </div>
+          <button class="set-marker selected" id="pilot-set" type="button" aria-label="Pilot set">
+            <span>1</span>
+          </button>
+          <div class="set-summary">
+            <strong>Set 1 of 1</strong>
+            <span id="set-summary-copy">0 known · 0 review · 25 unseen</span>
+          </div>
+          <button class="primary-action" id="start-study" type="button">Learn 25 new cards</button>
+        </section>
+      </section>
+
+      <section class="study-view" id="study-view" hidden aria-label="French Speech study">
+        <header class="study-header">
+          <button class="study-source" id="study-main-menu" type="button">Learning from speech</button>
+          <p class="score-feedback" id="score-feedback" aria-live="polite"></p>
+          <div class="answer-actions">
+            <button class="answer-button incorrect" id="answer-incorrect" type="button" aria-label="Needs review">✗</button>
+            <button class="answer-button correct" id="answer-correct" type="button" aria-label="Correct">✓</button>
+          </div>
+        </header>
+
+        <div class="study-column">
+          <nav class="card-scrubber" aria-label="Card position in active set">
+            <button id="previous-card" type="button" aria-label="Previous card">‹</button>
+            <div class="scrubber-segments" id="scrubber-segments" role="group" aria-label="Active cards"></div>
+            <button id="next-card" type="button" aria-label="Next card">›</button>
+            <button id="study-settings-button" class="study-gear" type="button" aria-label="More actions">⚙</button>
+          </nav>
+
+          <div class="card-stack">
+            <div class="ghost-card ghost-card-two" aria-hidden="true"></div>
+            <div class="ghost-card ghost-card-one" aria-hidden="true"></div>
+            <article class="flashcard" id="flashcard" tabindex="0" aria-live="polite">
+              <section class="card-face card-front" id="card-front">
+                <div class="front-rank" id="front-rank">Pilot card 1</div>
+                <button class="headword-button" id="headword-button" type="button" aria-label="Reveal answer">
+                  <span id="front-headword" lang="fr">bonjour</span>
+                </button>
+                <span class="pos-pill" id="front-pos">Interjection</span>
+                <button class="speak-card" id="speak-card" type="button" aria-label="Speak French card">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+                    <path d="M19 5a10 10 0 0 1 0 14"></path>
+                  </svg>
+                </button>
+                <p class="front-hint">Tap the word or press Space to reveal</p>
+              </section>
+
+              <section class="card-face card-back" id="card-back" hidden>
+                <header class="back-header">
+                  <h2 id="back-headword" lang="fr">bonjour</h2>
+                  <span class="pos-pill" id="back-pos">Interjection</span>
+                </header>
+                <div class="meaning-tabs" id="meaning-tabs" aria-label="Meanings"></div>
+                <div class="meaning-answer" id="meaning-answer"></div>
+                <button class="example-card" id="example-card" type="button" aria-label="Next example">
+                  <span class="example-target" id="example-target" lang="fr"></span>
+                  <span class="example-english" id="example-english"></span>
+                  <small id="example-position"></small>
+                </button>
+                <a class="lookup-link" id="lookup-link" target="_blank" rel="noreferrer">↗<span>Look up</span></a>
+              </section>
+            </article>
+          </div>
+        </div>
+      </section>
     </main>
+
+    <dialog class="radial-dialog" id="language-dialog" aria-labelledby="language-dialog-title">
+      <div class="radial-backdrop" data-close-dialog="language-dialog"></div>
+      <div class="language-orbit" id="language-orbit">
+        <div class="orbit-centre">
+          <span>Choose a</span>
+          <strong id="language-dialog-title">language</strong>
+          <button type="button" data-close-dialog="language-dialog">Close</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="sheet-dialog" id="study-menu" aria-labelledby="study-menu-title">
+      <header>
+        <div><small>Study</small><strong id="study-menu-title">options</strong></div>
+        <button type="button" data-close-dialog="study-menu" aria-label="Close">×</button>
+      </header>
+      <div class="sheet-actions">
+        <button id="menu-main" type="button"><span>Main menu</span><small>Return to French setup</small></button>
+        <button id="menu-direction" type="button"><span>English → French</span><small>Change the card front</small></button>
+        <button id="menu-speech" type="button"><span>Mute automatic speech</span><small>Speaker button remains available</small></button>
+        <button id="menu-progress" type="button"><span>Set progress</span><small id="menu-progress-copy"></small></button>
+        <button id="menu-diagnostics" type="button"><span>Release diagnostics</span><small>See exactly which data is displayed</small></button>
+      </div>
+    </dialog>
+
+    <dialog class="sheet-dialog diagnostics-dialog" id="diagnostics-dialog" aria-labelledby="diagnostics-title">
+      <header>
+        <div><small>Local data</small><strong id="diagnostics-title">Release diagnostics</strong></div>
+        <button type="button" data-close-dialog="diagnostics-dialog" aria-label="Close">×</button>
+      </header>
+      <dl id="diagnostics-list"></dl>
+      <p class="diagnostics-note">The app loaded this immutable release only. It did not scan old runs or fill missing records from another deck.</p>
+      <button class="danger-action" id="reset-progress" type="button">Reset local pilot progress</button>
+    </dialog>
+
+    <dialog class="sheet-dialog information-dialog" id="information-dialog" aria-labelledby="information-title">
+      <header>
+        <div><small>Fluency Next</small><strong id="information-title">About this rebuild</strong></div>
+        <button type="button" data-close-dialog="information-dialog" aria-label="Close">×</button>
+      </header>
+      <p>The product is being migrated into a smaller multilingual application. French Speech is the first complete local slice; its current cards are a transparent curated fixture while the research layers are developed.</p>
+    </dialog>
+
+    <dialog class="sheet-dialog completion-dialog" id="completion-dialog" aria-labelledby="completion-title">
+      <header>
+        <div><small>Set complete</small><strong id="completion-title">Pilot summary</strong></div>
+        <button type="button" data-close-dialog="completion-dialog" aria-label="Close">×</button>
+      </header>
+      <div class="completion-stats" id="completion-stats"></div>
+      <button class="primary-action" id="completion-main-menu" type="button">Return to setup</button>
+    </dialog>
+
+    <section class="fatal-error" id="fatal-error" hidden aria-live="assertive">
+      <span class="fluency-glyph" aria-hidden="true">F</span>
+      <p class="eyebrow">Local release unavailable</p>
+      <h1>Fluency could not start.</h1>
+      <p id="fatal-error-message"></p>
+      <code>make pilot<br>make dev</code>
+    </section>
   </body>
 </html>
-

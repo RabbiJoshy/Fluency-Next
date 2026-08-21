@@ -15,14 +15,21 @@ Python 3.12 is the supported development runtime for the initial rebuild.
 ```bash
 make bootstrap
 make test
+make pilot
 make dev
 ```
 
 The development server listens on <http://127.0.0.1:4173> by default. It uses
-only the local `app/` directory and has no production or GitHub dependency.
+the local `app/` directory and mounts only compact releases from the separate
+workspace. It has no production or GitHub dependency.
 
 ## Current scope
 
-Only the repository bootstrap exists. No language pipeline, corpus ingestion,
-WSD, migration, release, or production integration has been implemented yet.
+The stable surface-card identity, external workspace, immutable artifact/run
+contracts, French tokenization boundary, and a recognisable Fluency application
+running a 25-card French Speech pilot are implemented. The pilot is curated
+fixture data: corpus ingestion, frequency ranking, embeddings, WSD, calibration,
+Spanish migration, Artist mode, and production integration have not been
+implemented yet.
 
+See `docs/runbooks/local-speech-pilot.md` for the exact local test flow.

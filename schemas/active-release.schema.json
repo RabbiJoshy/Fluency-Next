@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/active-release.schema.json",
+  "title": "Fluency active release pointer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "language",
+    "mode",
+    "release_id",
+    "manifest_path"
+  ],
+  "properties": {
+    "manifest_version": {
+      "const": "active-release/v1"
+    },
+    "language": {
+      "const": "fr"
+    },
+    "mode": {
+      "const": "speech"
+    },
+    "release_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "manifest_path": {
+      "type": "string",
+      "pattern": "^[^./][^/]*/manifest\\.json$"
+    }
+  }
+}

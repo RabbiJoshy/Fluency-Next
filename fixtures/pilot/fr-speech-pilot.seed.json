@@ -1,0 +1,410 @@
+{
+  "seed_version": "fr-speech-pilot-seed/v1",
+  "release_id": "fr-speech-pilot-0001",
+  "language": "fr",
+  "locale": "fr-FR",
+  "mode": "speech",
+  "created_at": "2026-08-20T00:00:00Z",
+  "cards": [
+    {
+      "surface": "bonjour",
+      "meanings": [
+        {
+          "part_of_speech": "interjection",
+          "translation": "hello; good morning",
+          "context": "A greeting used during the day."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Bonjour, comment allez-vous ?",
+          "english": "Hello, how are you?"
+        }
+      ]
+    },
+    {
+      "surface": "merci",
+      "meanings": [
+        {
+          "part_of_speech": "interjection",
+          "translation": "thank you",
+          "context": "Used to express thanks."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Merci pour votre aide.",
+          "english": "Thank you for your help."
+        }
+      ]
+    },
+    {
+      "surface": "oui",
+      "meanings": [
+        {
+          "part_of_speech": "adverb",
+          "translation": "yes",
+          "context": "Used to give an affirmative answer."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Oui, je comprends.",
+          "english": "Yes, I understand."
+        }
+      ]
+    },
+    {
+      "surface": "non",
+      "meanings": [
+        {
+          "part_of_speech": "adverb",
+          "translation": "no",
+          "context": "Used to give a negative answer."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Non, ce n’est pas nécessaire.",
+          "english": "No, that is not necessary."
+        }
+      ]
+    },
+    {
+      "surface": "je",
+      "meanings": [
+        {
+          "part_of_speech": "pronoun",
+          "translation": "I",
+          "context": "First-person singular subject pronoun."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Je parle français.",
+          "english": "I speak French."
+        }
+      ]
+    },
+    {
+      "surface": "tu",
+      "meanings": [
+        {
+          "part_of_speech": "pronoun",
+          "translation": "you",
+          "context": "Informal singular subject pronoun."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Tu viens avec nous ?",
+          "english": "Are you coming with us?"
+        }
+      ]
+    },
+    {
+      "surface": "vous",
+      "meanings": [
+        {
+          "part_of_speech": "pronoun",
+          "translation": "you",
+          "context": "Formal singular or plural subject pronoun."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Vous avez une question ?",
+          "english": "Do you have a question?"
+        }
+      ]
+    },
+    {
+      "surface": "il",
+      "meanings": [
+        {
+          "part_of_speech": "pronoun",
+          "translation": "he; it",
+          "context": "Masculine singular subject pronoun."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Il arrive maintenant.",
+          "english": "He is arriving now."
+        }
+      ]
+    },
+    {
+      "surface": "elle",
+      "meanings": [
+        {
+          "part_of_speech": "pronoun",
+          "translation": "she; it",
+          "context": "Feminine singular subject pronoun."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Elle habite ici.",
+          "english": "She lives here."
+        }
+      ]
+    },
+    {
+      "surface": "être",
+      "meanings": [
+        {
+          "part_of_speech": "verb",
+          "translation": "to be",
+          "context": "Infinitive form."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Je veux être prêt.",
+          "english": "I want to be ready."
+        }
+      ]
+    },
+    {
+      "surface": "avoir",
+      "meanings": [
+        {
+          "part_of_speech": "verb",
+          "translation": "to have",
+          "context": "Infinitive form."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Nous allons avoir du temps.",
+          "english": "We are going to have time."
+        }
+      ]
+    },
+    {
+      "surface": "faire",
+      "meanings": [
+        {
+          "part_of_speech": "verb",
+          "translation": "to do; to make",
+          "context": "Infinitive form."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Que vas-tu faire ?",
+          "english": "What are you going to do?"
+        }
+      ]
+    },
+    {
+      "surface": "aller",
+      "meanings": [
+        {
+          "part_of_speech": "verb",
+          "translation": "to go",
+          "context": "Infinitive form."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Je dois aller au travail.",
+          "english": "I have to go to work."
+        }
+      ]
+    },
+    {
+      "surface": "venir",
+      "meanings": [
+        {
+          "part_of_speech": "verb",
+          "translation": "to come",
+          "context": "Infinitive form."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Elle peut venir demain.",
+          "english": "She can come tomorrow."
+        }
+      ]
+    },
+    {
+      "surface": "parler",
+      "meanings": [
+        {
+          "part_of_speech": "verb",
+          "translation": "to speak; to talk",
+          "context": "Infinitive form."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Nous pouvons parler maintenant.",
+          "english": "We can talk now."
+        }
+      ]
+    },
+    {
+      "surface": "avec",
+      "meanings": [
+        {
+          "part_of_speech": "preposition",
+          "translation": "with",
+          "context": "Introduces accompaniment or association."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Je viens avec vous.",
+          "english": "I am coming with you."
+        }
+      ]
+    },
+    {
+      "surface": "pour",
+      "meanings": [
+        {
+          "part_of_speech": "preposition",
+          "translation": "for; intended for",
+          "context": "Marks a recipient or intended purpose."
+        }
+      ],
+      "examples": [
+        {
+          "target": "C’est pour toi.",
+          "english": "It is for you."
+        }
+      ]
+    },
+    {
+      "surface": "dans",
+      "meanings": [
+        {
+          "part_of_speech": "preposition",
+          "translation": "in; inside",
+          "context": "Marks location within something."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Le livre est dans le sac.",
+          "english": "The book is in the bag."
+        }
+      ]
+    },
+    {
+      "surface": "sur",
+      "meanings": [
+        {
+          "part_of_speech": "preposition",
+          "translation": "on",
+          "context": "Marks position on a surface."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Le téléphone est sur la table.",
+          "english": "The phone is on the table."
+        }
+      ]
+    },
+    {
+      "surface": "ici",
+      "meanings": [
+        {
+          "part_of_speech": "adverb",
+          "translation": "here",
+          "context": "Refers to the speaker’s location."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Attendez ici, s’il vous plaît.",
+          "english": "Wait here, please."
+        }
+      ]
+    },
+    {
+      "surface": "maintenant",
+      "meanings": [
+        {
+          "part_of_speech": "adverb",
+          "translation": "now",
+          "context": "At the present time."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Nous devons partir maintenant.",
+          "english": "We must leave now."
+        }
+      ]
+    },
+    {
+      "surface": "aujourd’hui",
+      "meanings": [
+        {
+          "part_of_speech": "adverb",
+          "translation": "today",
+          "context": "On the present day."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Aujourd’hui, il fait beau.",
+          "english": "The weather is nice today."
+        }
+      ]
+    },
+    {
+      "surface": "quelqu’un",
+      "meanings": [
+        {
+          "part_of_speech": "pronoun",
+          "translation": "someone; somebody",
+          "context": "Refers to an unspecified person."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Quelqu’un vous attend.",
+          "english": "Someone is waiting for you."
+        }
+      ]
+    },
+    {
+      "surface": "du",
+      "meanings": [
+        {
+          "part_of_speech": "determiner",
+          "translation": "some",
+          "context": "Partitive article before a masculine singular noun."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Je voudrais du pain.",
+          "english": "I would like some bread."
+        }
+      ]
+    },
+    {
+      "surface": "aux",
+      "meanings": [
+        {
+          "part_of_speech": "contraction",
+          "translation": "to the; at the",
+          "context": "Contraction of à and the plural article les."
+        }
+      ],
+      "examples": [
+        {
+          "target": "Elle parle aux enfants.",
+          "english": "She is talking to the children."
+        }
+      ]
+    }
+  ]
+}

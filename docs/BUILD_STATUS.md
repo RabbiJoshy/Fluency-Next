@@ -10,14 +10,18 @@
   artifacts, and run/stage manifest contracts.
 - Gate 5: defined French tokenization, elision and hyphen routing, contractions,
   lookup candidates, and retained rejection evidence.
+- Gate 6: built the deterministic 25-card French Speech fixture release,
+  compact release contracts, read-only local release mount, product-parity
+  Fluency setup/study experience, isolated progress, explicit candidate
+  selection, diagnostics, and browser speech integration.
 
 ## Not started
 
-- Core schema contracts beyond card identity.
 - Source ingestion and evidence registries.
 - Embeddings, WSD, calibration, and example selection.
-- Release generation and app integration.
-- Legacy migration.
+- Production release generation and full-deck app integration.
+- Spanish and legacy progress migration.
 - Artist mode.
 
-No production system or existing Fluency repository has been modified.
+No production system or existing Fluency repository has been modified. Gate 6
+uses curated fixture content and makes no production coverage or WSD claims.

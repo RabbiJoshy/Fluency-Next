@@ -35,6 +35,14 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(args.workspace_command, "doctor")
         self.assertEqual(args.path, "/tmp/fluency-workspace")
 
+    def test_pilot_build_accepts_explicit_workspace(self) -> None:
+        args = build_parser().parse_args(
+            ["pilot", "build", "--workspace", "/tmp/fluency-workspace"]
+        )
+        self.assertEqual(args.command, "pilot")
+        self.assertEqual(args.pilot_command, "build")
+        self.assertEqual(args.workspace, "/tmp/fluency-workspace")
+
 
 if __name__ == "__main__":
     unittest.main()

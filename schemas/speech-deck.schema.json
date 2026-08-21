@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/speech-deck.schema.json",
+  "title": "Fluency Speech deck",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["deck_version", "release_id", "language", "mode", "cards"],
+  "properties": {
+    "deck_version": {
+      "const": "speech-deck/v1"
+    },
+    "release_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "language": {
+      "const": "fr"
+    },
+    "mode": {
+      "const": "speech"
+    },
+    "cards": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/card"
+      }
+    }
+  },
+  "$defs": {
+    "card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "card_id",
+        "surface_key",
+        "display_form",
+        "rank",
+        "meanings",
+        "examples"
+      ],
+      "properties": {
+        "card_id": {
+          "type": "string",
+          "pattern": "^card_fr_[0-9a-f]{32}$"
+        },
+        "surface_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "display_form": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "meanings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/meaning"
+          }
+        },
+        "examples": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/example"
+          }
+        }
+      }
+    },
+    "meaning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sense_id",
+        "part_of_speech",
+        "translation",
+        "assignment_status"
+      ],
+      "properties": {
+        "sense_id": {
+          "type": "string",
+          "pattern": "^fixture_sense_fr_[0-9]{3}$"
+        },
+        "part_of_speech": {
+          "type": "string",
+          "minLength": 1
+        },
+        "translation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assignment_status": {
+          "const": "curated_fixture"
+        }
+      }
+    },
+    "example": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["example_id", "sense_id", "target", "english", "provenance"],
+      "properties": {
+        "example_id": {
+          "type": "string",
+          "pattern": "^fixture_example_fr_[0-9]{3}$"
+        },
+        "sense_id": {
+          "type": "string",
+          "pattern": "^fixture_sense_fr_[0-9]{3}$"
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "english": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provenance": {
+          "const": "curated_fixture"
+        }
+      }
+    }
+  }
+}
