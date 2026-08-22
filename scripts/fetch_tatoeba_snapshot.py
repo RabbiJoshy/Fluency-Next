@@ -4,13 +4,12 @@
 from __future__ import annotations
 
 import argparse
-from email.message import Message
 import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
-from urllib.request import Request, urlopen
 
 
 LANGUAGE_CODES = {
@@ -23,26 +22,44 @@ LANGUAGE_CODES = {
 BASE_URL = "https://downloads.tatoeba.org/exports/per_language"
 
 
-def _download(url: str, destination: Path) -> Message:
+def _download(url: str, destination: Path) -> dict[str, str | None]:
     partial = destination.with_suffix(destination.suffix + ".partial")
-    request = Request(url, headers={"User-Agent": "Fluency-Next snapshot fetcher/1"})
-    with urlopen(request) as response, partial.open("wb") as stream:
-        total = int(response.headers.get("Content-Length", "0"))
-        copied = 0
-        while chunk := response.read(1024 * 1024):
-            stream.write(chunk)
-            copied += len(chunk)
-            if total:
-                print(
-                    f"\r{destination.name}: {copied / 1_048_576:.1f}/"
-                    f"{total / 1_048_576:.1f} MiB",
-                    end="",
-                    flush=True,
-                )
-        if total:
-            print()
-        headers = response.headers
+    headers_path = destination.with_suffix(destination.suffix + ".headers.partial")
+    try:
+        subprocess.run(
+            [
+                "curl",
+                "--fail",
+                "--location",
+                "--continue-at",
+                "-",
+                "--show-error",
+                "--user-agent",
+                "Fluency-Next snapshot fetcher/1",
+                "--dump-header",
+                str(headers_path),
+                "--output",
+                str(partial),
+                url,
+            ],
+            check=True,
+        )
+    except FileNotFoundError as error:
+        raise OSError("system curl is required to fetch Tatoeba snapshots") from error
+    except subprocess.CalledProcessError as error:
+        raise OSError(f"curl failed with exit code {error.returncode}: {url}") from error
+    headers: dict[str, str | None] = {"last_modified": None, "etag": None}
+    for raw_line in headers_path.read_text(encoding="iso-8859-1").splitlines():
+        name, separator, value = raw_line.partition(":")
+        if not separator:
+            continue
+        normalized = name.strip().casefold()
+        if normalized == "last-modified":
+            headers["last_modified"] = value.strip()
+        elif normalized == "etag":
+            headers["etag"] = value.strip()
     os.replace(partial, destination)
+    headers_path.unlink()
     return headers
 
 
@@ -96,8 +113,8 @@ def fetch_snapshot(
             source_files[role] = {
                 "filename": filename,
                 "url": url,
-                "last_modified": headers.get("Last-Modified"),
-                "etag": headers.get("ETag"),
+                "last_modified": headers["last_modified"],
+                "etag": headers["etag"],
             }
         metadata = {
             "snapshot_version": "tatoeba-weekly-snapshot/v1",
