@@ -33,7 +33,7 @@ changed without stale data, accidental fallback, or hidden legacy machinery.
 
 ## Step 1 — Language-agnostic harvesting
 
-**Status: complete in commit `7784d1a`; awaiting final sign-off.**
+**Status: complete in commit `7784d1a`; signed off 2026-08-22.**
 
 Build one streaming harvesting engine with shared Speech rules, replaceable
 language policies, and replaceable corpus adapters. Tatoeba and aligned
@@ -55,7 +55,8 @@ No real French corpus run and no WSD were executed in this step.
 
 ## Step 2 — Port and generalize the best Spanish WSD
 
-**Status: not started.**
+**Status: Spanish reference audit complete; architecture proposal awaiting
+sign-off in `proposals/0001-wsd-port-architecture.md`.**
 
 Audit the current best Spanish WSD implementation, separate its genuinely
 language-agnostic retrieval/assignment machinery from Spanish-only behaviour,
