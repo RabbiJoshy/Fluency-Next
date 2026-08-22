@@ -26,6 +26,7 @@ class PipelinePlanningTests(unittest.TestCase):
     def test_profile_locks_fresh_surface_only_audit(self) -> None:
         self.assertEqual(self.profile["scope"]["surface_limit"], 200)
         self.assertEqual(self.profile["scope"]["examples_per_surface"], 3)
+        self.assertEqual(self.profile["scope"]["shortfall_policy"], "publish_explicit")
         self.assertFalse(self.profile["identity"]["allow_lemma_identity"])
         self.assertFalse(self.profile["source_policy"]["allow_legacy_inputs"])
         self.assertEqual(
@@ -112,6 +113,15 @@ class PipelinePlanningTests(unittest.TestCase):
                 ["fresh_tatoeba_source_snapshot"],
             )
             self.assertEqual(harvest_contract["method"]["source_policy"], "exclusive")
+            selection_contract = json.loads(
+                (target / "stages/05_example_selection/contract.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                selection_contract["requires_stage_outputs"],
+                ["inventory", "sentence_harvest"],
+            )
 
 
 if __name__ == "__main__":

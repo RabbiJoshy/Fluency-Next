@@ -32,6 +32,7 @@ def build_app_compatibility_assets(
         grouped_examples: dict[str, list[dict[str, Any]]] = {
             meaning["sense_id"]: [] for meaning in card["meanings"]
         }
+        unassigned_examples: list[dict[str, Any]] = []
         for example in card["examples"]:
             record: dict[str, Any] = {
                 "target": example["target"],
@@ -44,11 +45,16 @@ def build_app_compatibility_assets(
             }
             if "easiness" in example:
                 record["easiness"] = example["easiness"]
-            grouped_examples[example["sense_id"]].append(record)
+            if example["assignment_status"] == "assigned":
+                grouped_examples[example["sense_id"]].append(record)
+            else:
+                record.pop("assignment_method", None)
+                unassigned_examples.append(record)
 
         total_examples = max(1, len(card["examples"]))
         meanings: list[dict[str, Any]] = []
         buckets: list[list[dict[str, Any]]] = []
+        unassigned_senses: list[dict[str, Any]] = []
         for meaning in card["meanings"]:
             bucket = grouped_examples[meaning["sense_id"]]
             old_meaning: dict[str, Any] = {
@@ -62,8 +68,12 @@ def build_app_compatibility_assets(
             for field in ("context", "detail"):
                 if meaning.get(field):
                     old_meaning[field] = meaning[field]
-            meanings.append(old_meaning)
-            buckets.append(bucket)
+            if meaning["assignment_status"] == "unassigned":
+                old_meaning["unassigned"] = True
+                unassigned_senses.append(old_meaning)
+            else:
+                meanings.append(old_meaning)
+                buckets.append(bucket)
 
         old_card: dict[str, Any] = {
             "word": card["display_form"],
@@ -72,10 +82,22 @@ def build_app_compatibility_assets(
             "meanings": meanings,
             "surface_card_id": card["card_id"],
         }
+        split_examples: dict[str, Any] = {"m": buckets}
+        if unassigned_senses or unassigned_examples:
+            old_card["sense_cycles"] = [
+                {
+                    "pos": "SENSE_CYCLE",
+                    "translation": "",
+                    "cycle_pos": "X",
+                    "allSenses": unassigned_senses,
+                    "unassigned": True,
+                }
+            ]
+            split_examples["s"] = [unassigned_examples]
         frequency = card.get("frequency")
         if isinstance(frequency, dict) and isinstance(frequency.get("primary_count"), int):
             old_card["corpus_count"] = frequency["primary_count"]
         index.append(old_card)
-        examples[app_id] = {"m": buckets}
+        examples[app_id] = split_examples
 
     return index, examples

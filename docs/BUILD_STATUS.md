@@ -92,6 +92,12 @@
   provenance, publishes immutable Stage 04 output once, and cannot merge with
   or overwrite an older assignment layer. No WSD method was selected, compared,
   or executed.
+- Gate 18 (WSD-independent release contract): example selection now depends on
+  the run-owned inventory and harvest, not on WSD. Profiles publish up to three
+  examples per card with explicit coverage; missing assignments and shortfalls
+  remain visible in the release and cannot cause an old-run fallback or block
+  the whole deck. The app adapter maps unassigned examples to its existing
+  unassigned sense-cycle UI instead of inventing a sense link.
 
 ## Not started
 

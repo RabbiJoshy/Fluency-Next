@@ -25,6 +25,9 @@ changed without stale data, accidental fallback, or hidden legacy machinery.
   release declares exact artifact hashes, and activation remains manual.
 - Speech card identity is the surface form. Lemmas may be lookup or linguistic
   metadata, but never the card/index identity.
+- WSD is optional enrichment. Harvested examples can be selected and released
+  with an explicit unassigned status; missing assignments or fewer than three
+  examples never trigger hidden fallback or block the whole deck.
 - Preserve the existing Fluency app experience unless Josh explicitly approves
   a product change. Refactoring for clarity or performance is welcome only when
   behaviour remains equivalent or the change is separately identified.
@@ -100,14 +103,15 @@ selection architecture can continue independently.**
 
 Create a fresh, small French run using real corpus data—likely OpenSubtitles
 when its French snapshot is ready. Build and inspect the surface inventory,
-sense menus, harvested candidates, WSD assignments, final three examples per
-card, ordering, release artifacts, and exact app rendering. The intended audit
+sense menus, harvested candidates, optional WSD assignments, up to three examples
+per card, ordering, release artifacts, and exact app rendering. The intended audit
 target is 200 surface cards × 3 final examples; a 20-card rehearsal may be used
 first to prove commands and contracts cheaply.
 
 Josh runs expensive commands locally; the assistant audits each resulting
-folder and report. Shortfalls block release rather than borrowing old data.
-The candidate is tested locally and stays inactive until explicitly approved.
+folder and report. Shortfalls remain explicit rather than borrowing old data or
+blocking the whole deck. The candidate is tested locally and stays inactive
+until explicitly approved.
 
 ## Step 5 — Migrate Spanish into the clean architecture
 

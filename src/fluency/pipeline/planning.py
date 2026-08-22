@@ -43,9 +43,7 @@ STAGE_DEPENDENCIES = {
     "wsd_assignments": ("inventory", "sense_menu", "sentence_harvest"),
     "example_selection": (
         "inventory",
-        "sense_menu",
         "sentence_harvest",
-        "wsd_assignments",
     ),
     "release_build": ("inventory", "sense_menu", "example_selection"),
 }
@@ -86,8 +84,11 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
         isinstance(scope.get("surface_limit"), int) and scope["surface_limit"] > 0,
         "surface limit must be a positive integer",
     )
-    _require(scope.get("examples_per_surface") == 3, "Speech profiles must target three final examples per surface")
-    _require(scope.get("shortfall_policy") == "block_release", "example shortfalls must block release")
+    _require(scope.get("examples_per_surface") == 3, "Speech profiles must target up to three final examples per surface")
+    _require(
+        scope.get("shortfall_policy") in {"block_release", "publish_explicit"},
+        "example shortfall policy is invalid",
+    )
 
     inventory = profile.get("inventory")
     _require(isinstance(inventory, dict), "inventory adapter policy is required")
@@ -227,12 +228,14 @@ def _acceptance(stage: str, *, surfaces: int, examples: int) -> list[str]:
             "scores, decision status, and rejection reason remain inspectable",
         ],
         "example_selection": [
-            "exactly three WSD-assigned examples selected per surface",
+            "up to three harvested examples selected per surface without requiring WSD",
+            "selection remains stable when optional WSD assignments are attached later",
             "no fallback examples from another run",
         ],
         "release_build": [
-            f"exactly {surfaces} cards and {examples} examples",
+            f"exactly {surfaces} cards and no more than {examples} examples",
             "every layer hash points to this run's approved artifacts",
+            "missing WSD or example coverage remains visible rather than blocking publication",
             "candidate remains inactive until explicit approval",
         ],
     }

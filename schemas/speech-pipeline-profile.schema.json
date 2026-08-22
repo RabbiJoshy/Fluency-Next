@@ -38,7 +38,7 @@
       "properties": {
         "surface_limit": {"type": "integer", "minimum": 1},
         "examples_per_surface": {"const": 3},
-        "shortfall_policy": {"const": "block_release"}
+        "shortfall_policy": {"enum": ["block_release", "publish_explicit"]}
       }
     },
     "inventory": {

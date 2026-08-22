@@ -65,6 +65,7 @@ def build_pilot_deck(seed: dict[str, Any]) -> dict[str, Any]:
                 {
                     "example_id": f"fixture_example_fr_{example_counter:03d}",
                     "sense_id": local_sense_ids[meaning_index],
+                    "assignment_status": "assigned",
                     "target": source_example["target"],
                     "english": source_example["english"],
                     "provenance": "curated_fixture",

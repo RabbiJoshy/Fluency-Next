@@ -87,6 +87,7 @@ def validate_deck(deck: dict[str, Any]) -> None:
         meanings = card.get("meanings")
         _require(isinstance(meanings, list) and meanings, f"card {surface_key} needs a meaning")
         local_sense_ids: set[str] = set()
+        local_sense_statuses: dict[str, str] = {}
         for meaning in meanings:
             _require(isinstance(meaning, dict), "meaning must be an object")
             sense_id = meaning.get("sense_id")
@@ -94,7 +95,9 @@ def validate_deck(deck: dict[str, Any]) -> None:
             _require(sense_id not in sense_ids, f"duplicate sense ID: {sense_id}")
             sense_ids.add(sense_id)
             local_sense_ids.add(sense_id)
-            _require(bool(meaning.get("assignment_status")), "meaning assignment status is invalid")
+            assignment_status = meaning.get("assignment_status")
+            _require(bool(assignment_status), "meaning assignment status is invalid")
+            local_sense_statuses[sense_id] = assignment_status
             _require(bool(meaning.get("part_of_speech")), "meaning part_of_speech is required")
             _require(bool(meaning.get("translation")), "meaning translation is required")
             _require("legacy_sources" not in meaning, "legacy meaning sources are not allowed")
@@ -107,7 +110,25 @@ def validate_deck(deck: dict[str, Any]) -> None:
             _require(isinstance(example_id, str) and example_id, "example ID is required")
             _require(example_id not in example_ids, f"duplicate example ID: {example_id}")
             example_ids.add(example_id)
-            _require(example.get("sense_id") in local_sense_ids, "example references another card's sense")
+            assignment_status = example.get("assignment_status")
+            _require(
+                assignment_status in {"assigned", "unassigned"},
+                "example assignment status is invalid",
+            )
+            if assignment_status == "assigned":
+                _require(
+                    example.get("sense_id") in local_sense_ids,
+                    "assigned example must reference this card's sense",
+                )
+                _require(
+                    local_sense_statuses[example["sense_id"]] != "unassigned",
+                    "assigned example cannot target an unassigned meaning",
+                )
+            else:
+                _require(
+                    example.get("sense_id") is None,
+                    "unassigned example cannot claim a sense",
+                )
             _require(bool(example.get("provenance")), "example provenance is invalid")
             _require(bool(example.get("target")), "example target text is required")
             _require(bool(example.get("english")), "example English text is required")

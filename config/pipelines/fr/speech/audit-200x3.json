@@ -17,7 +17,7 @@
   "scope": {
     "surface_limit": 200,
     "examples_per_surface": 3,
-    "shortfall_policy": "block_release"
+    "shortfall_policy": "publish_explicit"
   },
   "inventory": {
     "source_adapter": "lexique4-surface-frequency/v1",

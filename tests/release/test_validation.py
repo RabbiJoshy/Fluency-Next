@@ -19,6 +19,19 @@ class ReleaseValidationTests(unittest.TestCase):
     def test_valid_pilot_deck_passes(self) -> None:
         validate_deck(self.deck)
 
+    def test_unassigned_examples_are_valid_only_without_a_sense_claim(self) -> None:
+        deck = deepcopy(self.deck)
+        example = deck["cards"][0]["examples"][0]
+        example["assignment_status"] = "unassigned"
+        example["sense_id"] = None
+        validate_deck(deck)
+
+        example["sense_id"] = deck["cards"][0]["meanings"][0]["sense_id"]
+        with self.assertRaisesRegex(
+            ReleaseValidationError, "unassigned example cannot claim a sense"
+        ):
+            validate_deck(deck)
+
     def test_study_structure_must_cover_each_card_exactly_once(self) -> None:
         deck = deepcopy(self.deck)
         deck["study_structure"]["levels"][0]["sets"][0]["card_ids"].pop()

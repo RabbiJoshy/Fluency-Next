@@ -65,10 +65,11 @@
     "example": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["example_id", "sense_id", "target", "english", "provenance"],
+      "required": ["example_id", "sense_id", "assignment_status", "target", "english", "provenance"],
       "properties": {
         "example_id": {"type": "string", "minLength": 1},
-        "sense_id": {"type": "string", "minLength": 1},
+        "sense_id": {"type": ["string", "null"], "minLength": 1},
+        "assignment_status": {"enum": ["assigned", "unassigned"]},
         "target": {"type": "string", "minLength": 1},
         "english": {"type": "string", "minLength": 1},
         "provenance": {"type": "string", "minLength": 1},
