@@ -128,9 +128,9 @@ until explicitly approved.
 ## Step 5 — Migrate Spanish into the clean architecture
 
 **Status: retained Spanish inventory, sentence bank, candidate map and Gemini
-cache are pinned with verified hashes; fresh 20-card and 200-card inventories
-and run-owned candidate harvests are complete. The next implementation is the
-SpanishDict menu snapshot; no raw corpus scan or WSD is blocking it.** See
+cache are pinned with verified hashes; fresh inventories, run-owned candidate
+harvests and the 200-card SpanishDict menu are complete. The next implementation
+is the explicitly unassigned audit release; no raw corpus scan or WSD blocks it.** See
 `docs/migration/0003-spanish-speech-migration-roadmap.md` for the approval-gated
 sequence. WSD remains a replaceable external assignment layer and does not
 block the inventory, menu, harvest, unassigned release or app-compatibility

@@ -22,11 +22,12 @@ class SenseLeaf:
     def __post_init__(self) -> None:
         for name, value in (
             ("sense_id", self.sense_id),
-            ("translation", self.translation),
             ("source_reference", self.source_reference),
         ):
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"{name} must not be empty")
+        if not isinstance(self.translation, str):
+            raise ValueError("translation must be a string")
 
     @property
     def gloss_text(self) -> str:

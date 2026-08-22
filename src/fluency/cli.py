@@ -18,6 +18,7 @@ from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
 from fluency.inventory.runner import build_inventory_stage
 from fluency.migration.legacy_identity import write_legacy_crosswalk
 from fluency.migration.spanish_assets import migrate_spanish_retained_assets
+from fluency.migration.spanish_dictionary import migrate_spanish_dictionary_snapshot
 from fluency.pipeline.planning import create_pipeline_plan, load_pipeline_profile
 from fluency.release.activation import activate_release
 from fluency.release.catalog import build_catalog, write_catalog
@@ -146,6 +147,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
     )
     spanish_assets.add_argument("--source-repository", type=Path, required=True)
+    spanish_dictionary = migration_actions.add_parser(
+        "spanish-dictionary-snapshot",
+        help="pin the audited offline SpanishDict and morphology inputs",
+    )
+    spanish_dictionary.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    spanish_dictionary.add_argument("--source-repository", type=Path, required=True)
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -212,7 +221,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="explicit upstream snapshot label, such as lexique-4.00-2026-02-10",
     )
     pipeline_sense_menu = pipeline_actions.add_parser(
-        "sense-menu", help="normalize one explicit Kaikki snapshot into a planned run"
+        "sense-menu", help="normalize one explicit dictionary snapshot into a planned run"
     )
     pipeline_sense_menu.add_argument(
         "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
@@ -222,11 +231,11 @@ def build_parser() -> argparse.ArgumentParser:
     pipeline_sense_menu.add_argument("--mode", default="speech")
     pipeline_sense_menu.add_argument(
         "--snapshot", type=Path, required=True,
-        help="Kaikki JSONL or JSONL.GZ snapshot inside workspace/raw",
+        help="provider snapshot file or directory inside workspace/raw",
     )
     pipeline_sense_menu.add_argument(
         "--snapshot-id", required=True,
-        help="explicit upstream snapshot label, such as enwiktionary-2026-08-05",
+        help="explicit snapshot label, such as enwiktionary-2026-08-05",
     )
     pipeline_wsd_import = pipeline_actions.add_parser(
         "wsd-import",
@@ -434,6 +443,14 @@ def handle_migration(args: argparse.Namespace) -> int:
         for family, path in targets.items():
             print(f"  {family}: {path}")
         print("No WSD assignments, example selections, deck output, or release was migrated.")
+        return 0
+    if args.migration_command == "spanish-dictionary-snapshot":
+        target = migrate_spanish_dictionary_snapshot(
+            workspace,
+            source_repository=args.source_repository,
+        )
+        print(f"Pinned offline SpanishDict snapshot: {target}")
+        print("No built menu, WSD assignment, example selection, deck, or release was migrated.")
         return 0
     raise AssertionError(f"Unhandled migration command: {args.migration_command}")
 

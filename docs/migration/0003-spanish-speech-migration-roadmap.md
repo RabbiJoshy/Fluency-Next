@@ -203,7 +203,10 @@ surfaces, stable IDs and explicit rejected rows.
 
 ### Phase 4 — SpanishDict menu adapter and pinned snapshot
 
-**Owner:** Codex; Josh performs any long scrape/download.
+**Status:** complete for the 200-card audit on 2026-08-22.
+
+**Owner:** Codex. The audit uses only the approved offline snapshot; no scrape
+or download is part of this migration gate.
 
 Port the best SpanishDict behavior into the shared sense-menu contract. Preserve
 provider evidence rather than old assembly decisions:
@@ -219,11 +222,13 @@ Menus join to surface cards while allowing several headword/POS analyses. A
 separate lookup-candidate layer may propose conjugation or clitic headwords; it
 cannot replace the surface card.
 
-**Decision gate:** approve the pinned SpanishDict snapshot strategy and how
-conjugator-derived lookup candidates are represented.
+**Decision gate:** resolved 2026-08-22. Pin the offline surface/headword caches
+and morphology inputs; rebuild the menu per run without the scraper or old
+normalized menu.
 
-**Exit:** complete menus/no-menu reasons for the 200-card audit, with stable
-content hashes and no network lookup during study.
+**Exit:** achieved by run `20260822T214657Z-db4c1b65`: 199 menus, one explicit
+`no_menu` (`sr`), 474 analyses, 2,352 leaves, seven quarantined plural twins,
+and zero network or fallback use.
 
 ### Phase 5 — Run-owned Spanish sentence harvest
 

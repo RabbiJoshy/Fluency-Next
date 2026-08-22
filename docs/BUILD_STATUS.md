@@ -171,6 +171,17 @@
   42,650 retained records—not the raw corpus—and retained 1,200 candidates for
   20 cards and 11,878 for 200 cards. The 200-card minimum is ten candidates;
   there are no shortfalls, WSD assignments, final picks or activated release.
+- Gate 27 (offline SpanishDict adapter): pinned the latest verified surface and
+  headword caches plus Spanish forms and reverse conjugations as four immutable
+  offline inputs. The provider adapter preserves surface-card identity and
+  legacy leaf IDs, applies the latest conjugation, phrase, plural, language and
+  fuzzy-headword safeguards, and records explicit quarantine/no-menu outcomes.
+  Run `20260822T214657Z-db4c1b65` exactly matches all 2,352 leaves produced by
+  the latest old-repository builder across surface, headword, POS, sense ID,
+  translation and context. It has 474 headword/POS analyses for 199 cards,
+  seven quarantined plural twins, 146 explicit missing translations, and one
+  honest no-menu card (`sr`). No scraper, fallback, WSD, final selection,
+  release build or activation ran.
 
 ## Not started
 
@@ -178,9 +189,9 @@
   through the immutable Stage 04 boundary.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
-- Build and pin the SpanishDict menu snapshot for the fresh 200-card Spanish
-  audit. Full corpus-frequency compilation and raw reharvest remain optional
-  future experiments.
+- Build the first explicitly unassigned Spanish audit release from the completed
+  inventory, menu and candidate layers. Full corpus-frequency compilation and
+  raw reharvest remain optional future experiments.
 - Release diagnostics and release-frozen resume behind the transplanted app.
 - Artist mode.
 
