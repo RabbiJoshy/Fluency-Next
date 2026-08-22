@@ -83,6 +83,13 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("restartAllBtn", boot)
         self.assertNotIn("Review mistakes", boot)
 
+    def test_language_selection_advances_and_can_be_reopened(self) -> None:
+        boot = (APP_ROOT / "src" / "boot.js").read_text(encoding="utf-8")
+        self.assertIn('button.addEventListener("click", () => selectLanguage(language))', boot)
+        self.assertIn('levelStep.style.display = "block"', boot)
+        self.assertIn('setStep.style.display = "block"', boot)
+        self.assertIn('sourceLanguageButton.addEventListener("click", openLanguageChooser)', boot)
+
     def test_all_relative_module_imports_resolve(self) -> None:
         import_pattern = re.compile(r'^import\s+.*?from\s+["\'](.+?)["\'];?$', re.MULTILINE)
         for module in (APP_ROOT / "src").rglob("*.js"):

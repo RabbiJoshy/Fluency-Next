@@ -94,18 +94,49 @@ function createReleaseAudit(release) {
 function renderSetup(languages, release, progress, startStudy, auditModal) {
   const registry = [...languages.values()];
   const tabs = byId("languageTabs");
+  const languageStep = byId("step1");
+  const languageTitle = byId("step1Title");
+  const sourceCard = byId("standardSourceCard");
+  const levelStep = byId("step2");
+  const setStep = byId("step4");
+  const sourceLanguageButton = byId("standardSourceLanguageBtn");
+
+  function openLanguageChooser() {
+    languageStep.classList.remove("language-summary-active");
+    languageTitle.textContent = "Choose language";
+    tabs.style.display = "flex";
+    sourceCard.style.display = "none";
+    levelStep.style.display = "none";
+    setStep.style.display = "none";
+    languageStep.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function selectLanguage(language) {
+    if (language.key !== "fr") return;
+    languageStep.classList.add("language-summary-active");
+    languageTitle.textContent = language.name;
+    tabs.style.display = "none";
+    byId("standardSourceLanguageIcon").textContent = language.flag;
+    byId("standardSourceLanguageName").textContent = language.name;
+    sourceCard.style.display = "flex";
+    levelStep.style.display = "block";
+    setStep.style.display = "block";
+    requestAnimationFrame(() => levelStep.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+  }
+
   tabs.replaceChildren();
   for (const language of registry) {
-    const button = element("button", `lang-tab${language.key === "fr" ? " active" : ""}`);
+    const button = element("button", "lang-tab");
     button.type = "button";
     button.disabled = language.key !== "fr";
     button.append(element("span", "", language.flag), element("span", "", language.name));
     if (language.key !== "fr") button.title = `${language.name}: ${language.status.replaceAll("_", " ")}`;
+    else button.addEventListener("click", () => selectLanguage(language));
     tabs.append(button);
   }
-  byId("step1Title").textContent = "Language";
-  byId("step2").style.display = "block";
-  byId("step4").style.display = "block";
+  languageTitle.textContent = "Choose language";
+  levelStep.style.display = "none";
+  setStep.style.display = "none";
   const structure = release.deck.study_structure;
   let selectedLevelId = structure.levels[0].level_id;
   let selectedSetId = structure.levels[0].sets[0].set_id;
@@ -212,12 +243,11 @@ function renderSetup(languages, release, progress, startStudy, auditModal) {
   byId("syncStatusIndicator").replaceWith(status);
   byId("topBarGearBtn").addEventListener("click", () => showModal(auditModal));
   byId("findWordBtn").style.display = "none";
-  byId("standardSourceCard").style.display = "flex";
-  byId("standardSourceLanguageIcon").textContent = "🇫🇷";
-  byId("standardSourceLanguageName").textContent = "French";
+  sourceCard.style.display = "none";
   byId("standardSourcePickerBtn").textContent = "Browse Lyrics · coming later";
   byId("standardSourcePickerBtn").disabled = true;
-  byId("standardSourceLanguageBtn").disabled = true;
+  sourceLanguageButton.disabled = false;
+  sourceLanguageButton.addEventListener("click", openLanguageChooser);
   return { refresh };
 }
 
