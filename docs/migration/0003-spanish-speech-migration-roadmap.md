@@ -264,8 +264,8 @@ and explicit per-card shortfalls.
 
 ### Phase 6 — First visible Spanish release without WSD
 
-**Owner:** Codex. **Status:** release built, validated and locally activated
-2026-08-22; Josh's live app audit remains.
+**Owner:** Codex. **Status:** release built, validated, locally activated and
+audited through the real app shell 2026-08-22.
 
 Select up to three examples per card using only source quality, translation,
 easiness and diversity rules. Compose an inactive 200-card release whose
@@ -279,8 +279,14 @@ aliases without pretending WSD is finished.
 Release `es-speech-audit-200-unassigned-20260822` contains 200 cards, all 600
 examples, and 2,352 browsable SpanishDict meanings. No WSD or fallback ran.
 
-**Exit remaining:** verify Spanish setup, Learn/Review, exact resume, Card Data,
-flags and three examples in the actual app while French remains unchanged.
+The app audit selected Spanish, opened and resumed Level 1 / Set 1 exactly,
+cycled all three OpenSubtitles examples, opened Card Data, and opened the JSTA
+flag flow without submitting a remote write. Dictionary-only menu percentages
+are now treated as navigation weights rather than WSD evidence: the card says
+`Unassigned` and never renders a synthetic `100%` confidence.
+
+**Exit remaining:** exercise Review after real JSTA progress exists and verify
+one deliberately submitted flag after the backend deployment is confirmed.
 
 ### Phase 7 — Typed Spanish enrichment layers
 

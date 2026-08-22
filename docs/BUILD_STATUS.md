@@ -198,6 +198,13 @@
   / `20260822h` so an older offline config cannot keep Spanish disabled. Browser
   verification selected Spanish and rendered ten dynamic levels, with Level 1
   exposing its first 20-card learning set from the active candidate release.
+- Gate 30 (unassigned Spanish app audit): resumed the exact Level 1 / Set 1
+  session, cycled all three retained OpenSubtitles examples, opened Card Data
+  and reached the JSTA flag flow without sending a write. Removed the false
+  `100%` presentation caused by normalizing a dictionary-only menu for stable
+  navigation; unassigned groups now say `Unassigned`, while real assigned
+  releases can still display evidence percentages. The shell cache moved to
+  `flashcards-v271` / `20260822i`.
 
 ## Not started
 
@@ -205,8 +212,9 @@
   through the immutable Stage 04 boundary.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
-- Audit the locally active Spanish cards and examples in study mode. Full
-  corpus-frequency compilation and raw reharvest remain optional experiments.
+- Exercise Spanish Review once JSTA has real progress and deliberately submit
+  one provenance-bearing test flag after confirming the backend deployment.
+  Full corpus-frequency compilation and raw reharvest remain optional.
 - Release diagnostics and release-frozen resume behind the transplanted app.
 - Artist mode.
 

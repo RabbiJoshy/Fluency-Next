@@ -1,23 +1,23 @@
 // Card rendering, flip, swipe, keyboard shortcuts.
 // Main function: updateCard() (~line 950) renders the current flashcard front + back.
 // Key exports: updateCard, flipCard, nextCard, handleSwipeAction, selectMeaning, cycleExample.
-import './state.js?v=20260822h';
-import './speech.js?v=20260822h';
+import './state.js?v=20260822i';
+import './speech.js?v=20260822i';
 import {
     collectRecentWrongWords,
     exampleReinforcesRecentMistake,
     filterPersonalisedExamples,
-} from './example-personalisation.js?v=20260822h';
+} from './example-personalisation.js?v=20260822i';
 import {
     parseSpanishDictUsageContext,
     spanishDictUsageCandidateForms,
-} from './spanishdict-usage.js?v=20260822h';
+} from './spanishdict-usage.js?v=20260822i';
 import {
     englishProductionCue,
     retainProductionPromptAttempt,
     selectReverseCueMeanings,
     splitProductionCloze,
-} from './reverse-cues.js?v=20260822h';
+} from './reverse-cues.js?v=20260822i';
 
 // --- Spanish rank lookup for personal easiness ---
 let _spanishRanks = null;  // word -> rank (loaded once)
@@ -4072,11 +4072,18 @@ function updateCard({ announceHeadword = false } = {}) {
                     headword: m.headword || '',
                     senses: [],
                     pct: 0,
+                    hasAssignedEvidence: false,
                     firstMeaningIndex: meaningIndex,
                 });
             }
             const g = groupInfo.get(key);
-            g.pct += Number(m.percentage || 0);
+            // Normalization gives dictionary-only menus synthetic percentages
+            // so the UI can choose a stable default. Those numbers are not WSD
+            // evidence and must never be presented as assignment confidence.
+            if (!m.unassigned) {
+                g.pct += Number(m.percentage || 0);
+                g.hasAssignedEvidence = true;
+            }
             const text = String(getProductionEnglishCue(card, m) || m.meaning || '').trim();
             // Main senses only. Two rows sharing a translation are one meaning
             // seen in two contexts; the contexts belong in the expanded view.
@@ -4120,6 +4127,8 @@ function updateCard({ announceHeadword = false } = {}) {
                     ? `<span class="pos-pill-more">+${g.senses.length - 1}</span>` : '';
                 const pct = g.pct > 0
                     ? `<span class="pos-pill-pct">${Math.round(g.pct * 100)}%</span>` : '';
+                const assignmentState = !g.hasAssignedEvidence
+                    ? '<span class="pos-pill-unassigned">Unassigned</span>' : '';
                 // Whether this reading is known. Recorded per (POS, headword),
                 // which is the granularity that survives this classifier's
                 // errors — they are near-misses inside one pill.
@@ -4136,7 +4145,7 @@ function updateCard({ announceHeadword = false } = {}) {
                         <span class="pos-section-label">${escapeCardText(pos)}</span>
                         ${hw}
                         <span class="pos-section-summary">${escapeCardText(summarySense)}${extra}</span>
-                        ${pct}${mark}
+                        ${assignmentState}${pct}${mark}
                         <span class="pos-section-chevron">${open ? '\u25BE' : '\u25B8'}</span>
                     </button>
                     <div class="meaning-pos-rows">${rows.join('')}</div>
@@ -4555,7 +4564,7 @@ function updateCard({ announceHeadword = false } = {}) {
                     const pctStackHtml = orderedMembers.map((memberIdx) => {
                         const mm = card.meanings[memberIdx];
                         const memberPct = Math.round((mm.percentage || 0) * 100);
-                        if (memberPct >= 100) {
+                        if (mm.unassigned || memberPct >= 100) {
                             return '<div style="min-height: 25px; padding: 2px 6px;"></div>';
                         }
                         return `<div onclick="event.stopPropagation(); selectMeaning(${memberIdx})" style="min-height: 25px; padding: 2px 6px; display: flex; align-items: center; justify-content: flex-end; font-family: var(--font-data); font-size: 14px; color: #c9d2dd; white-space: nowrap; cursor: pointer;">${memberPct}%</div>`;
@@ -4603,15 +4612,15 @@ function updateCard({ announceHeadword = false } = {}) {
                     // padding. pointer-events:none lets the row's selectMeaning
                     // still fire through. right:8px matches the group pct's
                     // effective right offset for vertical alignment.
-                    const pctTail = prominenceText
+                    const pctTail = !m.unassigned && prominenceText
                         ? `<span class="sense-prominence-label ${String(m.prominenceLabel || '').toLowerCase()}">${prominenceText}</span>`
-                        : (pctVal < 100
+                        : (!m.unassigned && pctVal < 100
                             ? `<span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-family: var(--font-data); font-size: 14px; color: #c9d2dd; white-space: nowrap; pointer-events: none;">${pctVal}%</span>`
                             : '');
                     target.push(`
                     <div class="meaning-row meaning-row-regular ${singletonTextClass}${isSelected ? ' selected' : ''}${rowStateClasses}" style="position: relative; display: grid; grid-template-columns: 1fr; align-items: center; padding: 1px 2px; margin-bottom: 4px; background: ${bgColor}; ${borderStyle} border-radius: 8px; cursor: pointer; min-height: 39px;" onclick="selectMeaning(${idx})">
                         ${renderRowCheckSlot(isSelected)}
-                        <div class="meaning-row-body" style="display: flex; flex-direction: column; align-items: stretch; justify-content: center; min-width: 0; padding: 0 ${prominenceText ? '86px' : (pctVal < 100 ? '42px' : '8px')} 0 8px;">
+                        <div class="meaning-row-body" style="display: flex; flex-direction: column; align-items: stretch; justify-content: center; min-width: 0; padding: 0 ${!m.unassigned && prominenceText ? '86px' : (!m.unassigned && pctVal < 100 ? '42px' : '8px')} 0 8px;">
                             <span class="meaning-row-translation row-adaptive-text" style="font-weight: ${isSelected ? 700 : 500}; color: ${textColor}; text-align: center; width: 100%;">${displayMeaning}${contextInline}</span>
                         </div>
                         ${pctTail}
@@ -6591,7 +6600,7 @@ document.addEventListener('click', (e) => {
 // Keep this in lockstep with service-worker.js. These lazy modules own search
 // result cards and conjugation; a stale URL here can keep running an old modal
 // implementation even after the eagerly loaded app has updated.
-const ASSET_VERSION = '20260822h';
+const ASSET_VERSION = '20260822i';
 
 let _modalsModulePromise = null;
 const lazyModals = () => _modalsModulePromise || (_modalsModulePromise =

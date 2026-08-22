@@ -105,6 +105,14 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("saveStudySessionSnapshot", flashcards)
         self.assertIn("buildFocusedReviewCard", vocab)
 
+    def test_unassigned_dictionary_menu_does_not_claim_wsd_confidence(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
+        self.assertIn("if (!m.unassigned)", flashcards)
+        self.assertIn("hasAssignedEvidence", flashcards)
+        self.assertIn("pos-pill-unassigned", flashcards)
+        self.assertIn(".pos-collapsible .pos-pill-unassigned", css)
+
     def test_approved_numbered_scrubber_animation_is_retained(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
         css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
