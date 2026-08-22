@@ -20,6 +20,7 @@ from fluency.release.activation import activate_release
 from fluency.release.catalog import build_catalog, write_catalog
 from fluency.release.composition import compose_release, load_json_object
 from fluency.release.pilot import build_pilot_release
+from fluency.release.run_candidate import build_inactive_run_candidate
 from fluency.release.validation import validate_release_bundle
 from fluency.sense_menu.runner import build_sense_menu_stage
 from fluency.wsd.importer import import_wsd_assignments
@@ -196,6 +197,17 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="complete assignment bundle under workspace/raw/wsd",
     )
+    pipeline_run_release = pipeline_actions.add_parser(
+        "build-run-release",
+        help="build an inactive real-data release with explicit unassigned examples",
+    )
+    pipeline_run_release.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    pipeline_run_release.add_argument("--run-id", required=True)
+    pipeline_run_release.add_argument("--release-id", required=True)
+    pipeline_run_release.add_argument("--language", default="fr")
+    pipeline_run_release.add_argument("--mode", default="speech")
     return parser
 
 
@@ -409,6 +421,21 @@ def handle_pipeline(args: argparse.Namespace) -> int:
             f"abstained {counts['abstained']}; no-menu {counts['no_menu']}."
         )
         print("No example selection, release build, or activation was run.")
+        return 0
+    if args.pipeline_command == "build-run-release":
+        output = build_inactive_run_candidate(
+            workspace,
+            run_id=args.run_id,
+            release_id=args.release_id,
+            language=args.language,
+            mode=args.mode,
+        )
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        print(f"Built inactive real-data release: {output}")
+        print(
+            f"Published {manifest['card_count']} cards with explicit unassigned examples."
+        )
+        print("No WSD was run and the release was not activated.")
         return 0
     raise AssertionError(f"Unhandled pipeline command: {args.pipeline_command}")
 

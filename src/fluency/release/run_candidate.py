@@ -1,0 +1,320 @@
+"""Build an inactive real-data Speech candidate without requiring WSD."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+import json
+from pathlib import Path
+from typing import Any
+
+from fluency.core.hashing import canonical_content_id, file_content_id
+from fluency.core.manifests import StageManifest, build_stage_cache_key
+from fluency.core.workspace import Workspace
+from fluency.pipeline.planning import load_pipeline_profile
+from fluency.release.composition import compose_release
+from fluency.release.io import atomic_write, json_bytes
+from fluency.release.study_structure import build_study_structure
+from fluency.release.validation import SPEECH_DECK_VERSION
+
+
+SELECTION_VERSION = "example-selection/v1"
+POLICY_VERSION = "harvest-easiness-order/v1"
+
+
+class RunCandidateError(ValueError):
+    """Raised when an exact real-data candidate cannot be assembled."""
+
+
+def _object(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError) as error:
+        raise RunCandidateError(f"invalid or missing run artifact: {path}") from error
+    if not isinstance(value, dict):
+        raise RunCandidateError(f"run artifact must be an object: {path}")
+    return value
+
+
+def _sentence_bank(path: Path) -> dict[str, dict[str, Any]]:
+    records: dict[str, dict[str, Any]] = {}
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError as error:
+        raise RunCandidateError(f"missing sentence bank: {path}") from error
+    for number, line in enumerate(lines, start=1):
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise RunCandidateError(f"invalid sentence-bank row {number}") from error
+        sentence_id = record.get("sentence_id")
+        if not isinstance(sentence_id, str) or sentence_id in records:
+            raise RunCandidateError(f"invalid sentence identity at row {number}")
+        records[sentence_id] = record
+    return records
+
+
+def _scoped_sense_id(card_id: str, analysis_id: str, source_sense_id: str) -> str:
+    digest = canonical_content_id(
+        {"card_id": card_id, "analysis_id": analysis_id, "source_sense_id": source_sense_id}
+    ).removeprefix("sha256:")
+    return f"sense_{digest[:32]}"
+
+
+def _example_id(card_id: str, sentence_id: str) -> str:
+    digest = canonical_content_id(
+        {"card_id": card_id, "sentence_id": sentence_id}
+    ).removeprefix("sha256:")
+    return f"example_{digest[:32]}"
+
+
+def build_inactive_run_candidate(
+    workspace: Workspace,
+    *,
+    run_id: str,
+    release_id: str,
+    language: str = "fr",
+    mode: str = "speech",
+    created_at: datetime | None = None,
+) -> Path:
+    """Select harvested examples and compose a non-activated release."""
+
+    created_at = datetime.now(UTC) if created_at is None else created_at
+    existing_composition = (
+        workspace.root / "releases" / language / mode / release_id / "composition.json"
+    )
+    if existing_composition.is_file():
+        created_at = datetime.fromisoformat(
+            _object(existing_composition)["created_at"].replace("Z", "+00:00")
+        )
+    run = workspace.root / "runs" / language / mode / run_id
+    profile = load_pipeline_profile(run / "profile.json")
+    if profile["language"] != language or profile["mode"] != mode:
+        raise RunCandidateError("run profile identity mismatch")
+    manifest = _object(run / "manifest.json")
+    if manifest.get("run_id") != run_id:
+        raise RunCandidateError("run manifest identity mismatch")
+
+    paths = {
+        "inventory": run / "stages/01_inventory/output/inventory.json",
+        "sense_menu": run / "stages/02_sense_menu/output/sense-menu.json",
+        "candidates": run / "stages/03_sentence_harvest/output/candidates.json",
+        "sentence_bank": run / "stages/03_sentence_harvest/output/sentence-bank.jsonl",
+    }
+    inputs = {name: file_content_id(path) for name, path in paths.items()}
+    inventory = _object(paths["inventory"])
+    menus = _object(paths["sense_menu"])
+    candidates = _object(paths["candidates"])
+    sentences = _sentence_bank(paths["sentence_bank"])
+    menu_by_card = {card["card_id"]: card for card in menus.get("cards", [])}
+    candidates_by_card = {card["card_id"]: card for card in candidates.get("cards", [])}
+    limit = profile["scope"]["examples_per_surface"]
+
+    selection_cards: list[dict[str, Any]] = []
+    cards: list[dict[str, Any]] = []
+    selected_count = 0
+    for card in inventory.get("cards", []):
+        card_id = card["card_id"]
+        candidate_card = candidates_by_card.get(card_id)
+        menu_card = menu_by_card.get(card_id)
+        if candidate_card is None or menu_card is None:
+            raise RunCandidateError(f"run layers do not cover card {card_id}")
+        selected = sorted(
+            candidate_card.get("candidates", []),
+            key=lambda item: (item["metrics"]["score"], item["sentence_id"]),
+        )[:limit]
+        selected_count += len(selected)
+        selection_cards.append(
+            {
+                "card_id": card_id,
+                "selected": [
+                    {
+                        "sentence_id": item["sentence_id"],
+                        "selection_rank": rank,
+                        "metrics": item["metrics"],
+                    }
+                    for rank, item in enumerate(selected, start=1)
+                ],
+            }
+        )
+
+        meanings: list[dict[str, Any]] = []
+        for analysis in menu_card.get("analyses", []):
+            for sense in analysis.get("senses", []):
+                source_sense_id = sense["sense_id"]
+                meaning: dict[str, Any] = {
+                    "sense_id": _scoped_sense_id(
+                        card_id, analysis["menu_analysis_id"], source_sense_id
+                    ),
+                    "source_sense_id": source_sense_id,
+                    "menu_analysis_id": analysis["menu_analysis_id"],
+                    "headword": analysis["headword"],
+                    "part_of_speech": analysis["part_of_speech"],
+                    "translation": sense["translation"],
+                    "source_reference": sense["source_reference"],
+                    "source": "wiktionary",
+                    "assignment_status": "unassigned",
+                }
+                if sense.get("definition"):
+                    meaning["context"] = sense["definition"]
+                meanings.append(meaning)
+
+        examples: list[dict[str, Any]] = []
+        for item in selected:
+            sentence_id = item["sentence_id"]
+            sentence = sentences.get(sentence_id)
+            if sentence is None:
+                raise RunCandidateError(f"selected sentence is absent: {sentence_id}")
+            examples.append(
+                {
+                    "example_id": _example_id(card_id, sentence_id),
+                    "sense_id": None,
+                    "assignment_status": "unassigned",
+                    "target": sentence["target"]["text"],
+                    "english": sentence["translation"]["text"],
+                    "provenance": sentence["source"]["name"],
+                    "source": sentence["source"]["name"],
+                    "easiness": item["metrics"]["score"],
+                    "metadata": {
+                        "sentence_id": sentence_id,
+                        "selection_policy": POLICY_VERSION,
+                        "selection_metrics": item["metrics"],
+                        "source": sentence["source"],
+                        "target": sentence["target"],
+                        "translation": sentence["translation"],
+                    },
+                }
+            )
+        cards.append({**card, "meanings": meanings, "examples": examples})
+
+    selection = {
+        "selection_version": SELECTION_VERSION,
+        "policy": POLICY_VERSION,
+        "run_id": run_id,
+        "language": language,
+        "mode": mode,
+        "max_examples_per_surface": limit,
+        "inputs": inputs,
+        "cards": selection_cards,
+    }
+    selection_output = run / "stages/05_example_selection/output"
+    selection_path = selection_output / "selection.json"
+    temporary_root = workspace.root / ".fluency/temporary"
+    if selection_path.exists():
+        if selection_path.read_bytes() != json_bytes(selection):
+            raise RunCandidateError("immutable example selection already differs")
+    else:
+        selection_path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write(selection_path, selection, temporary_root)
+    report = {
+        "report_version": "example-selection-report/v1",
+        "run_id": run_id,
+        "policy": POLICY_VERSION,
+        "card_count": len(cards),
+        "selected_example_count": selected_count,
+        "cards_below_maximum": sum(
+            len(item["selected"]) < limit for item in selection_cards
+        ),
+        "wsd_required": False,
+        "fallbacks": [],
+    }
+    report_path = selection_output / "report.json"
+    stage_manifest_path = selection_output / "manifest.json"
+    if not report_path.exists():
+        atomic_write(report_path, report, temporary_root)
+    if not stage_manifest_path.exists():
+        implementation_hash = canonical_content_id(
+            {"run_candidate": file_content_id(Path(__file__).resolve())}
+        )
+        config_hash = canonical_content_id(
+            {"policy": POLICY_VERSION, "max_examples_per_surface": limit}
+        )
+        stage = StageManifest(
+            stage_name="example_selection",
+            stage_version=SELECTION_VERSION,
+            cache_key=build_stage_cache_key(
+                stage_name="example_selection",
+                stage_version=SELECTION_VERSION,
+                implementation_hash=implementation_hash,
+                config_hash=config_hash,
+                inputs=inputs,
+                model_revisions={},
+                random_seed=0,
+            ),
+            implementation_hash=implementation_hash,
+            config_hash=config_hash,
+            status="running",
+            started_at=created_at.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+            inputs=inputs,
+            model_revisions={},
+            random_seed=0,
+            outputs={},
+        ).complete(
+            {
+                "selection": file_content_id(selection_path),
+                "report": file_content_id(report_path),
+            }
+        )
+        atomic_write(stage_manifest_path, stage.to_dict(), temporary_root)
+        contract_path = run / "stages/05_example_selection/contract.json"
+        contract = _object(contract_path)
+        contract.update(
+            {
+                "status": "complete",
+                "requires_stage_outputs": ["inventory", "sentence_harvest"],
+                "acceptance": [
+                    "up to three harvested examples selected per surface without requiring WSD",
+                    "selection remains stable when optional WSD assignments are attached later",
+                    "no fallback examples from another run",
+                ],
+                "decision_amendment": "wsd-optional-examples/v1",
+                "manifest_content_id": file_content_id(stage_manifest_path),
+            }
+        )
+        atomic_write(contract_path, contract, temporary_root)
+
+    deck = {
+        "deck_version": SPEECH_DECK_VERSION,
+        "release_id": release_id,
+        "language": language,
+        "mode": mode,
+        "study_structure": build_study_structure(
+            cards, frequency_of=lambda item: 1_000_000 - item["rank"]
+        ),
+        "cards": cards,
+    }
+    selection_id = file_content_id(selection_path)
+    layer = lambda name, count, requires: {
+        "selection_version": "layer-selection/v1",
+        "source_type": "run",
+        "source_id": run_id,
+        "artifact_id": inputs[name] if name in inputs else selection_id,
+        "record_count": count,
+        "requires": requires,
+    }
+    composition = {
+        "composition_version": "release-composition/v1",
+        "release_id": release_id,
+        "label": "French Speech · real Tatoeba audit · unassigned",
+        "language": language,
+        "locale": profile["locale"],
+        "mode": mode,
+        "created_at": created_at.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+        "publication_status": "inactive_audit",
+        "progress_namespace": "fr-speech-next",
+        "conflict_policy": "error",
+        "fallback_policy": "none",
+        "layers": {
+            "inventory": layer("inventory", len(cards), {}),
+            "sense_menu": layer("sense_menu", len(cards), {"inventory": inputs["inventory"]}),
+            "sentences": layer("sentence_bank", len(sentences), {"inventory": inputs["inventory"]}),
+            "example_selection": layer(
+                "selection", selected_count,
+                {"inventory": inputs["inventory"], "sentences": inputs["sentence_bank"]},
+            ),
+        },
+        "omitted_layers": [
+            {"layer": "wsd_assignments", "reason": "not_connected_examples_explicitly_unassigned"},
+            {"layer": "manual_overrides", "reason": "not_applied"},
+        ],
+    }
+    return compose_release(workspace, composition, deck)

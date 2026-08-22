@@ -45,6 +45,8 @@ def build_app_compatibility_assets(
             }
             if "easiness" in example:
                 record["easiness"] = example["easiness"]
+            if "metadata" in example:
+                record["metadata"] = example["metadata"]
             if example["assignment_status"] == "assigned":
                 grouped_examples[example["sense_id"]].append(record)
             else:
@@ -66,6 +68,9 @@ def build_app_compatibility_assets(
                 "sense_id": meaning["sense_id"],
             }
             for field in ("context", "detail"):
+                if meaning.get(field):
+                    old_meaning[field] = meaning[field]
+            for field in ("headword", "menu_analysis_id", "source_sense_id", "source_reference"):
                 if meaning.get(field):
                     old_meaning[field] = meaning[field]
             if meaning["assignment_status"] == "unassigned":

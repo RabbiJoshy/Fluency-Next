@@ -138,6 +138,22 @@ class BootstrapTests(unittest.TestCase):
             Path("/tmp/fluency-workspace/raw/wsd/fr-audit/bundle.json"),
         )
 
+    def test_pipeline_run_release_is_explicit_and_inactive(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "pipeline",
+                "build-run-release",
+                "--workspace",
+                "/tmp/fluency-workspace",
+                "--run-id",
+                "20260822T172017Z-651bcd8e",
+                "--release-id",
+                "fr-speech-real-audit-0001",
+            ]
+        )
+        self.assertEqual(args.pipeline_command, "build-run-release")
+        self.assertEqual(args.release_id, "fr-speech-real-audit-0001")
+
     def test_existing_app_data_path_resolves_through_active_release(self) -> None:
         import json
         import tempfile

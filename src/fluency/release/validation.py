@@ -85,7 +85,7 @@ def validate_deck(deck: dict[str, Any]) -> None:
         _require("legacy_aliases" not in card, "legacy aliases are not allowed in clean releases")
 
         meanings = card.get("meanings")
-        _require(isinstance(meanings, list) and meanings, f"card {surface_key} needs a meaning")
+        _require(isinstance(meanings, list), f"card {surface_key} meanings must be a list")
         local_sense_ids: set[str] = set()
         local_sense_statuses: dict[str, str] = {}
         for meaning in meanings:

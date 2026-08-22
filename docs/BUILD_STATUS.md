@@ -98,6 +98,12 @@
   remain visible in the release and cannot cause an old-run fallback or block
   the whole deck. The app adapter maps unassigned examples to its existing
   unassigned sense-cycle UI instead of inventing a sense link.
+- Gate 19 (real French app candidate): selected 600 examples from the verified
+  Tatoeba harvest without WSD and composed inactive release
+  `fr-speech-real-tatoeba-unassigned-0001`. It contains 200 surface cards,
+  1,180 card-scoped Wiktionary sense options, full per-example source metadata,
+  and exactly 600 explicitly unassigned examples. The release validates and is
+  not active.
 
 ## Not started
 
