@@ -205,6 +205,14 @@
   navigation; unassigned groups now say `Unassigned`, while real assigned
   releases can still display evidence percentages. The shell cache moved to
   `flashcards-v271` / `20260822i`.
+- Gate 31 (Spanish enrichment cut line): measured every mature optional layer
+  against the 200-card candidate and recorded an explicit rebuild/defer/reject
+  decision. In particular, the old ID-keyed clitic file is excluded because
+  524 of 544 rows contain historical WSD assignments. Removed the runtime
+  paths to old mutable conjugation, English-cue and mislabeled frequency files;
+  the app now treats those capabilities as absent until a clean release selects
+  typed replacements. No enrichment data was copied or activated. The shell
+  cache moved to `flashcards-v272` / `20260822j`.
 
 ## Not started
 

@@ -75,6 +75,12 @@ class ProductShellTests(unittest.TestCase):
             config["languages"]["spanish"]["releaseCompositionPath"],
             "Data/Spanish/release-composition.json",
         )
+        for legacy_path in (
+            "conjugationsPath",
+            "conjugatedEnglishPath",
+            "ppmDataPath",
+        ):
+            self.assertNotIn(legacy_path, config["languages"]["spanish"])
         self.assertNotIn("ppmDataPath", config["languages"]["french"])
         self.assertEqual(
             config["languages"]["french"]["studyStructurePath"],

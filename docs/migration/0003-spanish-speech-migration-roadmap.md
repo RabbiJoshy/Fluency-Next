@@ -291,6 +291,8 @@ one deliberately submitted flag after the backend deployment is confirmed.
 ### Phase 7 — Typed Spanish enrichment layers
 
 **Owner:** Codex, one layer at a time. **WSD remains independent.**
+**Status:** old-layer coverage and contamination audit complete 2026-08-22;
+bounded morphology/clitic and conjugation contracts are next.
 
 Migrate only approved product behavior, each as an optional typed layer with a
 coverage/error report:
@@ -312,6 +314,10 @@ or deliberately cut it. Do not port a file merely because the old app reads it.
 
 **Exit:** approved layers reproduce their intended user-visible behavior on the
 200-card candidate, with missing/invalid data surfaced by validation.
+
+The measured dispositions and implementation order are recorded in
+`docs/migration/0006-spanish-enrichment-audit.md`. The old runtime paths were
+removed before any replacement layer was selected.
 
 ### Phase 8 — External WSD attachment when the method is ready
 
