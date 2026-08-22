@@ -119,6 +119,25 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(args.pipeline_command, "inventory")
         self.assertEqual(args.snapshot_id, "lexique-4.00-2026-02-10")
 
+    def test_pipeline_wsd_import_requires_an_explicit_bundle(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "pipeline",
+                "wsd-import",
+                "--workspace",
+                "/tmp/fluency-workspace",
+                "--run-id",
+                "20260822T130000Z-1234abcd",
+                "--bundle",
+                "/tmp/fluency-workspace/raw/wsd/fr-audit/bundle.json",
+            ]
+        )
+        self.assertEqual(args.pipeline_command, "wsd-import")
+        self.assertEqual(
+            args.bundle,
+            Path("/tmp/fluency-workspace/raw/wsd/fr-audit/bundle.json"),
+        )
+
     def test_existing_app_data_path_resolves_through_active_release(self) -> None:
         import json
         import tempfile

@@ -22,6 +22,7 @@ from fluency.release.composition import compose_release, load_json_object
 from fluency.release.pilot import build_pilot_release
 from fluency.release.validation import validate_release_bundle
 from fluency.sense_menu.runner import build_sense_menu_stage
+from fluency.wsd.importer import import_wsd_assignments
 
 
 DEFAULT_HOST = "127.0.0.1"
@@ -178,6 +179,22 @@ def build_parser() -> argparse.ArgumentParser:
     pipeline_sense_menu.add_argument(
         "--snapshot-id", required=True,
         help="explicit upstream snapshot label, such as enwiktionary-2026-08-05",
+    )
+    pipeline_wsd_import = pipeline_actions.add_parser(
+        "wsd-import",
+        help="validate and publish one complete external WSD assignment bundle",
+    )
+    pipeline_wsd_import.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    pipeline_wsd_import.add_argument("--run-id", required=True)
+    pipeline_wsd_import.add_argument("--language", default="fr")
+    pipeline_wsd_import.add_argument("--mode", default="speech")
+    pipeline_wsd_import.add_argument(
+        "--bundle",
+        type=Path,
+        required=True,
+        help="complete assignment bundle under workspace/raw/wsd",
     )
     return parser
 
@@ -375,6 +392,23 @@ def handle_pipeline(args: argparse.Namespace) -> int:
                 "they remain explicit no_menu cases."
             )
         print("No WSD, example selection, release build, or activation was run.")
+        return 0
+    if args.pipeline_command == "wsd-import":
+        output = import_wsd_assignments(
+            workspace,
+            run_id=args.run_id,
+            language=args.language,
+            mode=args.mode,
+            bundle_path=args.bundle,
+        )
+        report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+        counts = report["assignment_counts"]
+        print(f"Published immutable external WSD assignments: {output}")
+        print(
+            f"Assigned {counts['assigned']}; rejected {counts['rejected']}; "
+            f"abstained {counts['abstained']}; no-menu {counts['no_menu']}."
+        )
+        print("No example selection, release build, or activation was run.")
         return 0
     raise AssertionError(f"Unhandled pipeline command: {args.pipeline_command}")
 

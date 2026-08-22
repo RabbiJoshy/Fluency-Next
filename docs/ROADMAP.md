@@ -58,10 +58,10 @@ sentence IDs per card. No WSD has yet executed.
 
 ## Step 2 — Port and generalize the best Spanish WSD
 
-**Status: shared contracts and dependency-injected orchestration implemented;
-real French inventory, menus and harvested candidates are ready. The selected
-WSD method is being settled separately and plugs into this stage without
-blocking the migration.**
+**Status: the method-independent import boundary is implemented; real French
+inventory, menus and harvested candidates are ready. The selected WSD method is
+being settled separately and plugs into this stage without blocking the
+migration. No French WSD has executed here.**
 
 Audit the current best Spanish WSD implementation, separate its genuinely
 language-agnostic retrieval/assignment machinery from Spanish-only behaviour,
@@ -74,6 +74,10 @@ The architecture must be built without waiting for final WSD quality choices.
 Model revisions, calibration evidence, scores, rejection reasons, and assignment
 status remain inspectable. Spanish BETO/calibration data must not be presented
 as a valid French model merely to make the pipeline run.
+
+The migration accepts one complete external assignment bundle and validates it
+against the exact run-owned inventory, menu, candidates, and sentence bank. It
+does not evaluate or choose the method that produced the bundle.
 
 ## Step 3 — Audit the transplanted application frontend
 
@@ -91,7 +95,8 @@ example's complete metadata and sense assignment.
 ## Step 4 — Truncated real French run and deck audit
 
 **Status: real inventory, sense menu, and Tatoeba harvest completed in run
-`20260822T172017Z-651bcd8e`; WSD is next.**
+`20260822T172017Z-651bcd8e`; the external WSD handoff is next, while downstream
+selection architecture can continue independently.**
 
 Create a fresh, small French run using real corpus data—likely OpenSubtitles
 when its French snapshot is ready. Build and inspect the surface inventory,

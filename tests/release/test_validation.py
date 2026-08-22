@@ -42,6 +42,8 @@ class ReleaseValidationTests(unittest.TestCase):
             "speech-deck.schema.json",
             "study-structure.schema.json",
             "speech-pipeline-profile.schema.json",
+            "wsd-assignment.schema.json",
+            "wsd-assignment-bundle.schema.json",
         ):
             with self.subTest(filename=filename):
                 schema = json.loads((schema_root / filename).read_text(encoding="utf-8"))

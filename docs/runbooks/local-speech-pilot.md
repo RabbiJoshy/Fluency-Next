@@ -231,6 +231,32 @@ The result is written once under
 Running the command again against that run is rejected rather than merging or
 overwriting candidates.
 
+## External WSD handoff
+
+WSD method selection and evaluation happen in the separate WSD task. Fluency
+Next expects that work to produce one complete JSON bundle conforming to
+`schemas/wsd-assignment-bundle.schema.json`. Put the finished file below:
+
+```text
+/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/wsd/<method-or-run>/bundle.json
+```
+
+The bundle must cover every harvested candidate explicitly and pin the content
+IDs of this run's inventory, sense menu, candidate index, and sentence bank.
+Once the external task has produced it, the import itself is a quick local
+validation/publication command and does not run any models:
+
+```bash
+cd /Users/joshuathomasamar/PycharmProjects/Fluency-Next
+PYTHONPATH=src python3.12 -m fluency pipeline wsd-import \
+  --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace \
+  --run-id <approved-run-id> \
+  --bundle /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/wsd/<method-or-run>/bundle.json
+```
+
+Successful import writes `stages/04_wsd_assignments/output/` exactly once. It
+does not select final examples, build a release, or activate one.
+
 An OpenSubtitles-only profile uses `sources: ["opensubtitles"]` and passes an
 aligned snapshot directory instead. That directory contains
 `OpenSubtitles.en-fr.fr`, `OpenSubtitles.en-fr.en`,

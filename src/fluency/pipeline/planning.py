@@ -221,8 +221,9 @@ def _acceptance(stage: str, *, surfaces: int, examples: int) -> list[str]:
             "candidate pools remain larger than the final three-example selection",
         ],
         "wsd_assignments": [
-            f"all {examples} harvested sentences resolved against the selected sense-menu artifact",
-            "embedding and reranker model revisions pinned",
+            "every retained card/sentence candidate explicitly assigned, rejected, abstained, or marked no-menu",
+            "external method implementation and model revisions pinned",
+            "inventory, menu, candidate, and sentence-bank hashes match this run exactly",
             "scores, decision status, and rejection reason remain inspectable",
         ],
         "example_selection": [
@@ -263,6 +264,7 @@ def _stage_contract(profile: dict[str, Any], stage: str, ordinal: int) -> dict[s
         ]
         contract["method"] = profile["harvest"]
     elif stage == "wsd_assignments":
+        contract["external_inputs"] = ["complete_wsd_assignment_bundle"]
         contract["method"] = profile["wsd"]
     return contract
 

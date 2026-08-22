@@ -85,11 +85,18 @@
   minimum is 23 candidates and 19 distinct French sentence IDs. All 7,671
   retained sentence records have complete source attribution, contributor and
   license fields, and every stage/contract content hash verifies.
+- Gate 17 (external WSD boundary): added a method-independent, fail-closed
+  importer for a complete assignment bundle produced by the separate WSD task.
+  It pins the exact run and all four upstream artifact hashes, validates every
+  candidate disposition and selected menu leaf, records external method/model
+  provenance, publishes immutable Stage 04 output once, and cannot merge with
+  or overwrite an older assignment layer. No WSD method was selected, compared,
+  or executed.
 
 ## Not started
 
-- Connect the separately selected French WSD implementation to the immutable
-  assignment stage without coupling migration progress to WSD research.
+- Produce the French assignment bundle in the separate WSD task and import it
+  through the immutable Stage 04 boundary.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
 - Spanish and legacy progress migration.

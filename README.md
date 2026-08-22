@@ -37,9 +37,11 @@ surface inventories, and supports explicit Tatoeba or aligned OpenSubtitles
 snapshots without fallback. Its Wiktionary-ready sense-menu boundary normalizes
 dictionary data without making lemmas card identities. The profile creates six
 inspectable stage folders without loading historical deck data, installing
-model packages, executing WSD, or activating a release. Fresh frequency and
-dictionary adapters, model pins, release diagnostics in the transplanted UI,
-Spanish migration, Artist mode, and production integration are not complete.
+model packages, executing WSD, or activating a release. A complete assignment
+bundle produced by a separate WSD task can now be validated and published into
+immutable Stage 04 without stale-run mixing or method coupling. French WSD
+results, final selection, release diagnostics in the transplanted UI, Spanish
+migration, Artist mode, and production integration are not complete.
 
 See `docs/runbooks/local-speech-pilot.md` for the exact local test flow.
 The agreed long-running migration sequence and operating rules are recorded in

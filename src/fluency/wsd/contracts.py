@@ -28,7 +28,12 @@ class SelectedTuple:
     part_of_speech: str
 
     def __post_init__(self) -> None:
-        if not self.headword.strip() or not self.part_of_speech.strip():
+        if (
+            not isinstance(self.headword, str)
+            or not self.headword.strip()
+            or not isinstance(self.part_of_speech, str)
+            or not self.part_of_speech.strip()
+        ):
             raise ValueError("selected tuple fields must not be empty")
 
     def to_dict(self) -> dict[str, str]:
@@ -36,6 +41,17 @@ class SelectedTuple:
             "headword": self.headword,
             "part_of_speech": self.part_of_speech,
         }
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "SelectedTuple":
+        if not isinstance(value, Mapping):
+            raise ValueError("selected_tuple must be an object")
+        if set(value) != {"headword", "part_of_speech"}:
+            raise ValueError("selected_tuple fields do not match the contract")
+        return cls(
+            headword=value["headword"],
+            part_of_speech=value["part_of_speech"],
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,14 +73,22 @@ class WSDAssignment:
     def __post_init__(self) -> None:
         if self.assignment_version != WSD_ASSIGNMENT_VERSION:
             raise ValueError("unsupported WSD assignment version")
+        if not isinstance(self.card_id, str):
+            raise ValueError("invalid card_id")
         if _CARD_ID.fullmatch(self.card_id) is None:
             raise ValueError("invalid card_id")
+        if not isinstance(self.sentence_id, str):
+            raise ValueError("invalid sentence_id")
         if _SENTENCE_ID.fullmatch(self.sentence_id) is None:
             raise ValueError("invalid sentence_id")
         if not isinstance(self.surface_form, str) or not self.surface_form.strip():
             raise ValueError("surface_form must not be empty")
         if self.status not in WSD_STATUSES:
             raise ValueError("invalid WSD status")
+        if not isinstance(self.decision_path, tuple) or any(
+            not isinstance(stage, str) for stage in self.decision_path
+        ):
+            raise ValueError("decision_path must contain strings")
         if len(self.decision_path) != len(set(self.decision_path)):
             raise ValueError("decision_path cannot repeat a stage")
         if any(stage not in DECISION_STAGES for stage in self.decision_path):
@@ -72,9 +96,23 @@ class WSDAssignment:
         positions = [DECISION_ORDER.index(stage) for stage in self.decision_path]
         if positions != sorted(positions):
             raise ValueError("decision_path stages are out of canonical order")
-        if self.confidence is not None and not 0.0 <= self.confidence <= 1.0:
+        if self.confidence is not None and (
+            not isinstance(self.confidence, (int, float))
+            or isinstance(self.confidence, bool)
+            or not 0.0 <= self.confidence <= 1.0
+        ):
             raise ValueError("confidence must be between zero and one")
-        if any(not name or not revision for name, revision in self.model_revisions.items()):
+        if not isinstance(self.evidence, Mapping) or not isinstance(
+            self.model_revisions, Mapping
+        ):
+            raise ValueError("evidence and model revisions must be objects")
+        if any(
+            not isinstance(name, str)
+            or not name
+            or not isinstance(revision, str)
+            or not revision
+            for name, revision in self.model_revisions.items()
+        ):
             raise ValueError("model revision keys and values must not be empty")
 
         if self.status == "no_menu":
@@ -129,3 +167,48 @@ class WSDAssignment:
             "model_revisions": dict(sorted(self.model_revisions.items())),
         }
         return record
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "WSDAssignment":
+        if not isinstance(value, Mapping):
+            raise ValueError("WSD assignment must be an object")
+        expected = {
+            "assignment_version",
+            "card_id",
+            "surface_form",
+            "sentence_id",
+            "status",
+            "sense_menu_content_id",
+            "menu_analysis_id",
+            "selected_sense_id",
+            "selected_tuple",
+            "decision_path",
+            "evidence",
+            "confidence",
+            "model_revisions",
+        }
+        if set(value) != expected:
+            raise ValueError("WSD assignment fields do not match the contract")
+        decision_path = value["decision_path"]
+        evidence = value["evidence"]
+        model_revisions = value["model_revisions"]
+        if not isinstance(decision_path, list):
+            raise ValueError("decision_path must be an array")
+        if not isinstance(evidence, Mapping) or not isinstance(model_revisions, Mapping):
+            raise ValueError("assignment evidence and model revisions must be objects")
+        selected = value["selected_tuple"]
+        return cls(
+            assignment_version=value["assignment_version"],
+            card_id=value["card_id"],
+            surface_form=value["surface_form"],
+            sentence_id=value["sentence_id"],
+            status=value["status"],
+            sense_menu_content_id=value["sense_menu_content_id"],
+            menu_analysis_id=value["menu_analysis_id"],
+            selected_sense_id=value["selected_sense_id"],
+            selected_tuple=(None if selected is None else SelectedTuple.from_dict(selected)),
+            decision_path=tuple(decision_path),
+            evidence=dict(evidence),
+            confidence=value["confidence"],
+            model_revisions=dict(model_revisions),
+        )
