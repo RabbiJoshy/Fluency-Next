@@ -1,5 +1,8 @@
 # Spanish OpenSubtitles surface-frequency run
 
+> Optional future re-ranking experiment. This is no longer required for the
+> current Spanish migration; see Decision 0016.
+
 ## One-time raw snapshot pin
 
 The source must live under the external workspace so Fluency Next remains

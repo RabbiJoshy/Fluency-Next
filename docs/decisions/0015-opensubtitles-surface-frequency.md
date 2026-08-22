@@ -1,5 +1,9 @@
 # Decision 0015 — OpenSubtitles surface frequency for Spanish Speech
 
+**Status:** compiler retained for future clean re-ranking; full scan deferred by
+Decision 0016 because the migration is preserving the already harvested bank,
+candidate evidence and paid embeddings.
+
 ## Decision
 
 Rank Spanish Speech cards by observed surface-token frequency in the pinned

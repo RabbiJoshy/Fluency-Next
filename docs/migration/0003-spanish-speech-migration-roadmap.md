@@ -177,19 +177,20 @@ identity, legacy inputs, fallback and automatic activation.
 
 ### Phase 3 — Fresh Spanish surface inventory
 
-**Owner:** Codex builds adapter; Josh runs the full scan. **Status:** shared
-streaming adapter complete; approved OpenSubtitles scan pending.
+**Owner:** Codex. **Status:** complete 2026-08-22 using the approved recovered
+surface ranking; optional full-corpus re-ranking is deferred.
 
 Choose and pin the authoritative Spanish Speech frequency snapshot. Do not trust
 the filename `SpanishRawWiki.csv`: its values currently mirror subtitle-style
 counts, so its actual lineage must be established before reuse.
 
-Decision: derive surface frequency directly from the pinned 61,434,251-line
-Spanish side of the aligned OpenSubtitles corpus. The shared compiler hashes
-the corpus while counting it, preserves observed source metadata, records
-unknown license/URI fields honestly, and writes one immutable ranked snapshot.
-The expensive corpus is scanned once; both the 20-card and 200-card runs consume
-the compiled snapshot without recounting it.
+The full-corpus compiler exists for a future clean re-ranking experiment, but
+it is not on the migration's critical path. The approved migration input is the
+existing 9,999-surface `word_inventory.json`, copied into the workspace with
+verified bytes and reconstructed provenance. Its list order and corpus counts
+are retained; `known_lemmas` remain source evidence and are never imported into
+card identity. Both fresh 20-card and 200-card inventories were built from this
+one pinned snapshot without scanning or reharvesting OpenSubtitles.
 
 Run 20 surfaces first, then 200. Emit ranked surfaces, frequencies, exclusions,
 normalization evidence and the legacy-ID crosswalk. Lemmas from the old CSV may
@@ -228,7 +229,11 @@ content hashes and no network lookup during study.
 
 **Owner:** Codex configures; Josh runs the corpus scan.
 
-Use the existing language-agnostic harvester with a Spanish policy. Prefer a
+For the migration rehearsal, adapt the verified retained sentence bank and
+candidate map into the shared harvest contract instead of rescanning the raw
+corpus. Preserve every old sentence and its provenance as source evidence, but
+rebuild run-owned matching, quality decisions and final selection. A future
+fresh harvest may use the existing language-agnostic harvester. Prefer a
 pinned aligned OpenSubtitles Spanish–English snapshot for this audit because it
 provides conversational speech, translations, title/line provenance and the
 parallel text used by current WSD research. Tatoeba remains a separately

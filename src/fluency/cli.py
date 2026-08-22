@@ -17,6 +17,7 @@ from fluency.harvest.runner import harvest_run_stage
 from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
 from fluency.inventory.runner import build_inventory_stage
 from fluency.migration.legacy_identity import write_legacy_crosswalk
+from fluency.migration.spanish_assets import migrate_spanish_retained_assets
 from fluency.pipeline.planning import create_pipeline_plan, load_pipeline_profile
 from fluency.release.activation import activate_release
 from fluency.release.catalog import build_catalog, write_catalog
@@ -130,6 +131,21 @@ def build_parser() -> argparse.ArgumentParser:
     compile_corpus.add_argument("--corpus", type=Path, required=True)
     compile_corpus.add_argument("--snapshot-id", required=True)
     compile_corpus.add_argument("--provider", required=True)
+
+    migration = subparsers.add_parser(
+        "migration", help="pin explicitly approved retained sources into the workspace"
+    )
+    migration_actions = migration.add_subparsers(
+        dest="migration_command", required=True
+    )
+    spanish_assets = migration_actions.add_parser(
+        "spanish-retained-assets",
+        help="migrate the audited inventory, sentence bank, and Gemini cache only",
+    )
+    spanish_assets.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    spanish_assets.add_argument("--source-repository", type=Path, required=True)
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -407,6 +423,21 @@ def handle_frequency(args: argparse.Namespace) -> int:
     raise AssertionError(f"Unhandled frequency command: {args.frequency_command}")
 
 
+def handle_migration(args: argparse.Namespace) -> int:
+    workspace = Workspace.load(_workspace_path(args.workspace))
+    if args.migration_command == "spanish-retained-assets":
+        targets = migrate_spanish_retained_assets(
+            workspace,
+            source_repository=args.source_repository,
+        )
+        print("Pinned approved Spanish retained assets:")
+        for family, path in targets.items():
+            print(f"  {family}: {path}")
+        print("No WSD assignments, example selections, deck output, or release was migrated.")
+        return 0
+    raise AssertionError(f"Unhandled migration command: {args.migration_command}")
+
+
 def handle_pipeline(args: argparse.Namespace) -> int:
     workspace = Workspace.load(_workspace_path(args.workspace))
     if args.pipeline_command == "plan":
@@ -628,6 +659,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handle_pilot(args.pilot_command, args.workspace)
     if args.command == "frequency":
         return handle_frequency(args)
+    if args.command == "migration":
+        return handle_migration(args)
     if args.command == "release":
         return handle_release(args)
     if args.command == "pipeline":

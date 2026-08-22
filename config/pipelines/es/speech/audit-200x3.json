@@ -5,13 +5,13 @@
   "locale": "es-ES",
   "mode": "speech",
   "identity": {"unit_type": "surface", "identity_version": "surface-card/v1", "allow_lemma_identity": false},
-  "source_policy": {"fresh_snapshots_only": true, "allow_legacy_inputs": false, "fallback_policy": "none"},
+  "source_policy": {"fresh_snapshots_only": true, "allow_legacy_inputs": false, "allow_recovered_inputs": true, "fallback_policy": "none"},
   "scope": {"surface_limit": 200, "examples_per_surface": 3, "shortfall_policy": "publish_explicit"},
   "inventory": {
-    "source_adapter": "corpus-surface-frequency/v1",
+    "source_adapter": "recovered-surface-ranking/v1",
     "language_policy": "es-v1",
-    "source_edition": "OpenSubtitles aligned en-es Spanish text",
-    "frequency_measure": "surface_token_occurrences_per_million",
+    "source_edition": "fluency-2026-07-28-surface-ranking-v1",
+    "frequency_measure": "recovered_corpus_count_upstream_unknown",
     "output_schema": "surface-inventory/v1",
     "identity_unit": "surface",
     "lemma_role": "excluded"

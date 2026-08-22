@@ -127,10 +127,10 @@ until explicitly approved.
 
 ## Step 5 — Migrate Spanish into the clean architecture
 
-**Status: source/component ledger, canonical/legacy-alias crosswalk, Spanish
-20×3/200×3 profiles, and the shared corpus-frequency adapter are complete.
-OpenSubtitles was approved as the Spanish Speech ranking source; its one-time
-61-million-line compilation is the next local long run.** See
+**Status: retained Spanish inventory, sentence bank, candidate map and Gemini
+cache are pinned with verified hashes; fresh 20-card and 200-card surface-only
+inventories are complete. The next implementation is the retained-sentence-bank
+adapter, followed by the SpanishDict menu snapshot.** See
 `docs/migration/0003-spanish-speech-migration-roadmap.md` for the approval-gated
 sequence. WSD remains a replaceable external assignment layer and does not
 block the inventory, menu, harvest, unassigned release or app-compatibility

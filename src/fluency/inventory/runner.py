@@ -24,6 +24,10 @@ from fluency.inventory.lexique import (
     ranked_surfaces,
     read_lexique4,
 )
+from fluency.inventory.recovered import (
+    ADAPTER_ID as RECOVERED_ADAPTER_ID,
+    load_recovered_surface_ranking,
+)
 from fluency.pipeline.planning import load_pipeline_profile
 from fluency.release.io import atomic_write, json_bytes
 
@@ -62,11 +66,11 @@ def _inside(path: Path, parent: Path) -> bool:
 
 def _implementation_content_id(adapter_id: str) -> str:
     package = Path(__file__).resolve().parent
-    adapter_path = (
-        package / "lexique.py"
-        if adapter_id == LEXIQUE_ADAPTER_ID
-        else package / "corpus_frequency.py"
-    )
+    adapter_path = {
+        LEXIQUE_ADAPTER_ID: package / "lexique.py",
+        CORPUS_ADAPTER_ID: package / "corpus_frequency.py",
+        RECOVERED_ADAPTER_ID: package / "recovered.py",
+    }[adapter_id]
     paths = (Path(__file__).resolve(), package / "config.py", adapter_path)
     return canonical_content_id(
         {str(path.relative_to(package.parent)): file_content_id(path) for path in paths}
@@ -102,7 +106,11 @@ def build_inventory_stage(
     if profile["language"] != language or profile["mode"] != mode:
         raise InventoryRunError("run profile language or mode does not match")
     adapter_id = profile["inventory"]["source_adapter"]
-    if adapter_id not in {LEXIQUE_ADAPTER_ID, CORPUS_ADAPTER_ID}:
+    if adapter_id not in {
+        LEXIQUE_ADAPTER_ID,
+        CORPUS_ADAPTER_ID,
+        RECOVERED_ADAPTER_ID,
+    }:
         raise InventoryRunError("no installed inventory adapter matches the run profile")
     language_policy = load_inventory_language_policy(
         repository_root,
@@ -134,7 +142,8 @@ def build_inventory_stage(
             "duplicate_analysis_rows": result.duplicate_rows,
         }
         upstream_inputs: dict[str, str] = {}
-    else:
+        source_ranked = list(ranked_surfaces(frequencies))
+    elif adapter_id == CORPUS_ADAPTER_ID:
         if not resolved_snapshot.is_dir():
             raise InventoryRunError("the corpus adapter requires a compiled snapshot directory")
         compiled = load_corpus_frequency_snapshot(
@@ -154,7 +163,25 @@ def build_inventory_stage(
             "license": compiled.manifest["license"],
         }
         upstream_inputs = {"raw_corpus": compiled.manifest["source_content_id"]}
-    source_ranked = list(ranked_surfaces(frequencies))
+        source_ranked = list(ranked_surfaces(frequencies))
+    else:
+        if not resolved_snapshot.is_dir():
+            raise InventoryRunError(
+                "the recovered adapter requires an immutable snapshot directory"
+            )
+        recovered = load_recovered_surface_ranking(
+            resolved_snapshot,
+            expected_language=language,
+            expected_snapshot_id=snapshot_id,
+        )
+        source_content_id = recovered.ranking_content_id
+        source_ranked = list(recovered.ranked_surfaces)
+        source_metrics = {
+            "source_records": len(source_ranked),
+            "provenance_status": recovered.manifest["provenance_status"],
+            "recovered_from": recovered.manifest["recovered_from"],
+        }
+        upstream_inputs = {}
     exclusions = language_policy["surface_exclusions"]
     excluded = [
         {

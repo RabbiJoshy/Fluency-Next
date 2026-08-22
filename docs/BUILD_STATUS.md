@@ -140,16 +140,27 @@
   `sd-beto-cal-v5` method, source commit, Gemini/BETO/calibrator identities and
   held-out alignment result are captured in a blocked method profile. No old
   assignment, model asset, inventory, corpus stage or release was executed or
-  activated. Its explicit frequency-source gate is resolved by Gate 24.
-- Gate 24 (reusable corpus-frequency source): approved the pinned Spanish side
-  of aligned OpenSubtitles as the fresh Spanish Speech ranking source and added
-  a language-agnostic streaming compiler. It hashes raw bytes while counting,
+  activated. Its explicit frequency-source gate is resolved by Gate 25.
+- Gate 24 (reusable corpus-frequency source): added an optional path for using
+  the pinned Spanish side of aligned OpenSubtitles as a future ranking source,
+  with a language-agnostic streaming compiler. It hashes raw bytes while counting,
   reports progress every million lines, preserves accents and complete surface
   forms, rejects configured markup/music/URL lines, and publishes a reusable
   immutable ranked snapshot with explicit provenance and unknown license/URI
   fields. Run-owned inventories consume that snapshot quickly, so the 2 GB
   corpus is never rescanned for 20×3 and 200×3 separately. Fixture compilation
   and Spanish inventory selection are tested; the real scan has not run.
+- Gate 25 (retained Spanish sources and fresh inventory): changed the migration
+  path so a full 61-million-line frequency scan is optional rather than a
+  prerequisite. Byte-verified immutable workspace snapshots now retain exactly
+  the 9,999-surface source ranking, 42,650 OpenSubtitles sentence records,
+  51,193 clean/held candidate links across 9,954 surfaces, and the 276,724-row
+  Gemini exact-text cache with its `(276724, 3072)` float16 matrix. No WSD
+  assignment, final example choice, deck output or release was copied. Fresh
+  runs `20260822T212111Z-03f24222` and `20260822T212159Z-f423f132` produced
+  20-card and 200-card surface-only inventories. The 200-card inventory has 200
+  unique cards, no lemma fields, and all 200 surfaces have at least six retained
+  candidate sentences. No Spanish release was activated.
 
 ## Not started
 
@@ -157,9 +168,9 @@
   through the immutable Stage 04 boundary.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
-- Real Spanish OpenSubtitles frequency compilation and the quick 20×3/200×3
-  surface inventory runs. The source and adapter are approved; the legacy
-  progress crosswalk itself is complete.
+- Adapt the retained Spanish sentence bank into the shared run-owned harvest
+  contract, then build the SpanishDict menu snapshot. A full corpus-frequency
+  compilation remains an optional future re-ranking experiment.
 - Release diagnostics and release-frozen resume behind the transplanted app.
 - Artist mode.
 

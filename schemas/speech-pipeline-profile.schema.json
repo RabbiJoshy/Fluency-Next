@@ -24,10 +24,11 @@
     "source_policy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["fresh_snapshots_only", "allow_legacy_inputs", "fallback_policy"],
+      "required": ["fresh_snapshots_only", "allow_legacy_inputs", "allow_recovered_inputs", "fallback_policy"],
       "properties": {
         "fresh_snapshots_only": {"const": true},
         "allow_legacy_inputs": {"const": false},
+        "allow_recovered_inputs": {"type": "boolean"},
         "fallback_policy": {"const": "none"}
       }
     },

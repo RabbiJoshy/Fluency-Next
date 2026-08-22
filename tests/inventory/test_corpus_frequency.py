@@ -80,6 +80,15 @@ class CorpusFrequencyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             workspace, _corpus, snapshot = self._compile(Path(directory))
             profile = load_pipeline_profile(PROFILE_PATH)
+            profile["profile_id"] = "spanish_corpus_frequency_fixture_20x3"
+            profile["source_policy"]["allow_recovered_inputs"] = False
+            profile["inventory"].update(
+                {
+                    "source_adapter": "corpus-surface-frequency/v1",
+                    "source_edition": "fixture corpus",
+                    "frequency_measure": "surface_token_occurrences_per_million",
+                }
+            )
             run = create_pipeline_plan(
                 workspace,
                 profile,

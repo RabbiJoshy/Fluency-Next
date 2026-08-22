@@ -12,6 +12,7 @@
   "source_policy": {
     "fresh_snapshots_only": true,
     "allow_legacy_inputs": false,
+    "allow_recovered_inputs": false,
     "fallback_policy": "none"
   },
   "scope": {

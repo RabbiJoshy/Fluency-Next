@@ -76,6 +76,10 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
     _require(isinstance(source_policy, dict), "source policy is required")
     _require(source_policy.get("fresh_snapshots_only") is True, "only fresh source snapshots are allowed")
     _require(source_policy.get("allow_legacy_inputs") is False, "legacy inputs must remain disabled")
+    _require(
+        isinstance(source_policy.get("allow_recovered_inputs"), bool),
+        "recovered-input policy must be explicit",
+    )
     _require(source_policy.get("fallback_policy") == "none", "input fallback must remain disabled")
 
     scope = profile.get("scope")
@@ -99,6 +103,11 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
     _require(
         isinstance(inventory.get("language_policy"), str) and bool(inventory["language_policy"]),
         "inventory language policy is required",
+    )
+    recovered_inventory = inventory.get("source_adapter") == "recovered-surface-ranking/v1"
+    _require(
+        source_policy["allow_recovered_inputs"] is recovered_inventory,
+        "recovered-input permission must exactly match the selected inventory adapter",
     )
     _require(inventory.get("output_schema") == "surface-inventory/v1", "unsupported inventory output")
     _require(inventory.get("identity_unit") == "surface", "inventory identity must be surface-only")
