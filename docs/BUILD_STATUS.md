@@ -24,6 +24,13 @@
   and an example-first Card Data inspector that exposes every recorded example
   and assigned-sense field plus exact layer provenance. Published immutable
   multi-example candidate `fr-speech-pilot-0003`; `0002` remains selectable.
+- Gate 9 (study lifecycle migration): restored release-owned levels and stable
+  sets, unseen-only Learn queues, level-wide Review queues, unfinished-session
+  resume, and the existing completion, automatic continuation, main-menu and
+  redo actions. Session snapshots freeze the exact release and card order so a
+  later activation cannot silently replace or dilute an in-progress run.
+  Published `fr-speech-pilot-0004`; `0003` and `0002` remain independently
+  selectable through an explicit legacy single-set compatibility adapter.
 
 ## Not started
 
@@ -33,5 +40,6 @@
 - Spanish and legacy progress migration.
 - Artist mode.
 
-No production system or existing Fluency repository has been modified. Gate 6
-uses curated fixture content and makes no production coverage or WSD claims.
+No production system or existing Fluency repository has been modified. The
+pilot uses curated fixture content and makes no production coverage or WSD
+claims.

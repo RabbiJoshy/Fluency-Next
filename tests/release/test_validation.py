@@ -19,6 +19,12 @@ class ReleaseValidationTests(unittest.TestCase):
     def test_valid_pilot_deck_passes(self) -> None:
         validate_deck(self.deck)
 
+    def test_study_structure_must_cover_each_card_exactly_once(self) -> None:
+        deck = deepcopy(self.deck)
+        deck["study_structure"]["levels"][0]["sets"][0]["card_ids"].pop()
+        with self.assertRaisesRegex(ReleaseValidationError, "structure and deck"):
+            validate_deck(deck)
+
     def test_release_contract_schemas_are_valid_json(self) -> None:
         schema_root = REPOSITORY_ROOT / "schemas"
         for filename in (
@@ -28,6 +34,7 @@ class ReleaseValidationTests(unittest.TestCase):
             "release-composition.schema.json",
             "release-catalog.schema.json",
             "speech-deck.schema.json",
+            "study-structure.schema.json",
         ):
             with self.subTest(filename=filename):
                 schema = json.loads((schema_root / filename).read_text(encoding="utf-8"))

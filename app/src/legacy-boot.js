@@ -2,8 +2,10 @@ import { loadLanguageRegistry } from "./core/language-registry.js";
 import { loadRelease } from "./core/release-client.js";
 import { createCardDataInspector } from "./features/diagnostics/card-data-inspector.js";
 import { createStudyOptions } from "./features/study/study-options.js";
+import { buildStudyQueue, findLevel, findSet, nextUnseenSet, releaseCardMap } from "./features/study/study-queues.js";
 import { createProgressStore } from "./services/progress-store.js";
 import { speak } from "./services/speech.js";
+import { createStudySessionStore } from "./services/study-session-store.js";
 
 const byId = (id) => document.getElementById(id);
 
@@ -62,6 +64,7 @@ function createReleaseAudit(release) {
     ["Conflict policy", release.composition.conflict_policy],
     ["Fallback policy", release.composition.fallback_policy],
     ["WSD", `${release.manifest.wsd.status} · enabled=${release.manifest.wsd.enabled}`],
+    ["Study structure", release.studyStructureAdapted ? "legacy single-set compatibility adapter" : release.deck.study_structure.structure_version],
   ];
   const grid = element("dl", "release-audit-grid");
   for (const [name, value] of rows) grid.append(element("dt", "", name), element("dd", "", value));
@@ -102,30 +105,102 @@ function renderSetup(languages, release, progress, startStudy, auditModal) {
   }
   byId("step1Title").textContent = "Language";
   byId("step2").style.display = "block";
-  const levelSelector = byId("levelSelector");
-  levelSelector.replaceChildren();
-  const level = element("button", "level-btn selected", "Pilot");
-  level.type = "button";
-  levelSelector.append(level);
-  byId("levelInfoLine").textContent = `${release.manifest.card_count} surface cards · curated fixture`;
-  byId("levelInfoLine").style.display = "inline";
   byId("step4").style.display = "block";
+  const structure = release.deck.study_structure;
+  let selectedLevelId = structure.levels[0].level_id;
+  let selectedSetId = structure.levels[0].sets[0].set_id;
+
+  function cardIdsForLevel(level) {
+    return level.sets.flatMap((studySet) => studySet.card_ids);
+  }
+
+  function selectSuggestedSet(level) {
+    return level.sets.find((studySet) => progress.summary(studySet.card_ids).unseen > 0)
+      || level.sets[level.sets.length - 1];
+  }
+
+  function renderLevels() {
+    const levelSelector = byId("levelSelector");
+    levelSelector.replaceChildren();
+    for (const level of structure.levels) {
+      const button = element("button", `level-btn${level.level_id === selectedLevelId ? " selected" : ""}`, level.label);
+      button.type = "button";
+      button.dataset.level = level.level_id;
+      button.addEventListener("click", () => {
+        selectedLevelId = level.level_id;
+        selectedSetId = selectSuggestedSet(level).set_id;
+        refresh();
+      });
+      levelSelector.append(button);
+    }
+  }
 
   function refresh() {
-    const summary = progress.summary(release.deck.cards.map((card) => card.card_id));
+    const level = findLevel(release.deck, selectedLevelId) || structure.levels[0];
+    if (!findSet(release.deck, level.level_id, selectedSetId)) selectedSetId = selectSuggestedSet(level).set_id;
+    const studySet = findSet(release.deck, level.level_id, selectedSetId);
+    const levelSummary = progress.summary(cardIdsForLevel(level));
+    const setSummary = progress.summary(studySet.card_ids);
+    renderLevels();
+    byId("levelInfoLine").textContent = `${levelSummary.total} surface cards · ${level.sets.length} stable set${level.sets.length === 1 ? "" : "s"}`;
+    byId("levelInfoLine").style.display = "inline";
     const panel = element("div", "study-set-panel");
     const overview = element("div", "study-set-overview");
-    overview.append(element("strong", "", "Pilot · Set 1 of 1"), element("span", "", `${summary.known} known · ${summary.review} review · ${summary.unseen} unseen`));
+    const seenSets = level.sets.filter((item) => progress.summary(item.card_ids).unseen < item.card_ids.length).length;
+    overview.append(
+      element("strong", "", `${seenSets} of ${level.sets.length} sets seen`),
+      element("span", "", "New cards stay separate from unfinished review"),
+    );
     const dots = element("div", "study-set-dots");
-    const dot = element("button", `study-set-dot is-current${summary.unseen < summary.total ? " is-partial" : ""}`, "1");
-    dot.type = "button";
-    dot.style.setProperty("--set-known-end", `${(summary.known / summary.total) * 100}%`);
-    dot.style.setProperty("--set-review-end", `${((summary.known + summary.review) / summary.total) * 100}%`);
-    dots.append(dot);
-    const start = element("button", "range-btn-new study-set-start", summary.unseen === summary.total ? `Learn ${summary.total} new cards` : "Continue French Speech");
+    level.sets.forEach((item, index) => {
+      const summary = progress.summary(item.card_ids);
+      const dot = element(
+        "button",
+        `study-set-dot${item.set_id === selectedSetId ? " is-current" : ""}${summary.unseen === 0 ? " is-complete" : summary.unseen < summary.total ? " is-partial" : ""}`,
+        index + 1,
+      );
+      dot.type = "button";
+      dot.style.setProperty("--set-known-end", `${(summary.known / summary.total) * 100}%`);
+      dot.style.setProperty("--set-review-end", `${((summary.known + summary.review) / summary.total) * 100}%`);
+      dot.setAttribute("aria-label", `${item.label}: ${summary.known} known, ${summary.review} review, ${summary.unseen} unseen`);
+      dot.addEventListener("click", () => {
+        if (selectedSetId === item.set_id) {
+          startStudy({ levelId: level.level_id, setId: item.set_id, queueType: summary.unseen > 0 ? "learn" : "all" });
+        } else {
+          selectedSetId = item.set_id;
+          refresh();
+        }
+      });
+      dots.append(dot);
+    });
+    const current = element("div", "study-set-current-copy");
+    const setNumber = level.sets.findIndex((item) => item.set_id === studySet.set_id) + 1;
+    current.append(
+      element("strong", "", `${studySet.label} of ${level.sets.length}`),
+      element("span", "", `${setSummary.known} known · ${setSummary.review} review · ${setSummary.unseen} unseen`),
+    );
+    const queueType = setSummary.unseen > 0 ? "learn" : "all";
+    const start = element(
+      "button",
+      "range-btn-new study-set-start",
+      setSummary.unseen > 0
+        ? `Learn ${setSummary.unseen} new card${setSummary.unseen === 1 ? "" : "s"}`
+        : `Study Set ${setNumber} Again`,
+    );
     start.type = "button";
-    start.addEventListener("click", startStudy);
-    panel.append(overview, dots, start, element("span", "pilot-setup-badge", `Exact release: ${release.manifest.release_id} · WSD ${release.manifest.wsd.status}`));
+    start.addEventListener("click", () => startStudy({ levelId: level.level_id, setId: studySet.set_id, queueType }));
+    panel.append(overview, dots, current, start);
+    if (levelSummary.review > 0) {
+      const review = element("button", "study-set-review");
+      review.type = "button";
+      review.append(
+        element("span", "", "Review cards"),
+        element("small", "", `${levelSummary.review} unfinished in this level`),
+      );
+      review.addEventListener("click", () => startStudy({ levelId: level.level_id, setId: studySet.set_id, queueType: "review" }));
+      panel.append(review);
+    }
+    panel.append(element("span", "pilot-setup-badge", `Exact release: ${release.manifest.release_id} · WSD ${release.manifest.wsd.status}`));
     byId("rangeSelector").replaceChildren(panel);
   }
   refresh();
@@ -146,8 +221,10 @@ function renderSetup(languages, release, progress, startStudy, auditModal) {
   return { refresh };
 }
 
-function createStudy(release, language, progress, onProgress) {
-  const cards = release.deck.cards;
+function createStudy(release, language, progress, sessionStore, onProgress) {
+  const allCards = release.deck.cards;
+  const cardMap = releaseCardMap(release.deck);
+  let cards = [];
   const flashcard = byId("flashcard");
   const setup = byId("setupPanel");
   const app = byId("appContent");
@@ -156,6 +233,9 @@ function createStudy(release, language, progress, onProgress) {
   let revealed = false;
   let direction = localStorage.getItem("fluency-next:card-direction:v1") || "target";
   let autoSpeech = localStorage.getItem("fluency-next:auto-speech:v1") !== "off";
+  let session = null;
+  let completionNext = null;
+  let completionTimer = null;
 
   const scoreActions = element("div", "pilot-score-actions hidden");
   const wrong = element("button", "incorrect", "✗");
@@ -166,8 +246,40 @@ function createStudy(release, language, progress, onProgress) {
   scoreActions.append(wrong, right);
   document.body.append(scoreActions);
 
-  function card() { return cards[index]; }
+  function card() { return cards[index] || allCards[0]; }
   function allExamples() { return card().examples.length ? card().examples : [{ target: "No example attached", english: "" }]; }
+
+  function sessionTotals() {
+    const totals = { correct: 0, incorrect: 0 };
+    for (const result of Object.values(session?.sessionResults || {})) {
+      totals.correct += Number(result.correct || 0);
+      totals.incorrect += Number(result.incorrect || 0);
+    }
+    return totals;
+  }
+
+  function snapshot() {
+    if (!session || !cards.length) return null;
+    return {
+      release_id: release.manifest.release_id,
+      level_id: session.levelId,
+      set_id: session.setId,
+      queue_type: session.queueType,
+      card_ids: [...session.cardIds],
+      current_position: index,
+      current_word: card().display_form,
+      card_side: revealed ? "back" : "front",
+      example_index: exampleIndex,
+      direction,
+      automatic_speech: autoSpeech,
+      session_results: session.sessionResults,
+    };
+  }
+
+  function saveSnapshot() {
+    const value = snapshot();
+    if (value && !app.classList.contains("hidden")) sessionStore.save(value);
+  }
 
   function renderScrubbers() {
     const desktop = byId("deckProgressSegments");
@@ -204,12 +316,17 @@ function createStudy(release, language, progress, onProgress) {
     exampleButton.type = "button";
     exampleButton.append(element("span", "", example.target), element("span", "", example.english));
     if (examples.length > 1) exampleButton.append(element("small", "", `${exampleIndex + 1}/${examples.length} · tap for next`));
-    exampleButton.addEventListener("click", (event) => { event.stopPropagation(); exampleIndex = (exampleIndex + 1) % examples.length; renderBack(); });
+    exampleButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      exampleIndex = (exampleIndex + 1) % examples.length;
+      renderBack();
+      saveSnapshot();
+    });
     wrapper.append(exampleButton);
     byId("backContent").replaceChildren(wrapper);
   }
 
-  function render({ announce = false } = {}) {
+  function render({ announce = false, save = true } = {}) {
     const current = card();
     const meaning = current.meanings[0];
     revealed = false;
@@ -237,19 +354,21 @@ function createStudy(release, language, progress, onProgress) {
         { english: direction !== "target" },
       );
     }
+    if (save) saveSnapshot();
   }
 
-  function reveal() {
+  function reveal({ announce = true, save = true } = {}) {
     if (revealed) return;
     revealed = true;
     flashcard.classList.add("flipped");
-    if (autoSpeech) {
+    if (announce && autoSpeech) {
       speak(
         direction === "target" ? card().meanings[0].translation : card().display_form,
         language.locale,
         { english: direction === "target" },
       );
     }
+    if (save) saveSnapshot();
   }
 
   function move(next) {
@@ -257,29 +376,133 @@ function createStudy(release, language, progress, onProgress) {
     render({ announce: true });
   }
 
+  function recordSessionResult(correct) {
+    const cardId = card().card_id;
+    const previous = session.sessionResults[cardId] || { correct: 0, incorrect: 0 };
+    session.sessionResults[cardId] = {
+      correct: previous.correct + (correct ? 1 : 0),
+      incorrect: previous.incorrect + (correct ? 0 : 1),
+      last_result: correct ? "correct" : "incorrect",
+    };
+  }
+
+  function cancelCompletionTimer() {
+    if (completionTimer) window.clearTimeout(completionTimer);
+    completionTimer = null;
+  }
+
+  function hideCompletion() {
+    cancelCompletionTimer();
+    byId("deckCompleteModal").classList.add("hidden");
+  }
+
+  function showCompletion() {
+    sessionStore.clear();
+    scoreActions.classList.add("hidden");
+    const totals = sessionTotals();
+    const attempts = totals.correct + totals.incorrect;
+    const accuracy = attempts ? Math.round((totals.correct / attempts) * 100) : 0;
+    const level = findLevel(release.deck, session.levelId);
+    const studySet = findSet(release.deck, session.levelId, session.setId);
+    const setNumber = Math.max(0, level?.sets.findIndex((item) => item.set_id === session.setId)) + 1;
+    byId("deckCompleteTitle").textContent = session.queueType === "review"
+      ? "Review Complete!"
+      : studySet ? `Set ${setNumber} Complete!` : "Set Complete!";
+    byId("completeCorrect").textContent = String(totals.correct);
+    byId("completeIncorrect").textContent = String(totals.incorrect);
+    byId("completeAccuracy").textContent = `${accuracy}% accuracy`;
+    completionNext = session.queueType === "learn"
+      ? nextUnseenSet(release.deck, progress, session.levelId, session.setId)
+      : null;
+    const continueButton = byId("markCompleteBtn");
+    if (completionNext) {
+      byId("markCompleteLabel").textContent = `Start ${completionNext.label}`;
+      byId("markCompleteIcon").textContent = "→";
+      byId("completeMessage").textContent = `${byId("markCompleteLabel").textContent} automatically…`;
+      continueButton.style.display = "";
+    } else {
+      byId("completeMessage").textContent = "";
+      continueButton.style.display = "none";
+    }
+    byId("deckCompleteModal").classList.remove("hidden");
+    if (completionNext) {
+      completionTimer = window.setTimeout(() => {
+        completionTimer = null;
+        continueButton.click();
+      }, 1200);
+    }
+  }
+
   function answer(correct) {
     if (!revealed) { reveal(); return; }
     progress.answer(card().card_id, correct);
+    recordSessionResult(correct);
     const indicator = byId(correct ? "correctIndicator" : "incorrectIndicator");
     indicator.classList.add("visible");
     renderScrubbers();
+    saveSnapshot();
     onProgress();
     window.setTimeout(() => {
       indicator.classList.remove("visible");
       if (index < cards.length - 1) move(index + 1);
-      else exit();
+      else showCompletion();
     }, 230);
   }
 
-  function show() {
+  function openSession({ levelId, setId, queueType, explicitCardIds = null, resumeSnapshot = null }) {
+    const queue = explicitCardIds
+      ? {
+          cardIds: [...explicitCardIds],
+          cards: explicitCardIds.map((cardId) => cardMap.get(cardId)),
+        }
+      : buildStudyQueue(release.deck, progress, { levelId, setId, queueType });
+    if (!queue.cardIds.length || queue.cards.some((item) => !item)) return false;
+    cards = [...queue.cards];
+    session = {
+      levelId,
+      setId,
+      queueType,
+      cardIds: [...queue.cardIds],
+      sessionResults: { ...(resumeSnapshot?.session_results || {}) },
+    };
+    index = Math.min(cards.length - 1, Math.max(0, resumeSnapshot?.current_position || 0));
+    direction = resumeSnapshot?.direction || direction;
+    autoSpeech = typeof resumeSnapshot?.automatic_speech === "boolean"
+      ? resumeSnapshot.automatic_speech
+      : autoSpeech;
     setup.style.display = "none";
     app.classList.remove("hidden");
     scoreActions.classList.remove("hidden");
-    index = 0;
-    render({ announce: true });
+    render({ announce: !resumeSnapshot, save: false });
+    if (resumeSnapshot) {
+      exampleIndex = Math.min(allExamples().length - 1, Math.max(0, resumeSnapshot.example_index || 0));
+      renderBack();
+      if (resumeSnapshot.card_side === "back") reveal({ announce: false, save: false });
+    }
+    saveSnapshot();
+    return true;
   }
 
-  function exit() {
+  function show(options) {
+    return openSession(options);
+  }
+
+  function resume(resumeSnapshot) {
+    if (resumeSnapshot.release_id !== release.manifest.release_id) return false;
+    if (!findLevel(release.deck, resumeSnapshot.level_id)) return false;
+    if (!findSet(release.deck, resumeSnapshot.level_id, resumeSnapshot.set_id)) return false;
+    if (!resumeSnapshot.card_ids.every((cardId) => cardMap.has(cardId))) return false;
+    return openSession({
+      levelId: resumeSnapshot.level_id,
+      setId: resumeSnapshot.set_id,
+      queueType: resumeSnapshot.queue_type,
+      explicitCardIds: resumeSnapshot.card_ids,
+      resumeSnapshot,
+    });
+  }
+
+  function exit({ preserveSnapshot = true } = {}) {
+    if (preserveSnapshot) saveSnapshot();
     app.classList.add("hidden");
     scoreActions.classList.add("hidden");
     setup.style.display = "block";
@@ -289,7 +512,7 @@ function createStudy(release, language, progress, onProgress) {
   function toggleDirection() {
     direction = direction === "target" ? "english" : "target";
     localStorage.setItem("fluency-next:card-direction:v1", direction);
-    render({ announce: true });
+    if (!app.classList.contains("hidden")) render({ announce: true });
     return direction;
   }
 
@@ -304,6 +527,7 @@ function createStudy(release, language, progress, onProgress) {
         { english: direction !== "target" },
       );
     }
+    saveSnapshot();
     return autoSpeech;
   }
 
@@ -325,8 +549,36 @@ function createStudy(release, language, progress, onProgress) {
   for (const id of ["prevBtnFront", "prevBtnFrontMobile", "prevBtnBack"]) byId(id).addEventListener("click", () => move(index - 1));
   for (const id of ["nextBtnFront", "nextBtnFrontMobile", "nextBtnBack"]) byId(id).addEventListener("click", () => move(index + 1));
   for (const id of ["backBtnFloating", "backBtnFrontMobile"]) byId(id).addEventListener("click", exit);
+  byId("markCompleteBtn").addEventListener("click", () => {
+    if (!completionNext) return;
+    const next = completionNext;
+    hideCompletion();
+    show({ levelId: next.levelId, setId: next.setId, queueType: "learn" });
+    onProgress();
+  });
+  byId("deckCompleteMenuBtn").addEventListener("click", () => {
+    hideCompletion();
+    exit({ preserveSnapshot: false });
+  });
+  byId("restartAllBtn").addEventListener("click", () => {
+    const redo = {
+      levelId: session.levelId,
+      setId: session.setId,
+      queueType: session.queueType,
+      explicitCardIds: [...session.cardIds],
+    };
+    hideCompletion();
+    openSession(redo);
+  });
+  byId("deckCompleteModal").addEventListener("click", (event) => {
+    if (event.target === byId("deckCompleteModal")) hideCompletion();
+  });
   document.addEventListener("keydown", (event) => {
     if (app.classList.contains("hidden") || event.metaKey || event.ctrlKey) return;
+    if (!byId("deckCompleteModal").classList.contains("hidden")) {
+      if (event.key === "Escape") hideCompletion();
+      return;
+    }
     if (event.key === " ") { event.preventDefault(); revealed ? render() : reveal(); }
     if (event.key === "ArrowLeft") move(index - 1);
     if (event.key === "ArrowRight") move(index + 1);
@@ -334,7 +586,58 @@ function createStudy(release, language, progress, onProgress) {
     if (event.key.toLowerCase() === "x") answer(false);
     if (event.key === "Escape") exit();
   });
-  return Object.freeze({ show, exit, toggleDirection, toggleSpeech, getState });
+  return Object.freeze({ show, resume, exit, toggleDirection, toggleSpeech, getState });
+}
+
+function createResumePrompt(release, snapshot, onResume) {
+  let shown = false;
+  return function showResumePrompt() {
+    if (shown || !snapshot) return;
+    shown = true;
+    const modal = element("section", "modal resume-entry-modal");
+    modal.id = "resumeLastSetCard";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-labelledby", "resumeEntryTitle");
+    const content = element("div", "modal-content resume-entry-content");
+    content.append(element("span", "resume-set-eyebrow", "Welcome back"));
+    const title = element("h3", "", "Continue where you stopped?");
+    title.id = "resumeEntryTitle";
+    const source = element("strong", "", "French speech");
+    const track = snapshot.queue_type === "review" ? "Review" : "Learn new";
+    const context = element("p", "", `${snapshot.level_id} · ${snapshot.set_id} · ${track}`);
+    const lastCard = element("small", "", `Last card: ${snapshot.current_word || "saved card"} · position ${snapshot.current_position + 1} of ${snapshot.card_ids.length}`);
+    const actions = element("div", "resume-entry-actions");
+    const dismiss = element("button", "resume-entry-secondary", "Choose a new set");
+    dismiss.type = "button";
+    const resume = element("button", "resume-entry-primary");
+    resume.type = "button";
+    const currentRelease = snapshot.release_id === release.manifest.release_id;
+    const savedCandidate = release.catalog.candidates.find((item) => item.release_id === snapshot.release_id);
+    resume.textContent = currentRelease ? "Continue set" : savedCandidate ? "Open saved release" : "Saved release unavailable";
+    resume.disabled = !currentRelease && !savedCandidate;
+    actions.append(dismiss, resume);
+    content.append(title, source, context, lastCard, actions);
+    modal.append(content);
+    document.body.append(modal);
+
+    function close() { modal.remove(); }
+    dismiss.addEventListener("click", close);
+    resume.addEventListener("click", () => {
+      if (!currentRelease && savedCandidate) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("release", snapshot.release_id);
+        window.location.assign(url);
+        return;
+      }
+      if (onResume(snapshot)) close();
+      else {
+        lastCard.textContent = "This saved queue no longer matches its exact release structure.";
+        resume.disabled = true;
+      }
+    });
+    modal.addEventListener("click", (event) => { if (event.target === modal) close(); });
+  };
 }
 
 function fatal(error) {
@@ -350,9 +653,10 @@ async function start() {
   if (!language) throw new Error("French is missing from the language registry");
   const release = await loadRelease(language, "speech");
   const progress = createProgressStore({ language: "fr", mode: "speech", namespace: release.manifest.progress_namespace });
+  const sessionStore = createStudySessionStore({ language: "fr", mode: "speech", namespace: release.manifest.progress_namespace });
   const audit = createReleaseAudit(release);
   let setup;
-  const study = createStudy(release, language, progress, () => setup?.refresh());
+  const study = createStudy(release, language, progress, sessionStore, () => setup?.refresh());
   setup = renderSetup(languages, release, progress, study.show, audit);
   const cardData = createCardDataInspector(release, study.getState);
   const studyOptions = createStudyOptions({
@@ -378,7 +682,15 @@ async function start() {
   document.documentElement.classList.remove("app-booting");
   byId("appLoadingScreen").classList.add("is-hidden");
   const knownLocalUser = localStorage.getItem("flashcardUser") || sessionStorage.getItem("flashcardGuestSession");
-  if (knownLocalUser) hideModal(byId("authModal"));
+  const showResumePrompt = createResumePrompt(release, sessionStore.load(), study.resume);
+  if (knownLocalUser) {
+    hideModal(byId("authModal"));
+    showResumePrompt();
+  } else {
+    for (const id of ["guestModeBtn", "submitInitialsBtn"]) {
+      byId(id)?.addEventListener("click", () => window.setTimeout(showResumePrompt, 0));
+    }
+  }
 }
 
 start().catch(fatal);

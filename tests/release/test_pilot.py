@@ -22,6 +22,7 @@ class PilotReleaseTests(unittest.TestCase):
             self.assertEqual(manifest["card_count"], 25)
             self.assertEqual(len(deck["cards"]), 25)
             self.assertEqual(len({card["card_id"] for card in deck["cards"]}), 25)
+            self.assertEqual(deck["study_structure"]["levels"][0]["sets"][0]["card_ids"], [card["card_id"] for card in deck["cards"]])
             self.assertEqual(composition["fallback_policy"], "none")
             self.assertNotIn("wsd_assignments", composition["layers"])
 
@@ -45,7 +46,7 @@ class PilotReleaseTests(unittest.TestCase):
     def test_seed_contains_exactly_25_curated_cards(self) -> None:
         seed = json.loads(default_seed_path().read_text(encoding="utf-8"))
         self.assertEqual(len(seed["cards"]), 25)
-        self.assertEqual(seed["release_id"], "fr-speech-pilot-0003")
+        self.assertEqual(seed["release_id"], "fr-speech-pilot-0004")
         self.assertEqual(len(seed["cards"][0]["examples"]), 3)
 
 

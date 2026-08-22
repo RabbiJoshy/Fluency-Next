@@ -66,6 +66,23 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("Full sense menu", inspector)
         self.assertIn("Card Data", options)
 
+    def test_set_lifecycle_keeps_learn_review_resume_and_completion_separate(self) -> None:
+        boot = (APP_ROOT / "src" / "legacy-boot.js").read_text(encoding="utf-8")
+        queues = (
+            APP_ROOT / "src" / "features" / "study" / "study-queues.js"
+        ).read_text(encoding="utf-8")
+        sessions = (
+            APP_ROOT / "src" / "services" / "study-session-store.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('queueType === "review"', queues)
+        self.assertIn('progress.status(cardId) === "unseen"', queues)
+        self.assertIn("study-session/v1", sessions)
+        self.assertIn("Continue where you stopped?", boot)
+        self.assertIn("Review Complete!", boot)
+        self.assertIn("restartAllBtn", boot)
+        self.assertNotIn("Review mistakes", boot)
+
     def test_all_relative_module_imports_resolve(self) -> None:
         import_pattern = re.compile(r'^import\s+.*?from\s+["\'](.+?)["\'];?$', re.MULTILINE)
         for module in (APP_ROOT / "src").rglob("*.js"):

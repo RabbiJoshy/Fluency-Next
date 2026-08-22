@@ -27,9 +27,11 @@ workspace. It has no production or GitHub dependency.
 
 The stable surface-card identity, external workspace, immutable artifact/run
 contracts, French tokenization boundary, exact release composition, and the
-original Fluency product shell running a 25-card French Speech pilot are implemented. The pilot is curated
-fixture data: corpus ingestion, frequency ranking, embeddings, WSD, calibration,
-Spanish migration, Artist mode, and production integration have not been
-implemented yet.
+original Fluency product shell running a 25-card French Speech pilot are
+implemented. Learn, Review, exact-session resume, and set completion use
+release-owned level/set membership so research releases cannot be mixed by
+accident. The pilot is curated fixture data: corpus ingestion, frequency
+ranking, embeddings, WSD, calibration, Spanish migration, Artist mode, and
+production integration have not been implemented yet.
 
 See `docs/runbooks/local-speech-pilot.md` for the exact local test flow.

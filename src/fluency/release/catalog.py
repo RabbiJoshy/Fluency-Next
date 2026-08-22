@@ -22,7 +22,9 @@ def build_catalog(workspace: Workspace, language: str, mode: str) -> dict[str, A
         for directory in sorted(root.iterdir()):
             if not directory.is_dir() or not (directory / "composition.json").is_file():
                 continue
-            manifest, deck, composition = validate_release_bundle(directory)
+            manifest, deck, composition = validate_release_bundle(
+                directory, allow_legacy_study_structure=True
+            )
             fallback_layers = sum("fallback" in selection for selection in composition["layers"].values())
             candidates.append({
                 "release_id": manifest["release_id"],

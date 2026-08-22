@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/study-structure.schema.json",
+  "title": "Release-owned study levels and stable sets",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["structure_version", "levels"],
+  "properties": {
+    "structure_version": {"const": "study-structure/v1"},
+    "levels": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["level_id", "label", "sets"],
+        "properties": {
+          "level_id": {"type": "string", "minLength": 1},
+          "label": {"type": "string", "minLength": 1},
+          "sets": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["set_id", "label", "card_ids"],
+              "properties": {
+                "set_id": {"type": "string", "minLength": 1},
+                "label": {"type": "string", "minLength": 1},
+                "card_ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {"type": "string", "minLength": 1}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

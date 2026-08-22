@@ -14,7 +14,9 @@ def activate_release(workspace: Workspace, language: str, mode: str, release_id:
         raise ValueError("unsafe release ID")
     root = workspace.root / "releases" / language / mode
     release_directory = root / release_id
-    manifest, _, _ = validate_release_bundle(release_directory)
+    manifest, _, _ = validate_release_bundle(
+        release_directory, allow_legacy_study_structure=True
+    )
     if manifest["language"] != language or manifest["mode"] != mode:
         raise ValueError("release language or mode disagrees with activation target")
     active = {

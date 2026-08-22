@@ -26,7 +26,7 @@ class CompositionTests(unittest.TestCase):
         legacy.mkdir()
         (legacy / "manifest.json").write_text("{}\n", encoding="utf-8")
         catalog = build_catalog(self.workspace, "fr", "speech")
-        self.assertEqual([item["release_id"] for item in catalog["candidates"]], ["fr-speech-pilot-0003"])
+        self.assertEqual([item["release_id"] for item in catalog["candidates"]], ["fr-speech-pilot-0004"])
         self.assertTrue(catalog["candidates"][0]["active"])
         self.assertEqual(catalog["candidates"][0]["fallback_layers"], 0)
 

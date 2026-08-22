@@ -87,6 +87,22 @@ def build_pilot_deck(seed: dict[str, Any]) -> dict[str, Any]:
         "release_id": seed["release_id"],
         "language": seed["language"],
         "mode": seed["mode"],
+        "study_structure": {
+            "structure_version": "study-structure/v1",
+            "levels": [
+                {
+                    "level_id": "pilot",
+                    "label": "Pilot",
+                    "sets": [
+                        {
+                            "set_id": "pilot-set-1",
+                            "label": "Set 1",
+                            "card_ids": [card["card_id"] for card in cards],
+                        }
+                    ],
+                }
+            ],
+        },
         "cards": cards,
     }
 

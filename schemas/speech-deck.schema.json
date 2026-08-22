@@ -4,7 +4,7 @@
   "title": "Fluency Speech deck",
   "type": "object",
   "additionalProperties": false,
-  "required": ["deck_version", "release_id", "language", "mode", "cards"],
+  "required": ["deck_version", "release_id", "language", "mode", "study_structure", "cards"],
   "properties": {
     "deck_version": {
       "const": "speech-deck/v1"
@@ -18,6 +18,9 @@
     },
     "mode": {
       "const": "speech"
+    },
+    "study_structure": {
+      "$ref": "study-structure.schema.json"
     },
     "cards": {
       "type": "array",
