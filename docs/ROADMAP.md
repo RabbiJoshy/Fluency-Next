@@ -58,11 +58,9 @@ sentence IDs per card. No WSD has yet executed.
 
 ## Step 2 — Port and generalize the best Spanish WSD
 
-**Status: architecture approved; dependency-free contracts and orchestration
-skeleton implemented. The English-Wiktionary/Kaikki French sense-menu adapter is
-implemented as an immutable run stage. A fresh surface-only Lexique 4 inventory
-adapter now supplies the bounded audit. Real-menu audit and French benchmark
-design are next.**
+**Status: shared orchestration, real French menu, and prediction-blind 120-row
+benchmark implemented. Gold annotation is next; model comparison remains
+blocked until the labels are frozen.**
 
 Audit the current best Spanish WSD implementation, separate its genuinely
 language-agnostic retrieval/assignment machinery from Spanish-only behaviour,

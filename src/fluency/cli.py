@@ -22,6 +22,7 @@ from fluency.release.composition import compose_release, load_json_object
 from fluency.release.pilot import build_pilot_release
 from fluency.release.validation import validate_release_bundle
 from fluency.sense_menu.runner import build_sense_menu_stage
+from fluency.wsd.benchmark import build_wsd_benchmark
 
 
 DEFAULT_HOST = "127.0.0.1"
@@ -179,6 +180,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--snapshot-id", required=True,
         help="explicit upstream snapshot label, such as enwiktionary-2026-08-05",
     )
+    pipeline_wsd_benchmark = pipeline_actions.add_parser(
+        "wsd-benchmark",
+        help="build the frozen prediction-blind French WSD gold review",
+    )
+    pipeline_wsd_benchmark.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    pipeline_wsd_benchmark.add_argument("--run-id", required=True)
+    pipeline_wsd_benchmark.add_argument("--language", default="fr")
+    pipeline_wsd_benchmark.add_argument("--mode", default="speech")
     return parser
 
 
@@ -375,6 +386,24 @@ def handle_pipeline(args: argparse.Namespace) -> int:
                 "they remain explicit no_menu cases."
             )
         print("No WSD, example selection, release build, or activation was run.")
+        return 0
+    if args.pipeline_command == "wsd-benchmark":
+        output = build_wsd_benchmark(
+            project_root(),
+            workspace,
+            run_id=args.run_id,
+            language=args.language,
+            mode=args.mode,
+        )
+        benchmark = json.loads((output / "benchmark.json").read_text(encoding="utf-8"))
+        print(f"Built immutable prediction-blind WSD benchmark: {output}")
+        print(
+            f"Rows: {len(benchmark['rows'])} "
+            "(40 function/homograph, 40 inflected/multi-headword, "
+            "40 ordinary multi-sense)."
+        )
+        print(f"Open locally: {output / 'review.html'}")
+        print("No model predictions, WSD assignments, release build, or activation was run.")
         return 0
     raise AssertionError(f"Unhandled pipeline command: {args.pipeline_command}")
 
