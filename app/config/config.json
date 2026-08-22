@@ -234,6 +234,8 @@
       "indexPath": "Data/French/vocabulary.index.json",
       "examplesPath": "Data/French/vocabulary.examples.json",
       "studyStructurePath": "Data/French/study-structure.json",
+      "releaseManifestPath": "Data/French/release-manifest.json",
+      "releaseCompositionPath": "Data/French/release-composition.json",
       "exampleTargetField": "example_french",
       "exampleEnglishField": "example_english",
       "hasData": true,

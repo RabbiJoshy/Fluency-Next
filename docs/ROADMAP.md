@@ -138,7 +138,10 @@ and debugging machinery while retaining explicit language adapters.
 
 ## Step 6 — Migrate Artist mode and shell mechanics
 
-**Status: not started.**
+**Status: full Artist data/release migration not started. The existing
+choose-your-own song picker is retained in the transplanted shell, and its
+per-user song plus artist selection contract is now forward-compatible with
+the shared Apps Script backend.**
 
 Bring Artist mode, artist-specific data and selection, playback/shell mechanics,
 and shared app integration into the clean release architecture. Artist mode is

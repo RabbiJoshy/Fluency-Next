@@ -32,15 +32,23 @@ APP_DATA_ROUTES = {
     "/Data/French/vocabulary.index.json": ("fr", "index_path"),
     "/Data/French/vocabulary.examples.json": ("fr", "examples_path"),
     "/Data/French/study-structure.json": ("fr", "study_structure_path"),
+    "/Data/French/release-manifest.json": ("fr", "__manifest__"),
+    "/Data/French/release-composition.json": ("fr", "__composition__"),
     "/Data/Spanish/vocabulary.index.json": ("es", "index_path"),
     "/Data/Spanish/vocabulary.examples.json": ("es", "examples_path"),
     "/Data/Spanish/study-structure.json": ("es", "study_structure_path"),
+    "/Data/Spanish/release-manifest.json": ("es", "__manifest__"),
+    "/Data/Spanish/release-composition.json": ("es", "__composition__"),
     "/Data/Dutch/vocabulary.index.json": ("nl", "index_path"),
     "/Data/Dutch/vocabulary.examples.json": ("nl", "examples_path"),
     "/Data/Dutch/study-structure.json": ("nl", "study_structure_path"),
+    "/Data/Dutch/release-manifest.json": ("nl", "__manifest__"),
+    "/Data/Dutch/release-composition.json": ("nl", "__composition__"),
     "/Data/Portuguese/vocabulary.index.json": ("pt", "index_path"),
     "/Data/Portuguese/vocabulary.examples.json": ("pt", "examples_path"),
     "/Data/Portuguese/study-structure.json": ("pt", "study_structure_path"),
+    "/Data/Portuguese/release-manifest.json": ("pt", "__manifest__"),
+    "/Data/Portuguese/release-composition.json": ("pt", "__composition__"),
 }
 SAFE_ACTIVE_RELEASE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
@@ -241,6 +249,10 @@ def resolve_active_app_asset(releases_directory: Path, request_path: str) -> Pat
         release_directory.relative_to(release_root.resolve())
     except ValueError:
         return release_root / ".invalid-active-app-asset"
+    if asset_field == "__manifest__":
+        return release_directory / "manifest.json"
+    if asset_field == "__composition__":
+        return release_directory / "composition.json"
     try:
         manifest = json.loads(
             (release_directory / "manifest.json").read_text(encoding="utf-8")

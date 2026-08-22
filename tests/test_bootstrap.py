@@ -185,6 +185,18 @@ class BootstrapTests(unittest.TestCase):
                 ).resolve(),
                 expected.resolve(),
             )
+            self.assertEqual(
+                resolve_active_app_asset(
+                    releases, "/Data/French/release-manifest.json"
+                ).resolve(),
+                (release / "manifest.json").resolve(),
+            )
+            self.assertEqual(
+                resolve_active_app_asset(
+                    releases, "/Data/French/release-composition.json"
+                ).resolve(),
+                (release / "composition.json").resolve(),
+            )
 
     def test_active_app_data_path_rejects_release_traversal(self) -> None:
         import json

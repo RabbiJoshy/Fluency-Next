@@ -1,7 +1,7 @@
 // Authentication, Google Sheets sync, and progress persistence.
 // Key functions: saveWordProgress(), loadUserProgressFromSheet(), submitLogin().
-import './state.js?v=20260822c';
-import { dbGet, dbPut } from './offline-db.js?v=20260822c';
+import './state.js?v=20260822e';
+import { dbGet, dbPut } from './offline-db.js?v=20260822e';
 // Offline-durable write path. sendOrQueue() write-throughs when online and
 // enqueues to IndexedDB when offline/failed. The overlay helpers keep
 // un-synced card and granular knowledge answers visible after a Sheets reload.
@@ -10,7 +10,17 @@ import {
     applyPendingProgressOverlay,
     applyPendingItemProgressOverlay,
     applyPendingMetaProgressOverlay
-} from './sync-queue.js?v=20260822c';
+} from './sync-queue.js?v=20260822e';
+
+const AUDIT_ACCOUNT_INITIALS = new Set(['JST', 'JSTA']);
+
+function isAuditAccount(user = currentUser) {
+    return Boolean(user && !user.isGuest && AUDIT_ACCOUNT_INITIALS.has(
+        String(user.initials || '').trim().toUpperCase()
+    ));
+}
+
+window.isAuditAccount = isAuditAccount;
 
 async function loadSecrets() {
     const controller = new AbortController();
@@ -820,14 +830,14 @@ async function saveWordProgress(card, isCorrect) {
 // Routes to a separate FlaggedWords sheet (auto-created by GAS) so it doesn't
 // pollute Progress.
 //
-// `fields` (optional) carries the flag-schema-v2 structured payload: stable
+// `fields` (optional) carries the structured flag payload: stable
 // target/category keys plus the individual sense/example attributes that used
-// to be readable only by parsing the rendered report text. A v2 backend writes
+// to be readable only by parsing the rendered report text. The current backend writes
 // each into its own column.
 //
 // Deploy-order safety: `word` keeps carrying the rendered report exactly as
 // before, so an un-redeployed v1 backend still records the full flag with
-// nothing lost. The v2 backend prefers `wordText` for the Word column and
+// nothing lost. The structured backend prefers `wordText` for the Word column and
 // treats `word` as the Report blob. Same for lastCorrect/lastWrong, which v1
 // overloads as fieldPath and flag timestamp.
 async function flagWord(card, fieldPath, fieldValue, fields = null) {
@@ -846,6 +856,44 @@ async function flagWord(card, fieldPath, fieldValue, fields = null) {
         : card.targetWord;
     const language = selectedLanguage;
     const timestamp = new Date().toISOString();
+    const release = window._activeReleaseProvenance || {};
+    const languageConfig = config?.languages?.[selectedLanguage] || {};
+    let provenance = {};
+    try {
+        provenance = fields?.provenanceJson ? JSON.parse(fields.provenanceJson) : {};
+    } catch (_) {
+        provenance = {};
+    }
+    provenance = {
+        schemaVersion: 1,
+        mode: activeArtist ? 'lyrics' : 'speech',
+        source: activeArtist
+            ? String(window._urlArtistSlug || getProgressSource() || activeArtist?.slug || '')
+            : 'speech',
+        language,
+        releaseId: release.releaseId || release.release_id || card.release_id || '',
+        artistSlugs: (window._activeSongSetArtistSlugs || window._selectedArtistSlugs || []).slice(),
+        assets: {
+            index: languageConfig.indexPath || languageConfig.dataPath || '',
+            examples: languageConfig.examplesPath || '',
+            master: languageConfig.masterPath || ''
+        },
+        layers: release.layers || {},
+        ...provenance
+    };
+    const structuredFields = {
+        mode: provenance.mode,
+        source: provenance.source,
+        releaseId: provenance.releaseId || '',
+        runId: provenance.runId || '',
+        runTimestamp: provenance.runTimestamp || '',
+        promptId: provenance.promptId || '',
+        model: provenance.model || '',
+        assignmentMethod: provenance.assignmentMethod || '',
+        ...(fields || {}),
+        schemaVersion: 3,
+        provenanceJson: JSON.stringify(provenance).slice(0, 20000)
+    };
 
     // Route through the offline-durable queue so flags raised offline aren't
     // lost. De-dupe on wordId (which already encodes the flagged field path):
@@ -859,11 +907,11 @@ async function flagWord(card, fieldPath, fieldValue, fields = null) {
         wordId: wordId,
         lastCorrect: fieldPath || '',
         lastWrong: timestamp,
-        // Flag schema v2 structured columns. Explicit fallbacks keep the row
+        // Flag schema v3 structured columns. Explicit fallbacks keep the row
         // populated when a caller has not been migrated to pass `fields`.
-        ...(fields || {}),
-        wordText: fields?.wordText || card.targetWord || '',
-        cardId: fields?.cardId || baseId || '',
+        ...structuredFields,
+        wordText: structuredFields.wordText || card.targetWord || '',
+        cardId: structuredFields.cardId || baseId || '',
         fieldPath: fieldPath || '',
         flaggedAt: timestamp,
         report: fieldValue !== undefined && fieldValue !== null ? String(fieldValue) : ''

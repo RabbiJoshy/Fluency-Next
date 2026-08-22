@@ -119,6 +119,14 @@
   Larger Lyrics functionality and compatibility for unmigrated languages are
   retained intentionally. Deferred cleanup is recorded without blocking the
   Spanish migration.
+- Gate 22 (audit identity and account memory): the transplanted app now reads
+  the active immutable release manifest and composition through uncached stable
+  aliases, and attaches the exact release, run, content and layer identity to
+  audit flags. `JSTA` shares JST's audit tools while retaining its own user
+  progress. Custom Lyrics selections retain both exact song IDs and their
+  contributing artist slugs. The shared local Apps Script contract remains in
+  the existing Fluency repository until backend migration and must be deployed
+  manually after changes.
 
 ## Not started
 
@@ -130,6 +138,7 @@
 - Release diagnostics and release-frozen resume behind the transplanted app.
 - Artist mode.
 
-No production system or existing Fluency repository has been modified. No old
+The existing Fluency repository's local Apps Script and matching client were
+updated for schema compatibility, but nothing was remotely deployed. No old
 French deck data is an input to the clean pipeline. The active local candidate
 uses the fresh Tatoeba run and makes no WSD or corpus-coverage claims.

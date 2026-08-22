@@ -104,7 +104,27 @@ class ProductShellTests(unittest.TestCase):
         worker = (APP_ROOT / "service-worker.js").read_text(encoding="utf-8")
         self.assertIn("vocabulary\\.(?:index|examples)", worker)
         self.assertIn("study-structure", worker)
+        self.assertIn("release-(?:manifest|composition)", worker)
         self.assertIn("cache: 'no-store'", worker)
+
+    def test_audit_accounts_and_flags_use_release_provenance(self) -> None:
+        auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
+        modals = (APP_ROOT / "js" / "flashcards-modals.js").read_text(encoding="utf-8")
+        config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))
+        self.assertIn("new Set(['JST', 'JSTA'])", auth)
+        self.assertIn("provenanceJson: JSON.stringify(provenance)", auth)
+        self.assertIn("function _flagRunProvenance", modals)
+        self.assertIn("Release ID:", modals)
+        self.assertEqual(
+            config["languages"]["french"]["releaseManifestPath"],
+            "Data/French/release-manifest.json",
+        )
+
+    def test_song_sets_retain_contributing_artist_slugs(self) -> None:
+        song_sets = (APP_ROOT / "js" / "song-sets.js").read_text(encoding="utf-8")
+        self.assertIn("function artistSlugsForSongs", song_sets)
+        self.assertIn("artistSlugs,", song_sets)
+        self.assertIn("remote.artistSlugs", song_sets)
 
     def test_pilot_interface_remains_a_readable_reference(self) -> None:
         reference = REPOSITORY_ROOT / "docs" / "reference" / "pilot-ui-v1.html"

@@ -1,23 +1,23 @@
 // Card rendering, flip, swipe, keyboard shortcuts.
 // Main function: updateCard() (~line 950) renders the current flashcard front + back.
 // Key exports: updateCard, flipCard, nextCard, handleSwipeAction, selectMeaning, cycleExample.
-import './state.js?v=20260822c';
-import './speech.js?v=20260822c';
+import './state.js?v=20260822e';
+import './speech.js?v=20260822e';
 import {
     collectRecentWrongWords,
     exampleReinforcesRecentMistake,
     filterPersonalisedExamples,
-} from './example-personalisation.js?v=20260822c';
+} from './example-personalisation.js?v=20260822e';
 import {
     parseSpanishDictUsageContext,
     spanishDictUsageCandidateForms,
-} from './spanishdict-usage.js?v=20260822c';
+} from './spanishdict-usage.js?v=20260822e';
 import {
     englishProductionCue,
     retainProductionPromptAttempt,
     selectReverseCueMeanings,
     splitProductionCloze,
-} from './reverse-cues.js?v=20260822c';
+} from './reverse-cues.js?v=20260822e';
 
 // --- Spanish rank lookup for personal easiness ---
 let _spanishRanks = null;  // word -> rank (loaded once)
@@ -2002,7 +2002,7 @@ function setupKeyboardShortcuts() {
 
         const commandModifier = e.ctrlKey || e.metaKey;
         const commandKey = String(e.key || '').toLowerCase();
-        const canFlag = Boolean(currentUser && !currentUser.isGuest && currentUser.initials === 'JST');
+        const canFlag = Boolean(window.isAuditAccount?.());
         if (commandModifier && !e.altKey && commandKey === 'i' && !e.shiftKey && isJstOwner()) {
             e.preventDefault();
             toggleProvenancePanel();
@@ -2982,7 +2982,7 @@ const PHRASE_SOURCE_PILLS = {
 };
 
 function phraseSourcePillHTML(item) {
-    if (!currentUser || currentUser.isGuest || currentUser.initials !== 'JST') return '';
+    if (!window.isAuditAccount?.()) return '';
     const raw = String(item?.source || '').trim().toLowerCase();
     if (!raw) return '';
     // Unknown/legacy tags render nothing rather than guessing. A wrong
@@ -3384,7 +3384,7 @@ function updateCard({ announceHeadword = false } = {}) {
     window._currentDisplayedExample = null;
     const reportShortcut = document.getElementById('cardMetaBtn');
     if (reportShortcut) {
-        const canReport = Boolean(currentUser && !currentUser.isGuest && currentUser.initials === 'JST');
+        const canReport = Boolean(window.isAuditAccount?.());
         const section = reportShortcut.closest('.kb-section');
         if (section) section.style.display = canReport ? '' : 'none';
     }
@@ -6058,7 +6058,7 @@ function confirmLeaveForSpanishDict(word, url) {
 }
 
 function isJstOwner() {
-    return Boolean(currentUser && !currentUser.isGuest && currentUser.initials === 'JST');
+    return Boolean(window.isAuditAccount?.());
 }
 
 function modelProposalMarkerHTML(meaning) {
@@ -6513,7 +6513,7 @@ window.dedupeExamples = dedupeExamples;
         if (!btn) return;
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (!currentUser || currentUser.isGuest || currentUser.initials !== 'JST') return;
+            if (!window.isAuditAccount?.()) return;
             window.showFlagMenu();
         });
     }
@@ -6591,7 +6591,7 @@ document.addEventListener('click', (e) => {
 // Keep this in lockstep with service-worker.js. These lazy modules own search
 // result cards and conjugation; a stale URL here can keep running an old modal
 // implementation even after the eagerly loaded app has updated.
-const ASSET_VERSION = '20260822c';
+const ASSET_VERSION = '20260822e';
 
 let _modalsModulePromise = null;
 const lazyModals = () => _modalsModulePromise || (_modalsModulePromise =

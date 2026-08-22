@@ -1,6 +1,6 @@
 // Setup panel UI: language tabs, stable level selector, and automatic set progress.
 // Key functions: renderLanguageTabs(), renderLevelSelector(), renderRangeSelector().
-import './state.js?v=20260822c';
+import './state.js?v=20260822e';
 
 const GLOBAL_STUDY_DEFAULTS_KEY = 'fluency_global_study_defaults_v1';
 let _setupLevelSelectionWasManual = false;
@@ -2192,7 +2192,7 @@ function showSettingsModalWithTab(tabName, { singleTab = false } = {}) {
     if (vocabularyImportButton) {
         vocabularyImportButton.hidden = !(currentUser && !currentUser.isGuest);
     }
-    const isJstAccount = Boolean(currentUser && currentUser.initials === 'JST');
+    const isJstAccount = Boolean(window.isAuditAccount?.());
     const appDataTabBtn = document.getElementById('appDataTabBtn');
     if (appDataTabBtn) appDataTabBtn.hidden = !isJstAccount;
 

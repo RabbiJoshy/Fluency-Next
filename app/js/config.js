@@ -1,9 +1,9 @@
-import './state.js?v=20260822c';
+import './state.js?v=20260822e';
 
 async function loadConfig() {
     try {
         const [configResponse, cefrResponse] = await Promise.all([
-            fetch('config/config.json?v=20260822c', { cache: 'no-store' }),
+            fetch('config/config.json?v=20260822e', { cache: 'no-store' }),
             fetch('config/cefr_levels.json')
         ]);
         config = await configResponse.json();
@@ -62,6 +62,7 @@ async function loadConfig() {
 
 async function loadReleaseStudyStructure(language) {
     releaseStudyStructure = null;
+    await loadReleaseProvenance(language);
     const path = config.languages[language]?.studyStructurePath;
     if (!path || activeArtist) return null;
     try {
@@ -75,6 +76,49 @@ async function loadReleaseStudyStructure(language) {
         return structure;
     } catch (error) {
         console.warn('Release study structure unavailable; using legacy levels:', error);
+        return null;
+    }
+}
+
+async function loadReleaseProvenance(language) {
+    window._activeReleaseProvenance = {};
+    const languageConfig = config.languages[language] || {};
+    const manifestPath = languageConfig.releaseManifestPath;
+    const compositionPath = languageConfig.releaseCompositionPath;
+    if (activeArtist || !manifestPath || !compositionPath) return null;
+    try {
+        const [manifestResponse, compositionResponse] = await Promise.all([
+            fetch(manifestPath, { cache: 'no-store' }),
+            fetch(compositionPath, { cache: 'no-store' })
+        ]);
+        if (!manifestResponse.ok || !compositionResponse.ok) {
+            throw new Error(`HTTP ${manifestResponse.status}/${compositionResponse.status}`);
+        }
+        const [manifest, composition] = await Promise.all([
+            manifestResponse.json(),
+            compositionResponse.json()
+        ]);
+        if (!manifest?.release_id || manifest.release_id !== composition?.release_id) {
+            throw new Error('release manifest/composition mismatch');
+        }
+        const runIds = [...new Set(Object.values(composition.layers || {})
+            .map(layer => layer?.source_id)
+            .filter(Boolean))];
+        window._activeReleaseProvenance = {
+            schemaVersion: 1,
+            releaseId: manifest.release_id,
+            createdAt: manifest.created_at || composition.created_at || '',
+            runId: runIds.length === 1 ? runIds[0] : '',
+            runIds,
+            deckContentId: manifest.deck_content_id || '',
+            compositionContentId: manifest.composition_content_id || '',
+            wsd: manifest.wsd || {},
+            layers: composition.layers || {},
+            omittedLayers: composition.omitted_layers || []
+        };
+        return window._activeReleaseProvenance;
+    } catch (error) {
+        console.warn('Release provenance unavailable; flags will retain card-level identity only:', error);
         return null;
     }
 }
@@ -252,5 +296,6 @@ window.loadConfig = loadConfig;
 window.getCefrLevels = getCefrLevels;
 window.loadPpmData = loadPpmData;
 window.loadReleaseStudyStructure = loadReleaseStudyStructure;
+window.loadReleaseProvenance = loadReleaseProvenance;
 window.recalculateCumulativePercents = recalculateCumulativePercents;
 window.getPercentageLevelRanges = getPercentageLevelRanges;
