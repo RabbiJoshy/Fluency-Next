@@ -8,10 +8,10 @@
   "source_policy": {"fresh_snapshots_only": true, "allow_legacy_inputs": false, "fallback_policy": "none"},
   "scope": {"surface_limit": 20, "examples_per_surface": 3, "shortfall_policy": "publish_explicit"},
   "inventory": {
-    "source_adapter": "spanish-surface-frequency/v1",
+    "source_adapter": "corpus-surface-frequency/v1",
     "language_policy": "es-v1",
-    "source_edition": "pending-explicit-source-approval",
-    "frequency_measure": "pending-explicit-source-approval",
+    "source_edition": "OpenSubtitles aligned en-es Spanish text",
+    "frequency_measure": "surface_token_occurrences_per_million",
     "output_schema": "surface-inventory/v1",
     "identity_unit": "surface",
     "lemma_role": "excluded"

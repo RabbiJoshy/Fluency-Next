@@ -140,7 +140,16 @@
   `sd-beto-cal-v5` method, source commit, Gemini/BETO/calibrator identities and
   held-out alignment result are captured in a blocked method profile. No old
   assignment, model asset, inventory, corpus stage or release was executed or
-  activated. The frequency source remains an explicit approval gate.
+  activated. Its explicit frequency-source gate is resolved by Gate 24.
+- Gate 24 (reusable corpus-frequency source): approved the pinned Spanish side
+  of aligned OpenSubtitles as the fresh Spanish Speech ranking source and added
+  a language-agnostic streaming compiler. It hashes raw bytes while counting,
+  reports progress every million lines, preserves accents and complete surface
+  forms, rejects configured markup/music/URL lines, and publishes a reusable
+  immutable ranked snapshot with explicit provenance and unknown license/URI
+  fields. Run-owned inventories consume that snapshot quickly, so the 2 GB
+  corpus is never rescanned for 20×3 and 200×3 separately. Fixture compilation
+  and Spanish inventory selection are tested; the real scan has not run.
 
 ## Not started
 
@@ -148,8 +157,9 @@
   through the immutable Stage 04 boundary.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
-- Fresh Spanish frequency-source approval, inventory adapter and 20×3/200×3
-  surface inventory runs. The legacy progress crosswalk itself is complete.
+- Real Spanish OpenSubtitles frequency compilation and the quick 20×3/200×3
+  surface inventory runs. The source and adapter are approved; the legacy
+  progress crosswalk itself is complete.
 - Release diagnostics and release-frozen resume behind the transplanted app.
 - Artist mode.
 

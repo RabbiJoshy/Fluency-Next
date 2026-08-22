@@ -78,8 +78,11 @@ class PipelinePlanningTests(unittest.TestCase):
         profile = load_pipeline_profile(SPANISH_PROFILE_PATH)
         self.assertEqual(profile["language"], "es")
         self.assertEqual(profile["identity"]["unit_type"], "surface")
-        self.assertEqual(profile["inventory"]["source_adapter"], "spanish-surface-frequency/v1")
-        self.assertEqual(profile["inventory"]["source_edition"], "pending-explicit-source-approval")
+        self.assertEqual(profile["inventory"]["source_adapter"], "corpus-surface-frequency/v1")
+        self.assertEqual(
+            profile["inventory"]["frequency_measure"],
+            "surface_token_occurrences_per_million",
+        )
         self.assertEqual(profile["sense_menu"]["source_adapter"], "spanishdict-sense-menu/v1")
         self.assertEqual(profile["sense_menu"]["source_edition"], "spanishdict-pinned-snapshot")
         self.assertEqual(profile["harvest"]["sources"], ["opensubtitles"])

@@ -14,6 +14,7 @@ from urllib.parse import unquote, urlsplit
 
 from fluency.core.workspace import Workspace
 from fluency.harvest.runner import harvest_run_stage
+from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
 from fluency.inventory.runner import build_inventory_stage
 from fluency.migration.legacy_identity import write_legacy_crosswalk
 from fluency.pipeline.planning import create_pipeline_plan, load_pipeline_profile
@@ -113,6 +114,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="workspace root (or set FLUENCY_WORKSPACE)",
     )
 
+    frequency = subparsers.add_parser(
+        "frequency", help="compile reusable, immutable surface-frequency snapshots"
+    )
+    frequency_actions = frequency.add_subparsers(
+        dest="frequency_command", required=True
+    )
+    compile_corpus = frequency_actions.add_parser(
+        "compile-corpus", help="stream one pinned text corpus into ranked surfaces"
+    )
+    compile_corpus.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    compile_corpus.add_argument("--language", required=True)
+    compile_corpus.add_argument("--corpus", type=Path, required=True)
+    compile_corpus.add_argument("--snapshot-id", required=True)
+    compile_corpus.add_argument("--provider", required=True)
+
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
     for action in ("list", "catalog"):
@@ -161,7 +179,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="explicit source snapshot inside workspace/raw; repeat for an explicit union",
     )
     pipeline_inventory = pipeline_actions.add_parser(
-        "inventory", help="build a surface-only inventory from one explicit frequency snapshot"
+        "inventory", help="build a surface-only inventory from one explicit ranked snapshot"
     )
     pipeline_inventory.add_argument(
         "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
@@ -171,7 +189,7 @@ def build_parser() -> argparse.ArgumentParser:
     pipeline_inventory.add_argument("--mode", default="speech")
     pipeline_inventory.add_argument(
         "--snapshot", type=Path, required=True,
-        help="Lexique 4 TSV snapshot inside workspace/raw",
+        help="ranked file or compiled snapshot directory inside workspace/raw",
     )
     pipeline_inventory.add_argument(
         "--snapshot-id", required=True,
@@ -356,6 +374,39 @@ def handle_release(args: argparse.Namespace) -> int:
     raise AssertionError(f"Unhandled release command: {args.release_command}")
 
 
+def handle_frequency(args: argparse.Namespace) -> int:
+    workspace = Workspace.load(_workspace_path(args.workspace))
+    if args.frequency_command == "compile-corpus":
+        def progress(state: dict[str, int]) -> None:
+            gib = state["source_bytes"] / (1024 ** 3)
+            print(
+                f"Scanned {state['source_lines']:,} lines / {gib:.2f} GiB; "
+                f"{state['total_tokens']:,} tokens; "
+                f"{state['unique_surfaces']:,} surfaces",
+                flush=True,
+            )
+
+        output = compile_corpus_frequency_snapshot(
+            project_root(),
+            workspace,
+            language=args.language,
+            corpus_path=args.corpus,
+            snapshot_id=args.snapshot_id,
+            provider=args.provider,
+            progress_callback=progress,
+        )
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        print(f"Compiled immutable corpus-frequency snapshot: {output}")
+        print(
+            f"Counted {manifest['total_tokens']:,} tokens across "
+            f"{manifest['source_lines']:,} lines and "
+            f"{manifest['unique_surfaces']:,} surfaces."
+        )
+        print("No pipeline run, WSD, release build, or activation was performed.")
+        return 0
+    raise AssertionError(f"Unhandled frequency command: {args.frequency_command}")
+
+
 def handle_pipeline(args: argparse.Namespace) -> int:
     workspace = Workspace.load(_workspace_path(args.workspace))
     if args.pipeline_command == "plan":
@@ -386,7 +437,8 @@ def handle_pipeline(args: argparse.Namespace) -> int:
         print(f"Completed immutable surface inventory: {output}")
         print(
             f"Selected {report['inventory_surfaces']} cards from "
-            f"{report['accepted_unique_surfaces']} ranked Lexique surfaces."
+            f"{report['accepted_unique_surfaces']} ranked surfaces "
+            f"({report['source_adapter']})."
         )
         print("No lemma data, sentence harvesting, WSD, release build, or activation was run.")
         return 0
@@ -574,6 +626,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handle_workspace(args.workspace_command, args.path)
     if args.command == "pilot":
         return handle_pilot(args.pilot_command, args.workspace)
+    if args.command == "frequency":
+        return handle_frequency(args)
     if args.command == "release":
         return handle_release(args)
     if args.command == "pipeline":

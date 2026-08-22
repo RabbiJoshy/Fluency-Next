@@ -15,7 +15,15 @@ from fluency.core.identity import build_card_id
 from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
 from fluency.inventory.config import load_inventory_language_policy
-from fluency.inventory.lexique import ADAPTER_ID, ranked_surfaces, read_lexique4
+from fluency.inventory.corpus_frequency import (
+    ADAPTER_ID as CORPUS_ADAPTER_ID,
+    load_corpus_frequency_snapshot,
+)
+from fluency.inventory.lexique import (
+    ADAPTER_ID as LEXIQUE_ADAPTER_ID,
+    ranked_surfaces,
+    read_lexique4,
+)
 from fluency.pipeline.planning import load_pipeline_profile
 from fluency.release.io import atomic_write, json_bytes
 
@@ -52,9 +60,14 @@ def _inside(path: Path, parent: Path) -> bool:
     return True
 
 
-def _implementation_content_id() -> str:
+def _implementation_content_id(adapter_id: str) -> str:
     package = Path(__file__).resolve().parent
-    paths = (Path(__file__).resolve(), package / "config.py", package / "lexique.py")
+    adapter_path = (
+        package / "lexique.py"
+        if adapter_id == LEXIQUE_ADAPTER_ID
+        else package / "corpus_frequency.py"
+    )
+    paths = (Path(__file__).resolve(), package / "config.py", adapter_path)
     return canonical_content_id(
         {str(path.relative_to(package.parent)): file_content_id(path) for path in paths}
     )
@@ -71,12 +84,10 @@ def build_inventory_stage(
     snapshot_id: str,
     started_at: datetime | None = None,
 ) -> Path:
-    """Build a run-owned surface inventory from one explicit Lexique 4 snapshot."""
+    """Build a run-owned surface inventory from one explicit ranked snapshot."""
 
     if not snapshot_id.strip():
         raise InventoryRunError("snapshot_id must be explicit and non-empty")
-    if language != "fr":
-        raise InventoryRunError("the installed Lexique adapter supports French only")
     started_at = datetime.now(UTC) if started_at is None else started_at
     run_directory = workspace.root / "runs" / language / mode / run_id
     manifest_path = run_directory / "manifest.json"
@@ -90,7 +101,8 @@ def build_inventory_stage(
     profile = load_pipeline_profile(run_directory / "profile.json")
     if profile["language"] != language or profile["mode"] != mode:
         raise InventoryRunError("run profile language or mode does not match")
-    if profile["inventory"]["source_adapter"] != ADAPTER_ID:
+    adapter_id = profile["inventory"]["source_adapter"]
+    if adapter_id not in {LEXIQUE_ADAPTER_ID, CORPUS_ADAPTER_ID}:
         raise InventoryRunError("no installed inventory adapter matches the run profile")
     language_policy = load_inventory_language_policy(
         repository_root,
@@ -109,9 +121,40 @@ def build_inventory_stage(
             "inventory output already exists; create a new run instead of overwriting it"
         )
 
-    source_content_id = file_content_id(resolved_snapshot)
-    result = read_lexique4(resolved_snapshot)
-    source_ranked = list(ranked_surfaces(result.frequencies))
+    if adapter_id == LEXIQUE_ADAPTER_ID:
+        if language != "fr" or not resolved_snapshot.is_file():
+            raise InventoryRunError("the Lexique adapter requires one French TSV snapshot")
+        result = read_lexique4(resolved_snapshot)
+        frequencies = result.frequencies
+        source_content_id = file_content_id(resolved_snapshot)
+        source_metrics = {
+            "source_rows": result.source_rows,
+            "rejected_empty_or_zero": result.rejected_empty_or_zero,
+            "rejected_surface_shape": result.rejected_surface_shape,
+            "duplicate_analysis_rows": result.duplicate_rows,
+        }
+        upstream_inputs: dict[str, str] = {}
+    else:
+        if not resolved_snapshot.is_dir():
+            raise InventoryRunError("the corpus adapter requires a compiled snapshot directory")
+        compiled = load_corpus_frequency_snapshot(
+            resolved_snapshot,
+            expected_language=language,
+            expected_snapshot_id=snapshot_id,
+        )
+        frequencies = compiled.frequencies
+        source_content_id = compiled.frequencies_content_id
+        source_metrics = {
+            "source_lines": compiled.manifest["source_lines"],
+            "accepted_lines": compiled.manifest["accepted_lines"],
+            "rejected_lines": compiled.manifest["rejected_lines"],
+            "source_tokens": compiled.manifest["total_tokens"],
+            "raw_corpus_content_id": compiled.manifest["source_content_id"],
+            "provenance_status": compiled.manifest["provenance_status"],
+            "license": compiled.manifest["license"],
+        }
+        upstream_inputs = {"raw_corpus": compiled.manifest["source_content_id"]}
+    source_ranked = list(ranked_surfaces(frequencies))
     exclusions = language_policy["surface_exclusions"]
     excluded = [
         {
@@ -148,15 +191,13 @@ def build_inventory_stage(
     }
     report = {
         "report_version": "inventory-report/v1",
-        "source_adapter": ADAPTER_ID,
+        "source_adapter": adapter_id,
         "snapshot_id": snapshot_id,
         "snapshot_content_id": source_content_id,
-        "source_rows": result.source_rows,
         "accepted_unique_surfaces": len(ranked),
         "inventory_surfaces": len(inventory_cards),
-        "rejected_empty_or_zero": result.rejected_empty_or_zero,
-        "rejected_surface_shape": result.rejected_surface_shape,
-        "duplicate_analysis_rows": result.duplicate_rows,
+        "frequency_measure": profile["inventory"]["frequency_measure"],
+        **source_metrics,
         "language_policy": language_policy["policy_id"],
         "excluded_surfaces": excluded,
         "identity_fields": ["language", "surface_key"],
@@ -167,16 +208,16 @@ def build_inventory_stage(
         ],
     }
     config = {
-        "source_adapter": ADAPTER_ID,
+        "source_adapter": adapter_id,
         "language": language,
         "surface_limit": surface_limit,
         "card_identity": "surface-card/v1",
-        "frequency_measure": "Lexique 4 FreqOrtho",
+        "frequency_measure": profile["inventory"]["frequency_measure"],
         "language_policy": language_policy,
         "fallback_policy": "none",
     }
-    inputs = {"frequency_snapshot": source_content_id}
-    implementation_content_id = _implementation_content_id()
+    inputs = {"frequency_snapshot": source_content_id, **upstream_inputs}
+    implementation_content_id = _implementation_content_id(adapter_id)
     config_content_id = canonical_content_id(config)
     temporary_root = workspace.root / ".fluency" / "temporary"
     temporary = Path(tempfile.mkdtemp(prefix="inventory-", dir=temporary_root))

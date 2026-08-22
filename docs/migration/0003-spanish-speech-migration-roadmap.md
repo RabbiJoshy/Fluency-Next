@@ -165,9 +165,9 @@ Planning a run must create only the immutable skeleton and execute no stage.
 
 Implemented as shared configuration boundaries under `config/inventory/`,
 `config/languages/es/`, `config/harvest/`, `config/sense_menu/`, `config/wsd/`
-and `config/pipelines/es/speech/`. The Spanish profiles deliberately retain
-`pending-explicit-source-approval` for inventory ranking and
-`blocked_pending_assets` for WSD. These are visible gates, not fallbacks. The
+and `config/pipelines/es/speech/`. The Spanish profiles deliberately retained
+an explicit inventory-source gate until OpenSubtitles was approved in Phase 3,
+and retain `blocked_pending_assets` for WSD. These are visible gates, not fallbacks. The
 current `sd-beto-cal-v5` method is identified at its audited source commit, but
 no historical assignment is referenced and no model asset is claimed runnable
 until its immutable migration is complete.
@@ -177,11 +177,19 @@ identity, legacy inputs, fallback and automatic activation.
 
 ### Phase 3 — Fresh Spanish surface inventory
 
-**Owner:** Codex builds adapter; Josh runs a full scan if slow.
+**Owner:** Codex builds adapter; Josh runs the full scan. **Status:** shared
+streaming adapter complete; approved OpenSubtitles scan pending.
 
 Choose and pin the authoritative Spanish Speech frequency snapshot. Do not trust
 the filename `SpanishRawWiki.csv`: its values currently mirror subtitle-style
 counts, so its actual lineage must be established before reuse.
+
+Decision: derive surface frequency directly from the pinned 61,434,251-line
+Spanish side of the aligned OpenSubtitles corpus. The shared compiler hashes
+the corpus while counting it, preserves observed source metadata, records
+unknown license/URI fields honestly, and writes one immutable ranked snapshot.
+The expensive corpus is scanned once; both the 20-card and 200-card runs consume
+the compiled snapshot without recounting it.
 
 Run 20 surfaces first, then 200. Emit ranked surfaces, frequencies, exclusions,
 normalization evidence and the legacy-ID crosswalk. Lemmas from the old CSV may
