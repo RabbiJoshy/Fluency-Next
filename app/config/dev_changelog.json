@@ -1,0 +1,15 @@
+{
+  "_readme": "User-visible changes in the replacement app, newest first.",
+  "entries": [
+    {
+      "date": "2026-08-22",
+      "commit": "pending",
+      "summary": "The existing Fluency app surface now runs against the clean release architecture",
+      "detail": [
+        "The interface and active-set experience are transplanted from the existing app.",
+        "French data is mounted from one explicitly active immutable release.",
+        "No historical French sentences or WSD assignments are bundled in the code repository."
+      ]
+    }
+  ]
+}

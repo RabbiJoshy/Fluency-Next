@@ -1,0 +1,1593 @@
+// Authentication, Google Sheets sync, and progress persistence.
+// Key functions: saveWordProgress(), loadUserProgressFromSheet(), submitLogin().
+import './state.js?v=20260819b';
+import { dbGet, dbPut } from './offline-db.js?v=20260819b';
+// Offline-durable write path. sendOrQueue() write-throughs when online and
+// enqueues to IndexedDB when offline/failed. The overlay helpers keep
+// un-synced card and granular knowledge answers visible after a Sheets reload.
+import {
+    sendOrQueue,
+    applyPendingProgressOverlay,
+    applyPendingItemProgressOverlay,
+    applyPendingMetaProgressOverlay
+} from './sync-queue.js?v=20260819b';
+
+async function loadSecrets() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    try {
+        const response = await fetch('backend/secrets.json', { signal: controller.signal });
+        if (response.ok) {
+            const secrets = await response.json();
+            GOOGLE_SCRIPT_URL = secrets.googleScriptUrl || '';
+            window._spotifyClientId = secrets.spotifyClientId || '';
+        }
+    } catch (error) {
+        console.warn('Could not load backend/secrets.json - Google Sheets sync will be disabled');
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+// Detect whether this page load is a reload (F5 / Cmd-R) versus a fresh
+// navigation (link click, mode switch to ?artist=..., new tab). Uses the
+// modern Navigation Timing API with a fallback to the deprecated
+// performance.navigation interface for older browsers.
+function _isPageReload() {
+    try {
+        const nav = performance.getEntriesByType('navigation')[0];
+        if (nav && nav.type) return nav.type === 'reload';
+    } catch (_) {}
+    if (performance && performance.navigation) {
+        return performance.navigation.type === 1;  // TYPE_RELOAD
+    }
+    return false;
+}
+
+// Check authentication on page load.
+//
+// Named users persist in localStorage — survive across browser sessions.
+// Guest users persist in sessionStorage but ONLY across same-tab
+// navigations (mode switch, artist switch). A user-initiated reload
+// explicitly drops the guest session, so refreshing always surfaces the
+// landing — useful for Josh's testing and for any visitor who wants to
+// see the landing again without closing the tab.
+//
+// Summary of cases:
+//   - refresh (F5/Cmd-R)   → clear guest session → landing
+//   - mode/artist switch   → keep guest session → app, no landing
+//   - new tab at app URL   → no session → landing
+//   - new tab at ?about=1  → no session → landing + About on top
+//   - named user, any case → logged in (localStorage)
+function checkAuthentication() {
+    // User-initiated refresh should drop guest mode so the landing reappears.
+    if (_isPageReload()) {
+        sessionStorage.removeItem('flashcardGuestSession');
+    }
+
+    const savedUser = localStorage.getItem('flashcardUser');
+    if (savedUser) {
+        try {
+            const parsed = JSON.parse(savedUser);
+            if (parsed && parsed.isGuest) {
+                localStorage.removeItem('flashcardUser');  // legacy cleanup
+            } else if (parsed) {
+                currentUser = parsed;
+                showUserInfo();
+                hideAuthModal();
+                return;
+            }
+        } catch (e) {
+            localStorage.removeItem('flashcardUser');
+        }
+    }
+    // Tab-scoped guest session: survives same-tab navigations (mode/artist
+    // switches) but was just cleared above if this load is a reload.
+    if (sessionStorage.getItem('flashcardGuestSession') === '1') {
+        currentUser = { isGuest: true };
+        showUserInfo();
+        hideAuthModal();
+        return;
+    }
+    showAuthModal();
+}
+
+// Show authentication modal
+function showAuthModal() {
+    const authModal = document.getElementById('authModal');
+    // Authentication is the fail-open boot surface. If configuration or an
+    // imported feature stalls, never leave the visual watchdog's loading
+    // layer above a modal whose controls should already be usable.
+    window.hideAppLoading?.();
+    document.body.classList.add('auth-active');
+    hideLoginForm();
+    authModal.classList.remove('hidden');
+    document.getElementById('setupPanel').style.display = 'none';
+}
+
+// Hide authentication modal
+function hideAuthModal() {
+    const authModal = document.getElementById('authModal');
+    authModal.classList.add('hidden');
+    document.body.classList.remove('auth-active');
+    document.getElementById('setupPanel').style.display = 'block';
+}
+
+// Show user info badge — no longer unhides #userInfo here;
+// the floating toolbar is shown/hidden by showFloatingBtns() in flashcard mode.
+function showUserInfo() {
+}
+
+// Guest mode handler.
+//
+// Writes a sessionStorage marker so guest state survives same-tab
+// navigations (mode switch → ?artist=..., artist swap, etc.) but NOT a
+// user-initiated refresh. The refresh distinction is enforced in
+// checkAuthentication() via the Navigation Timing API — so refreshing
+// always surfaces the landing, while clicking "Normal mode" from the top
+// bar keeps you in the app as guest.
+//
+// Progress is still never persisted for guests.
+function enterGuestMode() {
+    currentUser = { isGuest: true };
+    sessionStorage.setItem('flashcardGuestSession', '1');
+    showUserInfo();
+    hideAuthModal();
+    updateIncorrectButtonVisibility();
+}
+
+// Show login form
+function showLoginForm() {
+    document.getElementById('guestModeBtn').style.display = 'none';
+    document.getElementById('loginModeRow').style.display = 'none';
+    document.getElementById('aboutProjectBtn').style.display = 'none';
+    document.getElementById('loginInfoNote').classList.add('hidden');
+    document.querySelector('#authModal .auth-modal-content')?.classList.add('is-login-form');
+    document.getElementById('loginForm').classList.remove('hidden');
+    document.getElementById('userInitials').focus();
+}
+
+// Hide login form
+function hideLoginForm() {
+    document.getElementById('guestModeBtn').style.display = 'flex';
+    document.getElementById('loginModeRow').style.display = 'flex';
+    document.getElementById('aboutProjectBtn').style.display = '';
+    document.querySelector('#authModal .auth-modal-content')?.classList.remove('is-login-form');
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('userInitials').value = '';
+}
+
+// Submit initials and login
+async function submitLogin() {
+    const initials = document.getElementById('userInitials').value.trim().toUpperCase();
+
+    if (initials.length < 2 || initials.length > 4 || !/^[A-Z]+$/.test(initials)) {
+        alert('Please enter 2-4 letters (A-Z only)');
+        return;
+    }
+
+    currentUser = { initials: initials, isGuest: false };
+    localStorage.setItem('flashcardUser', JSON.stringify(currentUser));
+    showUserInfo();
+    hideAuthModal();
+
+    // Load user progress from Google Sheets
+    await loadUserProgressFromSheet();
+}
+
+// Logout handler. Guests skip the confirm (nothing to lose); named users get
+// the prompt since they might have unsaved progress in flight.
+function logout() {
+    const isGuest = currentUser?.isGuest;
+    if (!isGuest && !confirm('Are you sure you want to logout? Unsaved progress will be lost.')) {
+        return;
+    }
+
+    if (currentUser?.initials) {
+        localStorage.removeItem(`progress_cache_${currentUser.initials}`);
+    }
+    localStorage.removeItem('flashcardUser');
+    // Clean the legacy sessionStorage guest marker too, in case it's lingering.
+    sessionStorage.removeItem('flashcardGuestSession');
+    currentUser = null;
+    progressData = {};
+    itemProgressData = {};
+    levelEstimates = {};
+    markedDoneLevels = {};
+    document.getElementById('userInfo').classList.add('hidden');
+
+    // Reset app state
+    flashcards = [];
+    currentIndex = 0;
+    stats = {
+        studied: new Set(),
+        correct: 0,
+        incorrect: 0,
+        total: 0,
+        cardStats: {}
+    };
+
+    // Hide app content and show auth modal
+    document.getElementById('appContent').classList.add('hidden');
+    showAuthModal();
+}
+
+// ========== ID MIGRATION (one-time) ==========
+
+// Migrate localStorage progress from old rank-based IDs to new md5-based IDs
+async function migrateLocalStorageIds() {
+    if (localStorage.getItem('id_migration_v1') === 'done') return;
+
+    const key = 'flashcard_progress_guest';
+    const guestProgress = JSON.parse(localStorage.getItem(key) || '{}');
+    if (Object.keys(guestProgress).length === 0) {
+        localStorage.setItem('id_migration_v1', 'done');
+        return;
+    }
+
+    // Determine which languages have progress (from the 2-char prefix of fullIds)
+    const langMap = { es: 'Spanish', sv: 'Swedish', it: 'Italian', nl: 'Dutch', pl: 'Polish' };
+    const neededLangs = new Set();
+    for (const fullId of Object.keys(guestProgress)) {
+        const prefix = fullId.slice(0, 2);
+        if (langMap[prefix]) neededLangs.add(prefix);
+    }
+
+    // Load migration mappings for needed languages
+    const mappings = {};
+    for (const prefix of neededLangs) {
+        const lang = langMap[prefix];
+        try {
+            const resp = await fetch(`Data/${lang}/id_migration.json`);
+            if (resp.ok) mappings[prefix] = await resp.json();
+        } catch (e) {
+            console.warn(`Could not load ID migration for ${lang}:`, e);
+        }
+    }
+
+    // Remap keys
+    const migrated = {};
+    let remapped = 0;
+    for (const [fullId, data] of Object.entries(guestProgress)) {
+        const prefix = fullId.slice(0, 2);
+        const mode = fullId[2];
+        const oldHex = fullId.slice(3);
+        const mapping = mappings[prefix];
+
+        if (mapping && mode === '0' && mapping[oldHex]) {
+            const newFullId = prefix + mode + mapping[oldHex];
+            migrated[newFullId] = data;
+            remapped++;
+        } else {
+            migrated[fullId] = data; // keep as-is (artist mode IDs unchanged, or no mapping)
+        }
+    }
+
+    if (remapped > 0) {
+        localStorage.setItem(key, JSON.stringify(migrated));
+        console.log(`Migrated ${remapped} localStorage progress IDs`);
+    }
+    localStorage.setItem('id_migration_v1', 'done');
+}
+
+// Migrate localStorage progress through Data/{Lang}/id_migration.json.
+//
+// v3 carries speech mode from word|lemma card IDs to surface-form IDs. The map
+// is composed, so a learner still sitting on a pre-clitic ID resolves to its
+// final surface ID in this single lookup.
+//
+// This is NOT idempotent and the flag version is what enforces once-only. Some
+// new surface IDs are themselves old word|lemma IDs, so a second pass would
+// remap an already-migrated card onto a different word. Never reuse a flag
+// version to re-run a migration; add the next one.
+async function migrateLocalStorageIdsV2() {
+    if (localStorage.getItem('id_migration_v3') === 'done') return;
+
+    const key = 'flashcard_progress_guest';
+    const guestProgress = JSON.parse(localStorage.getItem(key) || '{}');
+    if (Object.keys(guestProgress).length === 0) {
+        localStorage.setItem('id_migration_v3', 'done');
+        return;
+    }
+
+    const langMap = { es: 'Spanish', sv: 'Swedish', it: 'Italian', nl: 'Dutch', pl: 'Polish' };
+    const neededLangs = new Set();
+    for (const fullId of Object.keys(guestProgress)) {
+        const prefix = fullId.slice(0, 2);
+        if (langMap[prefix]) neededLangs.add(prefix);
+    }
+
+    const mappings = {};
+    for (const prefix of neededLangs) {
+        const lang = langMap[prefix];
+        try {
+            const resp = await fetch(`Data/${lang}/id_migration.json`);
+            if (resp.ok) mappings[prefix] = await resp.json();
+        } catch (e) {
+            console.warn(`Could not load ID migration for ${lang}:`, e);
+        }
+    }
+
+    const migrated = {};
+    let remapped = 0;
+    for (const [fullId, data] of Object.entries(guestProgress)) {
+        const prefix = fullId.slice(0, 2);
+        const mode = fullId[2];
+        const oldHex = fullId.slice(3);
+        const mapping = mappings[prefix];
+
+        if (mapping && mode === '0' && mapping[oldHex]) {
+            const newFullId = prefix + mode + mapping[oldHex];
+            migrated[newFullId] = data;
+            remapped++;
+        } else {
+            migrated[fullId] = data;
+        }
+    }
+
+    if (remapped > 0) {
+        localStorage.setItem(key, JSON.stringify(migrated));
+        console.log(`Migrated ${remapped} localStorage progress IDs (4-char → 6-char)`);
+    }
+    localStorage.setItem('id_migration_v3', 'done');
+}
+
+// ========== GOOGLE SHEETS INTEGRATION ==========
+
+function getProgressMode() {
+    return activeArtist ? 'artist' : 'normal';
+}
+
+function getProgressSheetName() {
+    if (progressBackendSchemaVersion >= 4) return 'Progress';
+    return activeArtist ? 'Lyrics' : 'UserProgress';
+}
+
+function getProgressSource(options = {}) {
+    const mode = options.mode || getProgressMode();
+    if (mode !== 'artist' && mode !== 'lyrics') return 'speech';
+    if (options.source) return String(options.source);
+    const slugs = (options.artistSlugs || window._selectedArtistSlugs || [])
+        .filter(Boolean)
+        .map(String)
+        .sort();
+    if (slugs.length > 0) return slugs.join('+');
+    if (options.artistSlug || window._urlArtistSlug) {
+        return String(options.artistSlug || window._urlArtistSlug);
+    }
+    return String(activeArtist?.name || 'artist')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+}
+
+// Stable suggestion scope. Word and sense progress remains shared across
+// artist catalogues as before; only routing metadata needs the source slug.
+function getProgressScopeKey(options = {}) {
+    const rawMode = options.mode || getProgressMode();
+    const mode = rawMode === 'lyrics' ? 'artist' : rawMode === 'speech' ? 'normal' : rawMode;
+    const language = options.language || selectedLanguage || 'unknown';
+    const source = mode === 'artist' ? getProgressSource({ ...options, mode }) : 'speech';
+    return `${mode}|${language}|${source}`;
+}
+
+function isLevelMarkedDone(levelId, scopeKey = getProgressScopeKey()) {
+    return !!(levelId && markedDoneLevels?.[scopeKey]?.[levelId]);
+}
+
+const PROGRESS_CACHE_DELAY_MS = 750;
+let progressCacheTimer = null;
+let progressCacheIdleHandle = null;
+let progressCacheWrite = Promise.resolve();
+
+function flushProgressCache() {
+    if (progressCacheTimer !== null) clearTimeout(progressCacheTimer);
+    if (progressCacheIdleHandle !== null && window.cancelIdleCallback) {
+        window.cancelIdleCallback(progressCacheIdleHandle);
+    }
+    progressCacheTimer = null;
+    progressCacheIdleHandle = null;
+    if (!currentUser || currentUser.isGuest) return;
+    const record = {
+        key: `progress|${currentUser.initials}`,
+        progress: progressData,
+        itemProgress: itemProgressData,
+        estimates: levelEstimates,
+        doneLevels: markedDoneLevels,
+        backendSchema: progressBackendSchemaVersion >= 4 ? progressBackendSchemaVersion : 0,
+        updatedAt: Date.now()
+    };
+    // Serialize once per answer burst, outside the tap/swipe handler. IndexedDB
+    // writes are kept in order so an earlier slow transaction cannot overwrite
+    // a newer snapshot.
+    progressCacheWrite = progressCacheWrite
+        .then(() => dbPut('localState', record))
+        .catch(error => console.warn('Could not persist local progress to IndexedDB', error));
+    try {
+        localStorage.setItem(`progress_cache_${currentUser.initials}`, JSON.stringify({
+            progress: record.progress, itemProgress: record.itemProgress,
+            estimates: record.estimates, doneLevels: record.doneLevels,
+            backendSchema: record.backendSchema
+        }));
+    } catch (_) {
+        // Cache is best-effort; the durable queue still owns remote writes.
+    }
+}
+
+function cacheProgressLocally({ immediate = false } = {}) {
+    if (!currentUser || currentUser.isGuest) return;
+    if (immediate) {
+        flushProgressCache();
+        return;
+    }
+    if (progressCacheTimer !== null || progressCacheIdleHandle !== null) return;
+    if (window.requestIdleCallback) {
+        progressCacheIdleHandle = window.requestIdleCallback(
+            () => flushProgressCache(),
+            { timeout: PROGRESS_CACHE_DELAY_MS }
+        );
+    } else {
+        progressCacheTimer = setTimeout(flushProgressCache, PROGRESS_CACHE_DELAY_MS);
+    }
+}
+
+window.addEventListener('pagehide', flushProgressCache);
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushProgressCache();
+});
+
+// Setup renders immediately from the local cache while Sheets refreshes in
+// the background. Compare the actual UI-driving state after that refresh — a
+// row-count comparison misses the common case where an existing card changes
+// from unseen/review to known and leaves the set picker stale.
+function getProgressUiFingerprint() {
+    return JSON.stringify({
+        progress: progressData || {},
+        itemProgress: itemProgressData || {},
+        estimates: levelEstimates || {},
+        doneLevels: markedDoneLevels || {}
+    });
+}
+
+async function detectProgressBackendSchema() {
+    try {
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'capabilities' })
+        });
+        const result = await response.json();
+        const version = Number(result?.data?.schemaVersion) || 0;
+        progressBackendSchemaVersion = result?.success && version >= 4 ? version : 3;
+    } catch (_) {
+        progressBackendSchemaVersion = 3;
+    }
+    return progressBackendSchemaVersion;
+}
+
+async function loadLegacyProgress(cacheKey, cached) {
+    const fetchSheet = sheet => fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'load', user: currentUser.initials, sheet })
+    }).then(response => response.json()).catch(() => null);
+    const [normalResult, artistResult, itemResult] = await Promise.all([
+        fetchSheet('UserProgress'),
+        fetchSheet('Lyrics'),
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'loadItems', user: currentUser.initials })
+        }).then(response => response.json()).catch(() => null)
+    ]);
+    if (!normalResult?.success && !artistResult?.success) {
+        applyPendingProgressOverlay(progressData);
+        applyPendingItemProgressOverlay(itemProgressData);
+        applyPendingMetaProgressOverlay(levelEstimates, markedDoneLevels);
+        return false;
+    }
+
+    const previousUiState = getProgressUiFingerprint();
+    progressData = {};
+    const mergeWords = result => {
+        if (!result?.success || !Array.isArray(result.data?.progress)) return;
+        result.data.progress.forEach(item => {
+            progressData[item.wordId] = {
+                word: item.word,
+                language: item.language,
+                correct: item.correct,
+                wrong: item.wrong,
+                lastCorrect: item.lastCorrect,
+                lastWrong: item.lastWrong,
+                lastSeen: item.lastSeen,
+                srsStage: item.srsStage
+            };
+        });
+    };
+    mergeWords(normalResult);
+    mergeWords(artistResult);
+    if (itemResult?.success && Array.isArray(itemResult.data?.items)) {
+        itemProgressData = {};
+        itemResult.data.items.forEach(item => {
+            itemProgressData[item.itemId] = { ...item };
+        });
+    }
+    levelEstimates = {
+        ...(artistResult?.data?.levelEstimates || {}),
+        ...(normalResult?.data?.levelEstimates || {})
+    };
+    applyPendingProgressOverlay(progressData);
+    applyPendingItemProgressOverlay(itemProgressData);
+    applyPendingMetaProgressOverlay(levelEstimates, markedDoneLevels);
+    updateIncorrectButtonVisibility();
+    updateTotalStatsButtonVisibility();
+    cacheProgressLocally();
+    return getProgressUiFingerprint() !== previousUiState || !cached;
+}
+
+function markedDoneFromMeta(metaRows) {
+    const result = {};
+    for (const row of metaRows || []) {
+        if (row?.metaKey !== 'level-done') continue;
+        const scope = getProgressScopeKey({
+            mode: row.mode,
+            source: row.source,
+            language: row.language
+        });
+        if (!result[scope]) result[scope] = {};
+        const enabled = row.value === true || row.value === 1 || row.value === '1'
+            || String(row.value).toLowerCase() === 'true';
+        if (enabled) result[scope][row.metaId] = true;
+    }
+    return result;
+}
+
+async function saveMarkedLevelDone(levelId, done) {
+    if (!levelId || !currentUser || currentUser.isGuest) return false;
+    const mode = getProgressMode();
+    const source = getProgressSource({ mode });
+    const scopeKey = getProgressScopeKey({ mode, source, language: selectedLanguage });
+    const nextScope = { ...(markedDoneLevels?.[scopeKey] || {}) };
+    if (done) nextScope[levelId] = true;
+    else delete nextScope[levelId];
+    markedDoneLevels = { ...(markedDoneLevels || {}), [scopeKey]: nextScope };
+    cacheProgressLocally();
+    return sendOrQueue({
+        action: 'saveMeta',
+        sheet: 'Progress',
+        user: currentUser.initials,
+        metaKey: 'level-done',
+        metaId: levelId,
+        mode,
+        source,
+        scopeKey,
+        language: selectedLanguage,
+        value: done ? 1 : 0,
+        lastSeen: new Date().toISOString()
+    }, `meta|level-done|${currentUser.initials}|${scopeKey}|${levelId}`);
+}
+
+// Load unified Google Sheets progress while retaining cross-mode sharing.
+// Loads from localStorage cache first (instant), then refreshes from Sheets.
+// Returns true if the Sheets fetch brought different data than the cache.
+async function loadUserProgressFromSheet() {
+    if (!currentUser || currentUser.isGuest) return false;
+
+    const applyCachedProgress = raw => {
+        if (!raw) return false;
+        try {
+            const { progress, itemProgress, estimates, doneLevels, backendSchema } =
+                typeof raw === 'string' ? JSON.parse(raw) : raw;
+            progressData = progress || {};
+            itemProgressData = itemProgress || {};
+            levelEstimates = estimates || {};
+            markedDoneLevels = doneLevels || {};
+            progressBackendSchemaVersion = Number(backendSchema) >= 4 ? Number(backendSchema) : 0;
+            updateIncorrectButtonVisibility();
+            updateTotalStatsButtonVisibility();
+            return true;
+        } catch (error) {
+            console.warn('Failed to parse progress cache:', error);
+            return false;
+        }
+    };
+
+    // 1. Apply localStorage synchronously before the first await so initial
+    // setup routing cannot briefly choose Level 1 from empty progress. Then
+    // prefer the durable IndexedDB snapshot when it becomes available.
+    const cacheKey = `progress_cache_${currentUser.initials}`;
+    let cached = localStorage.getItem(cacheKey);
+    if (applyCachedProgress(cached)) {
+        console.log(`Loaded ${Object.keys(progressData).length} cached card entries and ${Object.keys(itemProgressData).length} knowledge items`);
+    }
+    try {
+        const durable = await dbGet('localState', `progress|${currentUser.initials}`);
+        if (durable) {
+            cached = JSON.stringify(durable);
+            applyCachedProgress(durable);
+        }
+    } catch (_) {}
+
+    // Authentication and local studying never wait for the optional remote
+    // endpoint. loadSecrets() may still be resolving, or the app may have
+    // launched entirely offline; the durable queue will reconcile later.
+    if (!GOOGLE_SCRIPT_URL) return false;
+
+    // Confirm v4 before addressing Progress directly. Cached/older clients
+    // continue through the legacy names, which v4 maps into Progress; this
+    // prevents a half-deployed frontend from creating a stray Progress tab on
+    // the still-live v3 backend.
+    await detectProgressBackendSchema();
+    if (progressBackendSchemaVersion < 4) {
+        return loadLegacyProgress(cacheKey, cached);
+    }
+
+    // 2. Fetch fresh data from the single Progress tab. Word IDs still carry
+    // the normal/artist bit, so one all-mode load preserves the old sharing.
+    try {
+        const [progressResult, itemResult] = await Promise.all([
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'load',
+                    sheet: 'Progress',
+                    mode: 'all',
+                    user: currentUser.initials
+                })
+            }).then(r => r.json()).catch(() => null),
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'loadItems',
+                    sheet: 'Progress',
+                    mode: 'all',
+                    user: currentUser.initials
+                })
+            }).then(r => r.json()).catch(() => null)
+        ]);
+
+        // The unified load failed (offline, or endpoint unreachable). Keep the
+        // cached progressData loaded in step 1 rather than wiping it to empty —
+        // then overlay any writes still queued locally so freshly-answered
+        // offline cards remain visible. Returning false leaves the UI on cache.
+        if (!progressResult?.success) {
+            applyPendingProgressOverlay(progressData);
+            applyPendingItemProgressOverlay(itemProgressData);
+            applyPendingMetaProgressOverlay(levelEstimates, markedDoneLevels);
+            updateIncorrectButtonVisibility();
+            updateTotalStatsButtonVisibility();
+            return false;
+        }
+
+        const previousUiState = getProgressUiFingerprint();
+        progressData = {};
+
+        if (progressResult?.success && Array.isArray(progressResult.data?.progress)) {
+            progressResult.data.progress.forEach(item => {
+                progressData[item.wordId] = {
+                    word: item.word,
+                    language: item.language,
+                    correct: item.correct,
+                    wrong: item.wrong,
+                    lastCorrect: item.lastCorrect,
+                    lastWrong: item.lastWrong,
+                    lastSeen: item.lastSeen,
+                    srsStage: item.srsStage
+                };
+            });
+            console.log(`Loaded ${progressResult.data.progress.length} unified card progress rows`);
+        }
+
+        if (itemResult?.success && Array.isArray(itemResult.data?.items)) {
+            itemProgressData = {};
+            itemResult.data.items.forEach(item => {
+                itemProgressData[item.itemId] = {
+                    itemId: item.itemId,
+                    parentWordId: item.parentWordId,
+                    itemType: item.itemType,
+                    label: item.label,
+                    language: item.language,
+                    correct: item.correct,
+                    wrong: item.wrong,
+                    lastCorrect: item.lastCorrect,
+                    lastWrong: item.lastWrong,
+                    lastSeen: item.lastSeen,
+                    schemaVersion: item.schemaVersion || 1,
+                    srsStage: item.srsStage
+                };
+            });
+            console.log(`Loaded ${Object.keys(itemProgressData).length} granular knowledge items`);
+        }
+
+        levelEstimates = progressResult?.success
+            ? (progressResult.data?.levelEstimates || {})
+            : levelEstimates;
+        markedDoneLevels = progressResult?.success
+            ? markedDoneFromMeta(progressResult.data?.meta)
+            : markedDoneLevels;
+
+        // Overlay any still-queued (un-synced) local writes on top of the
+        // freshly-loaded sheet data — those answers are newer than what Sheets
+        // knows, so a reconnect reload must not visually regress them.
+        applyPendingProgressOverlay(progressData);
+        applyPendingItemProgressOverlay(itemProgressData);
+        applyPendingMetaProgressOverlay(levelEstimates, markedDoneLevels);
+
+        updateIncorrectButtonVisibility();
+        updateTotalStatsButtonVisibility();
+
+        // 3. Update cache
+        cacheProgressLocally();
+
+        // Existing rows change far more often than rows are added. Returning
+        // the full state comparison lets setup refresh its Known/Review/Unseen
+        // segments before a learner opens a set that has become complete.
+        return getProgressUiFingerprint() !== previousUiState || !cached;
+    } catch (error) {
+        console.error('Failed to load progress from Google Sheets:', error);
+        // Continue with cached data if available
+        return false;
+    }
+}
+
+// Save the level estimate as metadata in the unified Progress tab.
+async function saveLevelEstimateToSheet(rank) {
+    if (!currentUser || currentUser.isGuest) return;
+    const language = selectedLanguage;
+    const unified = progressBackendSchemaVersion >= 4;
+    sendOrQueue(unified ? {
+        action: 'saveMeta',
+        sheet: 'Progress',
+        user: currentUser.initials,
+        metaKey: 'level-estimate',
+        metaId: language,
+        mode: 'normal',
+        source: 'speech',
+        language,
+        value: rank,
+        lastSeen: new Date().toISOString()
+    } : {
+        action: 'save',
+        sheet: getProgressSheetName(),
+        user: currentUser.initials,
+        word: '_LEVEL_ESTIMATE_',
+        wordId: rank,
+        language
+    }, `meta|level-estimate|${currentUser.initials}|${language}`);
+}
+
+// Save progress for a single word to Google Sheets
+async function saveWordProgress(card, isCorrect) {
+    const wordId = card.fullId; // composite ID: {lang}{mode}{hex} e.g. "es00001", "es10039"
+    const word = card.targetWord;
+    const language = selectedLanguage;
+    const timestamp = new Date().toISOString();
+
+    // Guest sessions are ephemeral — nothing to persist.
+    if (!currentUser || currentUser.isGuest) return;
+
+    // Update local progress data
+    if (!progressData[wordId]) {
+        progressData[wordId] = {
+            word: word,
+            language: language,
+            correct: 0,
+            wrong: 0,
+            lastCorrect: null,
+            lastWrong: null,
+            lastSeen: null,
+            srsStage: 0
+        };
+    }
+
+    progressData[wordId].srsStage = advanceSrsStage(progressData[wordId], isCorrect);
+    if (isCorrect) {
+        progressData[wordId].correct++;
+        progressData[wordId].lastCorrect = timestamp;
+    } else {
+        progressData[wordId].wrong++;
+        progressData[wordId].lastWrong = timestamp;
+    }
+    progressData[wordId].lastSeen = timestamp;
+    progressData[wordId].word = word;
+    progressData[wordId].language = language;
+
+    // Coalesce whole-state cache snapshots outside the answer interaction.
+    // The per-answer sync operation below is still durably queued immediately.
+    cacheProgressLocally();
+
+    // Save to Google Sheets via the offline-durable queue. Write-through when
+    // online (same latency as before); enqueued and retried when offline or on
+    // a transient failure. De-dupe key keeps only the latest cumulative state
+    // per word+mode in the queue.
+    const mode = getProgressMode();
+    const sheet = getProgressSheetName();
+    sendOrQueue({
+        action: 'save',
+        sheet,
+        mode,
+        user: currentUser.initials,
+        word: word,
+        language: language,
+        wordId: wordId,
+        correct: progressData[wordId].correct,
+        wrong: progressData[wordId].wrong,
+        lastCorrect: progressData[wordId].lastCorrect,
+        lastWrong: progressData[wordId].lastWrong,
+        lastSeen: progressData[wordId].lastSeen,
+        srsStage: progressData[wordId].srsStage
+    }, `save|${sheet}|${mode}|${wordId}`);
+}
+
+// Flag a word as having erroneous translation/data — debugging-only path.
+// Routes to a separate FlaggedWords sheet (auto-created by GAS) so it doesn't
+// pollute Progress.
+//
+// `fields` (optional) carries the flag-schema-v2 structured payload: stable
+// target/category keys plus the individual sense/example attributes that used
+// to be readable only by parsing the rendered report text. A v2 backend writes
+// each into its own column.
+//
+// Deploy-order safety: `word` keeps carrying the rendered report exactly as
+// before, so an un-redeployed v1 backend still records the full flag with
+// nothing lost. The v2 backend prefers `wordText` for the Word column and
+// treats `word` as the Report blob. Same for lastCorrect/lastWrong, which v1
+// overloads as fieldPath and flag timestamp.
+async function flagWord(card, fieldPath, fieldValue, fields = null) {
+    if (!currentUser) {
+        console.warn('flagWord skipped: no user logged in');
+        return false;
+    }
+    if (currentUser.isGuest) {
+        console.warn('flagWord skipped: guest sessions are not persisted');
+        return false;
+    }
+    const baseId = card.fullId;
+    const wordId = fieldPath ? `${baseId}#${fieldPath}` : baseId;
+    const word = (fieldValue !== undefined && fieldValue !== null && fieldValue !== '')
+        ? String(fieldValue)
+        : card.targetWord;
+    const language = selectedLanguage;
+    const timestamp = new Date().toISOString();
+
+    // Route through the offline-durable queue so flags raised offline aren't
+    // lost. De-dupe on wordId (which already encodes the flagged field path):
+    // the latest flag for a given field wins.
+    await sendOrQueue({
+        action: 'save',
+        sheet: 'FlaggedWords',
+        user: currentUser.initials,
+        word: word,
+        language: language,
+        wordId: wordId,
+        lastCorrect: fieldPath || '',
+        lastWrong: timestamp,
+        // Flag schema v2 structured columns. Explicit fallbacks keep the row
+        // populated when a caller has not been migrated to pass `fields`.
+        ...(fields || {}),
+        wordText: fields?.wordText || card.targetWord || '',
+        cardId: fields?.cardId || baseId || '',
+        fieldPath: fieldPath || '',
+        flaggedAt: timestamp,
+        report: fieldValue !== undefined && fieldValue !== null ? String(fieldValue) : ''
+    }, `flag|${wordId}`);
+    console.log(`Flagged ${word} (${wordId}) for review`);
+    return true;
+}
+
+// Minimal Markdown → HTML renderer. Handles headings (##/###), paragraphs,
+// unordered lists, bold/italic, inline code, links, and images. Enough for
+// the About copy at docs/about.md without a runtime dependency.
+function renderMarkdown(md) {
+    const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // Media extensions that render as <video autoplay loop muted> instead of <img>.
+    // Drop a recording at the referenced path and it becomes a looping silent demo
+    // clip inside the About modal.
+    const VIDEO_EXT_RE = /\.(webm|mp4|mov|ogv|m4v)$/i;
+
+    const inline = (s) => {
+        let out = escape(s);
+        out = out.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => {
+            // demo://<mode> — mount point for a live animated card demo. The mode
+            // ("normal" or "artist") picks which card variant to render. alt text
+            // becomes the accessible label for screen readers.
+            if (src.startsWith('demo://')) {
+                const mode = src.slice('demo://'.length).replace(/[^a-zA-Z0-9_-]/g, '');
+                return '<div class="about-demo-card" data-mode="' + mode + '"'
+                    + ' role="img" aria-label="' + alt + '"></div>';
+            }
+            if (VIDEO_EXT_RE.test(src)) {
+                return '<figure class="about-figure about-figure-video">'
+                    + '<video src="' + src + '" autoplay loop muted playsinline preload="metadata"'
+                    + ' onerror="this.parentElement.classList.add(\'about-figure-missing\')">'
+                    + '</video>'
+                    + '<figcaption>' + alt + '</figcaption>'
+                    + '</figure>';
+            }
+            return '<figure class="about-figure">'
+                + '<img src="' + src + '" alt="' + alt + '" loading="lazy"'
+                + ' onerror="this.parentElement.classList.add(\'about-figure-missing\')" />'
+                + '<figcaption>' + alt + '</figcaption>'
+                + '</figure>';
+        });
+        // example://walkthrough — opens the annotated "See Example" tour
+        // (js/about-example.js). Written as an ordinary Markdown link in
+        // about.md so its position and wording stay editable there, but
+        // rendered as a button because it triggers a modal rather than
+        // navigating anywhere.
+        out = out.replace(/\[([^\]]+)\]\(example:\/\/[^)]*\)/g,
+            '<button type="button" class="about-see-example-btn" onclick="window.openAboutExample && window.openAboutExample()">'
+            + '<span class="about-see-example-icon" aria-hidden="true">▶</span>'
+            + '<span class="about-see-example-label">$1</span>'
+            + '<span class="about-see-example-hint">Annotated walkthrough · Spotify playback is live</span>'
+            + '</button>');
+        out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
+            '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        out = out.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+        out = out.replace(/`([^`]+)`/g, '<code>$1</code>');
+        return out;
+    };
+
+    const lines = md.split('\n');
+    const html = [];
+    let list = [];
+    let para = [];
+    const flushList = () => {
+        if (list.length) {
+            html.push('<ul>' + list.map(l => '<li>' + inline(l) + '</li>').join('') + '</ul>');
+            list = [];
+        }
+    };
+    const flushPara = () => {
+        if (para.length) {
+            html.push('<p>' + inline(para.join(' ')) + '</p>');
+            para = [];
+        }
+    };
+    const flushAll = () => { flushList(); flushPara(); };
+
+    // Simple HTML-comment skip so sections can be temporarily hidden in
+    // about.md without deleting them. Single-line `<!-- ... -->` is dropped;
+    // multi-line blocks starting with `<!--` consume lines until one ends
+    // with `-->`.
+    let inComment = false;
+    for (const raw of lines) {
+        const line = raw.trim();
+        if (inComment) {
+            if (line.endsWith('-->')) inComment = false;
+            continue;
+        }
+        if (line.startsWith('<!--')) {
+            if (!line.endsWith('-->')) inComment = true;
+            continue;
+        }
+        if (!line) { flushAll(); continue; }
+        if (line.startsWith('### ')) { flushAll(); html.push('<h3>' + inline(line.slice(4)) + '</h3>'); }
+        else if (line.startsWith('## ')) { flushAll(); html.push('<h2>' + inline(line.slice(3)) + '</h2>'); }
+        else if (line.startsWith('# ')) { flushAll(); html.push('<h1>' + inline(line.slice(2)) + '</h1>'); }
+        else if (line.startsWith('- ') || line.startsWith('* ')) { flushPara(); list.push(line.slice(2)); }
+        else { flushList(); para.push(line); }
+    }
+    flushAll();
+    return html.join('\n');
+}
+
+// Keep the `?about=1` URL param in sync with the About modal's open state so
+// the landing page is shareable (send `?about=1` to a recruiter; they see the
+// landing cold) AND refreshing while viewing it stays on the landing.
+function _setAboutURLParam(open) {
+    try {
+        const url = new URL(window.location);
+        const has = url.searchParams.has('about');
+        if (open && !has) {
+            url.searchParams.set('about', '1');
+            history.replaceState(null, '', url.toString());
+        } else if (!open && has) {
+            url.searchParams.delete('about');
+            const qs = url.searchParams.toString();
+            const clean = url.pathname + (qs ? '?' + qs : '') + url.hash;
+            history.replaceState(null, '', clean);
+        }
+    } catch (_) { /* older browsers: no-op */ }
+}
+
+// Append the footnote + data-sources section at the bottom of the About
+// body. The ¹ footnote is paired with the superscript next to the Spotify
+// logo on the artist demo card. The sources line credits the external
+// datasets the pipeline depends on — short, reads as end-matter, same
+// muted styling as the footnote above it.
+function _appendAboutFootnotes(body) {
+    const existing = body.querySelector('.about-footnotes');
+    if (existing) existing.remove();
+
+    const notes = document.createElement('aside');
+    notes.className = 'about-footnotes';
+    notes.innerHTML =
+        '<p id="about-footnote-1">'
+        + '<sup class="about-footnote-number">1</sup> '
+        + 'Right now three Spanish artists (Bad Bunny, Rosalía, Young Miko) and one French playlist are built in. '
+        + 'The pipeline itself runs on any Spotify playlist — '
+        + 'the goal is to let anyone paste in a playlist URL and generate a full vocabulary deck from its lyrics.'
+        + '</p>'
+        + '<p class="about-references">'
+        + '<strong>Sources:</strong> lyrics from Genius, synced timestamps via LRCLIB and Spotify, '
+        + 'word meanings from Wiktionary and SpanishDict, subtitle frequency from OpenSubtitles, '
+        + 'examples from OpenSubtitles and Tatoeba, '
+        + 'Spanish conjugations from Jehle, cognate detection via CogNet.'
+        + '</p>';
+    body.appendChild(notes);
+}
+
+// The About modal is often entered from an external link, so the
+// top-right affordance needs to let visitors bail out early without
+// reading the whole page. A pill-shaped "Back to app" is the same
+// action as the bottom CTA and visible while scrolling. Applied for
+// both authenticated and unauthenticated visitors.
+function _updateAboutCloseButton() {
+    const btn = document.getElementById('closeAboutProjectModal');
+    if (!btn) return;
+    btn.textContent = '← Back to app';
+    btn.classList.add('about-close-as-pill');
+    btn.setAttribute('aria-label', 'Back to app');
+}
+
+// Append CTAs to the rendered About body so a first-time visitor has a direct
+// path into the app from the landing. If the user is already authenticated,
+// collapse the pair into a single "Back to the app" button.
+function _appendAboutCTAs(body) {
+    const existing = body.querySelector('.about-ctas');
+    if (existing) existing.remove();
+
+    const cta = document.createElement('div');
+    cta.className = 'about-ctas';
+
+    if (currentUser) {
+        const name = currentUser.isGuest ? 'Guest' : (currentUser.initials || 'Back');
+        cta.innerHTML =
+            '<button type="button" class="about-cta-btn primary" id="aboutCTABack">'
+            + 'Back to the app' + (currentUser.isGuest ? '' : ' (' + name + ')') + '</button>';
+        body.appendChild(cta);
+        document.getElementById('aboutCTABack').addEventListener('click', hideAboutProjectModal);
+    } else {
+        cta.innerHTML =
+            '<div class="about-ctas-label">Ready to try it?</div>'
+            + '<div class="about-ctas-buttons">'
+            +   '<button type="button" class="about-cta-btn secondary" id="aboutCTAGuest">Try it as Guest</button>'
+            +   '<button type="button" class="about-cta-btn primary" id="aboutCTALogin">Log in with your name</button>'
+            + '</div>';
+        body.appendChild(cta);
+        document.getElementById('aboutCTAGuest').addEventListener('click', () => {
+            hideAboutProjectModal();
+            enterGuestMode();
+        });
+        document.getElementById('aboutCTALogin').addEventListener('click', () => {
+            hideAboutProjectModal();
+            // Auth modal is already visible underneath; surface the login form.
+            if (typeof showLoginForm === 'function') showLoginForm();
+        });
+    }
+}
+
+let _aboutMarkdownCache = null;
+async function openAboutProjectModal() {
+    const modal = document.getElementById('aboutProjectModal');
+    const body = document.getElementById('aboutProjectBody');
+    modal.classList.remove('hidden');
+    _setAboutURLParam(true);
+    if (_aboutMarkdownCache) {
+        body.innerHTML = _aboutMarkdownCache;
+        layoutAboutTwoModes(body);
+        mountAboutDemos(body);
+        _appendAboutFootnotes(body);
+        _appendAboutCTAs(body);
+        _updateAboutCloseButton();
+        return;
+    }
+    try {
+        const resp = await fetch('docs/about.md');
+        if (!resp.ok) throw new Error('Failed to load about.md');
+        const md = await resp.text();
+        _aboutMarkdownCache = renderMarkdown(md);
+        body.innerHTML = _aboutMarkdownCache;
+        layoutAboutTwoModes(body);
+        mountAboutDemos(body);
+        _appendAboutFootnotes(body);
+        _appendAboutCTAs(body);
+        _updateAboutCloseButton();
+    } catch (e) {
+        console.error('About modal: failed to load markdown', e);
+        body.innerHTML = '<p style="color: var(--text-muted);">Could not load project description.</p>';
+    }
+}
+
+function hideAboutProjectModal() {
+    const modal = document.getElementById('aboutProjectModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.querySelectorAll('video').forEach(v => { try { v.pause(); } catch (_) {} });
+    _setAboutURLParam(false);
+}
+
+// ----- About-modal card demos --------------------------------------------------
+//
+// Live animated cards inserted into the About modal wherever `demo://<mode>`
+// appears in the Markdown. Reuses the app's .card / .card-face / .flipped CSS so
+// the demo is visually identical to the real flashcard — we just drive it with
+// a tiny sequential animation instead of user input. Each demo runs in its own
+// async loop that exits when its container leaves the DOM (modal closes).
+
+// Demo data is deliberately small but uses real Speech examples and genuine
+// lyrics from the artist catalogue. `share` is an indicative meaning split,
+// matching the percentages shown by live multi-meaning cards.
+const _ABOUT_DEMO_DECKS = {
+    normal: [
+        {
+            word: 'aunque',
+            pos: 'CCONJ',
+            rank: 429,
+            corpusCount: 229,
+            meanings: [
+                { pos: 'CCONJ', translation: 'even though', share: '≈50%',
+                  target: 'Ella le escucha, aunque nadie más lo haga.',
+                  english: 'She listens to him even though no one else does.' },
+                { pos: 'CCONJ', translation: 'although', share: '≈30%',
+                  target: 'Estaré allí, aunque puede que llegue tarde.',
+                  english: "I'll be there, although I may be late." },
+                { pos: 'CCONJ', translation: 'even if', share: '≈20%',
+                  target: 'Aunque no lo hagas, yo lo haré.',
+                  english: "Even if you don't do that, I will." },
+            ],
+        },
+    ],
+    artist: [
+        {
+            word: 'fuego',
+            pos: 'NOUN',
+            rank: 363,
+            corpusCount: 32,
+            meanings: [
+                { pos: 'NOUN', translation: 'fire', share: '≈70%',
+                  target: 'Donde hubo fuego, cenizas quedan',
+                  english: 'Where there was fire, ashes remain',
+                  song: 'X ÚLTIMA VEZ · Bad Bunny' },
+                { pos: 'NOUN', translation: 'light', share: '≈20%',
+                  target: "Pasa el fuego que voy a prende'lo",
+                  english: "Pass the lighter — I'm going to light it",
+                  song: 'TREPATE · Bad Bunny' },
+                { pos: 'NOUN', translation: 'passion', share: '≈10%',
+                  target: "Vamo' a quemarnos en el fuego de la pasión",
+                  english: "Let's burn in the fire of passion",
+                  song: 'DIABLA (REMIX) · Bad Bunny' },
+            ],
+        },
+    ],
+};
+
+function _buildAboutDemoCard(mode) {
+    // DOM structure mirrors what updateCard() in flashcards.js produces:
+    //   .card
+    //     .card-face.card-front  — card-word, card-pos, card-ranking, song (artist only)
+    //     .card-face.card-back
+    //       .card-details
+    //         .back-header        — big word repeated at the top of the back
+    //         .meanings-scroll    — list of .meaning-row.meaning-row-regular
+    //         .sentence           — accent-bordered example box
+    //         .translation        — english line below
+    // Rows are populated and a selected index is rotated by _runAboutDemo.
+    const wrap = document.createElement('div');
+    wrap.className = 'about-demo-card-inner';
+    // Spotify logo as an inline SVG — tiny source-of-truth copy of the
+    // iconic green-circle-with-soundwaves mark. Used only on artist-mode
+    // cards to indicate lyric data comes from Spotify/Genius.
+    const spotifyLogo =
+        '<svg class="about-demo-spotify-logo" viewBox="0 0 24 24" aria-hidden="true">'
+        + '<path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34'
+        + 'c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539'
+        + '-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3'
+        + 'c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6'
+        + '-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36'
+        + 'C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381'
+        + ' 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.42 1.56-.299.421-1.02.599-1.559.3z"/>'
+        + '</svg>';
+    wrap.innerHTML = `
+        <div class="card">
+            <div class="card-face card-front">
+                <div class="card-word"></div>
+                <div class="card-pos"></div>
+                <div class="card-ranking"></div>
+            </div>
+            <div class="card-face card-back">
+                <div class="card-details">
+                    <div class="back-header">
+                        <div class="about-demo-back-word"></div>
+                        <div class="about-demo-pos-legend"></div>
+                    </div>
+                    <div class="meanings-scroll"></div>
+                    <div class="about-demo-example">
+                        <div class="about-demo-example-target"></div>
+                        <div class="about-demo-example-english"></div>
+                    </div>
+                    <div class="about-demo-spotify-row">
+                        <span class="about-demo-song-back"></span>
+                        <span class="about-demo-spotify-mark">
+                            ${spotifyLogo}
+                            <sup class="about-demo-footnote-ref" role="link" tabindex="0" aria-label="Read footnote 1">1</sup>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    return wrap;
+}
+
+// Build one compact row per meaning. Part of speech is shown once beneath the
+// headword, as it is on current live cards; artist rows may also carry an
+// indicative usage share.
+function _renderDemoMeaningRows(meanings, selectedIdx) {
+    return meanings.map((m, idx) => {
+        const selected = idx === selectedIdx ? ' is-selected' : '';
+        const hasShare = m.share ? ' has-share' : '';
+        return `
+            <div class="meaning-row meaning-row-regular${selected}${hasShare}">
+                <div class="meaning-row-body">
+                    <span class="meaning-row-translation">${m.translation}</span>
+                </div>
+                ${m.share ? `<span class="about-demo-meaning-share" aria-label="Approximately ${m.share.replace('≈', '')} of matched examples">${m.share}</span>` : ''}
+            </div>`;
+    }).join('');
+}
+
+const _POS_CLASS_MAP = {
+    VERB: 'pos-verb', NOUN: 'pos-noun', ADJ: 'pos-adj', ADV: 'pos-adv',
+    PREP: 'pos-prep', ADP: 'pos-prep', CONJ: 'pos-conj', CCONJ: 'pos-conj',
+    SCONJ: 'pos-conj', PRON: 'pos-pron', DET: 'pos-det', INT: 'pos-int',
+    INTJ: 'pos-int', NUM: 'pos-num', MWE: 'pos-mwe',
+};
+
+function _posColorClass(pos) {
+    const key = (pos || '').trim().toUpperCase().split(/[\s·]+/)[0];
+    return _POS_CLASS_MAP[key] || '';
+}
+
+function _posDisplayName(pos) {
+    const key = (pos || '').trim().toUpperCase().split(/[\s·]+/)[0];
+    const names = {
+        VERB: 'verb', NOUN: 'noun', ADJ: 'adjective', ADV: 'adverb',
+        PREP: 'preposition', ADP: 'preposition', CONJ: 'conjunction',
+        CCONJ: 'conjunction', SCONJ: 'conjunction', PRON: 'pronoun',
+        DET: 'determiner', INT: 'interjection', INTJ: 'interjection',
+        NUM: 'number', MWE: 'expression',
+    };
+    return names[key] || String(pos || '').toLowerCase();
+}
+
+function _sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+}
+
+// Wrap any occurrence of `word` in the example sentence with a highlight span.
+// Matches the real flashcard app's behaviour in updateCard() — word-boundary
+// regex using unicode property escapes so it handles Spanish letters cleanly,
+// case-insensitive so "Fuego" at sentence start still catches. Escapes HTML
+// up-front so the raw sentence can't inject markup.
+function _highlightTargetWord(sentence, word) {
+    if (!sentence) return '';
+    const escaped = sentence
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (!word) return escaped;
+    const wordEsc = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    try {
+        const re = new RegExp(`(?<![\\p{L}\\p{N}])(${wordEsc})(?![\\p{L}\\p{N}])`, 'giu');
+        return escaped.replace(re, '<span class="about-demo-highlight">$1</span>');
+    } catch (_) {
+        // Older browsers without \p{...} support — just return the escaped text.
+        return escaped;
+    }
+}
+
+async function _runAboutDemo(container, mode) {
+    const deck = _ABOUT_DEMO_DECKS[mode] || _ABOUT_DEMO_DECKS.normal;
+    const card = container.querySelector('.card');
+    const wordEl = container.querySelector('.card-word');
+    const posEl = container.querySelector('.card-pos');
+    const rankEl = container.querySelector('.card-ranking');
+    const backWordEl = container.querySelector('.about-demo-back-word');
+    const backPosLegendEl = container.querySelector('.about-demo-pos-legend');
+    const meaningsEl = container.querySelector('.meanings-scroll');
+    const exampleTargetEl = container.querySelector('.about-demo-example-target');
+    const exampleEnglishEl = container.querySelector('.about-demo-example-english');
+    const spotifyRowEl = container.querySelector('.about-demo-spotify-row');
+    const songBackEl = container.querySelector('.about-demo-song-back');
+
+    const stillMounted = () => container.isConnected
+        && !document.getElementById('aboutProjectModal').classList.contains('hidden');
+
+    const setFrontPos = (pos) => {
+        posEl.className = 'card-pos';
+        const cls = _posColorClass(pos);
+        if (cls) posEl.classList.add(cls);
+        posEl.textContent = _posDisplayName(pos);
+    };
+
+    const setBackPos = (pos) => {
+        if (!backPosLegendEl) return;
+        const cls = _posColorClass(pos);
+        backPosLegendEl.innerHTML = `<span class="card-pos ${cls}"><span class="back-pos-dot" aria-hidden="true"></span>${_posDisplayName(pos)}</span>`;
+    };
+
+    while (stillMounted()) {
+        for (const entry of deck) {
+            if (!stillMounted()) return;
+
+            // -------- Front face --------
+            card.classList.remove('flipped');
+            wordEl.textContent = entry.word;
+            setFrontPos(entry.pos);
+            setBackPos(entry.pos);
+            // Mirror the live labels while keeping this small demo on one line.
+            if (entry.rank && entry.corpusCount) {
+                rankEl.textContent = mode === 'artist'
+                    ? `Vocabulary rank: ${entry.rank} · Lyric lines: ${entry.corpusCount}`
+                    : `Vocabulary rank: ${entry.rank} · Frequency: ${entry.corpusCount}/million`;
+            } else if (entry.rank) {
+                rankEl.textContent = `Vocabulary rank: ${entry.rank}`;
+            } else {
+                rankEl.textContent = '';
+            }
+            backWordEl.textContent = entry.word;
+            // Spotify row on the back — only artist-mode entries carry a
+            // `song` field; for normal-mode cards hide the row entirely.
+            if (entry.song && songBackEl && spotifyRowEl) {
+                songBackEl.textContent = entry.song;
+                spotifyRowEl.style.display = '';
+            } else if (spotifyRowEl) {
+                spotifyRowEl.style.display = 'none';
+            }
+
+            await _sleep(4000);
+            if (!stillMounted()) return;
+
+            // -------- Flip and cycle through senses --------
+            card.classList.add('flipped');
+            await _sleep(1100); // matches .card transition + settle
+
+            for (let i = 0; i < entry.meanings.length; i++) {
+                if (!stillMounted()) return;
+                const m = entry.meanings[i];
+                meaningsEl.innerHTML = _renderDemoMeaningRows(entry.meanings, i);
+                if (songBackEl && spotifyRowEl && (m.song || entry.song)) {
+                    songBackEl.textContent = m.song || entry.song;
+                    spotifyRowEl.style.display = '';
+                }
+                // Target sentence is HTML (with the target word wrapped in a
+                // highlight span); the helper escapes the rest first so raw
+                // data can't inject markup.
+                exampleTargetEl.innerHTML = _highlightTargetWord(m.target, entry.word);
+                exampleEnglishEl.textContent = m.english;
+                // Dwell long enough to actually read the example sentence. A
+                // single-sense entry sits longer since there's nothing else
+                // to cycle to.
+                const dwell = entry.meanings.length === 1 ? 5500 : 4500;
+                await _sleep(dwell);
+            }
+
+            if (!stillMounted()) return;
+            card.classList.remove('flipped');
+            await _sleep(1500);
+        }
+    }
+}
+
+function mountAboutDemos(root) {
+    const placeholders = root.querySelectorAll('.about-demo-card[data-mode]');
+    placeholders.forEach(el => {
+        if (el.dataset.mounted === '1') return;
+        el.dataset.mounted = '1';
+        const mode = el.dataset.mode;
+        const inner = _buildAboutDemoCard(mode);
+        el.appendChild(inner);
+
+        // Wire the ¹ superscript next to the Spotify logo so clicking (or
+        // pressing Enter on) it scrolls to the matching footnote. The modal
+        // body owns its own scroll, so href="#..." anchors don't work — do
+        // it explicitly with scrollIntoView.
+        const ref = inner.querySelector('.about-demo-footnote-ref');
+        if (ref) {
+            const jumpToFootnote = (e) => {
+                if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                const note = root.querySelector('#about-footnote-1');
+                if (note) note.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            };
+            ref.addEventListener('click', jumpToFootnote);
+            ref.addEventListener('keydown', jumpToFootnote);
+        }
+
+        _runAboutDemo(inner, mode);
+    });
+}
+
+// Rewire the two source-section <h3>s so they sit side by side on desktop.
+// The Markdown source stays linear (easier to edit); we detect the
+// "Speech" / "Lyrics" pair after rendering and wrap each h3 +
+// its following siblings (up to the next h2 or h3) into a column. The
+// "artist" alternative is matched for backward compatibility with any
+// older about.md copy.
+function layoutAboutTwoModes(root) {
+    if (root.querySelector('.about-modes-row')) return;  // already laid out
+
+    const h3s = Array.from(root.querySelectorAll('h3'));
+    // Match current copy plus prior headings for cached/older About content.
+    const normal = h3s.find(h => /^(?:speech\b|standard mode\b|normal mode\b)/i.test(h.textContent.trim()));
+    const lyrics = h3s.find(h => /^(?:lyrics\b|artist mode\b)/i.test(h.textContent.trim()));
+    if (!normal || !lyrics) return;
+
+    // Drop a comment placeholder at the Standard-mode h3's position BEFORE
+    // we start detaching its siblings, so we have a stable anchor to swap
+    // the finished row into afterwards.
+    const anchor = document.createComment('about-modes-anchor');
+    normal.parentNode.insertBefore(anchor, normal);
+
+    const collectSection = (h3) => {
+        const out = [h3];
+        let el = h3.nextElementSibling;
+        while (el && el.tagName !== 'H3' && el.tagName !== 'H2') {
+            out.push(el);
+            el = el.nextElementSibling;
+        }
+        return out;
+    };
+    const sections = [collectSection(normal), collectSection(lyrics)];
+
+    const row = document.createElement('div');
+    row.className = 'about-modes-row';
+    for (const section of sections) {
+        const col = document.createElement('div');
+        col.className = 'about-modes-column';
+        for (const child of section) col.appendChild(child);
+        row.appendChild(col);
+    }
+
+    anchor.parentNode.replaceChild(row, anchor);
+}
+
+// Setup authentication modal event listeners
+function setupAuthEventListeners() {
+    const authModal = document.getElementById('authModal');
+    if (authModal?.dataset.listenersReady === '1') return;
+    if (authModal) authModal.dataset.listenersReady = '1';
+    // Guest mode button
+    document.getElementById('guestModeBtn').addEventListener('click', enterGuestMode);
+
+    // Login mode button
+    document.getElementById('loginModeBtn').addEventListener('click', showLoginForm);
+
+    // Login info button: toggle the no-password explanation
+    const loginInfoBtn = document.getElementById('loginInfoBtn');
+    const loginInfoNote = document.getElementById('loginInfoNote');
+    if (loginInfoBtn && loginInfoNote) {
+        loginInfoBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            loginInfoNote.classList.toggle('hidden');
+        });
+    }
+
+    // About this project button. Fullscreen modal; only close paths are the ×
+    // button and Escape. hideAboutProjectModal also strips ?about=1 from the
+    // URL so refreshing after dismissing lands you in the app, not the modal.
+    const aboutModal = document.getElementById('aboutProjectModal');
+    document.getElementById('aboutProjectBtn').addEventListener('click', openAboutProjectModal);
+    document.getElementById('closeAboutProjectModal').addEventListener('click', hideAboutProjectModal);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !aboutModal.classList.contains('hidden')) {
+            hideAboutProjectModal();
+        }
+    });
+
+    // Cancel login button
+    document.getElementById('cancelLoginBtn').addEventListener('click', hideLoginForm);
+
+    // Submit initials button
+    document.getElementById('submitInitialsBtn').addEventListener('click', submitLogin);
+
+    // Enter key in initials input
+    document.getElementById('userInitials').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            submitLogin();
+        }
+    });
+
+    // Enable/disable submit button based on input
+    document.getElementById('userInitials').addEventListener('input', (e) => {
+        const initials = e.target.value.trim();
+        const submitBtn = document.getElementById('submitInitialsBtn');
+        const isValid = initials.length >= 2 && initials.length <= 4 && /^[A-Za-z]+$/.test(initials);
+        submitBtn.disabled = !isValid;
+    });
+
+    // Clear level estimate button
+    document.getElementById('clearLevelEstimateRow').addEventListener('click', function() {
+        levelEstimates[selectedLanguage] = 0;
+        saveLevelEstimateToSheet(0);
+        document.getElementById('clearLevelEstimateRow').style.display = 'none';
+        renderRangeSelector(); // refresh range mastered states
+    });
+
+    // Logout button (now in settings modal)
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+        hideSettingsModal();
+        logout();
+    });
+
+    // Settings → Account → "About this project" row. Dismisses settings and
+    // opens the landing page modal so signed-in users can revisit the
+    // explainer after using the app for a bit.
+    const aboutSettingsRow = document.getElementById('aboutProjectSettingsRow');
+    if (aboutSettingsRow) {
+        aboutSettingsRow.addEventListener('click', function() {
+            hideSettingsModal();
+            openAboutProjectModal();
+        });
+    }
+
+    // Gear button opens settings modal
+    document.getElementById('gearBtn').addEventListener('click', function() {
+        showSettingsModal();
+    });
+
+    // Settings modal tabs
+    const settingsModal = document.getElementById('settingsModal');
+    settingsModal.querySelectorAll('.settings-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            showSettingsModalWithTab(this.dataset.tab);
+        });
+    });
+
+    // Settings modal close button
+    document.getElementById('closeSettingsModal').addEventListener('click', hideSettingsModal);
+
+    // Click outside settings modal to close
+    settingsModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            hideSettingsModal();
+        }
+    });
+
+    // Total stats modal close button
+    document.getElementById('closeTotalStatsModal').addEventListener('click', hideTotalStatsModal);
+
+    // Click outside total stats modal to close
+    document.getElementById('totalStatsModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            hideTotalStatsModal();
+        }
+    });
+}
+
+window.migrateLocalStorageIds = migrateLocalStorageIds;
+window.migrateLocalStorageIdsV2 = migrateLocalStorageIdsV2;
+window.loadSecrets = loadSecrets;
+window.checkAuthentication = checkAuthentication;
+window.showAuthModal = showAuthModal;
+window.hideAuthModal = hideAuthModal;
+window.showUserInfo = showUserInfo;
+window.enterGuestMode = enterGuestMode;
+window.showLoginForm = showLoginForm;
+window.openAboutProjectModal = openAboutProjectModal;
+window.hideAboutProjectModal = hideAboutProjectModal;
+window.hideLoginForm = hideLoginForm;
+window.submitLogin = submitLogin;
+window.logout = logout;
+window.loadUserProgressFromSheet = loadUserProgressFromSheet;
+window.getProgressMode = getProgressMode;
+window.getProgressSheetName = getProgressSheetName;
+window.getProgressSource = getProgressSource;
+window.getProgressScopeKey = getProgressScopeKey;
+window.isLevelMarkedDone = isLevelMarkedDone;
+window.saveMarkedLevelDone = saveMarkedLevelDone;
+window.cacheProgressLocally = cacheProgressLocally;
+window.flushProgressCache = flushProgressCache;
+window.saveLevelEstimateToSheet = saveLevelEstimateToSheet;
+window.saveWordProgress = saveWordProgress;
+window.flagWord = flagWord;
+window.setupAuthEventListeners = setupAuthEventListeners;

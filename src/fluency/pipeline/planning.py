@@ -86,6 +86,21 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
     _require(scope.get("examples_per_surface") == 3, "first French audit must target three examples per surface")
     _require(scope.get("shortfall_policy") == "block_release", "example shortfalls must block release")
 
+    sense_menu = profile.get("sense_menu")
+    _require(isinstance(sense_menu, dict), "sense-menu adapter policy is required")
+    _require(
+        isinstance(sense_menu.get("source_adapter"), str) and bool(sense_menu["source_adapter"]),
+        "sense-menu source adapter is required",
+    )
+    _require(sense_menu.get("output_schema") == "sense-menu/v1", "unsupported sense-menu output")
+    _require(sense_menu.get("join_key") == "surface_card_id", "sense menus must join by surface-card identity")
+    _require(sense_menu.get("lemma_role") == "lookup_metadata_only", "lemmas cannot become card identity")
+    _require(
+        sense_menu.get("snapshot_id") is None
+        or (isinstance(sense_menu.get("snapshot_id"), str) and bool(sense_menu["snapshot_id"])),
+        "sense-menu snapshot ID is invalid",
+    )
+
     _require(profile.get("stage_order") == list(STAGE_ORDER), "pipeline stage order is not canonical")
     wsd = profile.get("wsd")
     _require(isinstance(wsd, dict), "WSD policy is required")
@@ -170,6 +185,7 @@ def _stage_contract(profile: dict[str, Any], stage: str, ordinal: int) -> dict[s
         contract["external_inputs"] = ["fresh_frequency_source_snapshot"]
     elif stage == "sense_menu":
         contract["external_inputs"] = ["fresh_dictionary_source_snapshot"]
+        contract["source_adapter"] = profile["sense_menu"]
     elif stage == "sentence_harvest":
         contract["external_inputs"] = ["fresh_sentence_source_snapshot"]
     elif stage == "wsd_assignments":

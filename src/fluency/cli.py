@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
@@ -22,6 +23,17 @@ from fluency.release.validation import validate_release_bundle
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 4173
+APP_DATA_ROUTES = {
+    "/Data/French/vocabulary.index.json": ("fr", "index_path"),
+    "/Data/French/vocabulary.examples.json": ("fr", "examples_path"),
+    "/Data/Spanish/vocabulary.index.json": ("es", "index_path"),
+    "/Data/Spanish/vocabulary.examples.json": ("es", "examples_path"),
+    "/Data/Dutch/vocabulary.index.json": ("nl", "index_path"),
+    "/Data/Dutch/vocabulary.examples.json": ("nl", "examples_path"),
+    "/Data/Portuguese/vocabulary.index.json": ("pt", "index_path"),
+    "/Data/Portuguese/vocabulary.examples.json": ("pt", "examples_path"),
+}
+SAFE_ACTIVE_RELEASE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 def project_root() -> Path:
@@ -125,6 +137,41 @@ def _workspace_path(raw_path: str | None) -> Path:
     return Path(raw_path)
 
 
+def resolve_active_app_asset(releases_directory: Path, request_path: str) -> Path | None:
+    route = APP_DATA_ROUTES.get(request_path)
+    if route is None:
+        return None
+    language, asset_field = route
+    release_root = releases_directory / language / "speech"
+    try:
+        active = json.loads((release_root / "active.json").read_text(encoding="utf-8"))
+        release_id = active["release_id"]
+    except (FileNotFoundError, KeyError, TypeError, json.JSONDecodeError):
+        return release_root / ".missing-active-app-asset"
+    if not isinstance(release_id, str) or SAFE_ACTIVE_RELEASE_ID.fullmatch(release_id) is None:
+        return release_root / ".invalid-active-app-asset"
+    release_directory = (release_root / release_id).resolve()
+    try:
+        release_directory.relative_to(release_root.resolve())
+    except ValueError:
+        return release_root / ".invalid-active-app-asset"
+    try:
+        manifest = json.loads(
+            (release_directory / "manifest.json").read_text(encoding="utf-8")
+        )
+        relative_path = manifest["app_contract"][asset_field]
+    except (FileNotFoundError, KeyError, TypeError, json.JSONDecodeError):
+        return release_root / ".missing-active-app-asset"
+    if not isinstance(relative_path, str):
+        return release_root / ".invalid-active-app-asset"
+    candidate = (release_directory / relative_path).resolve()
+    try:
+        candidate.relative_to(release_directory)
+    except ValueError:
+        return release_root / ".invalid-active-app-asset"
+    return candidate
+
+
 def handle_workspace(command: str, raw_path: str | None) -> int:
     path = _workspace_path(raw_path)
     if command == "init":
@@ -223,6 +270,11 @@ class FluencyRequestHandler(SimpleHTTPRequestHandler):
 
     def translate_path(self, path: str) -> str:
         request_path = unquote(urlsplit(path).path)
+        active_app_asset = resolve_active_app_asset(
+            self.releases_directory, request_path
+        )
+        if active_app_asset is not None:
+            return str(active_app_asset)
         if not request_path.startswith("/releases/"):
             return super().translate_path(path)
 

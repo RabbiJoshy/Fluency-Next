@@ -27,13 +27,15 @@ workspace. It has no production or GitHub dependency.
 
 The stable surface-card identity, external workspace, immutable artifact/run
 contracts, French tokenization boundary, exact release composition, and the
-original Fluency product shell running a 25-card French Speech pilot are
-implemented. Learn, Review, exact-session resume, and set completion use
-release-owned level/set membership so research releases cannot be mixed by
-accident. The first fresh French audit profile is locked to 200 surface cards
-and three examples per card. It creates six inspectable stage folders without
-loading historical deck data, installing model packages, executing WSD, or
-activating a release. New source adapters, model pins, Spanish migration,
-Artist mode, and production integration have not been implemented yet.
+transplanted Fluency application running a 25-card French Speech pilot are
+implemented. The old app's split French data URLs resolve only to files
+generated inside the manually active immutable release, and those aliases are
+never service-worker cached. The first fresh French audit profile is locked to
+200 surface cards and three examples per card. Its Wiktionary-ready sense-menu
+boundary normalizes dictionary data without making lemmas card identities. The
+profile creates six inspectable stage folders without loading historical deck
+data, installing model packages, executing WSD, or activating a release. Fresh
+source adapters, model pins, release diagnostics in the transplanted UI,
+Spanish migration, Artist mode, and production integration are not complete.
 
 See `docs/runbooks/local-speech-pilot.md` for the exact local test flow.

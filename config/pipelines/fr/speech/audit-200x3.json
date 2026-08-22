@@ -19,6 +19,13 @@
     "examples_per_surface": 3,
     "shortfall_policy": "block_release"
   },
+  "sense_menu": {
+    "source_adapter": "wiktionary-sense-menu/v1",
+    "snapshot_id": null,
+    "output_schema": "sense-menu/v1",
+    "join_key": "surface_card_id",
+    "lemma_role": "lookup_metadata_only"
+  },
   "stage_order": [
     "inventory",
     "sense_menu",

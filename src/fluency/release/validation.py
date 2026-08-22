@@ -10,6 +10,7 @@ from typing import Any
 from fluency.core.hashing import file_content_id, validate_content_id
 from fluency.core.identity import build_card_id
 from fluency.languages.french.surfaces import normalize_surface
+from fluency.release.app_compat import APP_CONTRACT_VERSION
 
 
 ACTIVE_RELEASE_VERSION = "active-release/v1"
@@ -209,6 +210,17 @@ def validate_manifest(
     )
     wsd = manifest.get("wsd")
     _require(isinstance(wsd, dict) and isinstance(wsd.get("enabled"), bool) and bool(wsd.get("status")), "release WSD metadata is invalid")
+    app_contract = manifest.get("app_contract")
+    _require(isinstance(app_contract, dict), "release app contract is required")
+    _require(app_contract.get("contract_version") == APP_CONTRACT_VERSION, "unsupported app contract")
+    for path_field, hash_field, expected_path in (
+        ("index_path", "index_content_id", "app/vocabulary.index.json"),
+        ("examples_path", "examples_content_id", "app/vocabulary.examples.json"),
+    ):
+        _require(app_contract.get(path_field) == expected_path, f"app contract {path_field} is invalid")
+        asset_path = deck_path.parent / expected_path
+        _require(asset_path.is_file(), f"app contract asset is missing: {expected_path}")
+        _require(app_contract.get(hash_field) == file_content_id(asset_path), f"app contract {hash_field} disagrees")
 
     deck = _load_object(deck_path)
     composition = _load_object(composition_path)

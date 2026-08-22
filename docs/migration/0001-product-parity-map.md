@@ -1,6 +1,6 @@
 # Fluency product parity map
 
-- Status: Gate A reference captured; classifications awaiting/reflecting owner decisions
+- Status: exact app surface transplanted; clean data/release boundary active
 - Reference application: `/Users/joshuathomasamar/PycharmProjects/Fluency`
 - Reference URL: `http://127.0.0.1:4174/`
 - Captured: 2026-08-20
@@ -114,8 +114,9 @@ These removals have owner approval:
 - Any pipeline behaviour that copies lemma senses onto surface cards merely to
   preserve the old deck shape.
 
-These are implementation redundancies, not product features, and are also
-removed from the rebuilt runtime:
+These remain cleanup targets after parity is locked. The exact transplant still
+contains some of them internally, but the clean pipeline and release adapter do
+not depend on them:
 
 - Mutable state exposed through `globalThis`.
 - Side-effect-only import ordering as application wiring.
@@ -196,48 +197,24 @@ Stable surface card identity is shared across modes. Sense/example evidence and
 release provenance remain mode- and release-specific. Cross-mode progress
 sharing requires a later explicit product decision.
 
-## Gate B file plan
+## Implemented app boundary
 
-The incorrect standalone pilot UI is replaced by the real Fluency shell using
-this structure:
+The standalone pilot UI was replaced by the real Fluency app surface. Its
+existing module structure is intentionally retained during parity work:
 
 ```text
 app/
 ├── index.html
-├── assets/
-│   └── icons/
-├── styles/
-│   ├── tokens.css
-│   ├── base.css
-│   ├── shell.css
-│   ├── setup.css
-│   ├── study.css
-│   ├── dialogs.css
-│   └── themes.css
-└── src/
-    ├── boot.js
-    ├── core/
-    │   ├── app-store.js
-    │   ├── language-registry.js
-    │   ├── mode-registry.js
-    │   ├── release-client.js
-    │   └── router.js
-    ├── features/
-    │   ├── setup/
-    │   ├── study/
-    │   ├── progress/
-    │   └── settings/
-    ├── modes/
-    │   ├── speech/
-    │   └── artist/
-    └── services/
-        ├── progress-store.js
-        └── speech.js
+├── css/
+├── js/
+├── config/
+└── service-worker.js
 ```
 
-Gate B implements the shell and setup journey. Gate C connects the current
-French pilot release to the shared study experience. The folders may start with
-one focused module each; empty speculative abstractions are not created.
+The Python server maps the old split-data request paths to generated assets in
+the active immutable release. No historical language-data tree is copied. A
+later frontend refactor must preserve parity through tests and browser checks;
+it is not mixed into the pipeline migration.
 
 ## Acceptance sequence for the first working version
 
@@ -246,10 +223,10 @@ one focused module each; empty speculative abstractions are not created.
 3. Open the same radial language picker.
 4. Select French.
 5. Remain in Speech and see the same setup hierarchy.
-6. Choose the clearly labelled 25-card Pilot set.
+6. Choose the available 25-card fixture deck (20 cards in set 1, five in set 2).
 7. Study in the recognisable Fluency card interface.
 8. Reveal meanings and examples, hear French, score cards, and navigate.
 9. Reload and retain local progress.
-10. Open diagnostics and verify the exact release and contributing runs.
+10. Independently validate the exact release manifest and contributing hashes.
 
 No WSD completion is required for this sequence.

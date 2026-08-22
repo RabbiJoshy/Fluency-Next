@@ -1,8 +1,0 @@
-body[data-theme="french"] {
-  --accent: #5a82f4;
-  --accent-rgb: 90, 130, 244;
-  --accent-two: #ed3152;
-}
-body[data-theme="spanish"] { --accent: #f3c439; --accent-rgb: 243, 196, 57; --accent-two: #d72f42; }
-body[data-theme="dutch"] { --accent: #f17238; --accent-rgb: 241, 114, 56; --accent-two: #4387ed; }
-body[data-theme="portuguese"] { --accent: #2ca66f; --accent-rgb: 44, 166, 111; --accent-two: #e74242; }

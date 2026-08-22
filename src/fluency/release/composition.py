@@ -12,6 +12,7 @@ from typing import Any
 
 from fluency.core.hashing import content_id
 from fluency.core.workspace import Workspace
+from fluency.release.app_compat import APP_CONTRACT_VERSION, build_app_compatibility_assets
 from fluency.release.io import json_bytes
 from fluency.release.validation import (
     RELEASE_MANIFEST_VERSION,
@@ -45,6 +46,9 @@ def compose_release(workspace: Workspace, composition: dict[str, Any], deck: dic
 
     deck_bytes = json_bytes(deck)
     composition_bytes = json_bytes(composition)
+    app_index, app_examples = build_app_compatibility_assets(deck)
+    app_index_bytes = json_bytes(app_index)
+    app_examples_bytes = json_bytes(app_examples)
     wsd_selection = composition["layers"].get("wsd_assignments")
     if wsd_selection is None:
         omissions = {item["layer"]: item["reason"] for item in composition["omitted_layers"]}
@@ -66,6 +70,13 @@ def compose_release(workspace: Workspace, composition: dict[str, Any], deck: dic
         "composition_content_id": content_id(composition_bytes),
         "progress_namespace": composition["progress_namespace"],
         "wsd": wsd,
+        "app_contract": {
+            "contract_version": APP_CONTRACT_VERSION,
+            "index_path": "app/vocabulary.index.json",
+            "index_content_id": content_id(app_index_bytes),
+            "examples_path": "app/vocabulary.examples.json",
+            "examples_content_id": content_id(app_examples_bytes),
+        },
     }
     manifest_bytes = json_bytes(manifest)
 
@@ -74,7 +85,13 @@ def compose_release(workspace: Workspace, composition: dict[str, Any], deck: dic
     temporary_root = workspace.root / ".fluency" / "temporary"
     release_root.mkdir(parents=True, exist_ok=True)
     temporary_root.mkdir(parents=True, exist_ok=True)
-    expected = {"deck.json": deck_bytes, "composition.json": composition_bytes, "manifest.json": manifest_bytes}
+    expected = {
+        "deck.json": deck_bytes,
+        "composition.json": composition_bytes,
+        "manifest.json": manifest_bytes,
+        "app/vocabulary.index.json": app_index_bytes,
+        "app/vocabulary.examples.json": app_examples_bytes,
+    }
     if release_directory.exists():
         if any(not (release_directory / name).is_file() or (release_directory / name).read_bytes() != payload for name, payload in expected.items()):
             raise ValueError(f"immutable release already exists with different content: {release_directory}")
@@ -82,7 +99,9 @@ def compose_release(workspace: Workspace, composition: dict[str, Any], deck: dic
         temporary = Path(tempfile.mkdtemp(prefix="compose-release-", dir=temporary_root))
         try:
             for name, payload in expected.items():
-                (temporary / name).write_bytes(payload)
+                path = temporary / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(payload)
             os.replace(temporary, release_directory)
         finally:
             if temporary.exists():

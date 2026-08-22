@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted and implemented in Gate 9.
+Accepted for the compact Gate 9 runtime. Superseded in implementation by
+Decision 0011: the transplanted app supplies the visible lifecycle, while the
+release-frozen resume safeguards below remain to be reintroduced.
 
 ## Context
 

@@ -7,7 +7,13 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = REPOSITORY_ROOT / "src"
 sys.path.insert(0, str(SOURCE_ROOT))
 
-from fluency.cli import DEFAULT_HOST, DEFAULT_PORT, build_parser, project_root
+from fluency.cli import (
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    build_parser,
+    project_root,
+    resolve_active_app_asset,
+)
 
 
 class BootstrapTests(unittest.TestCase):
@@ -57,6 +63,53 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(args.command, "pipeline")
         self.assertEqual(args.pipeline_command, "plan")
         self.assertEqual(args.profile, Path("/tmp/profile.json"))
+
+    def test_existing_app_data_path_resolves_through_active_release(self) -> None:
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            releases = Path(temporary) / "releases"
+            root = releases / "fr" / "speech"
+            release = root / "fr-speech-test-0001"
+            (release / "app").mkdir(parents=True)
+            (root / "active.json").write_text(
+                json.dumps({"release_id": release.name}), encoding="utf-8"
+            )
+            (release / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "app_contract": {
+                            "index_path": "app/vocabulary.index.json",
+                            "examples_path": "app/vocabulary.examples.json",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            expected = release / "app" / "vocabulary.index.json"
+            self.assertEqual(
+                resolve_active_app_asset(
+                    releases, "/Data/French/vocabulary.index.json"
+                ).resolve(),
+                expected.resolve(),
+            )
+
+    def test_active_app_data_path_rejects_release_traversal(self) -> None:
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            releases = Path(temporary) / "releases"
+            root = releases / "fr" / "speech"
+            root.mkdir(parents=True)
+            (root / "active.json").write_text(
+                json.dumps({"release_id": "../../outside"}), encoding="utf-8"
+            )
+            resolved = resolve_active_app_asset(
+                releases, "/Data/French/vocabulary.index.json"
+            )
+            self.assertEqual(resolved, root / ".invalid-active-app-asset")
 
 
 if __name__ == "__main__":

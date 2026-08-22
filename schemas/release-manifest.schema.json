@@ -18,7 +18,8 @@
     "composition_path",
     "composition_content_id",
     "progress_namespace",
-    "wsd"
+    "wsd",
+    "app_contract"
   ],
   "properties": {
     "manifest_version": {
@@ -66,6 +67,18 @@
           "type": "string",
           "minLength": 1
         }
+      }
+    },
+    "app_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_version", "index_path", "index_content_id", "examples_path", "examples_content_id"],
+      "properties": {
+        "contract_version": {"const": "fluency-split-speech/v1"},
+        "index_path": {"const": "app/vocabulary.index.json"},
+        "index_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "examples_path": {"const": "app/vocabulary.examples.json"},
+        "examples_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
       }
     }
   }

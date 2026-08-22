@@ -46,7 +46,7 @@ class PilotReleaseTests(unittest.TestCase):
     def test_seed_contains_exactly_25_curated_cards(self) -> None:
         seed = json.loads(default_seed_path().read_text(encoding="utf-8"))
         self.assertEqual(len(seed["cards"]), 25)
-        self.assertEqual(seed["release_id"], "fr-speech-pilot-0004")
+        self.assertEqual(seed["release_id"], "fr-speech-pilot-0005")
         self.assertEqual(len(seed["cards"][0]["examples"]), 3)
 
 

@@ -18,30 +18,27 @@ unchanged; an existing release with different bytes is rejected.
 - The original Fluency welcome, setup, level, set, card, scrubber, and keyboard
   surfaces.
 - A 25-card French surface-form deck with meanings, examples, speech, scoring,
-  navigation, and isolated local progress.
-- A release pill in the top bar. It opens the exact candidate, deck and
-  composition hashes, layer source/artifact IDs, fallback policy, and explicit
-  WSD omission.
-- The active-study gear opens card direction, automatic speech, progress, Card
-  Data, and release audit. Card Data uses its numbered example scrubber; the
-  `bonjour` fixture card has three examples for verification.
+  navigation, and the existing app's local progress behaviour. The `bonjour`
+  fixture card has three examples for verification.
+- No Merge Lemmas choice for the surface-only release.
 - Learn contains only unseen cards in the selected stable set. Review is a
-  separate level-wide queue. Leaving a session preserves the exact release,
-  card order, position, side, direction, speech setting, and example position;
-  reload the page to verify the original resume prompt.
+  separate level-wide queue. Leaving a session preserves the existing app's
+  queue and offers its original resume prompt after reload.
 - Completion preserves the existing app actions: automatic next-unseen-set
   continuation for Learn, Main menu, and Redo set. No new completion action is
   introduced by this migration.
 
-The old Fluency JavaScript and data loaders are not running. The new compact
-runtime binds the immutable release to the original product shell.
+The transplanted Fluency JavaScript is the runtime. Its existing French split
+data URLs are server-side aliases to compatibility files generated inside the
+one active immutable release. No historical `Data/` or `Artists/` directory is
+present in this repository.
 
 ## Release control
 
 ```bash
 PYTHONPATH=src python3.12 -m fluency release list --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
-PYTHONPATH=src python3.12 -m fluency release validate fr-speech-pilot-0004 --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
-PYTHONPATH=src python3.12 -m fluency release activate fr-speech-pilot-0004 --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
+PYTHONPATH=src python3.12 -m fluency release validate fr-speech-pilot-0005 --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
+PYTHONPATH=src python3.12 -m fluency release activate fr-speech-pilot-0005 --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
 ```
 
 To preview a non-active approved candidate, use
@@ -73,8 +70,8 @@ The server mounts this read-only at `/releases/`. Do not manually edit an
 immutable release. Create a new release ID, validate it, inspect it as a
 candidate, and activate it deliberately.
 
-The first pilot UI is preserved at `docs/reference/pilot-ui-v1.html` and as Git
-tag `pilot-ui-v1`; it is not the production app entry point.
+The first pilot UI is preserved at `docs/reference/pilot-ui-v1.html`; it is not
+the production app entry point.
 
 ## Fresh French 200 × 3 audit skeleton
 
@@ -108,3 +105,19 @@ inputs, cross-run fallbacks, example shortfalls, automatic activation, and
 unpinned WSD models. The WSD architecture is fixed to embedding retrieval plus
 a language-specific reranker; the exact French model revisions are intentionally
 unselected until that decision is reviewed.
+
+The French sense-menu stage is a replaceable adapter boundary. The current
+profile is ready for `wiktionary-sense-menu/v1`; it must write normalized
+`sense-menu/v1` records joined by `surface_card_id`. Lemmas may be retained as
+dictionary lookup metadata but can never become card identity. A different
+dictionary provider can replace this adapter without changing harvesting, WSD,
+selection, release composition, or the app contract.
+
+## Expensive-stage handoff
+
+Harvesting and WSD are intentionally not run by the assistant. At each approved
+stage, the assistant supplies an exact local command with pinned configuration
+and the expected output folder. Run that command in this repository, then let
+the assistant inspect counts, schemas, hashes, source evidence, shortfalls, and
+model pins before the next stage. A command never activates a release; release
+composition, validation, visual audit, and activation remain separate gates.

@@ -8,6 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Flashcards">
+    <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23667eea'/%3E%3Ctext x='50' y='70' font-size='60' text-anchor='middle' fill='white'%3E📚%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,9 +40,37 @@
             document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#eef2f5' : '#0a0e14';
         })();
     </script>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/light-theme.css">
-    <link rel="stylesheet" href="styles/product-shell.css">
+    <link rel="stylesheet" href="css/style.css?v=20260819b">
+    <link rel="stylesheet" href="css/light-theme.css?v=20260819b">
+    <!-- Module preloads. Without these the browser waits to discover the
+         imports inside main.js before kicking off the per-module fetches,
+         which serializes ~11 round trips behind the main.js parse step.
+         Preload starts them all in parallel during HTML parse. Versions
+         must stay in lockstep with main.js's import URLs. -->
+    <link rel="modulepreload" href="js/main.js?v=20260819b">
+    <link rel="modulepreload" href="js/theme.js?v=20260819b">
+    <link rel="modulepreload" href="js/state.js?v=20260819b">
+    <link rel="modulepreload" href="js/offline-db.js?v=20260819b">
+    <link rel="modulepreload" href="js/sync-queue.js?v=20260819b">
+    <link rel="modulepreload" href="js/offline-content.js?v=20260819b">
+    <link rel="modulepreload" href="js/speech.js?v=20260819b">
+    <link rel="modulepreload" href="js/artist-ui.js?v=20260819b">
+    <link rel="modulepreload" href="js/auth.js?v=20260819b">
+    <link rel="modulepreload" href="js/about-example.js?v=20260819b">
+    <link rel="modulepreload" href="js/estimation.js?v=20260819b">
+    <link rel="modulepreload" href="js/config.js?v=20260819b">
+    <link rel="modulepreload" href="js/progress.js?v=20260819b">
+    <link rel="modulepreload" href="js/knowledge.js?v=20260819b">
+    <link rel="modulepreload" href="js/ui.js?v=20260819b">
+    <link rel="modulepreload" href="js/vocab.js?v=20260819b">
+    <link rel="modulepreload" href="js/song-sets-core.js?v=20260819b">
+    <link rel="modulepreload" href="js/song-sets.js?v=20260819b">
+    <link rel="modulepreload" href="js/vocabulary-import-core.js?v=20260819b">
+    <link rel="modulepreload" href="js/vocabulary-import.js?v=20260819b">
+    <link rel="modulepreload" href="js/spanishdict-usage.js?v=20260819b">
+    <link rel="modulepreload" href="js/reverse-cues.js?v=20260819b">
+    <link rel="modulepreload" href="js/flashcards.js?v=20260819b">
+    <link rel="modulepreload" href="js/example-personalisation.js?v=20260819b">
     <script>
         // Fail open if a boot-time script error prevents main.js from taking
         // ownership of the loading screen. Normal boot removes this class as
@@ -1421,6 +1450,24 @@
         </div>
     </div>
 
-    <script type="module" src="src/boot.js"></script>
+    <script>
+        // Spotify Web Playback SDK is only used in artist/lyrics mode.
+        // Gate the load on the mode flag so normal-mode visitors don't pay
+        // the ~50KB download + parse cost. Async injection means the SDK
+        // races with module scripts; spotify.js registers
+        // onSpotifyWebPlaybackSDKReady at module-init time, and the SDK
+        // handles late-bound callback registration the same way it did
+        // when this was a sync <script> tag.
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('artist') || params.get('mode') === 'badbunny') {
+                const s = document.createElement('script');
+                s.src = 'https://sdk.scdn.co/spotify-player.js';
+                s.async = true;
+                document.body.appendChild(s);
+            }
+        })();
+    </script>
+    <script type="module" src="js/main.js?v=20260819b"></script>
 </body>
 </html>

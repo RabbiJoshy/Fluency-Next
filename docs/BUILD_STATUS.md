@@ -29,21 +29,33 @@
   resume, and the existing completion, automatic continuation, main-menu and
   redo actions. Session snapshots freeze the exact release and card order so a
   later activation cannot silently replace or dilute an in-progress run.
-  Published `fr-speech-pilot-0004` as the only supported pilot format.
+  Published `fr-speech-pilot-0004` as the first supported study-structure format.
 - Gate 10 (fresh-run skeleton): removed the historical split-deck importer,
   legacy provenance fields, and old study-structure compatibility path. Added
   an auditable French Speech profile fixed at 200 surface cards and three
   examples each, with separate inventory, sense-menu, sentence-harvest, WSD,
   example-selection, and release-build contracts. Planning executes no data or
   model work and never activates a release.
+- Gate 11 (exact app transplant): replaced the compact prototype runtime with
+  the current Fluency HTML/CSS/JavaScript application, while retaining the
+  prototype HTML as a reference. Added release-generated split-data assets and
+  server aliases so the existing app loads only the manually active immutable
+  release. The repository contains no copied historical `Data/` or `Artists/`
+  tree. Active-release aliases bypass service-worker caches, and the legacy
+  Merge Lemmas control is hidden for surface-only releases. Published and
+  browser-verified `fr-speech-pilot-0005` through guest entry, French setup,
+  20-card Learn start, card flip, meaning, and three-example display.
 
 ## Not started
 
 - Fresh frequency, dictionary, and sentence-source adapters.
+- Wiktionary snapshot selection and implementation of the normalized French
+  `wiktionary-sense-menu/v1` adapter.
 - Execution of the 200-card inventory and 600-sentence harvest.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
 - Spanish and legacy progress migration.
+- Release diagnostics and release-frozen resume behind the transplanted app.
 - Artist mode.
 
 No production system or existing Fluency repository has been modified. No old

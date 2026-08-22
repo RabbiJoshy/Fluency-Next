@@ -4,7 +4,7 @@
   "title": "Fresh Speech pipeline profile",
   "type": "object",
   "additionalProperties": false,
-  "required": ["profile_version", "profile_id", "language", "locale", "mode", "identity", "source_policy", "scope", "stage_order", "wsd", "release"],
+  "required": ["profile_version", "profile_id", "language", "locale", "mode", "identity", "source_policy", "scope", "sense_menu", "stage_order", "wsd", "release"],
   "properties": {
     "profile_version": {"const": "speech-pipeline-profile/v1"},
     "profile_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
@@ -39,6 +39,18 @@
         "surface_limit": {"const": 200},
         "examples_per_surface": {"const": 3},
         "shortfall_policy": {"const": "block_release"}
+      }
+    },
+    "sense_menu": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_adapter", "snapshot_id", "output_schema", "join_key", "lemma_role"],
+      "properties": {
+        "source_adapter": {"type": "string", "pattern": "^[a-z0-9-]+/v[0-9]+$"},
+        "snapshot_id": {"type": ["string", "null"]},
+        "output_schema": {"const": "sense-menu/v1"},
+        "join_key": {"const": "surface_card_id"},
+        "lemma_role": {"const": "lookup_metadata_only"}
       }
     },
     "stage_order": {

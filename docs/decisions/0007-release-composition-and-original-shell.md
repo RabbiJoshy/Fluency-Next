@@ -2,14 +2,14 @@
 
 ## Status
 
-Accepted and implemented on 2026-08-22.
+Accepted on 2026-08-22. The compact-runtime portion was superseded by Decision
+0011; the release-composition contract remains active.
 
 ## Decision
 
-The rebuilt runtime uses the current Fluency `index.html` and visual CSS as its
-product shell. It does not load the legacy JavaScript graph. A compact adapter
-binds the new French Speech release to the existing setup, card, scrubber,
-keyboard, authentication-welcome, and modal surfaces.
+The first implementation used the current Fluency `index.html` and visual CSS
+with a compact JavaScript runtime. Decision 0011 later replaced that runtime
+with an exact application transplant and a release-to-split-data adapter.
 
 The first pilot interface remains available in two deliberate forms:
 
@@ -17,13 +17,16 @@ The first pilot interface remains available in two deliberate forms:
 - `docs/reference/pilot-ui-v1.html`, which keeps the HTML readable for later
   design comparison and selective reuse.
 
-Every app-selectable deck is now an immutable release with three files:
+Every app-selectable deck is an immutable release whose canonical files are:
 
 ```text
 releases/<language>/<mode>/<release-id>/
 ├── composition.json
 ├── manifest.json
-└── deck.json
+├── deck.json
+└── app/
+    ├── vocabulary.index.json
+    └── vocabulary.examples.json
 ```
 
 `composition.json` selects each layer by exact source ID and content-addressed
@@ -32,10 +35,10 @@ Incompatible selections fail validation. Conflict policy is `error`; fallback
 is `none` unless a layer explicitly declares a `missing_only` fallback and the
 composition opts into `explicit_missing_only`.
 
-`catalog.json` is the only list the app may select from. Direct query selection
-uses `?release=<release-id>` but still requires the release to be catalogued.
-`active.json` chooses the default candidate. The browser verifies deck and
-composition SHA-256 hashes against the manifest before rendering.
+`active.json` chooses the release served through the existing app's data URLs.
+The server resolves only the app assets named and hashed by that release's
+manifest. Catalogued candidate selection and in-app release auditing from the
+compact runtime are deferred for restoration behind the transplanted app.
 
 ## Consequences
 

@@ -29,6 +29,12 @@ class PipelinePlanningTests(unittest.TestCase):
         self.assertFalse(self.profile["identity"]["allow_lemma_identity"])
         self.assertFalse(self.profile["source_policy"]["allow_legacy_inputs"])
         self.assertEqual(self.profile["stage_order"], list(STAGE_ORDER))
+        self.assertEqual(
+            self.profile["sense_menu"]["source_adapter"],
+            "wiktionary-sense-menu/v1",
+        )
+        self.assertEqual(self.profile["sense_menu"]["join_key"], "surface_card_id")
+        self.assertEqual(self.profile["sense_menu"]["lemma_role"], "lookup_metadata_only")
 
     def test_profile_rejects_legacy_or_fallback_inputs(self) -> None:
         for field, value in (("allow_legacy_inputs", True), ("fallback_policy", "missing_only")):
@@ -57,6 +63,12 @@ class PipelinePlanningTests(unittest.TestCase):
             for path in manifest["stages"]:
                 contract = json.loads((target / path).read_text(encoding="utf-8"))
                 self.assertEqual(contract["status"], "pending")
+            sense_contract = json.loads(
+                (target / "stages/02_sense_menu/contract.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                sense_contract["source_adapter"]["output_schema"], "sense-menu/v1"
+            )
 
 
 if __name__ == "__main__":
