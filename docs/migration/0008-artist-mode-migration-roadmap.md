@@ -31,11 +31,21 @@ The code repository owns contracts and app code only:
 ```text
 src/fluency/artist/
   release.py                 build, validate, activate and resolve catalogs
+src/fluency/lyrics/
+  records.py                 stable song, line and optional alignment identities
+  lineage.py                 append-only typed pipeline events
+  ingest.py                  immutable source-ingestion stage and legacy adapter
 schemas/
   lyrics-release-manifest.schema.json
   lyrics-release-composition.schema.json
+  lyrics-lineage-event.schema.json      shared event vocabulary for every language
+  lyrics-audit-bundle.schema.json       portable one-song audit payload
+  raw-lyrics-song.schema.json
+  lyrics-line.schema.json
+  lyrics-line-alignment.schema.json
 app/
   config/artists.json        empty static fallback only
+  lyrics-audit/              development-only lineage explorer
 ```
 
 Generated data remains outside git:
@@ -115,19 +125,51 @@ The local app was verified through:
    degrade cleanly while its 1,455-card source remains usable.
 6. Switching back to Speech without changing either Speech release.
 
+## Lineage explorer checkpoint
+
+The first end-to-end audit slice uses Bad Bunny's `Estamos Arriba` and compares
+two preserved normalization runs. It contains the whole song (61 lines and 585
+stable occurrences), highlights 84 direct changes, and connects the selected
+token to the current routing and immutable app-release snapshots wherever a
+safe identity join exists.
+
+The explorer deliberately does not invent missing history. Direct claims,
+reconstructed lookups, materialized snapshots and future human-review claims
+are different evidence kinds in the contract. A token without a safe join says
+so. This fixture is the reference UI for the new pipeline, not a replacement
+for the learner-facing app.
+
+The generic stage vocabulary is: acquire, extract, align, normalize, tag, route, menu,
+assign, consolidate, assemble and review. Language-specific behavior belongs in
+adapter metadata and decision payloads, so Spanish elision restoration does not
+become a required French, Portuguese or Dutch pipeline stage.
+
+The first clean source-ingestion runs are preserved under
+`runs/es/lyrics/`. `bad-bunny-estamos-arriba-source-v1` proves that a missing
+song in the historical aligned-translation file degrades to 61 valid source
+lines and zero translations. It was not overwritten.
+`bad-bunny-estamos-arriba-source-v2` uses the separately preserved flat
+translation map and emits 61 lines, 43 optional alignments, 18 explicit
+alignment absences and 105 lineage events. Both raw legacy inputs are pinned by
+content identity in the workspace object store. No routing, WSD, deck or active
+release changed.
+
 ## Remaining Artist work
 
 These are subsequent R&D phases, not blockers for starting the Artist audit:
 
-1. Define a language-agnostic raw-lyrics and line-alignment source contract.
-2. Build a clean Artist inventory/example/assignment pipeline that emits the
+1. ~~Define a language-agnostic raw-lyrics and line-alignment source contract.~~
+   Completed with a real immutable Bad Bunny source run.
+2. Make every subsequent pipeline stage emit the lineage event contract while it runs,
+   rather than reconstructing lineage after materialization.
+3. Build a clean Artist inventory/example/assignment pipeline that emits the
    same split app contract.
-3. Recompute assignments with the selected shared WSD architecture and explicit
+4. Recompute assignments with the selected shared WSD architecture and explicit
    language adapters; do not modify this parity release in place.
-4. Publish a new immutable release and compare it against this parity baseline.
-5. Add new languages by catalog/config and typed source adapters, with song,
+5. Publish a new immutable release and compare it against this parity baseline.
+6. Add new languages by catalog/config and typed source adapters, with song,
    artwork, translation, timestamps and playback all remaining optional.
-6. Move offline Artist downloads to release-versioned URLs before claiming
+7. Move offline Artist downloads to release-versioned URLs before claiming
    offline release switching. The stable active aliases intentionally fail
    closed when offline today.
 

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/raw-lyrics-song.schema.json",
+  "title": "Language-agnostic raw lyrics song",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_version", "song_id", "language", "title", "artist", "raw_text", "source"],
+  "properties": {
+    "record_version": {"const": "raw-lyrics-song/v1"},
+    "song_id": {"type": "string", "pattern": "^song_[0-9a-f]{32}$"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "title": {"type": "string", "minLength": 1},
+    "artist": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1}
+      }
+    },
+    "raw_text": {"type": "string", "minLength": 1},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "adapter", "snapshot_id", "snapshot_content_id", "source_record_id", "license", "attribution", "url", "provider_payload"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "adapter": {"type": "string", "minLength": 1},
+        "snapshot_id": {"type": "string", "minLength": 1},
+        "snapshot_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "source_record_id": {"type": "string", "minLength": 1},
+        "license": {"type": "string", "minLength": 1},
+        "attribution": {"type": "string", "minLength": 1},
+        "url": {"type": ["string", "null"]},
+        "provider_payload": {"type": "object"}
+      }
+    }
+  }
+}

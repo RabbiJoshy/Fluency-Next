@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/lyrics-lineage-event.schema.json",
+  "title": "Language-agnostic lyrics lineage event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id", "record_version", "subject", "phase", "operation", "run", "method", "input_refs", "output_refs", "evidence_kind"],
+  "properties": {
+    "event_id": {"type": "string", "minLength": 1},
+    "record_version": {"const": "lyrics-lineage-event/v1"},
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": {"enum": ["song", "segment", "occurrence", "analysis_unit", "card", "example"]},
+        "id": {"type": "string", "minLength": 1}
+      }
+    },
+    "phase": {"enum": ["acquire", "extract", "align", "normalize", "tag", "route", "menu", "assign", "consolidate", "assemble", "review"]},
+    "operation": {"enum": ["preserve", "normalize", "split", "merge", "align", "tag", "route", "abstain", "assign", "exclude", "materialize", "override"]},
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id"],
+      "properties": {
+        "run_id": {"type": "string", "minLength": 1},
+        "profile_id": {"type": ["string", "null"]},
+        "config_hash": {"type": ["string", "null"]}
+      }
+    },
+    "method": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method_id"],
+      "properties": {
+        "method_id": {"type": "string", "minLength": 1},
+        "version": {"type": ["string", "null"]},
+        "language_adapter": {"type": ["string", "null"]}
+      }
+    },
+    "input_refs": {"type": "array", "items": {"$ref": "#/$defs/ref"}},
+    "output_refs": {"type": "array", "items": {"$ref": "#/$defs/ref"}},
+    "decision": {"type": ["object", "null"]},
+    "reason_codes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "evidence_kind": {"enum": ["direct", "reconstructed", "materialized_snapshot", "human_review"]}
+  },
+  "$defs": {
+    "ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": {"type": "string", "minLength": 1},
+        "id": {"type": "string", "minLength": 1},
+        "revision": {"type": ["string", "null"]},
+        "content_id": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

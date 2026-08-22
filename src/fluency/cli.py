@@ -23,6 +23,7 @@ from fluency.enrichments.conjugations import build_conjugation_layer, pin_jehle_
 from fluency.harvest.runner import harvest_run_stage
 from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
 from fluency.inventory.runner import build_inventory_stage
+from fluency.lyrics.ingest import ingest_legacy_genius_song
 from fluency.migration.legacy_identity import write_legacy_crosswalk
 from fluency.migration.spanish_assets import migrate_spanish_retained_assets
 from fluency.migration.spanish_dictionary import migrate_spanish_dictionary_snapshot
@@ -212,6 +213,27 @@ def build_parser() -> argparse.ArgumentParser:
             "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
         )
         action_parser.add_argument("release_id")
+
+    lyrics = subparsers.add_parser(
+        "lyrics", help="ingest and process auditable, language-agnostic Lyrics runs"
+    )
+    lyrics_actions = lyrics.add_subparsers(dest="lyrics_command", required=True)
+    lyrics_ingest = lyrics_actions.add_parser(
+        "ingest-legacy-genius",
+        help="pin and normalize one song from a legacy Genius batch",
+    )
+    lyrics_ingest.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    lyrics_ingest.add_argument("--source-batch", type=Path, required=True)
+    lyrics_ingest.add_argument("--translations", type=Path)
+    lyrics_ingest.add_argument("--source-record-id", required=True)
+    lyrics_ingest.add_argument("--snapshot-id", required=True)
+    lyrics_ingest.add_argument("--run-id", required=True)
+    lyrics_ingest.add_argument("--language", required=True)
+    lyrics_ingest.add_argument("--artist-id", required=True)
+    lyrics_ingest.add_argument("--artist-name", required=True)
+    lyrics_ingest.add_argument("--translation-language", default="en")
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -578,6 +600,38 @@ def handle_artist(args: argparse.Namespace) -> int:
     raise AssertionError(f"Unhandled artist command: {args.artist_command}")
 
 
+def handle_lyrics(args: argparse.Namespace) -> int:
+    workspace = Workspace.load(_workspace_path(args.workspace))
+    if args.lyrics_command == "ingest-legacy-genius":
+        output = ingest_legacy_genius_song(
+            workspace,
+            source_batch=args.source_batch,
+            translations_path=args.translations,
+            source_record_id=args.source_record_id,
+            snapshot_id=args.snapshot_id,
+            run_id=args.run_id,
+            language=args.language,
+            artist_id=args.artist_id,
+            artist_name=args.artist_name,
+            translation_language=args.translation_language,
+        )
+        report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+        print(f"Completed immutable Lyrics source ingest: {output}")
+        print(
+            f"Pinned {report['line_count']} source lines, "
+            f"{report['alignment_count']} optional translations, and "
+            f"{report['lineage_event_count']} lineage events."
+        )
+        if report["unaligned_line_count"]:
+            print(
+                f"Graceful degradation: {report['unaligned_line_count']} lines have no "
+                "translation and remain valid source lines."
+            )
+        print("No token routing, WSD, deck assembly, release build, or activation was run.")
+        return 0
+    raise AssertionError(f"Unhandled lyrics command: {args.lyrics_command}")
+
+
 def handle_pipeline(args: argparse.Namespace) -> int:
     workspace = Workspace.load(_workspace_path(args.workspace))
     if args.pipeline_command == "plan":
@@ -813,6 +867,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handle_enrichment(args)
     if args.command == "artist":
         return handle_artist(args)
+    if args.command == "lyrics":
+        return handle_lyrics(args)
     if args.command == "release":
         return handle_release(args)
     if args.command == "pipeline":

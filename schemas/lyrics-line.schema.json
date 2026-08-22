@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/lyrics-line.schema.json",
+  "title": "Language-agnostic source lyrics line",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_version", "line_id", "song_id", "language", "source_position", "source_span", "text", "section"],
+  "properties": {
+    "record_version": {"const": "lyrics-line/v1"},
+    "line_id": {"type": "string", "pattern": "^line_[0-9a-f]{32}$"},
+    "song_id": {"type": "string", "pattern": "^song_[0-9a-f]{32}$"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "source_position": {"type": "integer", "minimum": 0},
+    "source_span": {
+      "type": "array",
+      "prefixItems": [{"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 1}],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "text": {"type": "string", "minLength": 1},
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["section_id", "ordinal", "label", "kind_label", "performers"],
+      "properties": {
+        "section_id": {"type": ["string", "null"]},
+        "ordinal": {"type": ["integer", "null"]},
+        "label": {"type": ["string", "null"]},
+        "kind_label": {"type": ["string", "null"]},
+        "performers": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

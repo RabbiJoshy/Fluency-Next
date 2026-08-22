@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/lyrics-line-alignment.schema.json",
+  "title": "Optional translation aligned to one immutable lyrics line",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_version", "alignment_id", "line_id", "target", "source", "confidence", "review_status"],
+  "properties": {
+    "record_version": {"const": "lyrics-line-alignment/v1"},
+    "alignment_id": {"type": "string", "pattern": "^alignment_[0-9a-f]{32}$"},
+    "line_id": {"type": "string", "pattern": "^line_[0-9a-f]{32}$"},
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "text"],
+      "properties": {
+        "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+        "text": {"type": "string", "minLength": 1}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter", "snapshot_content_id", "method"],
+      "properties": {
+        "adapter": {"type": "string", "minLength": 1},
+        "snapshot_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "method": {"type": "string", "minLength": 1},
+        "provider": {"type": ["string", "null"]}
+      }
+    },
+    "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "review_status": {"enum": ["unreviewed", "unreviewed_legacy_materialization", "accepted", "rejected"]}
+  }
+}
