@@ -51,6 +51,18 @@ Josh and Codex stop at each decision gate below.
 - Expensive harvesting, embedding, model and full-deck commands are run by Josh
   locally after Codex provides the exact command.
 
+## Approved preservation boundary
+
+The migration preserves the existing harvested sentence bank and every paid
+Gemini embedding, with explicit observed/reconstructed/unknown provenance. It
+ports the current WSD method as versioned code plus required reproducibility
+assets, but discards all of its generated assignments. Final example selection,
+confidence decisions, compact decks and releases are rebuilt from scratch.
+
+See `docs/migration/0004-spanish-speech-source-ledger.md` for exact files,
+hashes, provenance gaps, the cross-language artifact contract and the dead
+architecture that must not be reintroduced.
+
 ## Target folder shape
 
 ```text
@@ -86,7 +98,7 @@ Fluency-Workspace/
 
 ### Phase 0 — Scope lock and read-only source audit
 
-**Owner:** Codex. **Cost:** quick. **Status:** next.
+**Owner:** Codex. **Cost:** quick. **Status:** complete.
 
 Inventory the current Spanish Speech system without copying it. Produce a
 retain/rebuild/reject ledger covering:
@@ -111,6 +123,7 @@ decision.
 ### Phase 1 — Identity and progress compatibility
 
 **Owner:** Codex, decision with Josh. **Cost:** quick. **Hard gate.**
+**Status:** read-only audit complete; canonical/alias direction awaiting approval.
 
 Define one Spanish identity record containing the clean canonical card ID,
 normalized surface key and every accepted legacy progress alias. Prove:
@@ -128,6 +141,9 @@ the measured crosswalk and collision report.
 
 **Exit:** 100% mapping report for every currently shipped Spanish surface, with
 all exceptions named; no remote progress mutation.
+
+The measured audit and two historical ID collisions are recorded in
+`docs/migration/0005-spanish-progress-identity-audit.md`.
 
 ### Phase 2 — Spanish run profiles and language policies
 
@@ -354,6 +370,8 @@ as a side effect of completing the Spanish data migration.
 
 ## Immediate next action
 
-Codex performs Phase 0 only: produce the source/component ledger and bring the
-first decision—identity/progress compatibility—to Josh. No harvesting, WSD,
-large copying, Sheet mutation or release activation occurs in that phase.
+Josh approves the canonical/alias direction in
+`docs/migration/0005-spanish-progress-identity-audit.md`. Codex then implements
+the shared alias-registry schema, validator and deterministic Spanish
+crosswalk generator. No harvesting, WSD, large copying, Sheet mutation or
+release activation occurs before that report validates.

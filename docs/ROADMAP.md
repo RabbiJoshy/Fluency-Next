@@ -127,11 +127,13 @@ until explicitly approved.
 
 ## Step 5 — Migrate Spanish into the clean architecture
 
-**Status: sub-roadmap drafted; source audit is next.** See
+**Status: source/component ledger and read-only identity audit complete; the
+canonical/legacy-alias direction awaits approval.** See
 `docs/migration/0003-spanish-speech-migration-roadmap.md` for the approval-gated
 sequence. WSD remains a replaceable external assignment layer and does not
 block the inventory, menu, harvest, unassigned release or app-compatibility
-work.
+work. The retention and deletion boundary is recorded in
+`docs/migration/0004-spanish-speech-source-ledger.md`.
 
 Move the current Spanish Speech system into the same clean contracts after the
 French vertical slice has proved them. Preserve the already completed Spanish
