@@ -137,15 +137,32 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
     wsd = profile.get("wsd")
     _require(isinstance(wsd, dict), "WSD policy is required")
     _require(
-        wsd.get("strategy") == "embedding_retrieval_plus_language_reranker/v1",
+        wsd.get("strategy") == "language-adapted-closed-menu/v1",
         "unsupported WSD strategy",
     )
+    for field in ("shared_profile", "language_profile", "model_profile"):
+        _require(
+            isinstance(wsd.get(field), str) and bool(wsd[field]),
+            f"WSD {field} is required",
+        )
     _require(wsd.get("require_model_pins") is True, "WSD models must be pinned before execution")
+    _require(
+        wsd.get("execution_status") in {"blocked_pending_benchmark", "ready"},
+        "WSD execution status is invalid",
+    )
     revisions = wsd.get("model_revisions")
     _require(
         isinstance(revisions, dict)
         and all(isinstance(name, str) and name and isinstance(value, str) for name, value in revisions.items()),
         "WSD model revisions are invalid",
+    )
+    _require(
+        wsd["execution_status"] != "ready" or bool(revisions),
+        "a ready WSD profile requires pinned model revisions",
+    )
+    _require(
+        wsd["execution_status"] != "blocked_pending_benchmark" or not revisions,
+        "a benchmark-blocked WSD profile cannot claim model revisions",
     )
 
     release = profile.get("release")

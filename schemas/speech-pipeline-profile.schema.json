@@ -76,10 +76,14 @@
     "wsd": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["strategy", "require_model_pins", "model_revisions"],
+      "required": ["strategy", "shared_profile", "language_profile", "model_profile", "require_model_pins", "execution_status", "model_revisions"],
       "properties": {
-        "strategy": {"const": "embedding_retrieval_plus_language_reranker/v1"},
+        "strategy": {"const": "language-adapted-closed-menu/v1"},
+        "shared_profile": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "language_profile": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "model_profile": {"type": "string", "pattern": "^[a-z0-9-]+$"},
         "require_model_pins": {"const": true},
+        "execution_status": {"enum": ["blocked_pending_benchmark", "ready"]},
         "model_revisions": {"type": "object", "additionalProperties": {"type": "string"}}
       }
     },

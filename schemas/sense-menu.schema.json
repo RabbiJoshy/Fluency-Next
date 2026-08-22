@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/sense-menu.schema.json",
+  "title": "Normalized surface-card sense menu",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["menu_version", "language", "source_adapter", "snapshot_id", "cards"],
+  "properties": {
+    "menu_version": {"const": "sense-menu/v1"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "source_adapter": {"type": "string", "minLength": 1},
+    "snapshot_id": {"type": "string", "minLength": 1},
+    "cards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["card_id", "surface_form", "analyses"],
+        "properties": {
+          "card_id": {"type": "string", "pattern": "^card_[a-z]{2,3}_[0-9a-f]{32}$"},
+          "surface_form": {"type": "string", "minLength": 1},
+          "analyses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["menu_analysis_id", "headword", "part_of_speech", "source_analysis_key", "senses", "provider_metadata"],
+              "properties": {
+                "menu_analysis_id": {"type": "string", "pattern": "^analysis_[0-9a-f]{32}$"},
+                "headword": {"type": "string", "minLength": 1},
+                "part_of_speech": {"type": "string", "minLength": 1},
+                "source_analysis_key": {"type": "string", "minLength": 1},
+                "provider_metadata": {"type": "object"},
+                "senses": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["sense_id", "translation", "definition", "source_reference"],
+                    "properties": {
+                      "sense_id": {"type": "string", "minLength": 1},
+                      "translation": {"type": "string", "minLength": 1},
+                      "definition": {"type": "string"},
+                      "source_reference": {"type": "string", "minLength": 1}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

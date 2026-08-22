@@ -42,8 +42,12 @@
     "release_build"
   ],
   "wsd": {
-    "strategy": "embedding_retrieval_plus_language_reranker/v1",
+    "strategy": "language-adapted-closed-menu/v1",
+    "shared_profile": "closed-menu-v1",
+    "language_profile": "fr-v1",
+    "model_profile": "fr-rehearsal-v1",
     "require_model_pins": true,
+    "execution_status": "blocked_pending_benchmark",
     "model_revisions": {}
   },
   "release": {

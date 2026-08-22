@@ -55,8 +55,8 @@ No real French corpus run and no WSD were executed in this step.
 
 ## Step 2 — Port and generalize the best Spanish WSD
 
-**Status: Spanish reference audit complete; architecture proposal awaiting
-sign-off in `proposals/0001-wsd-port-architecture.md`.**
+**Status: architecture approved; dependency-free contracts and orchestration
+skeleton implemented. French benchmark and model-profile selection are next.**
 
 Audit the current best Spanish WSD implementation, separate its genuinely
 language-agnostic retrieval/assignment machinery from Spanish-only behaviour,

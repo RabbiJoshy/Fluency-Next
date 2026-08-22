@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/wsd-assignment.schema.json",
+  "title": "Final WSD decision for one card and sentence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["assignment_version", "card_id", "surface_form", "sentence_id", "status", "sense_menu_content_id", "menu_analysis_id", "selected_sense_id", "selected_tuple", "decision_path", "evidence", "confidence", "model_revisions"],
+  "properties": {
+    "assignment_version": {"const": "wsd-assignment/v1"},
+    "card_id": {"type": "string", "pattern": "^card_[a-z]{2,3}_[0-9a-f]{32}$"},
+    "surface_form": {"type": "string", "minLength": 1},
+    "sentence_id": {"type": "string", "pattern": "^sentence_[0-9a-f]{32}$"},
+    "status": {"enum": ["assigned", "abstained", "rejected", "no_menu"]},
+    "sense_menu_content_id": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+    "menu_analysis_id": {"type": ["string", "null"], "pattern": "^analysis_[0-9a-f]{32}$"},
+    "selected_sense_id": {"type": ["string", "null"]},
+    "selected_tuple": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["headword", "part_of_speech"],
+          "properties": {
+            "headword": {"type": "string", "minLength": 1},
+            "part_of_speech": {"type": "string", "minLength": 1}
+          }
+        }
+      ]
+    },
+    "decision_path": {"type": "array", "uniqueItems": true, "items": {"enum": ["gloss", "token_tuple_vote", "leaf_repair", "calibration", "alignment"]}},
+    "evidence": {"type": "object"},
+    "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "model_revisions": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}}
+  }
+}

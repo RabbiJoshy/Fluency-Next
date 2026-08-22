@@ -38,6 +38,17 @@ class PipelinePlanningTests(unittest.TestCase):
         self.assertEqual(self.profile["harvest"]["source_policy"], "exclusive")
         self.assertEqual(self.profile["harvest"]["sources"], ["tatoeba"])
         self.assertEqual(self.profile["harvest"]["candidate_cap_per_surface"], 60)
+        self.assertEqual(
+            self.profile["wsd"]["strategy"],
+            "language-adapted-closed-menu/v1",
+        )
+        self.assertEqual(self.profile["wsd"]["shared_profile"], "closed-menu-v1")
+        self.assertEqual(self.profile["wsd"]["language_profile"], "fr-v1")
+        self.assertEqual(self.profile["wsd"]["model_profile"], "fr-rehearsal-v1")
+        self.assertEqual(
+            self.profile["wsd"]["execution_status"],
+            "blocked_pending_benchmark",
+        )
 
     def test_profile_rejects_legacy_or_fallback_inputs(self) -> None:
         for field, value in (("allow_legacy_inputs", True), ("fallback_policy", "missing_only")):
@@ -46,6 +57,12 @@ class PipelinePlanningTests(unittest.TestCase):
                 changed["source_policy"][field] = value
                 with self.assertRaises(PipelineProfileError):
                     validate_pipeline_profile(changed)
+
+    def test_ready_wsd_requires_nonempty_model_pins(self) -> None:
+        changed = deepcopy(self.profile)
+        changed["wsd"]["execution_status"] = "ready"
+        with self.assertRaises(PipelineProfileError):
+            validate_pipeline_profile(changed)
 
     def test_plan_creates_auditable_stage_folders_without_execution(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

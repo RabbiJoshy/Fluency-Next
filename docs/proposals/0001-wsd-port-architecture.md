@@ -2,9 +2,11 @@
 
 ## Status
 
-Proposed after the Spanish WSD audit on 2026-08-22. Nothing in this document is
-an accepted implementation decision until Josh signs it off. No WSD folders,
-models, assignments, or dependencies have been copied into Fluency Next.
+Approved after the Spanish WSD audit on 2026-08-22. The dependency-free
+contracts and orchestration skeleton are implemented. No models, prototypes,
+calibrators, historical assignments, or heavy ML dependencies have been copied
+into Fluency Next; the French model profile remains explicitly blocked pending
+the agreed benchmark.
 
 ## Authoritative Spanish reference
 
@@ -95,8 +97,9 @@ is present, so the current Speech artifact did not use generative escalation.
    standard-library orchestration core.
 8. The legacy assembler had to recover `dame`'s surface-headword menu because
    its card key still contained a lemma. Fluency Next uses surface-form card
-   identity, but that alone is not enough: the normalized menu stage must emit
-   the exact analysis identifier and WSD must preserve it. Assembly must fail
+   identity, but that alone is not enough: the normalized menu stage must give
+   every candidate analysis an exact identifier and WSD must preserve the ID it
+   selects. Assembly must fail
    visibly if that binding is absent or inconsistent; it must never choose the
    first analysis or silently search a different headword.
 
@@ -115,6 +118,7 @@ config/wsd/
 
 src/fluency/wsd/
 ├── __init__.py
+├── config.py                     # exact shared/language/model profile loading
 ├── contracts.py                  # assignment and decision-trace validation
 ├── menus.py                      # provider-neutral leaf/tuple view
 ├── gloss_scoring.py              # sentence-to-leaf embedding scorer
@@ -196,8 +200,9 @@ complete WSD artifact.
 
 - Wiktionary supplies `sense-menu/v1`; its headword is metadata, not card
   identity. The normalization stage resolves redirects/form-of information and
-  emits an explicit analysis ID before WSD; absence becomes `no_menu` rather
-  than a downstream fallback.
+  emits explicit IDs for every candidate analysis before WSD; the chosen ID is
+  carried by the assignment. Absence becomes `no_menu` rather than a downstream
+  fallback.
 - Gloss scoring, token prototypes, calibration, and aligned-English correction
   are separately switchable but never silently optional.
 - No Spanish clitic gate, BETO artifact, Spanish calibrator, SpanishDict leaf
@@ -212,14 +217,14 @@ complete WSD artifact.
   valid merely because its model is multilingual. It needs a small frozen
   French panel before activation.
 
-## Decisions requested from Josh
+## Approved decisions
 
-1. Approve one immutable final assignment per card/sentence plus a full decision
+1. Use one immutable final assignment per card/sentence plus a full decision
    trace, replacing mutable method merging and priorities.
-2. Approve fail-closed component profiles: missing prototypes/calibrator/model
+2. Use fail-closed component profiles: missing prototypes/calibrator/model
    pins cause an error rather than silent degradation.
-3. Approve language-scoped token models, prototypes, calibrators, morphology,
-   and evaluation thresholds.
-4. Approve no generative escalation in the first French audit.
-5. Approve building the full skeleton before choosing or running the French
+3. Keep token models, prototypes, calibrators, morphology,
+   and evaluation thresholds language-scoped.
+4. Use no generative escalation in the first French audit.
+5. Build the full skeleton before choosing or running the French
    encoder/calibrator benchmark.
