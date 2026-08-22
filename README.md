@@ -42,3 +42,5 @@ dictionary adapters, model pins, release diagnostics in the transplanted UI,
 Spanish migration, Artist mode, and production integration are not complete.
 
 See `docs/runbooks/local-speech-pilot.md` for the exact local test flow.
+The agreed long-running migration sequence and operating rules are recorded in
+`docs/ROADMAP.md`.
