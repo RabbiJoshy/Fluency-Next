@@ -127,6 +127,10 @@
   contributing artist slugs. The shared local Apps Script contract remains in
   the existing Fluency repository until backend migration and must be deployed
   manually after changes.
+  Flags are append-only events keyed by an immutable `FlagId`: delivery retries
+  update only their own event, while a later report on the same card/field
+  remains separate. Client-build and source-record IDs are promoted for common
+  audits, and resolution state can identify the release that fixed a report.
 
 ## Not started
 

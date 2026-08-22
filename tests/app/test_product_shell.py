@@ -113,6 +113,9 @@ class ProductShellTests(unittest.TestCase):
         config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))
         self.assertIn("new Set(['JST', 'JSTA'])", auth)
         self.assertIn("provenanceJson: JSON.stringify(provenance)", auth)
+        self.assertIn("flagId = createFlagId()", auth)
+        self.assertIn("`flag|${flagId}`", auth)
+        self.assertIn("schemaVersion: 4", auth)
         self.assertIn("function _flagRunProvenance", modals)
         self.assertIn("Release ID:", modals)
         self.assertEqual(
