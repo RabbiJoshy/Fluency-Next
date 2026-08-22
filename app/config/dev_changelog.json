@@ -3,7 +3,7 @@
   "entries": [
     {
       "date": "2026-08-22",
-      "commit": "pending",
+      "commit": "ddd22d0",
       "summary": "The existing Fluency app surface now runs against the clean release architecture",
       "detail": [
         "The interface and active-set experience are transplanted from the existing app.",
