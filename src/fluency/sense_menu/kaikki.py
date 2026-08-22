@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 import gzip
 import json
 from pathlib import Path
 from typing import Any, Iterable, Iterator
 
 from fluency.core.hashing import canonical_content_id, file_content_id
-from fluency.languages.french.surfaces import normalize_surface
+from fluency.languages.french.surfaces import canonicalize_typography, normalize_surface
 from fluency.wsd.menus import MenuAnalysis, SenseLeaf, build_analysis_id
 
 
@@ -46,17 +47,44 @@ def _glosses(sense: dict[str, Any], field: str = "glosses") -> list[str]:
     return [value.strip() for value in raw if isinstance(value, str) and value.strip()] if isinstance(raw, list) else []
 
 
-def _redirect_targets(row: dict[str, Any]) -> set[str]:
-    targets: set[str] = set()
+@dataclass(frozen=True, slots=True)
+class RedirectEdge:
+    target: str
+    target_parts_of_speech: frozenset[str]
+
+
+def _redirect_edges(
+    row: dict[str, Any],
+    policy: dict[str, Any],
+    *,
+    source_surface: str,
+) -> set[RedirectEdge]:
+    redirects = policy["redirects"]
+    raw_word = row.get("word")
+    if redirects["require_source_case_match"] and (
+        not isinstance(raw_word, str)
+        or canonicalize_typography(raw_word).strip() != source_surface
+    ):
+        return set()
+    source_pos = row.get("pos")
+    allowed = redirects["target_pos_by_source_pos"].get(source_pos)
+    if not isinstance(allowed, list) or not allowed:
+        return set()
+    reject_tags = set(redirects["reject_tags"])
+    allow_if_tags = set(redirects["allow_if_tags"])
+    edges: set[RedirectEdge] = set()
     for sense in _json_values(row.get("senses")):
-        if not (_sense_tags(sense) & FORM_TAGS):
+        tags = _sense_tags(sense)
+        if not (tags & FORM_TAGS):
+            continue
+        if tags & reject_tags and not tags & allow_if_tags:
             continue
         for field in ("form_of", "alt_of"):
             for target in _json_values(sense.get(field)):
                 normalized = _safe_surface(target.get("word"))
                 if normalized is not None:
-                    targets.add(normalized)
-    return targets
+                    edges.add(RedirectEdge(normalized, frozenset(allowed)))
+    return edges
 
 
 def _semantic_senses(row: dict[str, Any]) -> list[dict[str, Any]]:
@@ -145,6 +173,7 @@ class KaikkiSenseMenuAdapter:
         language_code: str = "fr",
         gloss_language: str = "en",
         source_edition: str = "enwiktionary",
+        language_policy: dict[str, Any] | None = None,
         max_redirect_hops: int = 5,
     ) -> None:
         self.path = path.resolve()
@@ -159,6 +188,9 @@ class KaikkiSenseMenuAdapter:
                 "the current French WSD profile requires English glosses from enwiktionary"
             )
         self.source_edition = source_edition
+        if not isinstance(language_policy, dict):
+            raise KaikkiMenuError("an explicit sense-menu language policy is required")
+        self.language_policy = language_policy
         self.max_redirect_hops = max_redirect_hops
         self.snapshot_content_id = file_content_id(self.path)
 
@@ -168,11 +200,15 @@ class KaikkiSenseMenuAdapter:
     ) -> tuple[
         dict[str, list[dict[str, Any]]],
         dict[str, dict[str, tuple[str, ...]]],
+        dict[str, dict[str, set[str] | None]],
         dict[str, int],
     ]:
         rows_by_word: dict[str, list[dict[str, Any]]] = defaultdict(list)
         paths: dict[str, dict[str, tuple[str, ...]]] = {
             surface: {surface: (surface,)} for surface in surfaces
+        }
+        allowed_positions: dict[str, dict[str, set[str] | None]] = {
+            surface: {surface: None} for surface in surfaces
         }
         scanned: set[str] = set()
         rows_read = 0
@@ -200,20 +236,42 @@ class KaikkiSenseMenuAdapter:
 
             for surface, by_headword in paths.items():
                 additions: dict[str, tuple[str, ...]] = {}
+                addition_positions: dict[str, set[str]] = defaultdict(set)
                 for headword, path in tuple(by_headword.items()):
                     if len(path) > self.max_redirect_hops:
                         continue
                     for row in found.get(headword, []):
-                        for target in sorted(_redirect_targets(row)):
+                        source_pos = row.get("pos")
+                        allowed_source = allowed_positions[surface][headword]
+                        if allowed_source is not None and source_pos not in allowed_source:
+                            continue
+                        for edge in sorted(
+                            _redirect_edges(
+                                row,
+                                self.language_policy,
+                                source_surface=headword,
+                            ),
+                            key=lambda item: (item.target, sorted(item.target_parts_of_speech)),
+                        ):
+                            target = edge.target
                             if target in path:
                                 continue
                             candidate = (*path, target)
                             previous = by_headword.get(target) or additions.get(target)
                             if previous is None or candidate < previous:
                                 additions[target] = candidate
+                            addition_positions[target].update(edge.target_parts_of_speech)
                 by_headword.update(additions)
+                for target, positions in addition_positions.items():
+                    previous = allowed_positions[surface].get(target)
+                    if previous is None and target in allowed_positions[surface]:
+                        continue
+                    if previous is None:
+                        allowed_positions[surface][target] = set(positions)
+                    else:
+                        previous.update(positions)
 
-        return dict(rows_by_word), paths, {"passes": passes, "rows_read": rows_read}
+        return dict(rows_by_word), paths, allowed_positions, {"passes": passes, "rows_read": rows_read}
 
     def build(
         self,
@@ -231,7 +289,7 @@ class KaikkiSenseMenuAdapter:
                 raise KaikkiMenuError(f"duplicate inventory surface: {surface}")
             by_surface[surface] = card
 
-        rows_by_word, paths, scan = self._collect(set(by_surface))
+        rows_by_word, paths, allowed_positions, scan = self._collect(set(by_surface))
         menu_cards: list[dict[str, Any]] = []
         per_surface: list[dict[str, Any]] = []
         total_analyses = 0
@@ -244,6 +302,9 @@ class KaikkiSenseMenuAdapter:
                 for row in rows_by_word.get(headword, []):
                     part_of_speech = row.get("pos")
                     if not isinstance(part_of_speech, str) or not part_of_speech:
+                        continue
+                    allowed = allowed_positions[surface][headword]
+                    if allowed is not None and part_of_speech not in allowed:
                         continue
                     semantic = _semantic_senses(row)
                     if not semantic:
@@ -293,6 +354,11 @@ class KaikkiSenseMenuAdapter:
                     provider_metadata={
                         "resolution_path": list(paths[surface][headword]),
                         "resolution": "direct" if headword == surface else "structured_form_of",
+                        "allowed_parts_of_speech": (
+                            None
+                            if allowed_positions[surface][headword] is None
+                            else sorted(allowed_positions[surface][headword])
+                        ),
                         "source_entry_count": entry_counts[(headword, part_of_speech)],
                     },
                 )

@@ -60,6 +60,10 @@
   truthfully benchmark-blocked. Added a pinned English-Wiktionary/Kaikki
   adapter that preserves exact headword/POS analyses, structured form-of
   targets, stable provider leaves, metadata, and explicit no-menu cases.
+  French menu policy constrains redirects by source/target POS, rejects
+  abbreviation expansion unless it is a contraction, and requires redirect
+  source case to match. This prevents dictionary-edge leakage such as
+  `de → dame`, conjugated verbs importing noun twins, and `cette → Sète`.
 - Gate 14 (fresh French surface inventory): added an immutable Lexique 4.00
   adapter using its subtitle-corpus `FreqOrtho` surface measure. Stage 01 emits
   exactly the profile's surface cards plus full frequency ranks and an audit

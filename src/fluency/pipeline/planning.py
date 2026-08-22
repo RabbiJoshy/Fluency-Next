@@ -109,6 +109,10 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
         isinstance(sense_menu.get("source_adapter"), str) and bool(sense_menu["source_adapter"]),
         "sense-menu source adapter is required",
     )
+    _require(
+        isinstance(sense_menu.get("language_policy"), str) and bool(sense_menu["language_policy"]),
+        "sense-menu language policy is required",
+    )
     _require(sense_menu.get("output_schema") == "sense-menu/v1", "unsupported sense-menu output")
     _require(sense_menu.get("source_edition") == "enwiktionary", "French sense glosses must come from English Wiktionary")
     _require(sense_menu.get("gloss_language") == "en", "WSD requires English sense glosses")

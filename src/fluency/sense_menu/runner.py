@@ -16,6 +16,7 @@ from fluency.core.workspace import Workspace
 from fluency.harvest.inventory import load_harvest_inventory
 from fluency.pipeline.planning import load_pipeline_profile
 from fluency.release.io import atomic_write, json_bytes
+from fluency.sense_menu.config import load_sense_menu_language_policy
 from fluency.sense_menu.kaikki import ADAPTER_ID, KaikkiSenseMenuAdapter
 
 
@@ -56,6 +57,7 @@ def _implementation_content_id() -> str:
     package = Path(__file__).resolve().parent
     paths = (
         Path(__file__).resolve(),
+        package / "config.py",
         package / "kaikki.py",
         package.parent / "wsd" / "menus.py",
     )
@@ -77,7 +79,6 @@ def build_sense_menu_stage(
 ) -> Path:
     """Normalize one explicit Kaikki snapshot into a run-owned closed menu."""
 
-    del repository_root  # reserved for provider policy files when another adapter lands
     if not snapshot_id.strip():
         raise SenseMenuRunError("snapshot_id must be explicit and non-empty")
     started_at = datetime.now(UTC) if started_at is None else started_at
@@ -95,6 +96,11 @@ def build_sense_menu_stage(
         raise SenseMenuRunError("run profile language or mode does not match")
     if profile["sense_menu"]["source_adapter"] != ADAPTER_ID:
         raise SenseMenuRunError("no installed sense-menu adapter matches the run profile")
+    language_policy = load_sense_menu_language_policy(
+        repository_root,
+        policy_id=profile["sense_menu"]["language_policy"],
+        language=language,
+    )
 
     resolved_snapshot = dictionary_snapshot.expanduser().resolve()
     if not _inside(resolved_snapshot, workspace.root / "raw"):
@@ -116,6 +122,7 @@ def build_sense_menu_stage(
         language_code=language,
         gloss_language=profile["sense_menu"]["gloss_language"],
         source_edition=profile["sense_menu"]["source_edition"],
+        language_policy=language_policy,
     )
     menu, report = adapter.build(cards, snapshot_id=snapshot_id)
 
@@ -125,6 +132,7 @@ def build_sense_menu_stage(
         "gloss_language": adapter.gloss_language,
         "source_edition": adapter.source_edition,
         "max_redirect_hops": adapter.max_redirect_hops,
+        "language_policy": language_policy,
         "card_identity": "surface-card/v1",
         "fallback_policy": "none",
     }

@@ -63,6 +63,14 @@ the explicit tuples; neither a lemma field nor file order chooses for it.
 - Preserve all semantic leaves with a non-empty English gloss.
 - Treat `form-of` and `alt-of` senses as structured routes to a headword, not as
   learner-facing sense leaves.
+- Bind every structured route to the source entry's compatible target POS.
+  Ordinary morphology preserves POS (`verb → verb`, `pron → pron`, and so on);
+  contractions may resolve to article/preposition analyses.
+- Reject abbreviation and initialism expansion unless the entry is explicitly
+  a contraction, and require redirect source case to match. Direct semantic
+  entries are unaffected. This removes `de → dame`, conjugated-form noun
+  leakage, and lowercase `cette → Sète` without flattening real ambiguity such
+  as `suis → être|verb` versus `suis → suivre|verb`.
 - Preserve rare, regional, archaic, topic, qualifier, etymology, and example
   metadata. Do not silently discard it before the audit establishes a policy.
 - Preserve accents and punctuation in surface identity; never accent-fold a
