@@ -127,7 +127,11 @@ until explicitly approved.
 
 ## Step 5 — Migrate Spanish into the clean architecture
 
-**Status: not started.**
+**Status: sub-roadmap drafted; source audit is next.** See
+`docs/migration/0003-spanish-speech-migration-roadmap.md` for the approval-gated
+sequence. WSD remains a replaceable external assignment layer and does not
+block the inventory, menu, harvest, unassigned release or app-compatibility
+work.
 
 Move the current Spanish Speech system into the same clean contracts after the
 French vertical slice has proved them. Preserve the already completed Spanish
