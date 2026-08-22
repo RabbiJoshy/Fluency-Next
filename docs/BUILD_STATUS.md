@@ -14,12 +14,17 @@
   compact release contracts, read-only local release mount, product-parity
   Fluency setup/study experience, isolated progress, explicit candidate
   selection, diagnostics, and browser speech integration.
+- Gate 7: restored the original Fluency HTML/CSS product shell, preserved the
+  first pilot UI as a tagged and readable reference, added immutable release
+  compositions, exact layer provenance and dependency locks, a candidate
+  catalog, separate validation/activation, browser hash checks, and an in-app
+  release/layer audit.
 
 ## Not started
 
 - Source ingestion and evidence registries.
 - Embeddings, WSD, calibration, and example selection.
-- Production release generation and full-deck app integration.
+- Production release generation and full French inventory integration.
 - Spanish and legacy progress migration.
 - Artist mode.
 

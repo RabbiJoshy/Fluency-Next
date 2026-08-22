@@ -2,8 +2,6 @@
 
 ## First run
 
-Open one terminal and run:
-
 ```bash
 cd /Users/joshuathomasamar/PycharmProjects/Fluency-Next
 make test
@@ -11,67 +9,56 @@ make pilot
 make dev
 ```
 
-Then open <http://127.0.0.1:4173>.
-
-`make pilot` is deterministic and normally finishes immediately. Re-running it
-is safe when the release content is unchanged. An existing release with
-different bytes is rejected rather than overwritten.
+Open <http://127.0.0.1:4173/>. `make pilot` deterministically composes and
+activates the curated release. Re-running it is safe when the bytes are
+unchanged; an existing release with different bytes is rejected.
 
 ## What should be visible
 
-- The recognisable Fluency welcome, setup, language, level, set, and study
+- The original Fluency welcome, setup, level, set, card, scrubber, and keyboard
   surfaces.
-- A clear French pipeline pilot notice.
-- 25 French surface-form cards.
-- Card reveal, meaning selection, examples, lookup, and direction controls.
-- French browser speech using locale `fr-FR`, when the browser supports speech
-  synthesis.
-- Correct/review recording, card navigation, summary counts, and an explicit
-  two-step reset.
-- Release diagnostics stating that WSD is not connected and pilot progress is
-  isolated.
+- A 25-card French surface-form deck with meanings, examples, speech, scoring,
+  navigation, and isolated local progress.
+- A release pill in the top bar. It opens the exact candidate, deck and
+  composition hashes, layer source/artifact IDs, fallback policy, and explicit
+  WSD omission.
 
-Progress survives a browser reload on that local origin. It does not read or
-write the old Fluency app's progress.
+The old Fluency JavaScript and data loaders are not running. The new compact
+runtime binds the immutable release to the original product shell.
 
-To preview one immutable candidate without changing `active.json`, open:
-
-```text
-http://127.0.0.1:4173/?release=fr-speech-pilot-0001
-```
-
-If that exact release does not exist, the app shows an error. It never silently
-falls back to another release.
-
-## Data path
-
-The pilot builder writes only:
-
-```text
-/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/releases/fr/speech/
-```
-
-The server exposes that folder under `/releases/`. It serves the application
-from `Fluency-Next/app/` and does not point the old application's HTML at the new
-data.
-
-To use a different workspace for one command:
+## Release control
 
 ```bash
-make pilot FLUENCY_WORKSPACE=/absolute/path/to/workspace
-make dev FLUENCY_WORKSPACE=/absolute/path/to/workspace
+PYTHONPATH=src python3.12 -m fluency release list --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
+PYTHONPATH=src python3.12 -m fluency release validate fr-speech-pilot-0002 --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
+PYTHONPATH=src python3.12 -m fluency release activate fr-speech-pilot-0002 --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
 ```
 
-## Troubleshooting
+To preview a non-active approved candidate, use
+`?release=<catalogued-release-id>`. Unknown and legacy-unlocked IDs fail closed;
+the app never substitutes the active release or fills gaps from another deck.
 
-If the app reports that the active pointer is unavailable, stop the server and
-run `make pilot`, then start `make dev` again. Diagnose the workspace with:
+Generic composition takes an already assembled compact deck plus a reviewed
+composition document and does not activate the result:
 
 ```bash
-PYTHONPATH=src python3.12 -m fluency workspace doctor \
-  --path /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
+PYTHONPATH=src python3.12 -m fluency release compose \
+  --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace \
+  --composition /absolute/path/to/composition.json \
+  --deck /absolute/path/to/deck.json
 ```
 
-Do not manually edit files inside the immutable release directory. Change the
-checked-in fixture or the release builder, choose a new release ID, validate,
-and publish a new release instead.
+## Data path and safety
+
+Generated releases live only under:
+
+```text
+/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/releases/<language>/<mode>/
+```
+
+The server mounts this read-only at `/releases/`. Do not manually edit an
+immutable release. Create a new release ID, validate it, inspect it as a
+candidate, and activate it deliberately.
+
+The first pilot UI is preserved at `docs/reference/pilot-ui-v1.html` and as Git
+tag `pilot-ui-v1`; it is not the production app entry point.

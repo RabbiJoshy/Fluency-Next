@@ -1,0 +1,44 @@
+/* Narrow bridge between the preserved Fluency product shell and the new release runtime. */
+.fluency-next-only { display: initial; }
+.release-pill {
+  min-width: 0;
+  max-width: 190px;
+  padding: 7px 10px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--accent-secondary-rgb), .45);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: rgba(var(--accent-secondary-rgb), .09);
+  cursor: pointer;
+  font: 700 10px/1 var(--font-emphasis);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.release-audit-modal { z-index: 10020; }
+.release-audit-card { width: min(620px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 28px)); overflow: auto; }
+.release-audit-card h3 { margin: 0 0 4px; }
+.release-audit-card select { width: 100%; margin: 12px 0; padding: 11px; border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); background: var(--bg-tertiary); }
+.release-audit-grid { display: grid; grid-template-columns: minmax(110px, auto) 1fr; gap: 1px; margin: 14px 0; }
+.release-audit-grid dt, .release-audit-grid dd { margin: 0; padding: 9px 10px; background: var(--bg-tertiary); }
+.release-audit-grid dt { color: var(--text-muted); font-size: 10px; font-weight: 700; }
+.release-audit-grid dd { overflow-wrap: anywhere; font: 10px/1.4 var(--font-data); }
+.release-layer-list { display: grid; gap: 7px; margin: 12px 0; }
+.release-layer { padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-tertiary); }
+.release-layer strong, .release-layer span { display: block; }
+.release-layer span { margin-top: 3px; color: var(--text-muted); font: 9px/1.35 var(--font-data); overflow-wrap: anywhere; }
+.release-audit-note { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.pilot-back-content { width: 100%; display: grid; gap: 14px; align-content: start; overflow: auto; }
+.pilot-back-content h2 { margin: 0; font-size: clamp(34px, 7vw, 58px); text-align: center; }
+.pilot-meaning { padding: 14px; border-left: 3px solid var(--accent-primary); border-radius: 8px; background: rgba(var(--accent-primary-rgb), .08); }
+.pilot-meaning strong, .pilot-meaning small { display: block; }
+.pilot-meaning small { margin-top: 5px; color: var(--text-muted); }
+.pilot-example { padding: 14px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-tertiary); }
+.pilot-example span { display: block; }
+.pilot-example span + span { margin-top: 6px; color: var(--text-muted); }
+.pilot-score-actions { position: fixed; left: 50%; bottom: 24px; z-index: 100; display: flex; gap: 12px; transform: translateX(-50%); }
+.pilot-score-actions button { width: 52px; height: 52px; border: 1px solid var(--border-color); border-radius: 50%; color: var(--text-primary); background: var(--bg-card); cursor: pointer; font-size: 24px; }
+.pilot-score-actions .correct { color: var(--success); }
+.pilot-score-actions .incorrect { color: var(--error); }
+.pilot-setup-badge { color: var(--text-muted); font: 10px/1.4 var(--font-data); }
+.pilot-fatal { position: fixed; inset: 0; z-index: 20000; display: grid; place-content: center; padding: 28px; background: var(--bg-primary); text-align: center; }
+.pilot-fatal code { display: block; margin-top: 16px; color: var(--error); }

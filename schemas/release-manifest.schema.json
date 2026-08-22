@@ -15,6 +15,8 @@
     "card_count",
     "deck_path",
     "deck_content_id",
+    "composition_path",
+    "composition_content_id",
     "progress_namespace",
     "wsd"
   ],
@@ -26,22 +28,14 @@
       "type": "string",
       "minLength": 1
     },
-    "language": {
-      "const": "fr"
-    },
-    "locale": {
-      "const": "fr-FR"
-    },
-    "mode": {
-      "const": "speech"
-    },
+    "language": {"type": "string", "minLength": 2},
+    "locale": {"type": "string", "minLength": 2},
+    "mode": {"type": "string", "minLength": 1},
     "created_at": {
       "type": "string",
       "format": "date-time"
     },
-    "publication_status": {
-      "const": "curated_fixture"
-    },
+    "publication_status": {"type": "string", "minLength": 1},
     "card_count": {
       "type": "integer",
       "minimum": 1
@@ -53,19 +47,24 @@
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
-    "progress_namespace": {
-      "const": "pilot"
+    "composition_path": {
+      "const": "composition.json"
     },
+    "composition_content_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "progress_namespace": {"type": "string", "minLength": 1},
     "wsd": {
       "type": "object",
       "additionalProperties": false,
       "required": ["enabled", "status"],
       "properties": {
-        "enabled": {
-          "const": false
-        },
-        "status": {
-          "const": "not_connected"
+        "enabled": {"type": "boolean"},
+        "status": {"type": "string", "minLength": 1},
+        "source_id": {
+          "type": "string",
+          "minLength": 1
         }
       }
     }

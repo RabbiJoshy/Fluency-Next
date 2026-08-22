@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/layer-selection.schema.json",
+  "title": "Exact layer selection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["selection_version", "source_type", "source_id", "artifact_id", "record_count", "requires"],
+  "properties": {
+    "selection_version": {"const": "layer-selection/v1"},
+    "source_type": {"enum": ["run", "fixture", "manual"]},
+    "source_id": {"type": "string", "minLength": 1},
+    "artifact_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "record_count": {"type": "integer", "minimum": 0},
+    "requires": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+    },
+    "fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "source_type", "source_id", "artifact_id", "record_count"],
+      "properties": {
+        "policy": {"const": "missing_only"},
+        "source_type": {"enum": ["run", "fixture", "manual"]},
+        "source_id": {"type": "string", "minLength": 1},
+        "artifact_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "record_count": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

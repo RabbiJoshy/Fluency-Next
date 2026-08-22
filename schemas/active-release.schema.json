@@ -15,12 +15,8 @@
     "manifest_version": {
       "const": "active-release/v1"
     },
-    "language": {
-      "const": "fr"
-    },
-    "mode": {
-      "const": "speech"
-    },
+    "language": {"type": "string", "minLength": 2},
+    "mode": {"type": "string", "minLength": 1},
     "release_id": {
       "type": "string",
       "minLength": 1

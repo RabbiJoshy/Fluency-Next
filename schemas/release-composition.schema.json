@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/release-composition.schema.json",
+  "title": "Fluency release composition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["composition_version", "release_id", "label", "language", "locale", "mode", "created_at", "publication_status", "progress_namespace", "conflict_policy", "fallback_policy", "layers", "omitted_layers"],
+  "properties": {
+    "composition_version": {"const": "release-composition/v1"},
+    "release_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "label": {"type": "string", "minLength": 1},
+    "language": {"type": "string", "minLength": 2},
+    "locale": {"type": "string", "minLength": 2},
+    "mode": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "publication_status": {"type": "string", "minLength": 1},
+    "progress_namespace": {"type": "string", "minLength": 1},
+    "conflict_policy": {"const": "error"},
+    "fallback_policy": {"enum": ["none", "explicit_missing_only"]},
+    "layers": {
+      "type": "object",
+      "required": ["inventory", "sense_menu", "sentences", "example_selection"],
+      "additionalProperties": {"$ref": "layer-selection.schema.json"}
+    },
+    "omitted_layers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["layer", "reason"],
+        "properties": {
+          "layer": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

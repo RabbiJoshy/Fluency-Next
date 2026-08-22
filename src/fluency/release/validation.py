@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from fluency.core.hashing import file_content_id
+from fluency.core.hashing import file_content_id, validate_content_id
 from fluency.core.identity import build_card_id
 from fluency.languages.french.surfaces import normalize_surface
 
@@ -14,6 +14,10 @@ from fluency.languages.french.surfaces import normalize_surface
 ACTIVE_RELEASE_VERSION = "active-release/v1"
 RELEASE_MANIFEST_VERSION = "release-manifest/v1"
 SPEECH_DECK_VERSION = "speech-deck/v1"
+LAYER_SELECTION_VERSION = "layer-selection/v1"
+RELEASE_COMPOSITION_VERSION = "release-composition/v1"
+RELEASE_CATALOG_VERSION = "release-catalog/v1"
+REQUIRED_SPEECH_LAYERS = {"inventory", "sense_menu", "sentences", "example_selection"}
 
 
 class ReleaseValidationError(ValueError):
@@ -97,7 +101,60 @@ def validate_deck(deck: dict[str, Any]) -> None:
             _require(bool(example.get("english")), "example English text is required")
 
 
-def validate_manifest(manifest: dict[str, Any], deck_path: Path) -> dict[str, Any]:
+def validate_composition(composition: dict[str, Any]) -> None:
+    _require(
+        composition.get("composition_version") == RELEASE_COMPOSITION_VERSION,
+        "unsupported release composition version",
+    )
+    for field in ("release_id", "label", "language", "locale", "mode", "created_at", "publication_status", "progress_namespace"):
+        _require(isinstance(composition.get(field), str) and composition[field], f"composition {field} is required")
+    _require(composition.get("conflict_policy") == "error", "composition conflicts must fail")
+    fallback_policy = composition.get("fallback_policy")
+    _require(fallback_policy in {"none", "explicit_missing_only"}, "invalid fallback policy")
+    layers = composition.get("layers")
+    _require(isinstance(layers, dict), "composition layers are required")
+    _require(REQUIRED_SPEECH_LAYERS.issubset(layers), "required Speech layers are missing")
+    omitted = composition.get("omitted_layers")
+    _require(isinstance(omitted, list), "omitted_layers must be a list")
+    omitted_names: set[str] = set()
+    fallback_count = 0
+    for layer, selection in layers.items():
+        _require(isinstance(layer, str) and layer, "layer name is invalid")
+        _require(isinstance(selection, dict), f"layer {layer} selection must be an object")
+        _require(selection.get("selection_version") == LAYER_SELECTION_VERSION, f"layer {layer} has an unsupported selection version")
+        _require(selection.get("source_type") in {"run", "fixture", "manual"}, f"layer {layer} source type is invalid")
+        _require(bool(selection.get("source_id")), f"layer {layer} source ID is required")
+        artifact_id = selection.get("artifact_id")
+        try:
+            validate_content_id(artifact_id)
+        except (TypeError, ValueError):
+            raise ReleaseValidationError(f"layer {layer} artifact ID is invalid") from None
+        _require(isinstance(selection.get("record_count"), int) and selection["record_count"] >= 0, f"layer {layer} record count is invalid")
+        requirements = selection.get("requires")
+        _require(isinstance(requirements, dict), f"layer {layer} requirements must be an object")
+        fallback = selection.get("fallback")
+        if fallback is not None:
+            fallback_count += 1
+            _require(fallback_policy == "explicit_missing_only", f"layer {layer} declares fallback while fallback policy is none")
+            _require(isinstance(fallback, dict) and fallback.get("policy") == "missing_only", f"layer {layer} fallback must be explicit missing_only")
+            _require(bool(fallback.get("source_id")) and bool(fallback.get("artifact_id")), f"layer {layer} fallback provenance is incomplete")
+            try:
+                validate_content_id(fallback["artifact_id"])
+            except (TypeError, ValueError):
+                raise ReleaseValidationError(f"layer {layer} fallback artifact ID is invalid") from None
+        for dependency, expected_artifact in requirements.items():
+            _require(dependency in layers, f"layer {layer} requires missing layer {dependency}")
+            _require(layers[dependency].get("artifact_id") == expected_artifact, f"layer {layer} requires a different {dependency} artifact")
+    _require(fallback_policy != "explicit_missing_only" or fallback_count > 0, "explicit fallback policy has no fallback layer")
+    for item in omitted:
+        _require(isinstance(item, dict) and bool(item.get("layer")) and bool(item.get("reason")), "omitted layer entry is invalid")
+        omitted_names.add(item["layer"])
+    _require(not (set(layers) & omitted_names), "a layer cannot be both selected and omitted")
+
+
+def validate_manifest(
+    manifest: dict[str, Any], deck_path: Path, composition_path: Path
+) -> tuple[dict[str, Any], dict[str, Any]]:
     _require(
         manifest.get("manifest_version") == RELEASE_MANIFEST_VERSION,
         "unsupported release manifest version",
@@ -115,6 +172,11 @@ def validate_manifest(manifest: dict[str, Any], deck_path: Path) -> dict[str, An
         manifest.get("deck_content_id") == file_content_id(deck_path),
         "deck content hash does not match manifest",
     )
+    _require(manifest.get("composition_path") == composition_path.name, "manifest composition path is invalid")
+    _require(
+        manifest.get("composition_content_id") == file_content_id(composition_path),
+        "composition content hash does not match manifest",
+    )
     wsd = manifest.get("wsd")
     _require(
         isinstance(wsd, dict)
@@ -124,10 +186,22 @@ def validate_manifest(manifest: dict[str, Any], deck_path: Path) -> dict[str, An
     )
 
     deck = _load_object(deck_path)
+    composition = _load_object(composition_path)
+    validate_composition(composition)
     validate_deck(deck)
     _require(deck.get("release_id") == manifest.get("release_id"), "release IDs disagree")
+    _require(composition.get("release_id") == manifest.get("release_id"), "composition and manifest release IDs disagree")
+    for field in ("language", "locale", "mode", "created_at", "publication_status", "progress_namespace"):
+        _require(composition.get(field) == manifest.get(field), f"composition and manifest {field} disagree")
     _require(len(deck["cards"]) == manifest.get("card_count"), "card count does not match manifest")
-    return deck
+    wsd_selection = composition["layers"].get("wsd_assignments")
+    if wsd_selection is None:
+        _require(wsd.get("enabled") is False, "manifest cannot enable an omitted WSD layer")
+        omitted = {item["layer"]: item["reason"] for item in composition["omitted_layers"]}
+        _require(omitted.get("wsd_assignments") == wsd.get("status"), "WSD omission reason disagrees")
+    else:
+        _require(wsd.get("enabled") is True and wsd.get("source_id") == wsd_selection["source_id"], "WSD manifest provenance disagrees")
+    return deck, composition
 
 
 def validate_active_release(active: dict[str, Any]) -> None:
@@ -141,13 +215,17 @@ def validate_active_release(active: dict[str, Any]) -> None:
     manifest_path = active.get("manifest_path")
     _require(
         isinstance(manifest_path, str)
-        and manifest_path.endswith("/manifest.json")
+        and manifest_path == f"{active.get('release_id')}/manifest.json"
         and ".." not in Path(manifest_path).parts,
         "active manifest_path is unsafe",
     )
 
 
-def validate_release_bundle(release_directory: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+def validate_release_bundle(release_directory: Path) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     manifest = _load_object(release_directory / "manifest.json")
-    deck = validate_manifest(manifest, release_directory / "deck.json")
-    return manifest, deck
+    deck, composition = validate_manifest(
+        manifest,
+        release_directory / "deck.json",
+        release_directory / "composition.json",
+    )
+    return manifest, deck, composition

@@ -26,17 +26,30 @@ class ProductShellTests(unittest.TestCase):
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
 
         for required_id in (
-            "welcome-screen",
-            "language-dialog",
-            "setup-view",
-            "study-view",
+            "authModal",
+            "languageTabs",
+            "setupPanel",
+            "appContent",
             "flashcard",
-            "diagnostics-dialog",
+            "deckProgressSegments",
         ):
             self.assertIn(f'id="{required_id}"', html)
-        self.assertNotIn("Merge Lemmas", html)
-        self.assertNotIn("service-worker", html)
-        self.assertNotIn("spotify", html.lower())
+        self.assertIn('src="src/legacy-boot.js"', html)
+        self.assertNotIn('src="js/main.js', html)
+        self.assertNotIn("spotify-player.js", html)
+
+    def test_pilot_html_is_preserved_as_a_readable_reference(self) -> None:
+        reference = REPOSITORY_ROOT / "docs" / "reference" / "pilot-ui-v1.html"
+        self.assertTrue(reference.is_file())
+        self.assertIn('id="welcome-screen"', reference.read_text(encoding="utf-8"))
+
+    def test_release_runtime_exposes_exact_candidate_and_layer_provenance(self) -> None:
+        client = (APP_ROOT / "src" / "core" / "release-client.js").read_text(encoding="utf-8")
+        boot = (APP_ROOT / "src" / "legacy-boot.js").read_text(encoding="utf-8")
+        self.assertIn("release-catalog/v1", client)
+        self.assertIn("composition_content_id", client)
+        self.assertIn("Release & layer audit", boot)
+        self.assertIn("composition.layers", boot)
 
     def test_all_relative_module_imports_resolve(self) -> None:
         import_pattern = re.compile(r'^import\s+.*?from\s+["\'](.+?)["\'];?$', re.MULTILINE)

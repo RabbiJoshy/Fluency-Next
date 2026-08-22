@@ -18,10 +18,12 @@ class PilotReleaseTests(unittest.TestCase):
 
             self.assertEqual(first, second)
             self.assertEqual(first_deck, (second / "deck.json").read_bytes())
-            manifest, deck = validate_release_bundle(first)
+            manifest, deck, composition = validate_release_bundle(first)
             self.assertEqual(manifest["card_count"], 25)
             self.assertEqual(len(deck["cards"]), 25)
             self.assertEqual(len({card["card_id"] for card in deck["cards"]}), 25)
+            self.assertEqual(composition["fallback_policy"], "none")
+            self.assertNotIn("wsd_assignments", composition["layers"])
 
             active = json.loads(
                 (workspace.root / "releases" / "fr" / "speech" / "active.json").read_text(
@@ -43,7 +45,7 @@ class PilotReleaseTests(unittest.TestCase):
     def test_seed_contains_exactly_25_curated_cards(self) -> None:
         seed = json.loads(default_seed_path().read_text(encoding="utf-8"))
         self.assertEqual(len(seed["cards"]), 25)
-        self.assertEqual(seed["release_id"], "fr-speech-pilot-0001")
+        self.assertEqual(seed["release_id"], "fr-speech-pilot-0002")
 
 
 if __name__ == "__main__":

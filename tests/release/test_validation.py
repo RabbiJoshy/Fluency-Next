@@ -24,6 +24,9 @@ class ReleaseValidationTests(unittest.TestCase):
         for filename in (
             "active-release.schema.json",
             "release-manifest.schema.json",
+            "layer-selection.schema.json",
+            "release-composition.schema.json",
+            "release-catalog.schema.json",
             "speech-deck.schema.json",
         ):
             with self.subTest(filename=filename):

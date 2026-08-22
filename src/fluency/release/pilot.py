@@ -3,22 +3,16 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-import shutil
-import tempfile
 from typing import Any
 
-from fluency.core.canonical_json import canonical_json
 from fluency.core.hashing import content_id
 from fluency.core.workspace import Workspace
 from fluency.languages.french.surfaces import create_french_card
+from fluency.release.activation import activate_release
+from fluency.release.composition import compose_release
 from fluency.release.validation import (
-    ACTIVE_RELEASE_VERSION,
-    RELEASE_MANIFEST_VERSION,
     SPEECH_DECK_VERSION,
-    validate_active_release,
-    validate_release_bundle,
 )
 
 
@@ -27,10 +21,6 @@ SEED_VERSION = "fr-speech-pilot-seed/v1"
 
 def default_seed_path() -> Path:
     return Path(__file__).resolve().parents[3] / "fixtures" / "pilot" / "fr-speech-pilot.seed.json"
-
-
-def _json_bytes(value: object) -> bytes:
-    return (canonical_json(value) + "\n").encode("utf-8")
 
 
 def _load_seed(path: Path) -> dict[str, Any]:
@@ -101,77 +91,54 @@ def build_pilot_deck(seed: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _write_active_pointer(path: Path, active: dict[str, Any], temporary_root: Path) -> None:
-    descriptor, temporary_name = tempfile.mkstemp(
-        dir=temporary_root,
-        prefix="active-release-",
-        suffix=".json",
-    )
-    temporary_path = Path(temporary_name)
-    try:
-        with os.fdopen(descriptor, "wb") as stream:
-            stream.write(_json_bytes(active))
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary_path, path)
-    finally:
-        temporary_path.unlink(missing_ok=True)
-
-
 def build_pilot_release(
     workspace: Workspace,
     *,
     seed_path: Path | None = None,
 ) -> Path:
-    seed = _load_seed(default_seed_path() if seed_path is None else seed_path)
+    source_path = default_seed_path() if seed_path is None else seed_path
+    seed = _load_seed(source_path)
     deck = build_pilot_deck(seed)
-    deck_bytes = _json_bytes(deck)
-    manifest = {
-        "manifest_version": RELEASE_MANIFEST_VERSION,
+    fixture_artifact_id = content_id(source_path.read_bytes())
+    selection = {
+        "selection_version": "layer-selection/v1",
+        "source_type": "fixture",
+        "source_id": SEED_VERSION,
+        "artifact_id": fixture_artifact_id,
+        "record_count": len(deck["cards"]),
+        "requires": {},
+    }
+    layers = {
+        "inventory": dict(selection),
+        "sense_menu": {**selection, "requires": {"inventory": fixture_artifact_id}},
+        "sentences": {**selection, "requires": {"inventory": fixture_artifact_id}},
+        "example_selection": {
+            **selection,
+            "requires": {
+                "inventory": fixture_artifact_id,
+                "sense_menu": fixture_artifact_id,
+                "sentences": fixture_artifact_id,
+            },
+        },
+    }
+    composition = {
+        "composition_version": "release-composition/v1",
         "release_id": seed["release_id"],
+        "label": "French Speech · curated pilot 0002",
         "language": seed["language"],
         "locale": seed["locale"],
         "mode": seed["mode"],
         "created_at": seed["created_at"],
         "publication_status": "curated_fixture",
-        "card_count": len(deck["cards"]),
-        "deck_path": "deck.json",
-        "deck_content_id": content_id(deck_bytes),
         "progress_namespace": "pilot",
-        "wsd": {"enabled": False, "status": "not_connected"},
+        "conflict_policy": "error",
+        "fallback_policy": "none",
+        "layers": layers,
+        "omitted_layers": [
+            {"layer": "wsd_assignments", "reason": "not_connected"},
+            {"layer": "manual_overrides", "reason": "not_applied"},
+        ],
     }
-    manifest_bytes = _json_bytes(manifest)
-
-    speech_root = workspace.root / "releases" / "fr" / "speech"
-    release_directory = speech_root / seed["release_id"]
-    temporary_root = workspace.root / ".fluency" / "temporary"
-    speech_root.mkdir(parents=True, exist_ok=True)
-
-    if release_directory.exists():
-        existing_deck = (release_directory / "deck.json").read_bytes()
-        existing_manifest = (release_directory / "manifest.json").read_bytes()
-        if existing_deck != deck_bytes or existing_manifest != manifest_bytes:
-            raise ValueError(
-                f"immutable release already exists with different content: {release_directory}"
-            )
-    else:
-        temporary = Path(tempfile.mkdtemp(prefix="pilot-release-", dir=temporary_root))
-        try:
-            (temporary / "deck.json").write_bytes(deck_bytes)
-            (temporary / "manifest.json").write_bytes(manifest_bytes)
-            os.replace(temporary, release_directory)
-        finally:
-            if temporary.exists():
-                shutil.rmtree(temporary)
-
-    validate_release_bundle(release_directory)
-    active = {
-        "manifest_version": ACTIVE_RELEASE_VERSION,
-        "language": "fr",
-        "mode": "speech",
-        "release_id": seed["release_id"],
-        "manifest_path": f"{seed['release_id']}/manifest.json",
-    }
-    validate_active_release(active)
-    _write_active_pointer(speech_root / "active.json", active, temporary_root)
+    release_directory = compose_release(workspace, composition, deck)
+    activate_release(workspace, seed["language"], seed["mode"], seed["release_id"])
     return release_directory

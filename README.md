@@ -26,8 +26,8 @@ workspace. It has no production or GitHub dependency.
 ## Current scope
 
 The stable surface-card identity, external workspace, immutable artifact/run
-contracts, French tokenization boundary, and a recognisable Fluency application
-running a 25-card French Speech pilot are implemented. The pilot is curated
+contracts, French tokenization boundary, exact release composition, and the
+original Fluency product shell running a 25-card French Speech pilot are implemented. The pilot is curated
 fixture data: corpus ingestion, frequency ranking, embeddings, WSD, calibration,
 Spanish migration, Artist mode, and production integration have not been
 implemented yet.
