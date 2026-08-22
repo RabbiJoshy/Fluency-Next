@@ -85,18 +85,11 @@
   minimum is 23 candidates and 19 distinct French sentence IDs. All 7,671
   retained sentence records have complete source attribution, contributor and
   license fields, and every stage/contract content hash verifies.
-- Gate 17 (French WSD gold pack): generated an immutable prediction-blind
-  benchmark from the real run with 120 unique cards and sentence pairs: 40
-  function/homograph, 40 inflected/multi-headword and 40 ordinary multi-sense.
-  A self-contained local review screen saves and resumes by exact benchmark ID,
-  supports explicit missing-sense/bad-pair/unsure outcomes, and exports/imports
-  exact analysis-and-leaf labels. Browser verification covered selection,
-  navigation, reload persistence and reset; the delivered review starts at
-  zero labels.
 
 ## Not started
 
-- Gold annotation of the frozen 120-row French WSD benchmark.
+- Connect the separately selected French WSD implementation to the immutable
+  assignment stage without coupling migration progress to WSD research.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
 - Spanish and legacy progress migration.

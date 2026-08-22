@@ -241,29 +241,3 @@ attribution, and source URL. The command then changes only its explicit source:
 ```bash
 --source opensubtitles=/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/opensubtitles/en-fr/<snapshot-id>
 ```
-
-## Prediction-blind French WSD gold review
-
-After inventory, sense menu and harvest are complete, build the approved frozen
-120-row benchmark without running a model:
-
-```bash
-PYTHONPATH=/Users/joshuathomasamar/PycharmProjects/Fluency-Next/src \
-python3.12 -m fluency pipeline wsd-benchmark \
-  --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace \
-  --run-id 20260822T172017Z-651bcd8e
-```
-
-The immutable output is
-`runs/fr/speech/<run-id>/audits/wsd-benchmark-120/`. Its `review.html` embeds
-the exact benchmark and contains no prediction fields. To review it through a
-local server:
-
-```bash
-python3.12 -m http.server 4181 --bind 127.0.0.1 \
-  --directory /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/runs/fr/speech/20260822T172017Z-651bcd8e/audits/wsd-benchmark-120
-```
-
-Open `http://127.0.0.1:4181/review.html`. Labels save locally under the exact
-benchmark content ID. Use **Export labels.json** when complete; model comparison
-must not run until that export is frozen and validated.

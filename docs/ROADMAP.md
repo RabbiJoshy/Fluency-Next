@@ -58,9 +58,10 @@ sentence IDs per card. No WSD has yet executed.
 
 ## Step 2 — Port and generalize the best Spanish WSD
 
-**Status: shared orchestration, real French menu, and prediction-blind 120-row
-benchmark implemented. Gold annotation is next; model comparison remains
-blocked until the labels are frozen.**
+**Status: shared contracts and dependency-injected orchestration implemented;
+real French inventory, menus and harvested candidates are ready. The selected
+WSD method is being settled separately and plugs into this stage without
+blocking the migration.**
 
 Audit the current best Spanish WSD implementation, separate its genuinely
 language-agnostic retrieval/assignment machinery from Spanish-only behaviour,

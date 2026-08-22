@@ -101,21 +101,6 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(args.pipeline_command, "sense-menu")
         self.assertEqual(args.snapshot_id, "enwiktionary-2026-08-05")
 
-    def test_pipeline_wsd_benchmark_requires_an_explicit_run(self) -> None:
-        parser = build_parser()
-        args = parser.parse_args(
-            [
-                "pipeline",
-                "wsd-benchmark",
-                "--workspace",
-                "/tmp/fluency-workspace",
-                "--run-id",
-                "20260822T172017Z-651bcd8e",
-            ]
-        )
-        self.assertEqual(args.pipeline_command, "wsd-benchmark")
-        self.assertEqual(args.run_id, "20260822T172017Z-651bcd8e")
-
     def test_pipeline_inventory_requires_explicit_snapshot_identity(self) -> None:
         args = build_parser().parse_args(
             [
