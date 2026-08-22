@@ -135,6 +135,7 @@ def validate_deck(deck: dict[str, Any]) -> None:
             _require("legacy_sources" not in example, "legacy example sources are not allowed")
 
     structured_card_ids: list[str] = []
+    card_rank_by_id = {card["card_id"]: card["rank"] for card in cards}
     level_ids: set[str] = set()
     set_ids: set[str] = set()
     for level in levels:
@@ -150,7 +151,23 @@ def validate_deck(deck: dict[str, Any]) -> None:
             ids = study_set.get("card_ids")
             _require(isinstance(ids, list) and ids, f"set {study_set['set_id']} needs card IDs")
             _require(len(ids) == len(set(ids)), f"set {study_set['set_id']} repeats a card")
+            _require(all(card_id in card_rank_by_id for card_id in ids), f"set {study_set['set_id']} contains an unknown card")
+            ranks = [card_rank_by_id[card_id] for card_id in ids]
+            _require(ranks == sorted(ranks), f"set {study_set['set_id']} card order disagrees with deck ranks")
+            _require(ranks == list(range(ranks[0], ranks[-1] + 1)), f"set {study_set['set_id']} ranks must be contiguous")
+            if "start_rank" in study_set:
+                _require(study_set["start_rank"] == ranks[0], f"set {study_set['set_id']} start_rank disagrees with its cards")
+            if "end_rank" in study_set:
+                _require(study_set["end_rank"] == ranks[-1], f"set {study_set['set_id']} end_rank disagrees with its cards")
             structured_card_ids.extend(ids)
+        level_ids_in_order = [card_id for study_set in sets for card_id in study_set["card_ids"]]
+        level_ranks = [card_rank_by_id[card_id] for card_id in level_ids_in_order]
+        if "start_rank" in level:
+            _require(level["start_rank"] == level_ranks[0], f"level {level['level_id']} start_rank disagrees with its cards")
+        if "end_rank" in level:
+            _require(level["end_rank"] == level_ranks[-1], f"level {level['level_id']} end_rank disagrees with its cards")
+        if "card_count" in level:
+            _require(level["card_count"] == len(level_ids_in_order), f"level {level['level_id']} card_count disagrees with its cards")
     _require(len(structured_card_ids) == len(set(structured_card_ids)), "a card appears in more than one study set")
     _require(set(structured_card_ids) == card_ids, "study structure and deck cards disagree")
 

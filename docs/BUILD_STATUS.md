@@ -111,6 +111,14 @@
   `fr-speech-real-tatoeba-unassigned-0003`: French setup shows 10 numbered
   levels, Level 1 shows one 20-card set, Learn opens the real rank-1 card
   `de`, and its three unassigned Tatoeba examples render normally.
+- Gate 21 (bounded frontend audit): removed the abandoned Spanish Speech
+  preview and unused pipe-delimited CSV loader; added source-specific runtime
+  guards for vocabulary and example assets; made configured-file failures
+  explicit; strengthened release validation so set/level rank metadata cannot
+  disagree with exact card membership; and made Card Data available to guests.
+  Larger Lyrics functionality and compatibility for unmigrated languages are
+  retained intentionally. Deferred cleanup is recorded without blocking the
+  Spanish migration.
 
 ## Not started
 

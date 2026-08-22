@@ -1,9 +1,9 @@
-import './state.js?v=20260822b';
+import './state.js?v=20260822c';
 
 async function loadConfig() {
     try {
         const [configResponse, cefrResponse] = await Promise.all([
-            fetch('config/config.json?v=20260822b', { cache: 'no-store' }),
+            fetch('config/config.json?v=20260822c', { cache: 'no-store' }),
             fetch('config/cefr_levels.json')
         ]);
         config = await configResponse.json();

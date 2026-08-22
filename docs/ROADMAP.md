@@ -84,7 +84,7 @@ does not evaluate or choose the method that produced the bundle.
 
 ## Step 3 — Audit the transplanted application frontend
 
-**Status: exact app transplant exists; cleanup audit not started.**
+**Status: bounded migration audit complete 2026-08-22.**
 
 Audit the transplanted HTML, CSS, and JavaScript for redundancy, stale paths,
 obsolete compatibility behaviour, and performance problems. The baseline is
@@ -94,6 +94,13 @@ change must be labelled as an improvement rather than described as migration.
 Retain the approved numbered-card scrubber animation. Preserve the useful pilot
 Card Data design as a reference, including example-first inspection of every
 example's complete metadata and sense assignment.
+
+The bounded audit removed the abandoned Spanish preview and unused CSV deck
+loader, added source-specific browser data guards, tightened release/set
+invariants, and made Card Data guest-visible. Large Lyrics functionality and
+legacy compatibility needed by unmigrated languages were retained deliberately.
+The deferred list is recorded in `docs/migration/0002-bounded-frontend-audit.md`;
+frontend cleanup is not a blocker for Spanish migration.
 
 ## Step 4 — Truncated real French run and deck audit
 

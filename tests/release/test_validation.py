@@ -38,6 +38,19 @@ class ReleaseValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ReleaseValidationError, "structure and deck"):
             validate_deck(deck)
 
+    def test_study_structure_rank_metadata_must_match_exact_membership(self) -> None:
+        deck = deepcopy(self.deck)
+        study_set = deck["study_structure"]["levels"][0]["sets"][0]
+        study_set["start_rank"] = 2
+        with self.assertRaisesRegex(ReleaseValidationError, "start_rank disagrees"):
+            validate_deck(deck)
+
+        deck = deepcopy(self.deck)
+        level = deck["study_structure"]["levels"][0]
+        level["card_count"] = len(deck["cards"]) - 1
+        with self.assertRaisesRegex(ReleaseValidationError, "card_count disagrees"):
+            validate_deck(deck)
+
     def test_legacy_provenance_fields_are_rejected(self) -> None:
         deck = deepcopy(self.deck)
         deck["cards"][0]["legacy_aliases"] = []

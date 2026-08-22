@@ -1,23 +1,23 @@
 // Card rendering, flip, swipe, keyboard shortcuts.
 // Main function: updateCard() (~line 950) renders the current flashcard front + back.
 // Key exports: updateCard, flipCard, nextCard, handleSwipeAction, selectMeaning, cycleExample.
-import './state.js?v=20260822b';
-import './speech.js?v=20260822b';
+import './state.js?v=20260822c';
+import './speech.js?v=20260822c';
 import {
     collectRecentWrongWords,
     exampleReinforcesRecentMistake,
     filterPersonalisedExamples,
-} from './example-personalisation.js?v=20260822b';
+} from './example-personalisation.js?v=20260822c';
 import {
     parseSpanishDictUsageContext,
     spanishDictUsageCandidateForms,
-} from './spanishdict-usage.js?v=20260822b';
+} from './spanishdict-usage.js?v=20260822c';
 import {
     englishProductionCue,
     retainProductionPromptAttempt,
     selectReverseCueMeanings,
     splitProductionCloze,
-} from './reverse-cues.js?v=20260822b';
+} from './reverse-cues.js?v=20260822c';
 
 // --- Spanish rank lookup for personal easiness ---
 let _spanishRanks = null;  // word -> rank (loaded once)
@@ -1265,11 +1265,12 @@ function initializeApp() {
             { label: 'Set progress', iconHTML: icon('<path d="M4 19V9"></path><path d="M10 19V5"></path><path d="M16 19v-7"></path><path d="M22 19H2"></path>'), onSelect: () => showStatsModal() },
             { label: 'Study preferences', iconHTML: icon('<path d="M4 6h10"></path><path d="M18 6h2"></path><circle cx="16" cy="6" r="2"></circle><path d="M4 12h2"></path><path d="M10 12h10"></path><circle cx="8" cy="12" r="2"></circle><path d="M4 18h8"></path><path d="M16 18h4"></path><circle cx="14" cy="18" r="2"></circle>'), onSelect: () => showSettingsModalWithTab('study', { singleTab: true }) }
         ];
-        // JST-only audit controls live in the study menu. Provenance remains
-        // available even on deterministic cards so the control never appears
-        // to vanish merely because the current sense has no model stamp.
+        // Card data is a product-level audit surface: it stays available when
+        // optional model stamps are absent and does not require an owner login.
+        entries.push({ label: 'Card data', iconHTML: icon('<circle cx="12" cy="12" r="9"></circle><path d="M12 11v6"></path><path d="M12 7.5h.01"></path>'), onSelect: () => window.toggleProvenancePanel?.() });
+        // Reporting remains an owner-only diagnostic until it has a public
+        // submission boundary.
         if (isJstOwner()) {
-            entries.push({ label: 'Data & model info', iconHTML: icon('<circle cx="12" cy="12" r="9"></circle><path d="M12 11v6"></path><path d="M12 7.5h.01"></path>'), onSelect: () => window.toggleProvenancePanel?.() });
             entries.push({ label: 'Report a card issue', iconHTML: icon('<path d="M5 21V4"></path><path d="M5 5h11l-2 4 2 4H5"></path>'), onSelect: () => window.showFlagMenu?.() });
         }
         window.showRadialPicker({
@@ -2289,13 +2290,6 @@ function showFloatingBtns(show) {
 
 async function goBackToSetup() {
     stopExampleAutoplay(true);
-    if (speechVnextActive) {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('speech');
-        url.searchParams.delete('resume');
-        window.location.href = url.toString();
-        return;
-    }
     // Hide app content, show setup
     const appContent = document.getElementById('appContent');
     const setupPanel = document.getElementById('setupPanel');
@@ -3854,12 +3848,6 @@ function updateCard({ announceHeadword = false } = {}) {
     } else if (card.searchExamplesOnly) {
         frontRankingEl.innerHTML = '<span class="card-exclusion-label card-exclusion-label--examples">Examples only · no matched sense</span>';
         frontRankingEl.style.display = 'flex';
-    } else if (card.speechVnext) {
-        const verdict = String(card.previewVerdict || 'preview').replace(/[^a-z0-9_-]/gi, '');
-        frontRankingEl.innerHTML = `
-            <span class="speech-vnext-card-label ${verdict}">Speech vNext · candidate method</span>
-            <span class="speech-vnext-card-status">${escapeCardText(card.previewHeadline || '')}</span>`;
-        frontRankingEl.style.display = 'flex';
     } else if (vocabularyRank !== undefined) {
         let freqHtml = '';
         // The count and the rank are the figures worth reading; the wording
@@ -4035,14 +4023,6 @@ function updateCard({ announceHeadword = false } = {}) {
     `;
     if (card.translationUnavailable) {
         backHTML += `<div class="extra-translation-unavailable"><strong>No translation available yet.</strong><br>This one-off lyric remains available as corpus evidence.</div>`;
-    }
-    if (card.speechVnext) {
-        const coverage = Math.round((Number(card.previewCoverage) || 0) * 100);
-        backHTML += `<div class="speech-vnext-back-note">
-            <span>SpanishDict senses + exact examples</span>
-            <strong>${escapeCardText(card.previewHeadline || 'Experimental prominence')}</strong>
-            <small>${coverage}% of the 25-use sample passed the assignment gate · prominence remains provisional</small>
-        </div>`;
     }
 
     // Multi-meaning cards keep a compact active-item view for large merged
@@ -5145,7 +5125,7 @@ function updateCard({ announceHeadword = false } = {}) {
         </div>`;
     }
 
-    // Provenance + flag ("Data & model info" / "Report a card issue") now
+    // Card Data + flag ("Card data" / "Report a card issue") now
     // live inside the study-options gear menu (see showStudyMenu in
     // initializeApp) instead of a second button on the card.
 
@@ -5170,9 +5150,7 @@ function updateCard({ announceHeadword = false } = {}) {
         backHTML += buildSpanishDictPanelHTML(card);
     }
 
-    if (isJstOwner()) {
-        backHTML += buildProvenancePanelHTML(card);
-    }
+    backHTML += buildProvenancePanelHTML(card);
     }
 
     const renderedBack = document.getElementById('backContent');
@@ -6189,7 +6167,7 @@ function toggleSpanishDictPanel(forceOpen) {
 }
 window.toggleSpanishDictPanel = toggleSpanishDictPanel;
 
-// Sense-assignment provenance panel (JST diagnostic). Lists every ordinary
+// Card-data panel. Lists every ordinary
 // meaning and resolves stamped prompts against window._promptRegistry (loaded
 // in config.js). A missing prompt is identified as deterministic/retained
 // evidence rather than making the entire control disappear.
@@ -6330,13 +6308,12 @@ function buildProvenancePanelHTML(card) {
 
     return `<div id="provenancePanel" class="provenance-panel" style="display:none;">
         <button class="prov-close" title="Close" aria-label="Close" onclick="event.stopPropagation(); toggleProvenancePanel();">&times;</button>
-        <div class="prov-title">Sense provenance</div>
+        <div class="prov-title">Card data</div>
         ${rows || '<div class="prov-empty">No sense assignments on this card.</div>'}
     </div>`;
 }
 
 function ensureProvenancePanelForCurrentCard() {
-    if (!isJstOwner()) return null;
     let panel = document.getElementById('provenancePanel');
     if (panel) return panel;
     const card = flashcards[currentIndex];
@@ -6614,7 +6591,7 @@ document.addEventListener('click', (e) => {
 // Keep this in lockstep with service-worker.js. These lazy modules own search
 // result cards and conjugation; a stale URL here can keep running an old modal
 // implementation even after the eagerly loaded app has updated.
-const ASSET_VERSION = '20260822b';
+const ASSET_VERSION = '20260822c';
 
 let _modalsModulePromise = null;
 const lazyModals = () => _modalsModulePromise || (_modalsModulePromise =

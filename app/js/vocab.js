@@ -1,7 +1,8 @@
 // Vocabulary loading, filtering, and ID generation.
 // Key functions: buildFilteredVocab() (central filter), loadVocabularyData(), getWordId(),
 // mergeArtistVocabularies() (multi-artist merge by hex ID).
-import './state.js?v=20260822b';
+import './state.js?v=20260822c';
+import { validateVocabularyIndex } from './data-contracts.js?v=20260822c';
 
 const LAST_STUDY_SESSION_KEY = 'fluency_last_study_session_v1';
 
@@ -929,6 +930,8 @@ async function fetchAndJoinIndex(langConfig) {
         }
     }
 
+    validateVocabularyIndex(data, { source: indexPath });
+
     window._cachedJoinedIndex = data;
     window._cachedJoinedIndexPath = indexPath;
     joinedIndexCacheByPath.set(indexPath, data);
@@ -1645,11 +1648,12 @@ async function loadVocabularyData(rangeString, opts = {}) {
         if (langConfig.examplesPath) {
             if (!window._cachedExamplesData) {
                 const exResponse = await fetch(langConfig.examplesPath);
-                if (exResponse.ok) {
-                    trackDataFreshness(exResponse);
-                    const examples = await exResponse.json();
-                    window.setActiveExamplesData?.(examples) || (window._cachedExamplesData = examples);
+                if (!exResponse.ok) {
+                    throw new Error(`Configured examples file ${langConfig.examplesPath} returned HTTP ${exResponse.status}`);
                 }
+                trackDataFreshness(exResponse);
+                const examples = await exResponse.json();
+                window.setActiveExamplesData?.(examples) || (window._cachedExamplesData = examples);
             }
             const examplesData = window._cachedExamplesData;
             if (examplesData) {
@@ -2096,7 +2100,10 @@ async function loadVocabularyData(rangeString, opts = {}) {
     } catch (error) {
         console.error(`Failed to load vocabulary data:`, error);
         document.getElementById('loadingMessage').style.display = 'none';
-        alert(`Error loading ${rangeString}. Please try another set.`);
+        const detail = error instanceof Error && error.message
+            ? `\n\n${error.message}`
+            : '';
+        alert(`This deck could not be loaded.${detail}`);
     }
 }
 
@@ -2130,153 +2137,6 @@ async function loadLevelReviewSet(rangeString, opts = {}) {
         setNumber: null,
         levelSetCount: null
     });
-}
-
-async function loadCSVFiles(ranges) {
-    // Completely clear all previous data and state
-    flashcards = [];
-    currentIndex = 0;
-    currentSentenceIndex = 0;
-    currentMeaningIndex = 0;
-    currentExampleIndex = 0;
-    currentMWEIndex = 0;
-    isFlipped = false;
-
-    // Reset card flip state
-    const flashcardEl = document.getElementById('flashcard');
-    if (flashcardEl) {
-        flashcardEl.classList.remove('flipped');
-    }
-
-    const langConfig = config.languages[selectedLanguage];
-
-    for (const range of ranges) {
-        try {
-            const response = await fetch(range.path);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            trackDataFreshness(response);
-            const fileText = await response.text();
-
-            // Extract starting and ending rank from range (e.g., "0-50" -> 0, 50)
-            const [rangeStart, rangeEnd] = range.range.split('-').map(Number);
-
-            parseMultiMeaning(fileText, langConfig, rangeStart, rangeEnd);
-        } catch (error) {
-            console.error(`Failed to load ${range.path}:`, error);
-            document.getElementById('loadingMessage').style.display = 'none';
-            alert(`Error loading ${range.range}. Please try another set.`);
-            return;
-        }
-    }
-
-    if (flashcards.length === 0) {
-        alert('No flashcards loaded. Please check your selection.');
-        document.getElementById('loadingMessage').style.display = 'none';
-        return;
-    }
-
-    // Successfully loaded data - show cards and hide setup
-    document.getElementById('setupPanel').classList.add('hidden');
-    document.getElementById('appContent').classList.remove('hidden');
-    document.getElementById('loadingMessage').style.display = 'none';
-
-    // Initialize card display
-    updateCard();
-}
-
-function parseMultiMeaning(text, langConfig, rangeStart, rangeEnd) {
-    const lines = text.split('\n');
-    const wordGroups = {}; // Group meanings by rank
-
-    for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
-        const parts = trimmed.split('|');
-        if (parts.length < 8) continue;
-
-        const rank = parseInt(parts[0]);
-        const word = parts[1];
-        const lemma = parts[2];
-        const pos = parts[3];
-        const meaning = parts[4];
-        const percentage = parseFloat(parts[5]);
-        const targetSentence = parts[6];
-        const englishSentence = parts[7];
-
-        if (!wordGroups[rank]) {
-            wordGroups[rank] = {
-                rank: rank,
-                word: word,
-                lemma: lemma,
-                meanings: []
-            };
-        }
-
-        wordGroups[rank].meanings.push({
-            pos: pos,
-            meaning: meaning,
-            percentage: percentage,
-            targetSentence: targetSentence,
-            englishSentence: englishSentence
-        });
-    }
-
-    // Convert to flashcards array, filtering by range
-    const ranks = Object.keys(wordGroups).map(Number).sort((a, b) => a - b);
-
-    for (const rank of ranks) {
-        if (rank >= rangeStart && rank < rangeEnd) {
-            const group = wordGroups[rank];
-
-            // Sort meanings by percentage (highest first)
-            group.meanings.sort((a, b) => b.percentage - a.percentage);
-
-            // Normalize percentages if they're missing or sum to 0
-            const totalPercentage = group.meanings.reduce((sum, m) => sum + (m.percentage || 0), 0);
-            if (totalPercentage === 0 || isNaN(totalPercentage)) {
-                // Default to equal distribution
-                const equalPercentage = 1.0 / group.meanings.length;
-                group.meanings.forEach(m => {
-                    m.percentage = equalPercentage;
-                });
-            } else if (totalPercentage !== 1.0) {
-                // Normalize to sum to 1.0
-                group.meanings.forEach(m => {
-                    m.percentage = (m.percentage || 0) / totalPercentage;
-                });
-            }
-
-            const card = {
-                targetWord: group.word,
-                lemma: group.lemma,
-                ...buildCardFormModel(group, group.meanings),
-                rank: group.rank,
-                meanings: group.meanings,
-                // For compatibility, set primary translation to most common meaning
-                translation: group.meanings[0].meaning,
-                targetSentence: group.meanings[0].targetSentence,
-                englishSentence: group.meanings[0].englishSentence,
-                links: generateLinks(group.word, group.lemma || group.word, langConfig.referenceLinks),
-                isMultiMeaning: true,
-                variants: group.variants || null,
-                morphology: group.morphology || null,
-                synonyms: group.synonyms || null,
-                antonyms: group.antonyms || null
-            };
-
-            flashcards.push(card);
-        }
-    }
-
-    document.getElementById('loadingMessage').textContent = `✓ Loaded ${flashcards.length} cards!`;
-    setTimeout(() => {
-        document.getElementById('setupPanel').style.display = 'none';
-        document.getElementById('appContent').classList.remove('hidden');
-        initializeApp();
-    }, 500);
 }
 
 // Truncate text to a maximum number of words, adding ellipsis if truncated
@@ -2815,8 +2675,6 @@ window.resumeLastStudySession = resumeLastStudySession;
 window.saveStudySessionSnapshot = saveStudySessionSnapshot;
 window.clearStudySessionSnapshot = clearStudySessionSnapshot;
 window.loadLevelReviewSet = loadLevelReviewSet;
-window.loadCSVFiles = loadCSVFiles;
-window.parseMultiMeaning = parseMultiMeaning;
 window.truncateText = truncateText;
 window.cleanValue = cleanValue;
 window.generateLinks = generateLinks;

@@ -1,11 +1,12 @@
-import './state.js?v=20260822b';
-import { sendOrQueue } from './sync-queue.js?v=20260822b';
+import './state.js?v=20260822c';
+import { sendOrQueue } from './sync-queue.js?v=20260822c';
+import { validateExamplesSplit } from './data-contracts.js?v=20260822c';
 import {
     combineSongCatalogs,
     filterExamplesForSongs,
     filterVocabularyForSongs,
     selectedSongIdSet
-} from './song-sets-core.js?v=20260822b';
+} from './song-sets-core.js?v=20260822c';
 
 const STORAGE_PREFIX = 'fluency_song_set_v1:';
 let draftSongIds = new Set();
@@ -119,6 +120,7 @@ export function filterActiveSongVocabulary(vocabulary) {
 }
 
 export function setActiveExamplesData(examples) {
+    validateExamplesSplit(examples, { source: activeArtist?.examplesPath || config?.languages?.[selectedLanguage]?.examplesPath || 'examples split' });
     window._cachedExamplesDataRaw = examples;
     window._cachedExamplesData = filterExamplesForSongs(examples, artistSongCatalog, selectedSongIds);
     return window._cachedExamplesData;

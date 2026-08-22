@@ -37,9 +37,24 @@ class ProductShellTests(unittest.TestCase):
             "speech.js",
             "auth.js",
             "theme.js",
+            "data-contracts.js",
         ):
             self.assertTrue((APP_ROOT / "js" / filename).is_file(), filename)
         self.assertFalse((APP_ROOT / "src").exists())
+
+    def test_abandoned_preview_and_csv_paths_are_removed(self) -> None:
+        combined = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (APP_ROOT / "js").glob("*.js")
+        )
+        self.assertFalse((APP_ROOT / "js" / "speech-vnext.js").exists())
+        self.assertNotIn("speechVnext", combined)
+        self.assertNotIn("loadCSVFiles", combined)
+
+    def test_card_data_is_available_without_owner_login(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        self.assertIn("label: 'Card data'", flashcards)
+        self.assertNotIn("if (!isJstOwner()) return null", flashcards)
 
     def test_only_french_is_enabled_until_other_clean_releases_exist(self) -> None:
         config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))

@@ -1,30 +1,29 @@
-import './theme.js?v=20260822b';
-import './state.js?v=20260822b';
-import './offline-db.js?v=20260822b';
-import './sync-queue.js?v=20260822b';
-import { initOfflineContent } from './offline-content.js?v=20260822b';
-import './speech.js?v=20260822b';
-import './artist-ui.js?v=20260822b';
-import './auth.js?v=20260822b';
-import './about-example.js?v=20260822b';
-import './estimation.js?v=20260822b';
-import './config.js?v=20260822b';
-import './progress.js?v=20260822b';
-import './knowledge.js?v=20260822b';
-import './ui.js?v=20260822b';
-import './vocab.js?v=20260822b';
-import './song-sets.js?v=20260822b';
-import './vocabulary-import.js?v=20260822b';
-import './flashcards.js?v=20260822b';
+import './theme.js?v=20260822c';
+import './state.js?v=20260822c';
+import './offline-db.js?v=20260822c';
+import './sync-queue.js?v=20260822c';
+import { initOfflineContent } from './offline-content.js?v=20260822c';
+import './speech.js?v=20260822c';
+import './artist-ui.js?v=20260822c';
+import './auth.js?v=20260822c';
+import './about-example.js?v=20260822c';
+import './estimation.js?v=20260822c';
+import './config.js?v=20260822c';
+import './progress.js?v=20260822c';
+import './knowledge.js?v=20260822c';
+import './ui.js?v=20260822c';
+import './vocab.js?v=20260822c';
+import './song-sets.js?v=20260822c';
+import './vocabulary-import.js?v=20260822c';
+import './flashcards.js?v=20260822c';
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import
 // immediately for an artist URL so it races setup/data loading, but keep it
 // entirely out of normal Speech startup. Card/modal code already has its own
 // lazy module stubs in flashcards.js.
 const _initialParams = new URLSearchParams(window.location.search);
-const _speechVnextRoute = _initialParams.get('speech') === 'vnext';
 const _spotifyModulePromise = (_initialParams.has('artist') || _initialParams.get('mode') === 'badbunny')
-    ? import('./spotify.js?v=20260822b').catch(error => {
+    ? import('./spotify.js?v=20260822c').catch(error => {
         console.warn('Spotify controls deferred:', error);
         return null;
     })
@@ -323,26 +322,6 @@ loadConfig().then(async () => {
         window.openAboutProjectModal && window.openAboutProjectModal();
     }
 
-    // Speech vNext is a compact, local-data route. Start it before migrations,
-    // remote secrets, sync, progress or offline-catalogue work so evaluating
-    // the new method does not inherit legacy runtime cost or write behavior.
-    if (_speechVnextRoute) {
-        try {
-            selectedLanguage = 'spanish';
-            applyLanguageColorTheme();
-            const speechVnext = await import('./speech-vnext.js?v=20260822b');
-            await speechVnext.startSpeechVnext();
-        } catch (error) {
-            console.error('Speech vNext preview failed to load:', error);
-            document.getElementById('loadingMessage').textContent = 'Speech vNext could not be loaded.';
-            document.getElementById('loadingMessage').style.display = 'block';
-            document.getElementById('setupPanel').classList.remove('hidden');
-            document.getElementById('setupPanel').style.display = 'block';
-        } finally {
-            hideAppLoading();
-        }
-        return;
-    }
 
     perfMark('after sync setup phase');
     await Promise.allSettled([migrateLocalStorageIds(), migrateLocalStorageIdsV2()]);
