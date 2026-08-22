@@ -167,6 +167,18 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("artistSlugs,", song_sets)
         self.assertIn("remote.artistSlugs", song_sets)
 
+    def test_language_switch_clears_source_scoped_runtime_data(self) -> None:
+        ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        song_sets = (APP_ROOT / "js" / "song-sets.js").read_text(encoding="utf-8")
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        vocab = (APP_ROOT / "js" / "vocab.js").read_text(encoding="utf-8")
+        self.assertIn("window.clearActiveExamplesData?.()", ui)
+        self.assertIn("window.resetLanguageOptionalData?.()", ui)
+        self.assertIn("export function clearActiveExamplesData", song_sets)
+        self.assertIn("window._cachedExamplesDataPath = resolvedSource", song_sets)
+        self.assertIn("function resetLanguageOptionalData", flashcards)
+        self.assertIn("window._cachedExamplesDataPath !== langConfig.examplesPath", vocab)
+
     def test_pilot_interface_remains_a_readable_reference(self) -> None:
         reference = REPOSITORY_ROOT / "docs" / "reference" / "pilot-ui-v1.html"
         self.assertTrue(reference.is_file())

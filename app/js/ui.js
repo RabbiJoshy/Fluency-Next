@@ -1,6 +1,6 @@
 // Setup panel UI: language tabs, stable level selector, and automatic set progress.
 // Key functions: renderLanguageTabs(), renderLevelSelector(), renderRangeSelector().
-import './state.js?v=20260822m';
+import './state.js?v=20260822n';
 
 const GLOBAL_STUDY_DEFAULTS_KEY = 'fluency_global_study_defaults_v1';
 let _setupLevelSelectionWasManual = false;
@@ -395,6 +395,12 @@ function setupLanguageTabs() {
             if (newLanguage !== selectedLanguage) {
                 ppmData = null;
                 totalPpm = 0;
+                // Examples and optional linguistic assets are source-scoped,
+                // not universal app globals. Clear the active pointers before
+                // selecting another language so a cached Spanish split cannot
+                // make French cards appear to have no examples (or vice versa).
+                window.clearActiveExamplesData?.();
+                window.resetLanguageOptionalData?.();
             }
 
             selectedLanguage = newLanguage;
@@ -2336,12 +2342,16 @@ async function showTotalStatsModal() {
     // pulled when the user picks a set; the stats button can be tapped
     // before that, so fetch them here on demand. Failures are non-fatal —
     // the row just stays hidden.
-    if (langConfig && langConfig.examplesPath && !window._cachedExamplesData) {
+    if (langConfig && langConfig.examplesPath && (
+        !window._cachedExamplesData
+        || window._cachedExamplesDataPath !== langConfig.examplesPath
+    )) {
         try {
             const r = await fetch(langConfig.examplesPath);
             if (r.ok) {
                 const examples = await r.json();
-                window.setActiveExamplesData?.(examples) || (window._cachedExamplesData = examples);
+                window.setActiveExamplesData?.(examples, langConfig.examplesPath)
+                    || (window._cachedExamplesData = examples);
             }
         } catch (e) {
             console.warn('Could not load examples for stats:', e);

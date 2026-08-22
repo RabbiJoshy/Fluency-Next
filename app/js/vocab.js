@@ -1,8 +1,8 @@
 // Vocabulary loading, filtering, and ID generation.
 // Key functions: buildFilteredVocab() (central filter), loadVocabularyData(), getWordId(),
 // mergeArtistVocabularies() (multi-artist merge by hex ID).
-import './state.js?v=20260822m';
-import { validateVocabularyIndex } from './data-contracts.js?v=20260822m';
+import './state.js?v=20260822n';
+import { validateVocabularyIndex } from './data-contracts.js?v=20260822n';
 
 const LAST_STUDY_SESSION_KEY = 'fluency_last_study_session_v1';
 
@@ -258,7 +258,10 @@ async function resumeLastStudySession() {
         const restored = snapshot.songIds.map(String).filter(id => available.has(id));
         if (restored.length) {
             selectedSongIds = restored;
-            window.setActiveExamplesData?.(window._cachedExamplesDataRaw || window._cachedExamplesData);
+            window.setActiveExamplesData?.(
+                window._cachedExamplesDataRaw || window._cachedExamplesData,
+                activeArtist?.examplesPath || null,
+            );
         }
     }
     window.renderArtistSourceSummary?.();
@@ -961,14 +964,15 @@ async function fetchActiveVocabularyData(langConfig) {
         window._cachedMergedIndex = mergedIndex;
         window._cachedMergedExamples = mergedExamples;
     }
-    window.setActiveExamplesData?.(window._cachedMergedExamples)
+    window.setActiveExamplesData?.(window._cachedMergedExamples, `artist-merge:${selectedSlugs.slice().sort().join(',')}`)
         || (window._cachedExamplesData = window._cachedMergedExamples);
     return window.filterActiveSongVocabulary?.(window._cachedMergedIndex) || window._cachedMergedIndex;
 }
 
 async function ensureLemmaPoolingData(langConfig) {
     await fetchActiveVocabularyData(langConfig);
-    if (window._cachedExamplesData || !langConfig?.examplesPath) {
+    if ((window._cachedExamplesData && window._cachedExamplesDataPath === langConfig?.examplesPath)
+        || !langConfig?.examplesPath) {
         return window._cachedExamplesData || null;
     }
     try {
@@ -976,7 +980,8 @@ async function ensureLemmaPoolingData(langConfig) {
         if (!response.ok) return null;
         trackDataFreshness(response);
         const examples = await response.json();
-        return window.setActiveExamplesData?.(examples) || (window._cachedExamplesData = examples);
+        return window.setActiveExamplesData?.(examples, langConfig.examplesPath)
+            || (window._cachedExamplesData = examples);
     } catch (error) {
         console.warn('Failed to load examples for lemma pooling:', error);
         return null;
@@ -1646,14 +1651,15 @@ async function loadVocabularyData(rangeString, opts = {}) {
         // Lazy-load examples: fetch only when user commits to a set
         let allCorpusExamples = [];
         if (langConfig.examplesPath) {
-            if (!window._cachedExamplesData) {
+            if (!window._cachedExamplesData || window._cachedExamplesDataPath !== langConfig.examplesPath) {
                 const exResponse = await fetch(langConfig.examplesPath);
                 if (!exResponse.ok) {
                     throw new Error(`Configured examples file ${langConfig.examplesPath} returned HTTP ${exResponse.status}`);
                 }
                 trackDataFreshness(exResponse);
                 const examples = await exResponse.json();
-                window.setActiveExamplesData?.(examples) || (window._cachedExamplesData = examples);
+                window.setActiveExamplesData?.(examples, langConfig.examplesPath)
+                    || (window._cachedExamplesData = examples);
             }
             const examplesData = window._cachedExamplesData;
             if (examplesData) {

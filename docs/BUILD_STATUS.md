@@ -232,6 +232,19 @@
   `SENSE_CYCLE` menus retain verb tools through `cycle_pos`. Missing tables
   continue to degrade to the existing external reference rather than an old
   local file. The shell cache moved to `flashcards-v275` / `20260822m`.
+- Gate 34 (pre-Artist Speech parity): identified and fixed a source-isolation
+  bug in the transplanted app's global examples cache. Switching Spanish to
+  French could reuse the wrong split file and render a valid French card with
+  no examples. Example data is now tagged by source path and cleared with
+  language-scoped conjugation/cue state whenever the language changes. Browser
+  verification resumed French, displayed all three Tatoeba examples, switched
+  to Spanish and displayed all three OpenSubtitles examples, then switched back
+  to French and retained the correct Tatoeba card. JSTA Card Data, explicit
+  `Unassigned` labels and release-owned levels remained intact. English
+  production cues were deliberately deferred because the clean candidate has
+  zero morphology rows, so a cue table would be unused dead weight. The shell
+  cache moved to `flashcards-v276` / `20260822n`. Artist migration now has no
+  remaining Speech-architecture blocker.
 
 ## Not started
 

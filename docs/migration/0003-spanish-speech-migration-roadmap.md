@@ -294,7 +294,9 @@ one deliberately submitted flag after the backend deployment is confirmed.
 **Status:** old-layer coverage and contamination audit complete 2026-08-22;
 the first bounded conjugation artifact is built, attached to a validated local
 release and verified in the real app. Morphology/clitic and English production
-cue contracts remain; they do not block WSD or the unassigned audit deck.
+cues are deliberately deferred together: the clean 200-card release has no
+per-surface morphology, so cue data alone would be an unused asset. Neither
+blocks WSD, the unassigned audit deck or Artist migration.
 
 Migrate only approved product behavior, each as an optional typed layer with a
 coverage/error report:
@@ -322,7 +324,8 @@ The measured dispositions and implementation order are recorded in
 removed before any replacement layer was selected. Release
 `es-speech-audit-200-unassigned-jehle-20260822` now proves that an explicitly
 selected typed conjugation artifact can be added without changing the 200 card
-identities or the 600 unassigned examples.
+identities or the 600 unassigned examples. The pre-Artist Speech parity result
+is recorded in `docs/migration/0007-pre-artist-speech-parity-audit.md`.
 
 ### Phase 8 — External WSD attachment when the method is ready
 

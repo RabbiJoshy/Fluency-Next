@@ -127,10 +127,11 @@ until explicitly approved.
 
 ## Step 5 — Migrate Spanish into the clean architecture
 
-**Status: retained Spanish inventory, sentence bank, candidate map and Gemini
-cache are pinned with verified hashes; fresh inventories, run-owned candidate
-harvests, SpanishDict menu and locally active 200-card unassigned release are
-complete. The next gate is app auditing; no raw corpus scan or WSD blocks it.** See
+**Status: clean Spanish inputs, run-owned candidates, SpanishDict menu, typed
+conjugations and a locally active 200-card unassigned release are complete.
+The focused pre-Artist Speech audit passed for Spanish/French switching, exact
+resume, examples, release isolation and JSTA audit controls. No raw corpus scan,
+WSD, full build or deferred enrichment blocks Artist migration.** See
 `docs/migration/0003-spanish-speech-migration-roadmap.md` for the approval-gated
 sequence. WSD remains a replaceable external assignment layer and does not
 block the inventory, menu, harvest, unassigned release or app-compatibility
@@ -146,7 +147,8 @@ and debugging machinery while retaining explicit language adapters.
 
 ## Step 6 — Migrate Artist mode and shell mechanics
 
-**Status: full Artist data/release migration not started. The existing
+**Status: ready to start. Full Artist data/release migration has not started.
+The shared Speech/app gate passed on 2026-08-22. The existing
 choose-your-own song picker is retained in the transplanted shell, and its
 per-user song plus artist selection contract is now forward-compatible with
 the shared Apps Script backend.**

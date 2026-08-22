@@ -565,12 +565,16 @@ async function popupFoundWord(entry, opts) {
         const langConfig = (config && config.languages && config.languages[selectedLanguage]) || {};
 
         // Lazy-load examples file if needed and merge into the entry's meanings.
-        if (langConfig.examplesPath && !window._cachedExamplesData) {
+        if (langConfig.examplesPath && (
+            !window._cachedExamplesData
+            || window._cachedExamplesDataPath !== langConfig.examplesPath
+        )) {
             try {
                 const r = await fetch(langConfig.examplesPath);
                 if (r.ok) {
                     const examples = await r.json();
-                    window.setActiveExamplesData?.(examples) || (window._cachedExamplesData = examples);
+                    window.setActiveExamplesData?.(examples, langConfig.examplesPath)
+                        || (window._cachedExamplesData = examples);
                 }
             } catch (e) {
                 console.warn('popupFoundWord: failed to fetch examples', e);

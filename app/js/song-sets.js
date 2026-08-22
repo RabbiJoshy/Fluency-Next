@@ -1,12 +1,12 @@
-import './state.js?v=20260822m';
-import { sendOrQueue } from './sync-queue.js?v=20260822m';
-import { validateExamplesSplit } from './data-contracts.js?v=20260822m';
+import './state.js?v=20260822n';
+import { sendOrQueue } from './sync-queue.js?v=20260822n';
+import { validateExamplesSplit } from './data-contracts.js?v=20260822n';
 import {
     combineSongCatalogs,
     filterExamplesForSongs,
     filterVocabularyForSongs,
     selectedSongIdSet
-} from './song-sets-core.js?v=20260822m';
+} from './song-sets-core.js?v=20260822n';
 
 const STORAGE_PREFIX = 'fluency_song_set_v1:';
 let draftSongIds = new Set();
@@ -144,11 +144,22 @@ export function filterActiveSongVocabulary(vocabulary) {
     return filterVocabularyForSongs(vocabulary, artistSongCatalog, selectedSongIds);
 }
 
-export function setActiveExamplesData(examples) {
-    validateExamplesSplit(examples, { source: activeArtist?.examplesPath || config?.languages?.[selectedLanguage]?.examplesPath || 'examples split' });
+export function setActiveExamplesData(examples, sourcePath = null) {
+    const resolvedSource = sourcePath
+        || activeArtist?.examplesPath
+        || config?.languages?.[selectedLanguage]?.examplesPath
+        || 'examples split';
+    validateExamplesSplit(examples, { source: resolvedSource });
     window._cachedExamplesDataRaw = examples;
     window._cachedExamplesData = filterExamplesForSongs(examples, artistSongCatalog, selectedSongIds);
+    window._cachedExamplesDataPath = resolvedSource;
     return window._cachedExamplesData;
+}
+
+export function clearActiveExamplesData() {
+    window._cachedExamplesDataRaw = null;
+    window._cachedExamplesData = null;
+    window._cachedExamplesDataPath = null;
 }
 
 function refilterCachedExamples() {
@@ -310,5 +321,6 @@ setupSongSetPicker();
 window.initArtistSongSelection = initArtistSongSelection;
 window.filterActiveSongVocabulary = filterActiveSongVocabulary;
 window.setActiveExamplesData = setActiveExamplesData;
+window.clearActiveExamplesData = clearActiveExamplesData;
 window.showSongSetPicker = showSongSetPicker;
 window.songSelectionSummary = songSelectionSummary;

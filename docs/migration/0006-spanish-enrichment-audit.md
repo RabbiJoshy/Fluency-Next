@@ -31,7 +31,8 @@ clean sense menu. They are not duplicated as a separate enrichment.
 
 1. Define a shared optional-layer envelope and validation behavior.
 2. Rebuild bounded morphology and clitic analyses for the candidate cards.
-3. Rebuild conjugations and English production cues from pinned sources.
+3. Rebuild conjugations now; revisit English production cues only with an
+   approved bounded morphology layer.
 4. Re-compose the same candidate release with only those explicitly selected
    layers and verify that removing any one still yields a usable card.
 5. Consider expressions, lexical relations, cognates/routing and personalised
@@ -65,3 +66,16 @@ cues or the misleading `SpanishRawWiki.csv`. Conjugations now use only the
 stable release alias backed by the active release composition. If a release
 omits that optional asset—or the requested headword is uncovered—the existing
 app degradation paths remain authoritative and no legacy file is consulted.
+
+## Production-cue cut line
+
+The production-cue renderer requires a card-level morphology analysis to choose
+the correct mood, tense and person. The clean 200-card Spanish release contains
+zero such rows by design. Building a menu-derived English inflection table now
+would therefore publish an asset that no clean card can use and would add an
+inflection dependency without restoring product behavior.
+
+Production cues are deferred with the future bounded morphology/clitic layer.
+The old 5.8 MB `senses_conjugated_english.json` remains excluded, and its
+`lemminflect` dependency was not added to Fluency Next. This is a deliberate
+dead-weight decision, not an incomplete Artist-mode prerequisite.
