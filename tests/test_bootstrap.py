@@ -80,6 +80,24 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(args.pipeline_command, "harvest")
         self.assertEqual(args.source, ["tatoeba=/tmp/fluency-workspace/raw/tatoeba/fra-eng.zip"])
 
+    def test_pipeline_sense_menu_requires_explicit_snapshot_identity(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "pipeline",
+                "sense-menu",
+                "--workspace",
+                "/tmp/fluency-workspace",
+                "--run-id",
+                "20260822T130000Z-1234abcd",
+                "--snapshot",
+                "/tmp/fluency-workspace/raw/wiktionary/kaikki-french.jsonl.gz",
+                "--snapshot-id",
+                "enwiktionary-2026-08-05",
+            ]
+        )
+        self.assertEqual(args.pipeline_command, "sense-menu")
+        self.assertEqual(args.snapshot_id, "enwiktionary-2026-08-05")
+
     def test_existing_app_data_path_resolves_through_active_release(self) -> None:
         import json
         import tempfile

@@ -4,12 +4,15 @@
   "title": "Normalized surface-card sense menu",
   "type": "object",
   "additionalProperties": false,
-  "required": ["menu_version", "language", "source_adapter", "snapshot_id", "cards"],
+  "required": ["menu_version", "language", "gloss_language", "source_edition", "source_adapter", "snapshot_id", "snapshot_content_id", "cards"],
   "properties": {
     "menu_version": {"const": "sense-menu/v1"},
     "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "gloss_language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "source_edition": {"const": "enwiktionary"},
     "source_adapter": {"type": "string", "minLength": 1},
     "snapshot_id": {"type": "string", "minLength": 1},
+    "snapshot_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "cards": {
       "type": "array",
       "items": {
@@ -37,12 +40,13 @@
                   "items": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": ["sense_id", "translation", "definition", "source_reference"],
+                    "required": ["sense_id", "translation", "definition", "source_reference", "provider_metadata"],
                     "properties": {
                       "sense_id": {"type": "string", "minLength": 1},
                       "translation": {"type": "string", "minLength": 1},
                       "definition": {"type": "string"},
-                      "source_reference": {"type": "string", "minLength": 1}
+                      "source_reference": {"type": "string", "minLength": 1},
+                      "provider_metadata": {"type": "object"}
                     }
                   }
                 }

@@ -77,7 +77,7 @@ def make_analysis(card_id, source_key, headword, senses):
         source_adapter="wiktionary-sense-menu/v1",
         source_analysis_key=source_key,
         senses=tuple(
-            SenseLeaf(sense_id, translation, definition, f"kaikki:{sense_id}")
+            SenseLeaf(sense_id, translation, definition, f"kaikki:{sense_id}", {})
             for sense_id, translation, definition in senses
         ),
         provider_metadata={},

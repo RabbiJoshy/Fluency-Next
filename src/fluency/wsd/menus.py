@@ -17,6 +17,7 @@ class SenseLeaf:
     translation: str
     definition: str
     source_reference: str
+    provider_metadata: Mapping[str, Any]
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -30,6 +31,15 @@ class SenseLeaf:
     @property
     def gloss_text(self) -> str:
         return " — ".join(value for value in (self.translation, self.definition) if value)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "sense_id": self.sense_id,
+            "translation": self.translation,
+            "definition": self.definition,
+            "source_reference": self.source_reference,
+            "provider_metadata": dict(self.provider_metadata),
+        }
 
 
 def build_analysis_id(
@@ -84,6 +94,16 @@ class MenuAnalysis:
             if leaf.sense_id == sense_id:
                 return leaf
         raise KeyError(f"sense is not in analysis {self.menu_analysis_id}: {sense_id}")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "menu_analysis_id": self.menu_analysis_id,
+            "headword": self.headword,
+            "part_of_speech": self.part_of_speech,
+            "source_analysis_key": self.source_analysis_key,
+            "senses": [sense.to_dict() for sense in self.senses],
+            "provider_metadata": dict(self.provider_metadata),
+        }
 
 
 def require_analysis(

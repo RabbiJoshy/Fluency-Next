@@ -44,9 +44,11 @@
     "sense_menu": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["source_adapter", "snapshot_id", "output_schema", "join_key", "lemma_role"],
+      "required": ["source_adapter", "source_edition", "gloss_language", "snapshot_id", "output_schema", "join_key", "lemma_role"],
       "properties": {
         "source_adapter": {"type": "string", "pattern": "^[a-z0-9-]+/v[0-9]+$"},
+        "source_edition": {"const": "enwiktionary"},
+        "gloss_language": {"const": "en"},
         "snapshot_id": {"type": ["string", "null"]},
         "output_schema": {"const": "sense-menu/v1"},
         "join_key": {"const": "surface_card_id"},

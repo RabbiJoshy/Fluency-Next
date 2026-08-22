@@ -96,6 +96,8 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
         "sense-menu source adapter is required",
     )
     _require(sense_menu.get("output_schema") == "sense-menu/v1", "unsupported sense-menu output")
+    _require(sense_menu.get("source_edition") == "enwiktionary", "French sense glosses must come from English Wiktionary")
+    _require(sense_menu.get("gloss_language") == "en", "WSD requires English sense glosses")
     _require(sense_menu.get("join_key") == "surface_card_id", "sense menus must join by surface-card identity")
     _require(sense_menu.get("lemma_role") == "lookup_metadata_only", "lemmas cannot become card identity")
     _require(

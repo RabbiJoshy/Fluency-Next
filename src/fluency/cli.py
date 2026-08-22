@@ -20,6 +20,7 @@ from fluency.release.catalog import build_catalog, write_catalog
 from fluency.release.composition import compose_release, load_json_object
 from fluency.release.pilot import build_pilot_release
 from fluency.release.validation import validate_release_bundle
+from fluency.sense_menu.runner import build_sense_menu_stage
 
 
 DEFAULT_HOST = "127.0.0.1"
@@ -142,6 +143,23 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         metavar="NAME=PATH",
         help="explicit source snapshot inside workspace/raw; repeat for an explicit union",
+    )
+    pipeline_sense_menu = pipeline_actions.add_parser(
+        "sense-menu", help="normalize one explicit Kaikki snapshot into a planned run"
+    )
+    pipeline_sense_menu.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    pipeline_sense_menu.add_argument("--run-id", required=True)
+    pipeline_sense_menu.add_argument("--language", default="fr")
+    pipeline_sense_menu.add_argument("--mode", default="speech")
+    pipeline_sense_menu.add_argument(
+        "--snapshot", type=Path, required=True,
+        help="Kaikki JSONL or JSONL.GZ snapshot inside workspace/raw",
+    )
+    pipeline_sense_menu.add_argument(
+        "--snapshot-id", required=True,
+        help="explicit upstream snapshot label, such as enwiktionary-2026-08-05",
     )
     return parser
 
@@ -298,6 +316,29 @@ def handle_pipeline(args: argparse.Namespace) -> int:
                 "have fewer than three candidates."
             )
         print("No WSD, final example selection, release build, or activation was run.")
+        return 0
+    if args.pipeline_command == "sense-menu":
+        output = build_sense_menu_stage(
+            project_root(),
+            workspace,
+            run_id=args.run_id,
+            language=args.language,
+            mode=args.mode,
+            dictionary_snapshot=args.snapshot,
+            snapshot_id=args.snapshot_id,
+        )
+        report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+        print(f"Completed immutable sense-menu build: {output}")
+        print(
+            f"Built {report['analysis_count']} headword/POS analyses and "
+            f"{report['sense_count']} leaves for {report['cards_ready']} cards."
+        )
+        if report["cards_without_menu"]:
+            print(
+                f"Review required: {report['cards_without_menu']} cards have no menu; "
+                "they remain explicit no_menu cases."
+            )
+        print("No WSD, example selection, release build, or activation was run.")
         return 0
     raise AssertionError(f"Unhandled pipeline command: {args.pipeline_command}")
 

@@ -33,6 +33,8 @@ class PipelinePlanningTests(unittest.TestCase):
             self.profile["sense_menu"]["source_adapter"],
             "wiktionary-sense-menu/v1",
         )
+        self.assertEqual(self.profile["sense_menu"]["source_edition"], "enwiktionary")
+        self.assertEqual(self.profile["sense_menu"]["gloss_language"], "en")
         self.assertEqual(self.profile["sense_menu"]["join_key"], "surface_card_id")
         self.assertEqual(self.profile["sense_menu"]["lemma_role"], "lookup_metadata_only")
         self.assertEqual(self.profile["harvest"]["source_policy"], "exclusive")

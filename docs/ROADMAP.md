@@ -56,7 +56,9 @@ No real French corpus run and no WSD were executed in this step.
 ## Step 2 — Port and generalize the best Spanish WSD
 
 **Status: architecture approved; dependency-free contracts and orchestration
-skeleton implemented. French benchmark and model-profile selection are next.**
+skeleton implemented. The English-Wiktionary/Kaikki French sense-menu adapter is
+implemented as an immutable run stage. Real-menu audit and French benchmark
+design are next.**
 
 Audit the current best Spanish WSD implementation, separate its genuinely
 language-agnostic retrieval/assignment machinery from Spanish-only behaviour,

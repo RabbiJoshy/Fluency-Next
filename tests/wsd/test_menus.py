@@ -22,7 +22,7 @@ def analysis(card_id: str, source_key: str, headword: str) -> MenuAnalysis:
         part_of_speech="verb",
         source_adapter="wiktionary-sense-menu/v1",
         source_analysis_key=source_key,
-        senses=(SenseLeaf(source_key, "to be", "", f"kaikki:{source_key}"),),
+        senses=(SenseLeaf(source_key, "to be", "", f"kaikki:{source_key}", {}),),
         provider_metadata={},
     )
 
