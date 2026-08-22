@@ -3,7 +3,7 @@
   "entries": [
     {
       "date": "2026-08-22",
-      "commit": "pending",
+      "commit": "d842f34",
       "summary": "Flags now identify their exact release and JSTA is a dedicated audit account",
       "detail": [
         "French flags include the immutable release, run, content and layer provenance available at the time of review.",
