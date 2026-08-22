@@ -21,6 +21,7 @@
   },
   "inventory": {
     "source_adapter": "lexique4-surface-frequency/v1",
+    "language_policy": "fr-v1",
     "source_edition": "Lexique 4.00",
     "frequency_measure": "FreqOrtho",
     "output_schema": "surface-inventory/v1",

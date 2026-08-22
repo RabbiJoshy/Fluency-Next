@@ -64,7 +64,10 @@
   adapter using its subtitle-corpus `FreqOrtho` surface measure. Stage 01 emits
   exactly the profile's surface cards plus full frequency ranks and an audit
   report, while deliberately excluding Lexique lemmas, POS, inflection data,
-  legacy French files, fallback, overwrite, and automatic activation.
+  legacy French files, fallback, overwrite, and automatic activation. Reviewed
+  surface exclusions live in a French policy overlay; `ca` is excluded without
+  redirect because its Lexique frequency and Wiktionary meaning conflict, while
+  accented `ça` retains its own identity.
 
 ## Not started
 

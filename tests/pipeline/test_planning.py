@@ -33,6 +33,7 @@ class PipelinePlanningTests(unittest.TestCase):
             "lexique4-surface-frequency/v1",
         )
         self.assertEqual(self.profile["inventory"]["lemma_role"], "excluded")
+        self.assertEqual(self.profile["inventory"]["language_policy"], "fr-v1")
         self.assertEqual(self.profile["stage_order"], list(STAGE_ORDER))
         self.assertEqual(
             self.profile["sense_menu"]["source_adapter"],

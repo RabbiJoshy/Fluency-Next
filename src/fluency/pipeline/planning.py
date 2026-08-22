@@ -95,6 +95,10 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
         isinstance(inventory.get("source_adapter"), str) and bool(inventory["source_adapter"]),
         "inventory source adapter is required",
     )
+    _require(
+        isinstance(inventory.get("language_policy"), str) and bool(inventory["language_policy"]),
+        "inventory language policy is required",
+    )
     _require(inventory.get("output_schema") == "surface-inventory/v1", "unsupported inventory output")
     _require(inventory.get("identity_unit") == "surface", "inventory identity must be surface-only")
     _require(inventory.get("lemma_role") == "excluded", "inventory must exclude lemma data")

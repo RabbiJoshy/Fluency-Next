@@ -14,6 +14,7 @@ from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.identity import build_card_id
 from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
+from fluency.inventory.config import load_inventory_language_policy
 from fluency.inventory.lexique import ADAPTER_ID, ranked_surfaces, read_lexique4
 from fluency.pipeline.planning import load_pipeline_profile
 from fluency.release.io import atomic_write, json_bytes
@@ -53,7 +54,7 @@ def _inside(path: Path, parent: Path) -> bool:
 
 def _implementation_content_id() -> str:
     package = Path(__file__).resolve().parent
-    paths = (Path(__file__).resolve(), package / "lexique.py")
+    paths = (Path(__file__).resolve(), package / "config.py", package / "lexique.py")
     return canonical_content_id(
         {str(path.relative_to(package.parent)): file_content_id(path) for path in paths}
     )
@@ -72,7 +73,6 @@ def build_inventory_stage(
 ) -> Path:
     """Build a run-owned surface inventory from one explicit Lexique 4 snapshot."""
 
-    del repository_root
     if not snapshot_id.strip():
         raise InventoryRunError("snapshot_id must be explicit and non-empty")
     if language != "fr":
@@ -92,6 +92,11 @@ def build_inventory_stage(
         raise InventoryRunError("run profile language or mode does not match")
     if profile["inventory"]["source_adapter"] != ADAPTER_ID:
         raise InventoryRunError("no installed inventory adapter matches the run profile")
+    language_policy = load_inventory_language_policy(
+        repository_root,
+        policy_id=profile["inventory"]["language_policy"],
+        language=language,
+    )
 
     resolved_snapshot = frequency_snapshot.expanduser().resolve()
     if not _inside(resolved_snapshot, workspace.root / "raw"):
@@ -106,7 +111,19 @@ def build_inventory_stage(
 
     source_content_id = file_content_id(resolved_snapshot)
     result = read_lexique4(resolved_snapshot)
-    ranked = list(ranked_surfaces(result.frequencies))
+    source_ranked = list(ranked_surfaces(result.frequencies))
+    exclusions = language_policy["surface_exclusions"]
+    excluded = [
+        {
+            "surface": surface,
+            "source_rank": rank,
+            "frequency_per_million": frequency,
+            **exclusions[surface],
+        }
+        for rank, (surface, frequency) in enumerate(source_ranked, start=1)
+        if surface in exclusions
+    ]
+    ranked = [item for item in source_ranked if item[0] not in exclusions]
     surface_limit = profile["scope"]["surface_limit"]
     if len(ranked) < surface_limit:
         raise InventoryRunError(
@@ -140,6 +157,8 @@ def build_inventory_stage(
         "rejected_empty_or_zero": result.rejected_empty_or_zero,
         "rejected_surface_shape": result.rejected_surface_shape,
         "duplicate_analysis_rows": result.duplicate_rows,
+        "language_policy": language_policy["policy_id"],
+        "excluded_surfaces": excluded,
         "identity_fields": ["language", "surface_key"],
         "forbidden_identity_fields": ["lemma", "part_of_speech"],
         "top_surfaces": [
@@ -153,6 +172,7 @@ def build_inventory_stage(
         "surface_limit": surface_limit,
         "card_identity": "surface-card/v1",
         "frequency_measure": "Lexique 4 FreqOrtho",
+        "language_policy": language_policy,
         "fallback_policy": "none",
     }
     inputs = {"frequency_snapshot": source_content_id}

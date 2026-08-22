@@ -1,0 +1,11 @@
+{
+  "config_version": "inventory-language-policy/v1",
+  "policy_id": "fr-v1",
+  "language": "fr",
+  "surface_exclusions": {
+    "ca": {
+      "reason": "Lexique labels ca as a high-frequency noun, but English Wiktionary only supports the abbreviation circa; the subtitle count is not credible teaching evidence",
+      "decision": "exclude_without_redirect"
+    }
+  }
+}

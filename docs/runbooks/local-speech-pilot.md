@@ -135,8 +135,10 @@ composition, validation, visual audit, and activation remain separate gates.
 
 French Speech ranking uses Lexique 4.00's `FreqOrtho`: an orthographic surface
 frequency from its 316-million-word subtitle corpus. The adapter deliberately
-does not ingest Lexique lemma, POS, or inflection fields. Download the pinned
-source into the external workspace:
+does not ingest Lexique lemma, POS, or inflection fields. Reviewed exclusions
+come from `config/inventory/languages/fr-v1.json`; they are removed without
+normalization or redirect and remain visible in the stage report. Download the
+pinned source into the external workspace:
 
 ```bash
 mkdir -p /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/frequency/lexique-4.00-2026-02-10

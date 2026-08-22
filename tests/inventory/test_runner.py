@@ -23,6 +23,9 @@ def _write_snapshot(path: Path) -> None:
             delimiter="\t",
         )
         writer.writeheader()
+        writer.writerow(
+            {"1_Mot": "ca", "4_Lemme": "ca", "5_Cgram": "NOM", "11_FreqOrtho": "2000"}
+        )
         for index in range(30):
             writer.writerow(
                 {
@@ -74,6 +77,12 @@ class InventoryRunnerTests(unittest.TestCase):
             self.assertEqual(inventory["cards"][0]["surface_key"], "motaa")
             self.assertNotIn("lemma", json.dumps(inventory))
             self.assertEqual(ranks["motaa"], 1)
+            self.assertNotIn("ca", ranks)
+            self.assertEqual(report["excluded_surfaces"][0]["surface"], "ca")
+            self.assertEqual(
+                report["excluded_surfaces"][0]["decision"],
+                "exclude_without_redirect",
+            )
             self.assertEqual(report["duplicate_analysis_rows"], 1)
             self.assertEqual(report["rejected_surface_shape"], 1)
             self.assertFalse((workspace.root / "releases/fr/speech/active.json").exists())
