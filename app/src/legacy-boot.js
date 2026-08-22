@@ -342,7 +342,7 @@ function createStudy(release, language, progress, sessionStore, onProgress) {
         direction === "target" ? titleCase(meaning.part_of_speech) : "English",
       ),
     );
-    byId("frontRanking").textContent = `Pilot card ${index + 1} of ${cards.length}`;
+    byId("frontRanking").textContent = `Card ${index + 1} of ${cards.length}`;
     renderBack();
     renderScrubbers();
     for (const id of ["prevBtnFront", "prevBtnFrontMobile", "prevBtnBack"]) byId(id).disabled = index === 0;

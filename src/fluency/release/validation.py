@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 from fluency.core.hashing import file_content_id, validate_content_id
@@ -18,6 +19,7 @@ LAYER_SELECTION_VERSION = "layer-selection/v1"
 RELEASE_COMPOSITION_VERSION = "release-composition/v1"
 RELEASE_CATALOG_VERSION = "release-catalog/v1"
 REQUIRED_SPEECH_LAYERS = {"inventory", "sense_menu", "sentences", "example_selection"}
+_LANGUAGE_PATTERN = re.compile(r"^[a-z]{2,3}$")
 
 
 class ReleaseValidationError(ValueError):
@@ -43,8 +45,9 @@ def _load_object(path: Path) -> dict[str, Any]:
 def validate_deck(deck: dict[str, Any], *, allow_legacy_study_structure: bool = False) -> None:
     _require(deck.get("deck_version") == SPEECH_DECK_VERSION, "unsupported deck version")
     _require(isinstance(deck.get("release_id"), str), "deck release_id is required")
-    _require(deck.get("language") == "fr", "pilot deck language must be fr")
-    _require(deck.get("mode") == "speech", "pilot deck mode must be speech")
+    language = deck.get("language")
+    _require(isinstance(language, str) and _LANGUAGE_PATTERN.fullmatch(language) is not None, "deck language is invalid")
+    _require(deck.get("mode") == "speech", "deck mode must be speech")
     cards = deck.get("cards")
     _require(isinstance(cards, list) and cards, "deck cards must be a non-empty list")
     study_structure = deck.get("study_structure")
@@ -61,7 +64,7 @@ def validate_deck(deck: dict[str, Any], *, allow_legacy_study_structure: bool = 
     example_ids: set[str] = set()
     for expected_rank, card in enumerate(cards, start=1):
         _require(isinstance(card, dict), f"card {expected_rank} must be an object")
-        for forbidden in ("coverage", "percentage", "frequency", "corpus_count"):
+        for forbidden in ("coverage", "percentage", "corpus_count"):
             _require(forbidden not in card, f"pilot card cannot claim {forbidden}")
 
         surface_key = card.get("surface_key")
@@ -69,11 +72,21 @@ def validate_deck(deck: dict[str, Any], *, allow_legacy_study_structure: bool = 
         card_id = card.get("card_id")
         _require(isinstance(surface_key, str) and surface_key, "card surface_key is required")
         _require(isinstance(display_form, str) and display_form, "card display_form is required")
-        _require(normalize_surface(display_form) == surface_key, "display form and surface key disagree")
-        _require(card_id == build_card_id("fr", surface_key), "card ID does not match its surface")
+        if language == "fr":
+            _require(normalize_surface(display_form) == surface_key, "display form and surface key disagree")
+        _require(card_id == build_card_id(language, surface_key), "card ID does not match its surface")
         _require(card_id not in card_ids, f"duplicate card ID: {card_id}")
         card_ids.add(card_id)
-        _require(card.get("rank") == expected_rank, "pilot card ranks must be sequential")
+        _require(card.get("rank") == expected_rank, "deck card ranks must be sequential")
+        frequency = card.get("frequency")
+        if frequency is not None:
+            _require(isinstance(frequency, dict) and bool(frequency.get("basis")), "card frequency metadata is invalid")
+            for field in ("primary_count", "aggregate_count"):
+                value = frequency.get(field)
+                _require(isinstance(value, int) and value >= 0, f"card frequency {field} is invalid")
+        aliases = card.get("legacy_aliases")
+        if aliases is not None:
+            _require(isinstance(aliases, list) and all(isinstance(item, dict) for item in aliases), "card legacy aliases are invalid")
 
         meanings = card.get("meanings")
         _require(isinstance(meanings, list) and meanings, f"card {surface_key} needs a meaning")
@@ -81,32 +94,38 @@ def validate_deck(deck: dict[str, Any], *, allow_legacy_study_structure: bool = 
         for meaning in meanings:
             _require(isinstance(meaning, dict), "meaning must be an object")
             sense_id = meaning.get("sense_id")
-            _require(
-                isinstance(sense_id, str) and sense_id.startswith("fixture_sense_fr_"),
-                "pilot senses must use the fixture namespace",
-            )
+            _require(isinstance(sense_id, str) and sense_id, "sense ID is required")
             _require(sense_id not in sense_ids, f"duplicate sense ID: {sense_id}")
             sense_ids.add(sense_id)
             local_sense_ids.add(sense_id)
-            _require(meaning.get("assignment_status") == "curated_fixture", "pilot meaning status is invalid")
+            _require(bool(meaning.get("assignment_status")), "meaning assignment status is invalid")
             _require(bool(meaning.get("part_of_speech")), "meaning part_of_speech is required")
             _require(bool(meaning.get("translation")), "meaning translation is required")
+            if "legacy_sources" in meaning:
+                _require(
+                    isinstance(meaning["legacy_sources"], list)
+                    and all(isinstance(item, dict) for item in meaning["legacy_sources"]),
+                    "meaning legacy sources are invalid",
+                )
 
         examples = card.get("examples")
-        _require(isinstance(examples, list) and examples, f"card {surface_key} needs an example")
+        _require(isinstance(examples, list), f"card {surface_key} examples must be a list")
         for example in examples:
             _require(isinstance(example, dict), "example must be an object")
             example_id = example.get("example_id")
-            _require(
-                isinstance(example_id, str) and example_id.startswith("fixture_example_fr_"),
-                "pilot examples must use the fixture namespace",
-            )
+            _require(isinstance(example_id, str) and example_id, "example ID is required")
             _require(example_id not in example_ids, f"duplicate example ID: {example_id}")
             example_ids.add(example_id)
             _require(example.get("sense_id") in local_sense_ids, "example references another card's sense")
-            _require(example.get("provenance") == "curated_fixture", "pilot example provenance is invalid")
+            _require(bool(example.get("provenance")), "example provenance is invalid")
             _require(bool(example.get("target")), "example target text is required")
             _require(bool(example.get("english")), "example English text is required")
+            if "legacy_sources" in example:
+                _require(
+                    isinstance(example["legacy_sources"], list)
+                    and all(isinstance(item, dict) for item in example["legacy_sources"]),
+                    "example legacy sources are invalid",
+                )
 
     if levels is not None:
         structured_card_ids: list[str] = []
@@ -188,14 +207,12 @@ def validate_manifest(
         manifest.get("manifest_version") == RELEASE_MANIFEST_VERSION,
         "unsupported release manifest version",
     )
-    _require(manifest.get("language") == "fr", "pilot release language must be fr")
-    _require(manifest.get("locale") == "fr-FR", "pilot release locale must be fr-FR")
-    _require(manifest.get("mode") == "speech", "pilot release mode must be speech")
-    _require(
-        manifest.get("publication_status") == "curated_fixture",
-        "pilot release must be visibly marked as a curated fixture",
-    )
-    _require(manifest.get("progress_namespace") == "pilot", "pilot progress must be isolated")
+    language = manifest.get("language")
+    _require(isinstance(language, str) and _LANGUAGE_PATTERN.fullmatch(language) is not None, "release language is invalid")
+    _require(isinstance(manifest.get("locale"), str) and manifest["locale"], "release locale is required")
+    _require(manifest.get("mode") == "speech", "release mode must be speech")
+    _require(isinstance(manifest.get("publication_status"), str) and manifest["publication_status"], "release publication status is required")
+    _require(isinstance(manifest.get("progress_namespace"), str) and manifest["progress_namespace"], "release progress namespace is required")
     _require(manifest.get("deck_path") == deck_path.name, "manifest deck path is invalid")
     _require(
         manifest.get("deck_content_id") == file_content_id(deck_path),
@@ -207,12 +224,7 @@ def validate_manifest(
         "composition content hash does not match manifest",
     )
     wsd = manifest.get("wsd")
-    _require(
-        isinstance(wsd, dict)
-        and wsd.get("enabled") is False
-        and wsd.get("status") == "not_connected",
-        "pilot must not claim WSD output",
-    )
+    _require(isinstance(wsd, dict) and isinstance(wsd.get("enabled"), bool) and bool(wsd.get("status")), "release WSD metadata is invalid")
 
     deck = _load_object(deck_path)
     composition = _load_object(composition_path)
@@ -238,8 +250,9 @@ def validate_active_release(active: dict[str, Any]) -> None:
         active.get("manifest_version") == ACTIVE_RELEASE_VERSION,
         "unsupported active release version",
     )
-    _require(active.get("language") == "fr", "active release language must be fr")
-    _require(active.get("mode") == "speech", "active release mode must be speech")
+    language = active.get("language")
+    _require(isinstance(language, str) and _LANGUAGE_PATTERN.fullmatch(language) is not None, "active release language is invalid")
+    _require(isinstance(active.get("mode"), str) and active["mode"], "active release mode is invalid")
     _require(bool(active.get("release_id")), "active release_id is required")
     manifest_path = active.get("manifest_path")
     _require(

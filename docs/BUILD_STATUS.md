@@ -31,6 +31,14 @@
   later activation cannot silently replace or dilute an in-progress run.
   Published `fr-speech-pilot-0004`; `0003` and `0002` remain independently
   selectable through an explicit legacy single-set compatibility adapter.
+- Gate 10a (full French import candidate): added a strict adapter for the old
+  split index/examples format, preserved its exact inputs as hashed artifacts,
+  removed the same 315 blank-translation placeholders the old app removed,
+  and merged 11,685 teachable lemma rows into 9,863 surface cards. Candidate
+  `fr-speech-legacy-0001` contains 13,764 senses, 51,074 examples, 50 immutable
+  levels and 506 immutable sets; pilot `0004` remains active. The 33 MB
+  full-fidelity candidate is retained as a benchmark and is not approved for
+  activation pending a separately reviewed level-sharding format.
 
 ## Not started
 

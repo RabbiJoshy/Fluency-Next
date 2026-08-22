@@ -12,6 +12,10 @@ from typing import Sequence
 from urllib.parse import unquote, urlsplit
 
 from fluency.core.workspace import Workspace
+from fluency.languages.french.legacy_speech import (
+    DEFAULT_RELEASE_ID as DEFAULT_LEGACY_FRENCH_RELEASE_ID,
+    build_legacy_french_release,
+)
 from fluency.release.activation import activate_release
 from fluency.release.catalog import build_catalog, write_catalog
 from fluency.release.composition import compose_release, load_json_object
@@ -103,6 +107,15 @@ def build_parser() -> argparse.ArgumentParser:
     compose.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
     compose.add_argument("--composition", type=Path, required=True, help="exact release-composition JSON")
     compose.add_argument("--deck", type=Path, required=True, help="already assembled compact deck JSON")
+
+    import_data = subparsers.add_parser("import", help="snapshot external data into an immutable candidate")
+    import_actions = import_data.add_subparsers(dest="import_command", required=True)
+    legacy_speech = import_actions.add_parser("legacy-speech", help="import a historical split Speech deck")
+    legacy_speech.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    legacy_speech.add_argument("--language", choices=("fr",), default="fr")
+    legacy_speech.add_argument("--index", type=Path, required=True)
+    legacy_speech.add_argument("--examples", type=Path, required=True)
+    legacy_speech.add_argument("--release-id", default=DEFAULT_LEGACY_FRENCH_RELEASE_ID)
     return parser
 
 
@@ -178,6 +191,26 @@ def handle_release(args: argparse.Namespace) -> int:
     raise AssertionError(f"Unhandled release command: {args.release_command}")
 
 
+def handle_import(args: argparse.Namespace) -> int:
+    workspace = Workspace.load(_workspace_path(args.workspace))
+    if args.import_command == "legacy-speech" and args.language == "fr":
+        release_directory, run_directory, summary = build_legacy_french_release(
+            workspace,
+            index_path=args.index,
+            examples_path=args.examples,
+            release_id=args.release_id,
+        )
+        print(f"Composed French Speech candidate: {release_directory}")
+        print(f"Import run: {run_directory}")
+        print(
+            f"Cards: {summary['surface_cards']} surfaces from {summary['legacy_rows']} legacy rows; "
+            f"examples: {summary['surface_examples']}"
+        )
+        print("Activation unchanged. Select the candidate explicitly for review.")
+        return 0
+    raise AssertionError(f"Unhandled import command: {args.import_command}")
+
+
 class FluencyRequestHandler(SimpleHTTPRequestHandler):
     """Serve app code plus a read-only release mount from the workspace."""
 
@@ -246,6 +279,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handle_pilot(args.pilot_command, args.workspace)
     if args.command == "release":
         return handle_release(args)
+    if args.command == "import":
+        return handle_import(args)
     raise AssertionError(f"Unhandled command: {args.command}")
 
 

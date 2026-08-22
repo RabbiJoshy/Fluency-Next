@@ -75,3 +75,26 @@ candidate, and activate it deliberately.
 
 The first pilot UI is preserved at `docs/reference/pilot-ui-v1.html` and as Git
 tag `pilot-ui-v1`; it is not the production app entry point.
+
+## Full legacy French candidate
+
+The exact old split deck can be imported without modifying or activating it:
+
+```bash
+PYTHONPATH=src python3.12 -m fluency import legacy-speech \
+  --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace \
+  --language fr \
+  --index /Users/joshuathomasamar/PycharmProjects/Fluency/Data/French/vocabulary.index.json \
+  --examples /Users/joshuathomasamar/PycharmProjects/Fluency/Data/French/vocabulary.examples.json \
+  --release-id fr-speech-legacy-0001
+```
+
+Preview it with `?release=fr-speech-legacy-0001`. The command snapshots both
+inputs by SHA-256, writes a deterministic run with explicit diagnostics, and
+rebuilds the candidate catalog. It never changes `active.json`.
+
+`fr-speech-legacy-0001` is intentionally a 33 MB full-fidelity benchmark. Do
+not activate it as the final format. Browser measurement showed that a compact
+card directory plus 50 level shards would reduce startup data to about 2.47 MB
+and defer full card metadata to 383–950 KB level files; that format requires a
+separate decision and release ID.

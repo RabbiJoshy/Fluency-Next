@@ -6,104 +6,71 @@
   "additionalProperties": false,
   "required": ["deck_version", "release_id", "language", "mode", "study_structure", "cards"],
   "properties": {
-    "deck_version": {
-      "const": "speech-deck/v1"
-    },
-    "release_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "language": {
-      "const": "fr"
-    },
-    "mode": {
-      "const": "speech"
-    },
-    "study_structure": {
-      "$ref": "study-structure.schema.json"
-    },
+    "deck_version": {"const": "speech-deck/v1"},
+    "release_id": {"type": "string", "minLength": 1},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "mode": {"const": "speech"},
+    "study_structure": {"$ref": "study-structure.schema.json"},
     "cards": {
       "type": "array",
       "minItems": 1,
-      "uniqueItems": true,
-      "items": {
-        "$ref": "#/$defs/card"
-      }
+      "items": {"$ref": "#/$defs/card"}
     }
   },
   "$defs": {
+    "legacySource": {
+      "type": "object",
+      "additionalProperties": true
+    },
     "card": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "card_id",
-        "surface_key",
-        "display_form",
-        "rank",
-        "meanings",
-        "examples"
-      ],
+      "required": ["card_id", "surface_key", "display_form", "rank", "meanings", "examples"],
       "properties": {
-        "card_id": {
-          "type": "string",
-          "pattern": "^card_fr_[0-9a-f]{32}$"
+        "card_id": {"type": "string", "pattern": "^card_[a-z]{2,3}_[0-9a-f]{32}$"},
+        "surface_key": {"type": "string", "minLength": 1},
+        "display_form": {"type": "string", "minLength": 1},
+        "rank": {"type": "integer", "minimum": 1},
+        "frequency": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["basis", "primary_count", "aggregate_count"],
+          "properties": {
+            "basis": {"type": "string", "minLength": 1},
+            "primary_count": {"type": "integer", "minimum": 0},
+            "aggregate_count": {"type": "integer", "minimum": 0}
+          }
         },
-        "surface_key": {
-          "type": "string",
-          "minLength": 1
-        },
-        "display_form": {
-          "type": "string",
-          "minLength": 1
-        },
-        "rank": {
-          "type": "integer",
-          "minimum": 1
+        "legacy_aliases": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/legacySource"}
         },
         "meanings": {
           "type": "array",
           "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/meaning"
-          }
+          "items": {"$ref": "#/$defs/meaning"}
         },
         "examples": {
           "type": "array",
-          "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/example"
-          }
+          "items": {"$ref": "#/$defs/example"}
         }
       }
     },
     "meaning": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "sense_id",
-        "part_of_speech",
-        "translation",
-        "assignment_status"
-      ],
+      "required": ["sense_id", "part_of_speech", "translation", "assignment_status"],
       "properties": {
-        "sense_id": {
-          "type": "string",
-          "pattern": "^fixture_sense_fr_[0-9]{3}$"
-        },
-        "part_of_speech": {
-          "type": "string",
-          "minLength": 1
-        },
-        "translation": {
-          "type": "string",
-          "minLength": 1
-        },
-        "context": {
-          "type": "string",
-          "minLength": 1
-        },
-        "assignment_status": {
-          "const": "curated_fixture"
+        "sense_id": {"type": "string", "minLength": 1},
+        "part_of_speech": {"type": "string", "minLength": 1},
+        "translation": {"type": "string", "minLength": 1},
+        "context": {"type": "string", "minLength": 1},
+        "detail": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1},
+        "assignment_status": {"type": "string", "minLength": 1},
+        "legacy_sources": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/legacySource"}
         }
       }
     },
@@ -112,24 +79,17 @@
       "additionalProperties": false,
       "required": ["example_id", "sense_id", "target", "english", "provenance"],
       "properties": {
-        "example_id": {
-          "type": "string",
-          "pattern": "^fixture_example_fr_[0-9]{3}$"
-        },
-        "sense_id": {
-          "type": "string",
-          "pattern": "^fixture_sense_fr_[0-9]{3}$"
-        },
-        "target": {
-          "type": "string",
-          "minLength": 1
-        },
-        "english": {
-          "type": "string",
-          "minLength": 1
-        },
-        "provenance": {
-          "const": "curated_fixture"
+        "example_id": {"type": "string", "minLength": 1},
+        "sense_id": {"type": "string", "minLength": 1},
+        "target": {"type": "string", "minLength": 1},
+        "english": {"type": "string", "minLength": 1},
+        "provenance": {"type": "string", "minLength": 1},
+        "assignment_method": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1},
+        "easiness": {"type": "number"},
+        "legacy_sources": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/legacySource"}
         }
       }
     }

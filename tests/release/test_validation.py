@@ -35,6 +35,7 @@ class ReleaseValidationTests(unittest.TestCase):
             "release-catalog.schema.json",
             "speech-deck.schema.json",
             "study-structure.schema.json",
+            "legacy-speech-import.schema.json",
         ):
             with self.subTest(filename=filename):
                 schema = json.loads((schema_root / filename).read_text(encoding="utf-8"))

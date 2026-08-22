@@ -43,6 +43,23 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(args.pilot_command, "build")
         self.assertEqual(args.workspace, "/tmp/fluency-workspace")
 
+    def test_legacy_speech_import_requires_explicit_sources(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "import",
+                "legacy-speech",
+                "--workspace",
+                "/tmp/fluency-workspace",
+                "--index",
+                "/tmp/index.json",
+                "--examples",
+                "/tmp/examples.json",
+            ]
+        )
+        self.assertEqual(args.command, "import")
+        self.assertEqual(args.import_command, "legacy-speech")
+        self.assertEqual(args.language, "fr")
+
 
 if __name__ == "__main__":
     unittest.main()
