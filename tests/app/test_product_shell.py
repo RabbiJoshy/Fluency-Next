@@ -56,13 +56,25 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("label: 'Card data'", flashcards)
         self.assertNotIn("if (!isJstOwner()) return null", flashcards)
 
-    def test_only_french_is_enabled_until_other_clean_releases_exist(self) -> None:
+    def test_only_languages_with_clean_releases_are_enabled(self) -> None:
         config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))
         enabled = {
             key for key, value in config["languages"].items()
             if value.get("hasData", True)
         }
-        self.assertEqual(enabled, {"french"})
+        self.assertEqual(enabled, {"french", "spanish"})
+        self.assertEqual(
+            config["languages"]["spanish"]["studyStructurePath"],
+            "Data/Spanish/study-structure.json",
+        )
+        self.assertEqual(
+            config["languages"]["spanish"]["releaseManifestPath"],
+            "Data/Spanish/release-manifest.json",
+        )
+        self.assertEqual(
+            config["languages"]["spanish"]["releaseCompositionPath"],
+            "Data/Spanish/release-composition.json",
+        )
         self.assertNotIn("ppmDataPath", config["languages"]["french"])
         self.assertEqual(
             config["languages"]["french"]["studyStructurePath"],

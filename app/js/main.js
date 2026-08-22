@@ -1,21 +1,21 @@
-import './theme.js?v=20260822g';
-import './state.js?v=20260822g';
-import './offline-db.js?v=20260822g';
-import './sync-queue.js?v=20260822g';
-import { initOfflineContent } from './offline-content.js?v=20260822g';
-import './speech.js?v=20260822g';
-import './artist-ui.js?v=20260822g';
-import './auth.js?v=20260822g';
-import './about-example.js?v=20260822g';
-import './estimation.js?v=20260822g';
-import './config.js?v=20260822g';
-import './progress.js?v=20260822g';
-import './knowledge.js?v=20260822g';
-import './ui.js?v=20260822g';
-import './vocab.js?v=20260822g';
-import './song-sets.js?v=20260822g';
-import './vocabulary-import.js?v=20260822g';
-import './flashcards.js?v=20260822g';
+import './theme.js?v=20260822h';
+import './state.js?v=20260822h';
+import './offline-db.js?v=20260822h';
+import './sync-queue.js?v=20260822h';
+import { initOfflineContent } from './offline-content.js?v=20260822h';
+import './speech.js?v=20260822h';
+import './artist-ui.js?v=20260822h';
+import './auth.js?v=20260822h';
+import './about-example.js?v=20260822h';
+import './estimation.js?v=20260822h';
+import './config.js?v=20260822h';
+import './progress.js?v=20260822h';
+import './knowledge.js?v=20260822h';
+import './ui.js?v=20260822h';
+import './vocab.js?v=20260822h';
+import './song-sets.js?v=20260822h';
+import './vocabulary-import.js?v=20260822h';
+import './flashcards.js?v=20260822h';
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import
 // immediately for an artist URL so it races setup/data loading, but keep it
@@ -23,7 +23,7 @@ import './flashcards.js?v=20260822g';
 // lazy module stubs in flashcards.js.
 const _initialParams = new URLSearchParams(window.location.search);
 const _spotifyModulePromise = (_initialParams.has('artist') || _initialParams.get('mode') === 'badbunny')
-    ? import('./spotify.js?v=20260822g').catch(error => {
+    ? import('./spotify.js?v=20260822h').catch(error => {
         console.warn('Spotify controls deferred:', error);
         return null;
     })

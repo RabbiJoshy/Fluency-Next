@@ -192,6 +192,12 @@
   occurred. The release is active only in the local workspace, and the current
   development server returns 200 cards and 600 examples through the ordinary
   Spanish app aliases.
+- Gate 29 (Spanish app activation): enabled Spanish in the real transplanted
+  language picker and connected it to the active release's study structure,
+  manifest and composition aliases. The shell cache moved to `flashcards-v270`
+  / `20260822h` so an older offline config cannot keep Spanish disabled. Browser
+  verification selected Spanish and rendered ten dynamic levels, with Level 1
+  exposing its first 20-card learning set from the active candidate release.
 
 ## Not started
 
@@ -199,8 +205,8 @@
   through the immutable Stage 04 boundary.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
-- Audit the locally active Spanish candidate in the actual app. Full corpus-
-  frequency compilation and raw reharvest remain optional experiments.
+- Audit the locally active Spanish cards and examples in study mode. Full
+  corpus-frequency compilation and raw reharvest remain optional experiments.
 - Release diagnostics and release-frozen resume behind the transplanted app.
 - Artist mode.
 

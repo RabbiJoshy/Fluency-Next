@@ -4,6 +4,9 @@
       "name": "Spanish",
       "indexPath": "Data/Spanish/vocabulary.index.json",
       "examplesPath": "Data/Spanish/vocabulary.examples.json",
+      "studyStructurePath": "Data/Spanish/study-structure.json",
+      "releaseManifestPath": "Data/Spanish/release-manifest.json",
+      "releaseCompositionPath": "Data/Spanish/release-composition.json",
       "conjugationsPath": "Data/Spanish/layers/conjugations.json",
       "conjugatedEnglishPath": "Data/Spanish/layers/senses_conjugated_english.json",
       "ppmDataPath": "Data/Spanish/SpanishRawWiki.csv",
@@ -62,7 +65,7 @@
         "reverso": "https://context.reverso.net/translation/spanish-english/{word}",
         "conjugation": "https://www.spanishdict.com/conjugate/{word}"
       },
-      "hasData": false
+      "hasData": true
     },
     "swedish": {
       "name": "Swedish",
