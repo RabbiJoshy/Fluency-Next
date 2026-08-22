@@ -123,7 +123,8 @@ decision.
 ### Phase 1 — Identity and progress compatibility
 
 **Owner:** Codex, decision with Josh. **Cost:** quick. **Hard gate.**
-**Status:** read-only audit complete; canonical/alias direction awaiting approval.
+**Status:** canonical/alias direction approved, implemented and validated. App
+read integration and any Sheet dry run remain later migration work.
 
 Define one Spanish identity record containing the clean canonical card ID,
 normalized surface key and every accepted legacy progress alias. Prove:
@@ -370,8 +371,7 @@ as a side effect of completing the Spanish data migration.
 
 ## Immediate next action
 
-Josh approves the canonical/alias direction in
-`docs/migration/0005-spanish-progress-identity-audit.md`. Codex then implements
-the shared alias-registry schema, validator and deterministic Spanish
-crosswalk generator. No harvesting, WSD, large copying, Sheet mutation or
-release activation occurs before that report validates.
+Codex implements the Spanish Speech rehearsal/audit profiles and explicit
+language policies. The approved identity crosswalk is already validated. No
+harvesting, WSD, large copying, Sheet mutation or release activation occurs in
+the profile/configuration unit.

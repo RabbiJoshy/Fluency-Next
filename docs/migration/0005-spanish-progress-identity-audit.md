@@ -188,3 +188,37 @@ Approve this direction:
 After approval, the next implementation unit is the shared alias-registry
 schema, validator and deterministic Spanish crosswalk generator. It will emit
 a report before any preserved sentence or embedding asset is copied.
+
+## Implemented result
+
+Approved and implemented on 2026-08-22. Fluency Next now has:
+
+- a language-agnostic, non-recursive progress-alias registry and JSON schema;
+- content-hashed source records referenced by compact evidence IDs;
+- an explicit Spanish surface normalizer that preserves accents and inflected
+  surface identity;
+- a deterministic crosswalk generator and `fluency identity crosswalk` CLI;
+- atomic, immutable workspace output with hashes for cards, aliases,
+  exceptions and the audit report;
+- tests for duplicate collapse, clitic-surface identity, cyclic legacy maps,
+  collision ambiguity, invalid registries and Spanish normalization.
+
+The real output is:
+
+```text
+/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/
+  migrations/es/speech/es-speech-surface-crosswalk-v1/
+```
+
+Measured result:
+
+- 9,999 canonical active surface cards;
+- 27,403 resolved historical Speech progress aliases;
+- six ambiguous aliases across the two known collision components;
+- zero unresolved aliases;
+- zero source-file, Google Sheets or active-release mutations.
+
+The six exception records are the two IDs directly observed with different
+surfaces plus four unobserved intermediate IDs connected to those collision
+components. They remain explicit until the later real-progress dry run. No
+crosswalk output is used as a release or inventory source.

@@ -127,8 +127,8 @@ until explicitly approved.
 
 ## Step 5 — Migrate Spanish into the clean architecture
 
-**Status: source/component ledger and read-only identity audit complete; the
-canonical/legacy-alias direction awaits approval.** See
+**Status: source/component ledger and canonical/legacy-alias crosswalk
+complete; Spanish run profiles and language policies are next.** See
 `docs/migration/0003-spanish-speech-migration-roadmap.md` for the approval-gated
 sequence. WSD remains a replaceable external assignment layer and does not
 block the inventory, menu, harvest, unassigned release or app-compatibility

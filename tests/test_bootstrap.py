@@ -154,6 +154,29 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(args.pipeline_command, "build-run-release")
         self.assertEqual(args.release_id, "fr-speech-real-audit-0001")
 
+    def test_identity_crosswalk_requires_explicit_legacy_evidence(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "identity",
+                "crosswalk",
+                "--workspace",
+                "/tmp/fluency-workspace",
+                "--migration-id",
+                "spanish-surface-v1",
+                "--language",
+                "es",
+                "--inventory",
+                "/tmp/inventory.json",
+                "--legacy-index",
+                "/tmp/current-index.json",
+                "--legacy-migration",
+                "/tmp/id-migration.json",
+            ]
+        )
+        self.assertEqual(args.identity_command, "crosswalk")
+        self.assertEqual(args.language, "es")
+        self.assertEqual(args.legacy_index, [Path("/tmp/current-index.json")])
+
     def test_existing_app_data_path_resolves_through_active_release(self) -> None:
         import json
         import tempfile

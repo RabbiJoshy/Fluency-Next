@@ -15,6 +15,7 @@ from urllib.parse import unquote, urlsplit
 from fluency.core.workspace import Workspace
 from fluency.harvest.runner import harvest_run_stage
 from fluency.inventory.runner import build_inventory_stage
+from fluency.migration.legacy_identity import write_legacy_crosswalk
 from fluency.pipeline.planning import create_pipeline_plan, load_pipeline_profile
 from fluency.release.activation import activate_release
 from fluency.release.catalog import build_catalog, write_catalog
@@ -220,6 +221,27 @@ def build_parser() -> argparse.ArgumentParser:
     pipeline_run_release.add_argument("--release-id", required=True)
     pipeline_run_release.add_argument("--language", default="fr")
     pipeline_run_release.add_argument("--mode", default="speech")
+
+    identity = subparsers.add_parser(
+        "identity", help="audit and build explicit card/progress identity mappings"
+    )
+    identity_actions = identity.add_subparsers(
+        dest="identity_command", required=True
+    )
+    crosswalk = identity_actions.add_parser(
+        "crosswalk", help="build an immutable flat legacy progress-alias report"
+    )
+    crosswalk.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    crosswalk.add_argument("--migration-id", required=True)
+    crosswalk.add_argument("--language", required=True)
+    crosswalk.add_argument("--mode", default="speech")
+    crosswalk.add_argument("--inventory", type=Path, required=True)
+    crosswalk.add_argument(
+        "--legacy-index", type=Path, action="append", required=True
+    )
+    crosswalk.add_argument("--legacy-migration", type=Path, required=True)
     return parser
 
 
@@ -456,6 +478,31 @@ def handle_pipeline(args: argparse.Namespace) -> int:
     raise AssertionError(f"Unhandled pipeline command: {args.pipeline_command}")
 
 
+def handle_identity(args: argparse.Namespace) -> int:
+    workspace = Workspace.load(_workspace_path(args.workspace))
+    if args.identity_command == "crosswalk":
+        output = write_legacy_crosswalk(
+            workspace,
+            migration_id=args.migration_id,
+            language=args.language,
+            mode=args.mode,
+            inventory_path=args.inventory,
+            legacy_index_paths=args.legacy_index,
+            legacy_migration_path=args.legacy_migration,
+        )
+        report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+        counts = report["alias_counts"]
+        print(f"Completed immutable progress identity crosswalk: {output}")
+        print(
+            f"Canonical cards: {report['active_cards']}; resolved aliases: "
+            f"{counts.get('resolved', 0)}; ambiguous: {counts.get('ambiguous', 0)}; "
+            f"unresolved: {counts.get('unresolved', 0)}."
+        )
+        print("No source file, Google Sheet row, or active release was modified.")
+        return 0
+    raise AssertionError(f"Unhandled identity command: {args.identity_command}")
+
+
 class FluencyRequestHandler(SimpleHTTPRequestHandler):
     """Serve app code plus a read-only release mount from the workspace."""
 
@@ -531,6 +578,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handle_release(args)
     if args.command == "pipeline":
         return handle_pipeline(args)
+    if args.command == "identity":
+        return handle_identity(args)
     raise AssertionError(f"Unhandled command: {args.command}")
 
 

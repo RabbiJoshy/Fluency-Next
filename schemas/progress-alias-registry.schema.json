@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/progress-alias-registry.schema.json",
+  "title": "Fluency legacy progress alias registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registry_version", "identity_version", "alias_namespace", "language", "mode", "sources", "aliases"],
+  "properties": {
+    "registry_version": {"const": "progress-alias-registry/v1"},
+    "identity_version": {"const": "surface-card/v1"},
+    "alias_namespace": {"const": "fluency-progress-legacy/v1"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "mode": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*$"},
+    "sources": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/source"}
+    },
+    "aliases": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/alias"}
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_path", "source_content_id"],
+      "properties": {
+        "source_path": {"type": "string", "minLength": 1},
+        "source_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "observation_kind"],
+      "properties": {
+        "source_id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*$"},
+        "observation_kind": {"enum": ["deck_row", "nested_alias", "migration_component"]},
+        "observed_surface_key": {"type": "string", "minLength": 1}
+      }
+    },
+    "alias": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alias_version", "alias_namespace", "alias_key", "language", "mode", "status", "provenance_status", "evidence"],
+      "properties": {
+        "alias_version": {"const": "progress-alias/v1"},
+        "alias_namespace": {"const": "fluency-progress-legacy/v1"},
+        "alias_key": {"type": "string", "minLength": 1},
+        "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+        "mode": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*$"},
+        "status": {"enum": ["resolved", "ambiguous", "retired", "unresolved"]},
+        "provenance_status": {"enum": ["observed", "reconstructed", "unknown"]},
+        "canonical_card_id": {"type": "string", "pattern": "^card_[a-z]{2,3}_[0-9a-f]{32}$"},
+        "surface_key": {"type": "string", "minLength": 1},
+        "candidate_card_ids": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^card_[a-z]{2,3}_[0-9a-f]{32}$"}
+        },
+        "candidate_surface_keys": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/evidence"}
+        }
+      }
+    }
+  }
+}
