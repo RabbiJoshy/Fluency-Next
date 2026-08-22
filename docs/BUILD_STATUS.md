@@ -79,10 +79,15 @@
   sentence IDs and timestamps; all compressed inputs contribute to the stage
   hash. The same adapter is configured for French, Spanish, Dutch and
   Portuguese language codes.
+- Gate 16 (real French harvest): run `20260822T172017Z-651bcd8e` scanned
+  438,157 official French-English links and retained 11,931 candidate
+  assignments across all 200 surface cards. No card has a shortfall: the
+  minimum is 23 candidates and 19 distinct French sentence IDs. All 7,671
+  retained sentence records have complete source attribution, contributor and
+  license fields, and every stage/contract content hash verifies.
 
 ## Not started
 
-- Execution and audit of the real French sentence harvest.
 - Design of the frozen French WSD benchmark.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
