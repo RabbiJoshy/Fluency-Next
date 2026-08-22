@@ -51,6 +51,21 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("Release & layer audit", boot)
         self.assertIn("composition.layers", boot)
 
+    def test_card_data_inspector_is_example_first_and_complete(self) -> None:
+        inspector = (
+            APP_ROOT / "src" / "features" / "diagnostics" / "card-data-inspector.js"
+        ).read_text(encoding="utf-8")
+        options = (
+            APP_ROOT / "src" / "features" / "study" / "study-options.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("Inspect example", inspector)
+        self.assertIn("Complete recorded metadata", inspector)
+        self.assertIn('flattenMetadata(example || {}, "example")', inspector)
+        self.assertIn('layerSummary(release.composition, "wsd_assignments")', inspector)
+        self.assertIn("Full sense menu", inspector)
+        self.assertIn("Card Data", options)
+
     def test_all_relative_module_imports_resolve(self) -> None:
         import_pattern = re.compile(r'^import\s+.*?from\s+["\'](.+?)["\'];?$', re.MULTILINE)
         for module in (APP_ROOT / "src").rglob("*.js"):

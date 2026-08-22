@@ -22,6 +22,9 @@ unchanged; an existing release with different bytes is rejected.
 - A release pill in the top bar. It opens the exact candidate, deck and
   composition hashes, layer source/artifact IDs, fallback policy, and explicit
   WSD omission.
+- The active-study gear opens card direction, automatic speech, progress, Card
+  Data, and release audit. Card Data uses its numbered example scrubber; the
+  `bonjour` fixture card has three examples for verification.
 
 The old Fluency JavaScript and data loaders are not running. The new compact
 runtime binds the immutable release to the original product shell.
@@ -30,8 +33,8 @@ runtime binds the immutable release to the original product shell.
 
 ```bash
 PYTHONPATH=src python3.12 -m fluency release list --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
-PYTHONPATH=src python3.12 -m fluency release validate fr-speech-pilot-0002 --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
-PYTHONPATH=src python3.12 -m fluency release activate fr-speech-pilot-0002 --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
+PYTHONPATH=src python3.12 -m fluency release validate fr-speech-pilot-0003 --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
+PYTHONPATH=src python3.12 -m fluency release activate fr-speech-pilot-0003 --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace
 ```
 
 To preview a non-active approved candidate, use

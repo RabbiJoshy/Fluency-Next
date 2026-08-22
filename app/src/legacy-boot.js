@@ -1,5 +1,7 @@
 import { loadLanguageRegistry } from "./core/language-registry.js";
 import { loadRelease } from "./core/release-client.js";
+import { createCardDataInspector } from "./features/diagnostics/card-data-inspector.js";
+import { createStudyOptions } from "./features/study/study-options.js";
 import { createProgressStore } from "./services/progress-store.js";
 import { speak } from "./services/speech.js";
 
@@ -152,6 +154,7 @@ function createStudy(release, language, progress, onProgress) {
   let index = 0;
   let exampleIndex = 0;
   let revealed = false;
+  let direction = localStorage.getItem("fluency-next:card-direction:v1") || "target";
   let autoSpeech = localStorage.getItem("fluency-next:auto-speech:v1") !== "off";
 
   const scoreActions = element("div", "pilot-score-actions hidden");
@@ -212,23 +215,41 @@ function createStudy(release, language, progress, onProgress) {
     revealed = false;
     exampleIndex = 0;
     flashcard.classList.remove("flipped");
-    byId("frontWord").textContent = current.display_form;
+    byId("frontWord").textContent = direction === "target" ? current.display_form : meaning.translation;
     byId("frontLemma").textContent = "";
     byId("frontMeanings").replaceChildren();
-    byId("frontPOS").replaceChildren(element("span", `card-pos ${posClass(meaning.part_of_speech)}`, titleCase(meaning.part_of_speech)));
+    byId("frontPOS").replaceChildren(
+      element(
+        "span",
+        `card-pos ${direction === "target" ? posClass(meaning.part_of_speech) : "pos-other"}`,
+        direction === "target" ? titleCase(meaning.part_of_speech) : "English",
+      ),
+    );
     byId("frontRanking").textContent = `Pilot card ${index + 1} of ${cards.length}`;
     renderBack();
     renderScrubbers();
     for (const id of ["prevBtnFront", "prevBtnFrontMobile", "prevBtnBack"]) byId(id).disabled = index === 0;
     for (const id of ["nextBtnFront", "nextBtnFrontMobile", "nextBtnBack"]) byId(id).disabled = index === cards.length - 1;
-    if (announce && autoSpeech) speak(current.display_form, language.locale);
+    if (announce && autoSpeech) {
+      speak(
+        direction === "target" ? current.display_form : meaning.translation,
+        language.locale,
+        { english: direction !== "target" },
+      );
+    }
   }
 
   function reveal() {
     if (revealed) return;
     revealed = true;
     flashcard.classList.add("flipped");
-    if (autoSpeech) speak(card().meanings[0].translation, language.locale, { english: true });
+    if (autoSpeech) {
+      speak(
+        direction === "target" ? card().meanings[0].translation : card().display_form,
+        language.locale,
+        { english: direction === "target" },
+      );
+    }
   }
 
   function move(next) {
@@ -265,6 +286,38 @@ function createStudy(release, language, progress, onProgress) {
     onProgress();
   }
 
+  function toggleDirection() {
+    direction = direction === "target" ? "english" : "target";
+    localStorage.setItem("fluency-next:card-direction:v1", direction);
+    render({ announce: true });
+    return direction;
+  }
+
+  function toggleSpeech() {
+    autoSpeech = !autoSpeech;
+    localStorage.setItem("fluency-next:auto-speech:v1", autoSpeech ? "on" : "off");
+    if (autoSpeech) {
+      const current = card();
+      speak(
+        direction === "target" ? current.display_form : current.meanings[0].translation,
+        language.locale,
+        { english: direction !== "target" },
+      );
+    }
+    return autoSpeech;
+  }
+
+  function getState() {
+    return {
+      card: card(),
+      cardIndex: index,
+      exampleIndex,
+      direction,
+      autoSpeech,
+      summary: progress.summary(cards.map((item) => item.card_id)),
+    };
+  }
+
   byId("flipBtn").addEventListener("click", reveal);
   flashcard.querySelector(".card-back").addEventListener("click", (event) => { if (!event.target.closest("button, a")) render(); });
   wrong.addEventListener("click", () => answer(false));
@@ -281,7 +334,7 @@ function createStudy(release, language, progress, onProgress) {
     if (event.key.toLowerCase() === "x") answer(false);
     if (event.key === "Escape") exit();
   });
-  return { show, exit };
+  return Object.freeze({ show, exit, toggleDirection, toggleSpeech, getState });
 }
 
 function fatal(error) {
@@ -301,10 +354,25 @@ async function start() {
   let setup;
   const study = createStudy(release, language, progress, () => setup?.refresh());
   setup = renderSetup(languages, release, progress, study.show, audit);
+  const cardData = createCardDataInspector(release, study.getState);
+  const studyOptions = createStudyOptions({
+    getState: study.getState,
+    onExit: study.exit,
+    onToggleDirection: study.toggleDirection,
+    onToggleSpeech: study.toggleSpeech,
+    onCardData: cardData.open,
+    onReleaseAudit: () => showModal(audit),
+  });
 
-  byId("studyMenuBtn").addEventListener("click", () => showModal(audit));
-  byId("actionsGearBack").addEventListener("click", () => showModal(audit));
-  byId("actionsGearFront").addEventListener("click", () => showModal(audit));
+  byId("studyMenuBtn").addEventListener("click", studyOptions.open);
+  byId("actionsGearBack").addEventListener("click", studyOptions.open);
+  byId("actionsGearFront").addEventListener("click", studyOptions.open);
+  for (const id of ["reverseLangBtn", "reverseLangBtnPopup"]) {
+    byId(id)?.addEventListener("click", study.toggleDirection);
+  }
+  for (const id of ["speakBtn", "speakBtnPopup"]) {
+    byId(id)?.addEventListener("click", study.toggleSpeech);
+  }
   byId("helpBtn").addEventListener("click", () => showModal(byId("helpModal")));
   byId("closeHelpModal")?.addEventListener("click", () => hideModal(byId("helpModal")));
   document.documentElement.classList.remove("app-booting");

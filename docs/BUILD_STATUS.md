@@ -19,6 +19,11 @@
   compositions, exact layer provenance and dependency locks, a candidate
   catalog, separate validation/activation, browser hash checks, and an in-app
   release/layer audit.
+- Gate 8 (active-study slice): restored the compact study-options surface,
+  French/English card direction, automatic speech control, progress summary,
+  and an example-first Card Data inspector that exposes every recorded example
+  and assigned-sense field plus exact layer provenance. Published immutable
+  multi-example candidate `fr-speech-pilot-0003`; `0002` remains selectable.
 
 ## Not started
 

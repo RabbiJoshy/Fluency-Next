@@ -1,6 +1,6 @@
 {
   "seed_version": "fr-speech-pilot-seed/v1",
-  "release_id": "fr-speech-pilot-0002",
+  "release_id": "fr-speech-pilot-0003",
   "language": "fr",
   "locale": "fr-FR",
   "mode": "speech",
@@ -19,6 +19,14 @@
         {
           "target": "Bonjour, comment allez-vous ?",
           "english": "Hello, how are you?"
+        },
+        {
+          "target": "Bonjour à tous !",
+          "english": "Hello everyone!"
+        },
+        {
+          "target": "Elle m’a dit bonjour ce matin.",
+          "english": "She said hello to me this morning."
         }
       ]
     },

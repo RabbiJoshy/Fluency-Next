@@ -124,7 +124,7 @@ def build_pilot_release(
     composition = {
         "composition_version": "release-composition/v1",
         "release_id": seed["release_id"],
-        "label": "French Speech · curated pilot 0002",
+        "label": f"French Speech · curated pilot {seed['release_id'].rsplit('-', 1)[-1]}",
         "language": seed["language"],
         "locale": seed["locale"],
         "mode": seed["mode"],
