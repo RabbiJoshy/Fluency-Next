@@ -188,8 +188,10 @@
   Explicitly missing translations are valid only with provider status and a
   usable context. Inactive release `es-speech-audit-200-unassigned-20260822`
   validates with 200 cards, 2,352 SpanishDict meanings and exactly 600 examples.
-  Every example and meaning remains explicitly unassigned; no WSD, fallback or
-  active-pointer change occurred.
+  Every example and meaning remains explicitly unassigned; no WSD or fallback
+  occurred. The release is active only in the local workspace, and the current
+  development server returns 200 cards and 600 examples through the ordinary
+  Spanish app aliases.
 
 ## Not started
 
@@ -197,8 +199,8 @@
   through the immutable Stage 04 boundary.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
-- Activate and audit the inactive Spanish candidate in the actual app. Full
-  corpus-frequency compilation and raw reharvest remain optional experiments.
+- Audit the locally active Spanish candidate in the actual app. Full corpus-
+  frequency compilation and raw reharvest remain optional experiments.
 - Release diagnostics and release-frozen resume behind the transplanted app.
 - Artist mode.
 

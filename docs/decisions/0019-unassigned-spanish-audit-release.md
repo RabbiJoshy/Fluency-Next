@@ -27,8 +27,10 @@ Inactive release `es-speech-audit-200-unassigned-20260822` contains:
 - 2,352 SpanishDict meanings with complete provider metadata;
 - exactly 600 examples, three for every card;
 - no WSD assignments or sense claims;
-- no source fallback or active-pointer change;
+- no source fallback;
 - progress namespace `es-speech-next`.
 
 The release validator accepts all four required layers: inventory, sense menu,
-sentences and example selection. Activation remains a separate manual decision.
+sentences and example selection. It was subsequently activated only in the
+local workspace. The restarted development server serves all 200 cards and 600
+examples through the ordinary Spanish aliases; no deployment occurred.

@@ -129,8 +129,8 @@ until explicitly approved.
 
 **Status: retained Spanish inventory, sentence bank, candidate map and Gemini
 cache are pinned with verified hashes; fresh inventories, run-owned candidate
-harvests, SpanishDict menu and inactive 200-card unassigned release are complete.
-The next gate is local activation and app auditing; no raw corpus scan or WSD blocks it.** See
+harvests, SpanishDict menu and locally active 200-card unassigned release are
+complete. The next gate is app auditing; no raw corpus scan or WSD blocks it.** See
 `docs/migration/0003-spanish-speech-migration-roadmap.md` for the approval-gated
 sequence. WSD remains a replaceable external assignment layer and does not
 block the inventory, menu, harvest, unassigned release or app-compatibility
