@@ -23,6 +23,15 @@ The current best Spanish Speech chain is not the older Gemini classifier. It is:
    head. It writes only changed occurrences and does not overturn generative
    escalation claims.
 
+The same current build also contains a newer downstream menu-binding correction
+in `step_8a_assemble_vocabulary.py`. SpanishDict sometimes stores an attached-
+clitic surface such as `dame` under its own surface headword even though legacy
+routing names the card `dame|dar`. The assembler may use that surface analysis
+only when a claim exists for that exact card key. This is not another WSD signal:
+it preserves the menu on which an upstream decision was already made. It must
+not be confused with the rejected loose `analyses[0]` fallback, which could give
+one surface another headword's senses.
+
 The current pinned Spanish Speech policy admits aligned corrections first,
 then generative escalations, then local v3 claims. The checked-in Speech layer
 contains local v3 and aligned-v4 evidence; no `sd-beto-cal-esc-v3` prompt stamp
@@ -38,6 +47,9 @@ is present, so the current Speech artifact did not use generative escalation.
 - Alignment as a sparse correction that abstains on ambiguous evidence.
 - Exact model/config/input/output hashes and immutable run artifacts.
 - Stable joins by `card_id`, `sentence_id`, and `sense_id`.
+- An explicit, content-addressed binding from a surface card to the exact menu
+  analysis WSD scored; the assembler consumes that binding instead of looking
+  the menu up again heuristically.
 - A complete decision trace rather than a single opaque method label.
 
 ## What must remain language- or provider-specific
@@ -81,6 +93,12 @@ is present, so the current Speech artifact did not use generative escalation.
    in their keys.
 7. Heavy ML packages belong in an optional WSD dependency group, not the
    standard-library orchestration core.
+8. The legacy assembler had to recover `dame`'s surface-headword menu because
+   its card key still contained a lemma. Fluency Next uses surface-form card
+   identity, but that alone is not enough: the normalized menu stage must emit
+   the exact analysis identifier and WSD must preserve it. Assembly must fail
+   visibly if that binding is absent or inconsistent; it must never choose the
+   first analysis or silently search a different headword.
 
 ## Proposed repository structure
 
@@ -144,8 +162,10 @@ One final record per `(card_id, sentence_id)`—never a mutable union of methods
 {
   "assignment_version": "wsd-assignment/v1",
   "card_id": "card_fr_...",
+  "surface_form": "...",
   "sentence_id": "sentence_...",
   "sense_menu_content_id": "sha256:...",
+  "menu_analysis_id": "analysis_...",
   "status": "assigned",
   "selected_sense_id": "sense_...",
   "selected_tuple": {"headword": "...", "part_of_speech": "..."},
@@ -162,6 +182,12 @@ reason for changing or abstaining. Confidence is present only when a calibrator
 was trained for the final decision path and selected sense; otherwise it is
 honestly `null`.
 
+`menu_analysis_id` is the exact normalized analysis that supplied the candidate
+leaves. The deck assembler must consume it unchanged. It may not repeat menu
+resolution from a lemma, fall back to the first analysis, or substitute another
+analysis whose headword merely looks related. This makes the current Spanish
+surface-headword correction structural rather than a special downstream patch.
+
 WSD assigns or abstains on harvested candidates. It does not select the final
 three examples. `05_example_selection` makes that separate choice from the
 complete WSD artifact.
@@ -169,7 +195,9 @@ complete WSD artifact.
 ## Proposed first French profile
 
 - Wiktionary supplies `sense-menu/v1`; its headword is metadata, not card
-  identity.
+  identity. The normalization stage resolves redirects/form-of information and
+  emits an explicit analysis ID before WSD; absence becomes `no_menu` rather
+  than a downstream fallback.
 - Gloss scoring, token prototypes, calibration, and aligned-English correction
   are separately switchable but never silently optional.
 - No Spanish clitic gate, BETO artifact, Spanish calibrator, SpanishDict leaf
