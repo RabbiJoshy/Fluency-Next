@@ -89,6 +89,16 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
     _require(scope.get("examples_per_surface") == 3, "Speech profiles must target three final examples per surface")
     _require(scope.get("shortfall_policy") == "block_release", "example shortfalls must block release")
 
+    inventory = profile.get("inventory")
+    _require(isinstance(inventory, dict), "inventory adapter policy is required")
+    _require(
+        isinstance(inventory.get("source_adapter"), str) and bool(inventory["source_adapter"]),
+        "inventory source adapter is required",
+    )
+    _require(inventory.get("output_schema") == "surface-inventory/v1", "unsupported inventory output")
+    _require(inventory.get("identity_unit") == "surface", "inventory identity must be surface-only")
+    _require(inventory.get("lemma_role") == "excluded", "inventory must exclude lemma data")
+
     sense_menu = profile.get("sense_menu")
     _require(isinstance(sense_menu, dict), "sense-menu adapter policy is required")
     _require(
@@ -235,6 +245,7 @@ def _stage_contract(profile: dict[str, Any], stage: str, ordinal: int) -> dict[s
     }
     if stage == "inventory":
         contract["external_inputs"] = ["fresh_frequency_source_snapshot"]
+        contract["source_adapter"] = profile["inventory"]
     elif stage == "sense_menu":
         contract["external_inputs"] = ["fresh_dictionary_source_snapshot"]
         contract["source_adapter"] = profile["sense_menu"]

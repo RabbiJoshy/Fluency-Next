@@ -28,6 +28,11 @@ class PipelinePlanningTests(unittest.TestCase):
         self.assertEqual(self.profile["scope"]["examples_per_surface"], 3)
         self.assertFalse(self.profile["identity"]["allow_lemma_identity"])
         self.assertFalse(self.profile["source_policy"]["allow_legacy_inputs"])
+        self.assertEqual(
+            self.profile["inventory"]["source_adapter"],
+            "lexique4-surface-frequency/v1",
+        )
+        self.assertEqual(self.profile["inventory"]["lemma_role"], "excluded")
         self.assertEqual(self.profile["stage_order"], list(STAGE_ORDER))
         self.assertEqual(
             self.profile["sense_menu"]["source_adapter"],
@@ -90,6 +95,13 @@ class PipelinePlanningTests(unittest.TestCase):
             )
             self.assertEqual(
                 sense_contract["source_adapter"]["output_schema"], "sense-menu/v1"
+            )
+            inventory_contract = json.loads(
+                (target / "stages/01_inventory/contract.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                inventory_contract["source_adapter"]["source_adapter"],
+                "lexique4-surface-frequency/v1",
             )
             harvest_contract = json.loads(
                 (target / "stages/03_sentence_harvest/contract.json").read_text(encoding="utf-8")

@@ -19,6 +19,14 @@
     "examples_per_surface": 3,
     "shortfall_policy": "block_release"
   },
+  "inventory": {
+    "source_adapter": "lexique4-surface-frequency/v1",
+    "source_edition": "Lexique 4.00",
+    "frequency_measure": "FreqOrtho",
+    "output_schema": "surface-inventory/v1",
+    "identity_unit": "surface",
+    "lemma_role": "excluded"
+  },
   "sense_menu": {
     "source_adapter": "wiktionary-sense-menu/v1",
     "source_edition": "enwiktionary",

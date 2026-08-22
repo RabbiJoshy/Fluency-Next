@@ -14,6 +14,7 @@ from urllib.parse import unquote, urlsplit
 
 from fluency.core.workspace import Workspace
 from fluency.harvest.runner import harvest_run_stage
+from fluency.inventory.runner import build_inventory_stage
 from fluency.pipeline.planning import create_pipeline_plan, load_pipeline_profile
 from fluency.release.activation import activate_release
 from fluency.release.catalog import build_catalog, write_catalog
@@ -143,6 +144,23 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         metavar="NAME=PATH",
         help="explicit source snapshot inside workspace/raw; repeat for an explicit union",
+    )
+    pipeline_inventory = pipeline_actions.add_parser(
+        "inventory", help="build a surface-only inventory from one explicit frequency snapshot"
+    )
+    pipeline_inventory.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    pipeline_inventory.add_argument("--run-id", required=True)
+    pipeline_inventory.add_argument("--language", default="fr")
+    pipeline_inventory.add_argument("--mode", default="speech")
+    pipeline_inventory.add_argument(
+        "--snapshot", type=Path, required=True,
+        help="Lexique 4 TSV snapshot inside workspace/raw",
+    )
+    pipeline_inventory.add_argument(
+        "--snapshot-id", required=True,
+        help="explicit upstream snapshot label, such as lexique-4.00-2026-02-10",
     )
     pipeline_sense_menu = pipeline_actions.add_parser(
         "sense-menu", help="normalize one explicit Kaikki snapshot into a planned run"
@@ -286,6 +304,24 @@ def handle_pipeline(args: argparse.Namespace) -> int:
             f"{profile['scope']['examples_per_surface']} examples each ({target} total)"
         )
         print("No data stages were executed and no release was activated.")
+        return 0
+    if args.pipeline_command == "inventory":
+        output = build_inventory_stage(
+            project_root(),
+            workspace,
+            run_id=args.run_id,
+            language=args.language,
+            mode=args.mode,
+            frequency_snapshot=args.snapshot,
+            snapshot_id=args.snapshot_id,
+        )
+        report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+        print(f"Completed immutable surface inventory: {output}")
+        print(
+            f"Selected {report['inventory_surfaces']} cards from "
+            f"{report['accepted_unique_surfaces']} ranked Lexique surfaces."
+        )
+        print("No lemma data, sentence harvesting, WSD, release build, or activation was run.")
         return 0
     if args.pipeline_command == "harvest":
         snapshots: dict[str, Path] = {}

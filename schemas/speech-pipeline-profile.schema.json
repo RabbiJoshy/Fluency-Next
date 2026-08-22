@@ -4,7 +4,7 @@
   "title": "Fresh Speech pipeline profile",
   "type": "object",
   "additionalProperties": false,
-  "required": ["profile_version", "profile_id", "language", "locale", "mode", "identity", "source_policy", "scope", "sense_menu", "harvest", "stage_order", "wsd", "release"],
+  "required": ["profile_version", "profile_id", "language", "locale", "mode", "identity", "source_policy", "scope", "inventory", "sense_menu", "harvest", "stage_order", "wsd", "release"],
   "properties": {
     "profile_version": {"const": "speech-pipeline-profile/v1"},
     "profile_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
@@ -39,6 +39,19 @@
         "surface_limit": {"type": "integer", "minimum": 1},
         "examples_per_surface": {"const": 3},
         "shortfall_policy": {"const": "block_release"}
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_adapter", "source_edition", "frequency_measure", "output_schema", "identity_unit", "lemma_role"],
+      "properties": {
+        "source_adapter": {"type": "string", "pattern": "^[a-z0-9-]+/v[0-9]+$"},
+        "source_edition": {"type": "string", "minLength": 1},
+        "frequency_measure": {"type": "string", "minLength": 1},
+        "output_schema": {"const": "surface-inventory/v1"},
+        "identity_unit": {"const": "surface"},
+        "lemma_role": {"const": "excluded"}
       }
     },
     "sense_menu": {

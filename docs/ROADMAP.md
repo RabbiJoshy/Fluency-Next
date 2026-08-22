@@ -57,7 +57,8 @@ No real French corpus run and no WSD were executed in this step.
 
 **Status: architecture approved; dependency-free contracts and orchestration
 skeleton implemented. The English-Wiktionary/Kaikki French sense-menu adapter is
-implemented as an immutable run stage. Real-menu audit and French benchmark
+implemented as an immutable run stage. A fresh surface-only Lexique 4 inventory
+adapter now supplies the bounded audit. Real-menu audit and French benchmark
 design are next.**
 
 Audit the current best Spanish WSD implementation, separate its genuinely
@@ -87,7 +88,8 @@ example's complete metadata and sense assignment.
 
 ## Step 4 — Truncated real French run and deck audit
 
-**Status: not started.**
+**Status: execution ready through the real inventory and sense-menu stages; no
+real run has been executed yet.**
 
 Create a fresh, small French run using real corpus data—likely OpenSubtitles
 when its French snapshot is ready. Build and inspect the surface inventory,

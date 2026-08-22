@@ -131,6 +131,41 @@ the assistant inspect counts, schemas, hashes, source evidence, shortfalls, and
 model pins before the next stage. A command never activates a release; release
 composition, validation, visual audit, and activation remain separate gates.
 
+## Fresh surface-inventory command
+
+French Speech ranking uses Lexique 4.00's `FreqOrtho`: an orthographic surface
+frequency from its 316-million-word subtitle corpus. The adapter deliberately
+does not ingest Lexique lemma, POS, or inflection fields. Download the pinned
+source into the external workspace:
+
+```bash
+mkdir -p /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/frequency/lexique-4.00-2026-02-10
+
+curl --fail --location --continue-at - \
+  https://lexique.org/databases/Lexique400/Lexique400.tsv \
+  --output /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/frequency/lexique-4.00-2026-02-10/Lexique400.tsv
+```
+
+Create a new skeleton with the current profile, then use the run ID printed by
+that command to build stage 01:
+
+```bash
+PYTHONPATH=src python3.12 -m fluency pipeline plan \
+  --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace \
+  --profile config/pipelines/fr/speech/audit-200x3.json
+
+PYTHONPATH=src python3.12 -m fluency pipeline inventory \
+  --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace \
+  --run-id <new-run-id> \
+  --snapshot /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/frequency/lexique-4.00-2026-02-10/Lexique400.tsv \
+  --snapshot-id lexique-4.00-2026-02-10
+```
+
+Inspect `inventory.json`, `frequency-ranks.json`, `report.json`, and
+`manifest.json` under the new run's `stages/01_inventory/output/`. The adapter
+rejects snapshots outside `workspace/raw`, an existing stage output, a schema
+mismatch, or fewer surfaces than the profile requires.
+
 ## Wiktionary snapshot and sense-menu command (after inventory approval)
 
 The current English-Wiktionary French snapshot is large enough to download

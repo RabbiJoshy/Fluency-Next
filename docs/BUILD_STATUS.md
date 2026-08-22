@@ -54,13 +54,23 @@
   refuses overwrite or source fallback. Synthetic French tests prove 20
   surface cards x 3 candidates for Tatoeba and movie/line provenance for
   OpenSubtitles. No real corpus run or WSD was executed.
+- Gate 13 (closed-menu WSD and Wiktionary): captured the current Spanish
+  retrieval, tuple-reranking, calibration, alignment, and disposition layers
+  behind fail-closed shared contracts, with French-specific model choices
+  truthfully benchmark-blocked. Added a pinned English-Wiktionary/Kaikki
+  adapter that preserves exact headword/POS analyses, structured form-of
+  targets, stable provider leaves, metadata, and explicit no-menu cases.
+- Gate 14 (fresh French surface inventory): added an immutable Lexique 4.00
+  adapter using its subtitle-corpus `FreqOrtho` surface measure. Stage 01 emits
+  exactly the profile's surface cards plus full frequency ranks and an audit
+  report, while deliberately excluding Lexique lemmas, POS, inflection data,
+  legacy French files, fallback, overwrite, and automatic activation.
 
 ## Not started
 
-- Fresh frequency and dictionary adapters.
-- Wiktionary snapshot selection and implementation of the normalized French
-  `wiktionary-sense-menu/v1` adapter.
 - Execution of a real French inventory and sentence harvest.
+- Audit of the real normalized French menu and design of the frozen French WSD
+  benchmark.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
 - Spanish and legacy progress migration.
