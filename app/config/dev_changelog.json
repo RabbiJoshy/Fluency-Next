@@ -3,7 +3,7 @@
   "entries": [
     {
       "date": "2026-08-22",
-      "commit": "pending",
+      "commit": "7b6da6d",
       "summary": "Repeated audit flags now remain separate, traceable events",
       "detail": [
         "Every flag gesture has an immutable FlagId, so retries deduplicate safely without overwriting a later report on the same card.",
