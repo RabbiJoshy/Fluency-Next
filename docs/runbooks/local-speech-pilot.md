@@ -102,9 +102,11 @@ runs/fr/speech/<run-id>/
 
 All contracts begin as `pending`. The profile blocks lemma identity, legacy
 inputs, cross-run fallbacks, example shortfalls, automatic activation, and
-unpinned WSD models. The WSD architecture is fixed to embedding retrieval plus
-a language-specific reranker; the exact French model revisions are intentionally
-unselected until that decision is reviewed.
+unpinned WSD models. The WSD architecture is the language-adapted closed-menu
+stack: gloss retrieval, an optional language-specific tuple reranker,
+path-specific calibration, optional aligned-English correction, and explicit
+disposition. The exact French model revisions are intentionally unselected until
+that decision is reviewed.
 
 The French sense-menu stage is a replaceable adapter boundary. The current
 profile is ready for `wiktionary-sense-menu/v1`; it must write normalized
@@ -112,6 +114,13 @@ profile is ready for `wiktionary-sense-menu/v1`; it must write normalized
 dictionary lookup metadata but can never become card identity. A different
 dictionary provider can replace this adapter without changing harvesting, WSD,
 selection, release composition, or the app contract.
+
+The pinned source edition is **English Wiktionary**, with French target entries
+and English glosses. Do not substitute the French Wiktionary edition: its gloss
+language is French, so it is a different WSD input. Kaikki's current
+language-specific postprocessed download is suitable for the bounded audit even
+though Kaikki marks that distribution route as deprecated; the adapter consumes
+the documented Wiktextract fields and is not coupled to Kaikki's website layout.
 
 ## Expensive-stage handoff
 
@@ -121,6 +130,36 @@ and the expected output folder. Run that command in this repository, then let
 the assistant inspect counts, schemas, hashes, source evidence, shortfalls, and
 model pins before the next stage. A command never activates a release; release
 composition, validation, visual audit, and activation remain separate gates.
+
+## Wiktionary snapshot and sense-menu command (after inventory approval)
+
+The current English-Wiktionary French snapshot is large enough to download
+locally. It is append-only inside the external workspace:
+
+```bash
+mkdir -p /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/wiktionary/enwiktionary-2026-08-05
+
+curl --fail --location --continue-at - \
+  https://kaikki.org/dictionary/French/kaikki.org-dictionary-French.jsonl \
+  --output /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/wiktionary/enwiktionary-2026-08-05/kaikki.org-dictionary-French.jsonl
+```
+
+Once the approved run has `stages/01_inventory/output/inventory.json`, normalize
+that exact snapshot into the run-owned menu:
+
+```bash
+PYTHONPATH=src python3.12 -m fluency pipeline sense-menu \
+  --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace \
+  --run-id <approved-run-id> \
+  --snapshot /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/wiktionary/enwiktionary-2026-08-05/kaikki.org-dictionary-French.jsonl \
+  --snapshot-id enwiktionary-2026-08-05
+```
+
+The result is written once under
+`runs/fr/speech/<run-id>/stages/02_sense_menu/output/`. Inspect
+`sense-menu.json`, `report.json`, and `manifest.json`. The report exposes every
+surface's analysis/sense count and every `no_menu`; rerunning against the same
+run is rejected rather than overwriting it.
 
 ## Sentence-harvest command (after inventory approval)
 
