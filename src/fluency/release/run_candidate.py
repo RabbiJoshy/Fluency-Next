@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from fluency.core.artifacts import verify_artifact
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
@@ -75,6 +76,7 @@ def build_inactive_run_candidate(
     language: str = "fr",
     mode: str = "speech",
     created_at: datetime | None = None,
+    conjugations_artifact_id: str | None = None,
 ) -> Path:
     """Select harvested examples and compose a non-activated release."""
 
@@ -300,6 +302,33 @@ def build_inactive_run_candidate(
         "record_count": count,
         "requires": requires,
     }
+    layers = {
+        "inventory": layer("inventory", len(cards), {}),
+        "sense_menu": layer("sense_menu", len(cards), {"inventory": inputs["inventory"]}),
+        "sentences": layer("sentence_bank", len(sentences), {"inventory": inputs["inventory"]}),
+        "example_selection": layer(
+            "selection", selected_count,
+            {"inventory": inputs["inventory"], "sentences": inputs["sentence_bank"]},
+        ),
+    }
+    omitted_layers = [
+        {"layer": "wsd_assignments", "reason": "not_connected_examples_explicitly_unassigned"},
+        {"layer": "manual_overrides", "reason": "not_applied"},
+    ]
+    if conjugations_artifact_id is None:
+        omitted_layers.append({"layer": "conjugations", "reason": "not_selected"})
+    else:
+        metadata = verify_artifact(workspace, conjugations_artifact_id)
+        if metadata.schema != "conjugation-layer/v1":
+            raise RunCandidateError("selected conjugations artifact has the wrong schema")
+        layers["conjugations"] = {
+            "selection_version": "layer-selection/v1",
+            "source_type": "run",
+            "source_id": run_id,
+            "artifact_id": metadata.artifact_id,
+            "record_count": metadata.row_count or 0,
+            "requires": {"sense_menu": inputs["sense_menu"]},
+        }
     composition = {
         "composition_version": "release-composition/v1",
         "release_id": release_id,
@@ -312,18 +341,7 @@ def build_inactive_run_candidate(
         "progress_namespace": f"{language}-{mode}-next",
         "conflict_policy": "error",
         "fallback_policy": "none",
-        "layers": {
-            "inventory": layer("inventory", len(cards), {}),
-            "sense_menu": layer("sense_menu", len(cards), {"inventory": inputs["inventory"]}),
-            "sentences": layer("sentence_bank", len(sentences), {"inventory": inputs["inventory"]}),
-            "example_selection": layer(
-                "selection", selected_count,
-                {"inventory": inputs["inventory"], "sentences": inputs["sentence_bank"]},
-            ),
-        },
-        "omitted_layers": [
-            {"layer": "wsd_assignments", "reason": "not_connected_examples_explicitly_unassigned"},
-            {"layer": "manual_overrides", "reason": "not_applied"},
-        ],
+        "layers": layers,
+        "omitted_layers": omitted_layers,
     }
     return compose_release(workspace, composition, deck)

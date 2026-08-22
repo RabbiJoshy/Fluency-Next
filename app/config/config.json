@@ -7,6 +7,7 @@
       "studyStructurePath": "Data/Spanish/study-structure.json",
       "releaseManifestPath": "Data/Spanish/release-manifest.json",
       "releaseCompositionPath": "Data/Spanish/release-composition.json",
+      "conjugationsPath": "Data/Spanish/conjugations.json",
       "exampleTargetField": "example_spanish",
       "exampleEnglishField": "example_english",
       "pipelineDefaults": {

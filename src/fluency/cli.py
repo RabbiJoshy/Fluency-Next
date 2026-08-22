@@ -13,6 +13,7 @@ from typing import Sequence
 from urllib.parse import unquote, urlsplit
 
 from fluency.core.workspace import Workspace
+from fluency.enrichments.conjugations import build_conjugation_layer, pin_jehle_snapshot
 from fluency.harvest.runner import harvest_run_stage
 from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
 from fluency.inventory.runner import build_inventory_stage
@@ -38,21 +39,25 @@ APP_DATA_ROUTES = {
     "/Data/French/study-structure.json": ("fr", "study_structure_path"),
     "/Data/French/release-manifest.json": ("fr", "__manifest__"),
     "/Data/French/release-composition.json": ("fr", "__composition__"),
+    "/Data/French/conjugations.json": ("fr", "conjugations_path"),
     "/Data/Spanish/vocabulary.index.json": ("es", "index_path"),
     "/Data/Spanish/vocabulary.examples.json": ("es", "examples_path"),
     "/Data/Spanish/study-structure.json": ("es", "study_structure_path"),
     "/Data/Spanish/release-manifest.json": ("es", "__manifest__"),
     "/Data/Spanish/release-composition.json": ("es", "__composition__"),
+    "/Data/Spanish/conjugations.json": ("es", "conjugations_path"),
     "/Data/Dutch/vocabulary.index.json": ("nl", "index_path"),
     "/Data/Dutch/vocabulary.examples.json": ("nl", "examples_path"),
     "/Data/Dutch/study-structure.json": ("nl", "study_structure_path"),
     "/Data/Dutch/release-manifest.json": ("nl", "__manifest__"),
     "/Data/Dutch/release-composition.json": ("nl", "__composition__"),
+    "/Data/Dutch/conjugations.json": ("nl", "conjugations_path"),
     "/Data/Portuguese/vocabulary.index.json": ("pt", "index_path"),
     "/Data/Portuguese/vocabulary.examples.json": ("pt", "examples_path"),
     "/Data/Portuguese/study-structure.json": ("pt", "study_structure_path"),
     "/Data/Portuguese/release-manifest.json": ("pt", "__manifest__"),
     "/Data/Portuguese/release-composition.json": ("pt", "__composition__"),
+    "/Data/Portuguese/conjugations.json": ("pt", "conjugations_path"),
 }
 SAFE_ACTIVE_RELEASE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
@@ -155,6 +160,32 @@ def build_parser() -> argparse.ArgumentParser:
         "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
     )
     spanish_dictionary.add_argument("--source-repository", type=Path, required=True)
+    spanish_jehle = migration_actions.add_parser(
+        "spanish-jehle-snapshot",
+        help="pin one recovered Jehle conjugation CSV as immutable source evidence",
+    )
+    spanish_jehle.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    spanish_jehle.add_argument("--source", type=Path, required=True)
+    spanish_jehle.add_argument("--snapshot-id", required=True)
+
+    enrichment = subparsers.add_parser(
+        "enrichment", help="build independently selectable optional product layers"
+    )
+    enrichment_actions = enrichment.add_subparsers(
+        dest="enrichment_command", required=True
+    )
+    conjugations = enrichment_actions.add_parser(
+        "build-conjugations",
+        help="build a bounded conjugation layer for one exact sense menu",
+    )
+    conjugations.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    conjugations.add_argument("--sense-menu", type=Path, required=True)
+    conjugations.add_argument("--source-snapshot", type=Path, required=True)
+    conjugations.add_argument("--locale", default="es-ES")
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -264,6 +295,10 @@ def build_parser() -> argparse.ArgumentParser:
     pipeline_run_release.add_argument("--release-id", required=True)
     pipeline_run_release.add_argument("--language", default="fr")
     pipeline_run_release.add_argument("--mode", default="speech")
+    pipeline_run_release.add_argument(
+        "--conjugations-artifact",
+        help="exact optional conjugation-layer/v1 artifact ID",
+    )
 
     identity = subparsers.add_parser(
         "identity", help="audit and build explicit card/progress identity mappings"
@@ -452,7 +487,37 @@ def handle_migration(args: argparse.Namespace) -> int:
         print(f"Pinned offline SpanishDict snapshot: {target}")
         print("No built menu, WSD assignment, example selection, deck, or release was migrated.")
         return 0
+    if args.migration_command == "spanish-jehle-snapshot":
+        target = pin_jehle_snapshot(
+            workspace,
+            source=args.source,
+            snapshot_id=args.snapshot_id,
+        )
+        print(f"Pinned recovered Jehle conjugation source: {target}")
+        print("No old conjugation table, WSD assignment, deck, or release was migrated.")
+        return 0
     raise AssertionError(f"Unhandled migration command: {args.migration_command}")
+
+
+def handle_enrichment(args: argparse.Namespace) -> int:
+    workspace = Workspace.load(_workspace_path(args.workspace))
+    if args.enrichment_command == "build-conjugations":
+        metadata, coverage = build_conjugation_layer(
+            workspace,
+            sense_menu=args.sense_menu,
+            source_snapshot=args.source_snapshot,
+            locale=args.locale,
+        )
+        print(f"Built immutable conjugation layer: {metadata.artifact_id}")
+        print(
+            f"Covered {coverage['covered_headwords']} of "
+            f"{coverage['requested_headwords']} requested verb headwords."
+        )
+        if coverage["missing_headwords"]:
+            print("Missing headwords: " + ", ".join(coverage["missing_headwords"]))
+        print("No release was composed or activated.")
+        return 0
+    raise AssertionError(f"Unhandled enrichment command: {args.enrichment_command}")
 
 
 def handle_pipeline(args: argparse.Namespace) -> int:
@@ -567,12 +632,15 @@ def handle_pipeline(args: argparse.Namespace) -> int:
             release_id=args.release_id,
             language=args.language,
             mode=args.mode,
+            conjugations_artifact_id=args.conjugations_artifact,
         )
         manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
         print(f"Built inactive real-data release: {output}")
         print(
             f"Published {manifest['card_count']} cards with explicit unassigned examples."
         )
+        if args.conjugations_artifact:
+            print(f"Conjugations: {args.conjugations_artifact}")
         print("No WSD was run and the release was not activated.")
         return 0
     raise AssertionError(f"Unhandled pipeline command: {args.pipeline_command}")
@@ -678,6 +746,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handle_frequency(args)
     if args.command == "migration":
         return handle_migration(args)
+    if args.command == "enrichment":
+        return handle_enrichment(args)
     if args.command == "release":
         return handle_release(args)
     if args.command == "pipeline":

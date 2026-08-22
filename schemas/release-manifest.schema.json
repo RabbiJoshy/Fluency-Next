@@ -80,7 +80,9 @@
         "examples_path": {"const": "app/vocabulary.examples.json"},
         "examples_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "study_structure_path": {"const": "app/study-structure.json"},
-        "study_structure_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        "study_structure_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "conjugations_path": {"const": "app/conjugations.json"},
+        "conjugations_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
       }
     }
   }

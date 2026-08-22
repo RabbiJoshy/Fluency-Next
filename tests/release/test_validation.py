@@ -81,6 +81,7 @@ class ReleaseValidationTests(unittest.TestCase):
             "speech-deck.schema.json",
             "study-structure.schema.json",
             "speech-pipeline-profile.schema.json",
+            "conjugation-layer.schema.json",
             "wsd-assignment.schema.json",
             "wsd-assignment-bundle.schema.json",
         ):

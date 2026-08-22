@@ -10,9 +10,14 @@ import shutil
 import tempfile
 from typing import Any
 
+from fluency.core.artifacts import artifact_directory, verify_artifact
 from fluency.core.hashing import content_id
 from fluency.core.workspace import Workspace
-from fluency.release.app_compat import APP_CONTRACT_VERSION, build_app_compatibility_assets
+from fluency.release.app_compat import (
+    APP_CONTRACT_VERSION,
+    build_app_compatibility_assets,
+    build_app_conjugations,
+)
 from fluency.release.io import json_bytes
 from fluency.release.validation import (
     RELEASE_MANIFEST_VERSION,
@@ -50,12 +55,44 @@ def compose_release(workspace: Workspace, composition: dict[str, Any], deck: dic
     app_index_bytes = json_bytes(app_index)
     app_examples_bytes = json_bytes(app_examples)
     study_structure_bytes = json_bytes(deck["study_structure"])
+    optional_app_assets: dict[str, bytes] = {}
+    conjugations_selection = composition["layers"].get("conjugations")
+    if conjugations_selection is not None:
+        metadata = verify_artifact(workspace, conjugations_selection["artifact_id"])
+        if metadata.schema != "conjugation-layer/v1":
+            raise ValueError("selected conjugations artifact has the wrong schema")
+        conjugations_path = artifact_directory(workspace, metadata.artifact_id) / metadata.filename
+        conjugations_layer = load_json_object(conjugations_path)
+        if (
+            conjugations_layer.get("language") != composition["language"]
+            or conjugations_layer.get("locale") != composition["locale"]
+        ):
+            raise ValueError("selected conjugations artifact has the wrong language/locale")
+        if conjugations_layer.get("inputs", {}).get("sense_menu_content_id") != composition["layers"]["sense_menu"]["artifact_id"]:
+            raise ValueError("selected conjugations artifact was built from another sense menu")
+        optional_app_assets["app/conjugations.json"] = json_bytes(
+            build_app_conjugations(conjugations_layer)
+        )
     wsd_selection = composition["layers"].get("wsd_assignments")
     if wsd_selection is None:
         omissions = {item["layer"]: item["reason"] for item in composition["omitted_layers"]}
         wsd = {"enabled": False, "status": omissions.get("wsd_assignments", "not_connected")}
     else:
         wsd = {"enabled": True, "status": "selected", "source_id": wsd_selection["source_id"]}
+    app_contract = {
+        "contract_version": APP_CONTRACT_VERSION,
+        "index_path": "app/vocabulary.index.json",
+        "index_content_id": content_id(app_index_bytes),
+        "examples_path": "app/vocabulary.examples.json",
+        "examples_content_id": content_id(app_examples_bytes),
+        "study_structure_path": "app/study-structure.json",
+        "study_structure_content_id": content_id(study_structure_bytes),
+    }
+    if "app/conjugations.json" in optional_app_assets:
+        app_contract.update({
+            "conjugations_path": "app/conjugations.json",
+            "conjugations_content_id": content_id(optional_app_assets["app/conjugations.json"]),
+        })
     manifest = {
         "manifest_version": RELEASE_MANIFEST_VERSION,
         "release_id": release_id,
@@ -71,15 +108,7 @@ def compose_release(workspace: Workspace, composition: dict[str, Any], deck: dic
         "composition_content_id": content_id(composition_bytes),
         "progress_namespace": composition["progress_namespace"],
         "wsd": wsd,
-        "app_contract": {
-            "contract_version": APP_CONTRACT_VERSION,
-            "index_path": "app/vocabulary.index.json",
-            "index_content_id": content_id(app_index_bytes),
-            "examples_path": "app/vocabulary.examples.json",
-            "examples_content_id": content_id(app_examples_bytes),
-            "study_structure_path": "app/study-structure.json",
-            "study_structure_content_id": content_id(study_structure_bytes),
-        },
+        "app_contract": app_contract,
     }
     manifest_bytes = json_bytes(manifest)
 
@@ -95,6 +124,7 @@ def compose_release(workspace: Workspace, composition: dict[str, Any], deck: dic
         "app/vocabulary.index.json": app_index_bytes,
         "app/vocabulary.examples.json": app_examples_bytes,
         "app/study-structure.json": study_structure_bytes,
+        **optional_app_assets,
     }
     if release_directory.exists():
         if any(not (release_directory / name).is_file() or (release_directory / name).read_bytes() != payload for name, payload in expected.items()):

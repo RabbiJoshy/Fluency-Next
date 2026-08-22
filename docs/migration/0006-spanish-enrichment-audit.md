@@ -37,9 +37,31 @@ clean sense menu. They are not duplicated as a separate enrichment.
 5. Consider expressions, lexical relations, cognates/routing and personalised
    frames independently; none blocks Spanish Speech migration or WSD import.
 
+## Conjugation implementation result
+
+The first clean optional layer was built from the pinned reconstructed Jehle
+CSV, not from the old `conjugations.json` or `verbecc`. The source snapshot has
+content ID `sha256:239d01e65b4e6d76509c8bb8abb6d2bc6792183d275270fd077f616d91132629`.
+
+Artifact `sha256:ac8df2688d427ac98b1b173c2d7d797e3cdc298d737bb4457afc91d2fb06a4ed`
+contains 30 requested headwords and 540 mood/tense paradigms. The candidate
+menu requested 60 verb/AUX headwords, so 30 missing headwords remain explicit.
+No fallback source was consulted. The layer joins by dictionary headword and
+therefore cannot alter the 200 surface-card identities.
+
+Release `es-speech-audit-200-unassigned-jehle-20260822` explicitly selects this
+artifact and publishes the compatible app table through the stable
+`Data/Spanish/conjugations.json` alias. The release retains the same 200 cards
+and 600 explicitly unassigned examples, so attaching conjugations introduced no
+WSD or example-selection drift. Browser verification rendered the complete
+present-indicative row for `tener` in the existing card interface. For
+surface-only cards the UI uses the current dictionary headword as the lookup
+key; that lookup metadata never replaces the card's surface identity.
+
 ## Runtime cleanup
 
-The app config no longer advertises the old mutable paths for conjugations,
-conjugated English cues or the misleading `SpanishRawWiki.csv`. Until a clean
-release selects replacements, those capabilities are absent by design and the
-existing app degradation paths remain authoritative.
+The app config no longer advertises old mutable files for conjugated English
+cues or the misleading `SpanishRawWiki.csv`. Conjugations now use only the
+stable release alias backed by the active release composition. If a release
+omits that optional asset—or the requested headword is uncovered—the existing
+app degradation paths remain authoritative and no legacy file is consulted.

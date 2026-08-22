@@ -7,6 +7,17 @@ from typing import Any
 
 APP_CONTRACT_VERSION = "fluency-split-speech/v1"
 
+APP_TENSE_LABELS = {
+    ("indicativo", "presente"): "Presente",
+    ("indicativo", "pretérito"): "Pretérito",
+    ("indicativo", "imperfecto"): "Imperfecto",
+    ("indicativo", "futuro"): "Futuro",
+    ("indicativo", "condicional"): "Condicional",
+    ("subjuntivo", "presente"): "Subj. Presente",
+    ("subjuntivo", "imperfecto"): "Subj. Imperfecto",
+}
+APP_PERSON_ORDER = ("1s", "2s", "3s", "1p", "2p", "3p")
+
 
 def _app_card_id(card_id: str) -> str:
     prefix, language, digest = card_id.split("_", 2)
@@ -118,3 +129,38 @@ def build_app_compatibility_assets(
         examples[app_id] = split_examples
 
     return index, examples
+
+
+def build_app_conjugations(layer: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Render a typed optional layer into the existing app's table shape."""
+
+    if layer.get("layer_version") != "conjugation-layer/v1":
+        raise ValueError("unsupported conjugation layer")
+    result: dict[str, dict[str, Any]] = {}
+    for record in layer.get("records", []):
+        headword = record.get("headword")
+        if not isinstance(headword, str) or not headword or headword in result:
+            raise ValueError("conjugation layer contains an invalid/duplicate headword")
+        entry: dict[str, Any] = {"tenses": {}}
+        if record.get("translation"):
+            entry["translation"] = record["translation"]
+        nonfinite = record.get("nonfinite") or {}
+        if nonfinite.get("gerund"):
+            entry["gerund"] = nonfinite["gerund"]
+        if nonfinite.get("past_participle"):
+            entry["past_participle"] = nonfinite["past_participle"]
+        for paradigm in record.get("paradigms", []):
+            key = (
+                str(paradigm.get("mood", "")).casefold(),
+                str(paradigm.get("tense", "")).casefold(),
+            )
+            label = APP_TENSE_LABELS.get(key)
+            if label is None:
+                continue
+            by_person = {
+                item.get("person"): item.get("form")
+                for item in paradigm.get("forms", [])
+            }
+            entry["tenses"][label] = [by_person.get(person, "—") for person in APP_PERSON_ORDER]
+        result[headword] = entry
+    return result

@@ -271,9 +271,10 @@ def validate_manifest(
     )
     optional_app_assets = (
         ("study_structure_path", "study_structure_content_id", "app/study-structure.json"),
+        ("conjugations_path", "conjugations_content_id", "app/conjugations.json"),
     )
     for path_field, hash_field, expected_path in required_app_assets + optional_app_assets:
-        if path_field.startswith("study_structure") and path_field not in app_contract:
+        if (path_field, hash_field, expected_path) in optional_app_assets and path_field not in app_contract:
             continue
         _require(app_contract.get(path_field) == expected_path, f"app contract {path_field} is invalid")
         asset_path = deck_path.parent / expected_path

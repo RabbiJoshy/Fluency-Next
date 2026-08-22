@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/conjugation-layer.schema.json",
+  "title": "Optional conjugation enrichment layer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["layer_version", "language", "locale", "layer_kind", "join_key", "source", "inputs", "coverage", "records"],
+  "properties": {
+    "layer_version": {"const": "conjugation-layer/v1"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "locale": {"type": "string", "minLength": 2},
+    "layer_kind": {"const": "conjugations"},
+    "join_key": {"const": "headword"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "snapshot_id", "content_id", "provenance_status"],
+      "properties": {
+        "provider": {"type": "string", "minLength": 1},
+        "snapshot_id": {"type": "string", "minLength": 1},
+        "content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "provenance_status": {"enum": ["observed", "reconstructed", "unknown"]}
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sense_menu_content_id", "sense_menu_snapshot_id"],
+      "properties": {
+        "sense_menu_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "sense_menu_snapshot_id": {"type": ["string", "null"]}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested_headwords", "covered_headwords", "missing_headwords"],
+      "properties": {
+        "requested_headwords": {"type": "integer", "minimum": 0},
+        "covered_headwords": {"type": "integer", "minimum": 0},
+        "missing_headwords": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["headword", "translation", "nonfinite", "paradigms"],
+        "properties": {
+          "headword": {"type": "string", "minLength": 1},
+          "translation": {"type": ["string", "null"]},
+          "nonfinite": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["gerund", "past_participle"],
+            "properties": {
+              "gerund": {"type": ["string", "null"]},
+              "past_participle": {"type": ["string", "null"]}
+            }
+          },
+          "paradigms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mood", "tense", "forms"],
+              "properties": {
+                "mood": {"type": "string", "minLength": 1},
+                "tense": {"type": "string", "minLength": 1},
+                "forms": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["person", "form"],
+                    "properties": {
+                      "person": {"enum": ["1s", "2s", "3s", "1p", "2p", "3p"]},
+                      "form": {"type": "string", "minLength": 1}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

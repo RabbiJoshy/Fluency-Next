@@ -213,6 +213,25 @@
   the app now treats those capabilities as absent until a clean release selects
   typed replacements. No enrichment data was copied or activated. The shell
   cache moved to `flashcards-v272` / `20260822j`.
+- Gate 32 (typed conjugation artifact): added the shared `conjugation-layer/v1`
+  contract plus a Spanish Jehle source adapter. Pinned the exact 2.9 MB CSV as
+  reconstructed source evidence and built content-addressed artifact
+  `sha256:ac8df2688d427ac98b1b173c2d7d797e3cdc298d737bb4457afc91d2fb06a4ed`.
+  It covers 30 of 60 requested verb/AUX headwords with 540 paradigms; all 30
+  misses are explicit and no `verbecc`, old table, WSD assignment, release or
+  fallback was used.
+- Gate 33 (release-backed Spanish conjugations): selected the typed Jehle
+  artifact in validated release
+  `es-speech-audit-200-unassigned-jehle-20260822` and activated it only in the
+  local workspace. The release still contains the same 200 surface cards and
+  600 explicitly unassigned examples; no WSD was introduced. Its stable app
+  alias now serves 30 headword tables from the immutable release composition.
+  Browser verification opened `tener` through the existing card UI and rendered
+  `tengo`, `tienes`, `tiene`, `tenemos`, `tenéis`, and `tienen`. Surface-only
+  cards join the optional layer through their dictionary headword, and
+  `SENSE_CYCLE` menus retain verb tools through `cycle_pos`. Missing tables
+  continue to degrade to the existing external reference rather than an old
+  local file. The shell cache moved to `flashcards-v275` / `20260822m`.
 
 ## Not started
 

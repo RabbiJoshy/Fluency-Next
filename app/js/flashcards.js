@@ -1,23 +1,23 @@
 // Card rendering, flip, swipe, keyboard shortcuts.
 // Main function: updateCard() (~line 950) renders the current flashcard front + back.
 // Key exports: updateCard, flipCard, nextCard, handleSwipeAction, selectMeaning, cycleExample.
-import './state.js?v=20260822j';
-import './speech.js?v=20260822j';
+import './state.js?v=20260822m';
+import './speech.js?v=20260822m';
 import {
     collectRecentWrongWords,
     exampleReinforcesRecentMistake,
     filterPersonalisedExamples,
-} from './example-personalisation.js?v=20260822j';
+} from './example-personalisation.js?v=20260822m';
 import {
     parseSpanishDictUsageContext,
     spanishDictUsageCandidateForms,
-} from './spanishdict-usage.js?v=20260822j';
+} from './spanishdict-usage.js?v=20260822m';
 import {
     englishProductionCue,
     retainProductionPromptAttempt,
     selectReverseCueMeanings,
     splitProductionCloze,
-} from './reverse-cues.js?v=20260822j';
+} from './reverse-cues.js?v=20260822m';
 
 // --- Spanish rank lookup for personal easiness ---
 let _spanishRanks = null;  // word -> rank (loaded once)
@@ -5056,8 +5056,13 @@ function updateCard({ announceHeadword = false } = {}) {
     // Determine if current word is a verb
     let isVerb = false;
     if (card.isMultiMeaning && currentMeaning) {
-        // For multi-meaning cards, check the current meaning's POS
-        const pos = currentMeaning.pos ? currentMeaning.pos.toLowerCase() : '';
+        // Unassigned releases wrap browsable dictionary leaves in a
+        // SENSE_CYCLE row. Its cycle POS remains the real grammatical POS and
+        // must keep optional verb tools available without claiming WSD.
+        const rawPos = currentMeaning.pos === 'SENSE_CYCLE'
+            ? currentMeaning.cycle_pos
+            : currentMeaning.pos;
+        const pos = rawPos ? rawPos.toLowerCase() : '';
         isVerb = pos.includes('verb') || pos === 'v' || pos === 'vb';
     }
 
@@ -5148,7 +5153,11 @@ function updateCard({ announceHeadword = false } = {}) {
     // per-(lemma, targetWord, isRelated) build cache.
     if (isVerb) {
         const attr = (s) => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-        backHTML += `<div id="conjugationTable" class="conjugation-panel" data-lemma="${attr(card.lemma)}" data-related="${attr(card.relatedLemma)}" data-target="${attr(card.targetWord)}"></div>`;
+        // Surface-only cards intentionally have no identity lemma. The
+        // selected dictionary headword is lookup/display metadata and is the
+        // correct join key for an optional conjugation layer.
+        const conjugationHeadword = currentMeaning?.headword || card.lemma || card.targetWord;
+        backHTML += `<div id="conjugationTable" class="conjugation-panel" data-lemma="${attr(conjugationHeadword)}" data-related="${attr(card.relatedLemma)}" data-target="${attr(card.targetWord)}"></div>`;
     }
 
     if (hasSynonyms) {
@@ -6600,7 +6609,7 @@ document.addEventListener('click', (e) => {
 // Keep this in lockstep with service-worker.js. These lazy modules own search
 // result cards and conjugation; a stale URL here can keep running an old modal
 // implementation even after the eagerly loaded app has updated.
-const ASSET_VERSION = '20260822j';
+const ASSET_VERSION = '20260822m';
 
 let _modalsModulePromise = null;
 const lazyModals = () => _modalsModulePromise || (_modalsModulePromise =

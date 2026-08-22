@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 import unittest
 
-from fluency.release.app_compat import build_app_compatibility_assets
+from fluency.release.app_compat import build_app_compatibility_assets, build_app_conjugations
 from fluency.release.pilot import build_pilot_deck, default_seed_path
 
 
@@ -53,6 +53,32 @@ class AppCompatibilityTests(unittest.TestCase):
             index[0]["meanings"][0]["metadata"]["source_adapter"],
             "spanishdict-sense-menu/v1",
         )
+
+    def test_typed_conjugations_map_to_the_existing_optional_app_shape(self) -> None:
+        result = build_app_conjugations({
+            "layer_version": "conjugation-layer/v1",
+            "records": [{
+                "headword": "hablar",
+                "translation": "to speak",
+                "nonfinite": {"gerund": "hablando", "past_participle": "hablado"},
+                "paradigms": [{
+                    "mood": "Indicativo",
+                    "tense": "Presente",
+                    "forms": [
+                        {"person": "1s", "form": "hablo"},
+                        {"person": "2s", "form": "hablas"},
+                        {"person": "3s", "form": "habla"},
+                        {"person": "1p", "form": "hablamos"},
+                        {"person": "2p", "form": "habláis"},
+                        {"person": "3p", "form": "hablan"},
+                    ],
+                }],
+            }],
+        })
+        self.assertEqual(result["hablar"]["tenses"]["Presente"], [
+            "hablo", "hablas", "habla", "hablamos", "habláis", "hablan",
+        ])
+        self.assertEqual(result["hablar"]["gerund"], "hablando")
 
 
 if __name__ == "__main__":

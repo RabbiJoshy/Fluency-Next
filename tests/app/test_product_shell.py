@@ -76,11 +76,14 @@ class ProductShellTests(unittest.TestCase):
             "Data/Spanish/release-composition.json",
         )
         for legacy_path in (
-            "conjugationsPath",
             "conjugatedEnglishPath",
             "ppmDataPath",
         ):
             self.assertNotIn(legacy_path, config["languages"]["spanish"])
+        self.assertEqual(
+            config["languages"]["spanish"]["conjugationsPath"],
+            "Data/Spanish/conjugations.json",
+        )
         self.assertNotIn("ppmDataPath", config["languages"]["french"])
         self.assertEqual(
             config["languages"]["french"]["studyStructurePath"],
@@ -119,6 +122,14 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("pos-pill-unassigned", flashcards)
         self.assertIn(".pos-collapsible .pos-pill-unassigned", css)
 
+    def test_optional_conjugations_join_by_dictionary_headword_not_identity_lemma(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        self.assertIn(
+            "currentMeaning?.headword || card.lemma || card.targetWord",
+            flashcards,
+        )
+        self.assertIn("currentMeaning.cycle_pos", flashcards)
+
     def test_approved_numbered_scrubber_animation_is_retained(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
         css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
@@ -131,6 +142,7 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("vocabulary\\.(?:index|examples)", worker)
         self.assertIn("study-structure", worker)
         self.assertIn("release-(?:manifest|composition)", worker)
+        self.assertIn("conjugations", worker)
         self.assertIn("cache: 'no-store'", worker)
 
     def test_audit_accounts_and_flags_use_release_provenance(self) -> None:

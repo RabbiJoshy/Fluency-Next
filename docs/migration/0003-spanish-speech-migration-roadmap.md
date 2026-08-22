@@ -292,7 +292,9 @@ one deliberately submitted flag after the backend deployment is confirmed.
 
 **Owner:** Codex, one layer at a time. **WSD remains independent.**
 **Status:** old-layer coverage and contamination audit complete 2026-08-22;
-bounded morphology/clitic and conjugation contracts are next.
+the first bounded conjugation artifact is built, attached to a validated local
+release and verified in the real app. Morphology/clitic and English production
+cue contracts remain; they do not block WSD or the unassigned audit deck.
 
 Migrate only approved product behavior, each as an optional typed layer with a
 coverage/error report:
@@ -317,7 +319,10 @@ or deliberately cut it. Do not port a file merely because the old app reads it.
 
 The measured dispositions and implementation order are recorded in
 `docs/migration/0006-spanish-enrichment-audit.md`. The old runtime paths were
-removed before any replacement layer was selected.
+removed before any replacement layer was selected. Release
+`es-speech-audit-200-unassigned-jehle-20260822` now proves that an explicitly
+selected typed conjugation artifact can be added without changing the 200 card
+identities or the 600 unassigned examples.
 
 ### Phase 8 — External WSD attachment when the method is ready
 
