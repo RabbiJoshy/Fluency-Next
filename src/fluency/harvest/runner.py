@@ -19,7 +19,12 @@ from fluency.harvest.config import load_harvest_policies
 from fluency.harvest.inventory import load_frequency_ranks, load_harvest_inventory
 from fluency.harvest.matching import SurfaceMatcher, easiness_metrics, quality_rejection
 from fluency.harvest.records import HarvestRecordError, validate_parallel_sentence
-from fluency.harvest.sources import CorpusAdapter, OpenSubtitlesAdapter, TatoebaAdapter
+from fluency.harvest.sources import (
+    CorpusAdapter,
+    OpenSubtitlesAdapter,
+    RetainedSentenceBankAdapter,
+    TatoebaAdapter,
+)
 from fluency.pipeline.planning import load_pipeline_profile
 from fluency.release.io import atomic_write, json_bytes
 
@@ -67,6 +72,7 @@ def _implementation_content_id() -> str:
         package / "matching.py",
         package / "records.py",
         package / "sources" / "opensubtitles.py",
+        package / "sources" / "retained.py",
         package / "sources" / "tatoeba.py",
     )
     return canonical_content_id(
@@ -100,6 +106,10 @@ def _adapter_for(
         return TatoebaAdapter(path=path, target_language=language, policy=source_policy)
     if adapter == "opensubtitles-aligned/v1":
         return OpenSubtitlesAdapter(
+            path=path, target_language=language, policy=source_policy
+        )
+    if adapter == "retained-sentence-bank/v1":
+        return RetainedSentenceBankAdapter(
             path=path, target_language=language, policy=source_policy
         )
     raise HarvestRunError(f"no installed harvesting adapter for {adapter!r}")

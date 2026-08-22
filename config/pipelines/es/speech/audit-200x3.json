@@ -30,7 +30,7 @@
     "shared_policy": "speech-v1",
     "language_policy": "es-v1",
     "source_policy": "exclusive",
-    "sources": ["opensubtitles"],
+    "sources": ["retained-opensubtitles"],
     "candidate_cap_per_surface": 60
   },
   "stage_order": ["inventory", "sense_menu", "sentence_harvest", "wsd_assignments", "example_selection", "release_build"],

@@ -225,9 +225,10 @@ conjugator-derived lookup candidates are represented.
 **Exit:** complete menus/no-menu reasons for the 200-card audit, with stable
 content hashes and no network lookup during study.
 
-### Phase 5 — Fresh Spanish sentence harvest
+### Phase 5 — Run-owned Spanish sentence harvest
 
-**Owner:** Codex configures; Josh runs the corpus scan.
+**Owner:** Codex. **Status:** retained-bank adaptation complete 2026-08-22;
+future full-corpus reharvest remains optional.
 
 For the migration rehearsal, adapt the verified retained sentence bank and
 candidate map into the shared harvest contract instead of rescanning the raw
@@ -242,7 +243,15 @@ selectable adapter; it is never silently mixed or substituted.
 Retain a broad candidate pool per surface. Selection still targets three final
 examples, but WSD does not participate in harvesting.
 
-**Decision gate:** approve exact corpus snapshot and exclusive source policy.
+Runs `20260822T212608Z-702ef1b0` (20 cards) and
+`20260822T212645Z-df19d6d0` (200 cards) rebuilt matching, quality scores and
+candidate caps from the verified retained bank. They did not reuse old
+candidate choices as final selections. The 200-card run retained 11,878
+candidate assignments and 6,094 distinct sentences; every card has at least ten
+candidates and no release shortfall.
+
+**Decision gate:** resolved 2026-08-22. The verified retained OpenSubtitles bank
+is the exclusive source for this audit; no silent fallback or source mixing.
 
 **Exit:** all candidates have stable sentence/source IDs, target text, English
 translation, license/provenance where available, surface occurrence evidence

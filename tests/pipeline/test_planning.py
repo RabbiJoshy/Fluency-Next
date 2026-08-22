@@ -86,7 +86,7 @@ class PipelinePlanningTests(unittest.TestCase):
         self.assertTrue(profile["source_policy"]["allow_recovered_inputs"])
         self.assertEqual(profile["sense_menu"]["source_adapter"], "spanishdict-sense-menu/v1")
         self.assertEqual(profile["sense_menu"]["source_edition"], "spanishdict-pinned-snapshot")
-        self.assertEqual(profile["harvest"]["sources"], ["opensubtitles"])
+        self.assertEqual(profile["harvest"]["sources"], ["retained-opensubtitles"])
         self.assertEqual(profile["wsd"]["execution_status"], "blocked_pending_assets")
         self.assertEqual(profile["wsd"]["model_revisions"], {})
 

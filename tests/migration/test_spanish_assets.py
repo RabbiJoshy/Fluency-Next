@@ -9,6 +9,7 @@ from unittest.mock import patch
 from fluency.core.hashing import file_content_id
 from fluency.core.workspace import Workspace
 from fluency.inventory.runner import build_inventory_stage
+from fluency.harvest.runner import harvest_run_stage
 from fluency.migration import spanish_assets
 from fluency.migration.spanish_assets import migrate_spanish_retained_assets
 from fluency.pipeline.planning import create_pipeline_plan, load_pipeline_profile
@@ -48,14 +49,14 @@ def _build_source(root: Path) -> tuple[Path, dict[str, str]]:
     sentences = [
         {
             "id": "sentence-a",
-            "es": "Una frase de prueba.",
-            "en": "A test sentence.",
+            "es": "Palabraaa aparece en esta frase.",
+            "en": "The first word appears in this sentence.",
             "provenance": {"corpus": "opensubtitles"},
         },
         {
             "id": "sentence-b",
-            "es": "Otra frase de prueba.",
-            "en": "Another test sentence.",
+            "es": "Palabraab también aparece aquí ahora.",
+            "en": "The second word also appears here now.",
             "provenance": {"corpus": "opensubtitles"},
         },
     ]
@@ -145,6 +146,26 @@ class SpanishAssetMigrationTests(unittest.TestCase):
             self.assertEqual(inventory["cards"][0]["surface_key"], "palabraaa")
             self.assertNotIn("lemma", json.dumps(inventory))
             self.assertEqual(report["provenance_status"], "reconstructed")
+            self.assertFalse((workspace.root / "releases/es/speech/active.json").exists())
+
+            harvest_output = harvest_run_stage(
+                REPOSITORY_ROOT,
+                workspace,
+                run_id=run.name,
+                language="es",
+                mode="speech",
+                source_snapshots={"retained-opensubtitles": targets["sentences"]},
+                started_at=datetime(2026, 8, 22, 21, 7, tzinfo=UTC),
+            )
+            harvest_report = json.loads(
+                (harvest_output / "report.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(harvest_report["records_scanned"], 2)
+            self.assertEqual(
+                harvest_report["sources"][0]["adapter"],
+                "retained-sentence-bank/v1",
+            )
+            self.assertEqual(harvest_report["records_with_inventory_match"], 2)
             self.assertFalse((workspace.root / "releases/es/speech/active.json").exists())
 
 

@@ -161,6 +161,16 @@
   20-card and 200-card surface-only inventories. The 200-card inventory has 200
   unique cards, no lemma fields, and all 200 surfaces have at least six retained
   candidate sentences. No Spanish release was activated.
+- Gate 26 (retained sentence-bank adapter): added an explicit
+  `retained-sentence-bank/v1` source adapter which validates all three retained
+  bank files against their manifest, converts old records into the shared
+  parallel-sentence contract, preserves old IDs as source-record evidence, and
+  rebuilds matching, quality metrics and candidate caps inside each new run.
+  It never treats old clean/held pools as final selections. Spanish runs
+  `20260822T212608Z-702ef1b0` and `20260822T212645Z-df19d6d0` scanned only the
+  42,650 retained records—not the raw corpus—and retained 1,200 candidates for
+  20 cards and 11,878 for 200 cards. The 200-card minimum is ten candidates;
+  there are no shortfalls, WSD assignments, final picks or activated release.
 
 ## Not started
 
@@ -168,9 +178,9 @@
   through the immutable Stage 04 boundary.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
-- Adapt the retained Spanish sentence bank into the shared run-owned harvest
-  contract, then build the SpanishDict menu snapshot. A full corpus-frequency
-  compilation remains an optional future re-ranking experiment.
+- Build and pin the SpanishDict menu snapshot for the fresh 200-card Spanish
+  audit. Full corpus-frequency compilation and raw reharvest remain optional
+  future experiments.
 - Release diagnostics and release-frozen resume behind the transplanted app.
 - Artist mode.
 

@@ -1,0 +1,9 @@
+{
+  "config_version": "harvest-source-policy/v1",
+  "policy_id": "retained-opensubtitles-v1",
+  "source": "retained-opensubtitles",
+  "adapter": "retained-sentence-bank/v1",
+  "snapshot_metadata_version": "retained-source-artifact/v1",
+  "translation_language": "en",
+  "underlying_provider": "opensubtitles"
+}
