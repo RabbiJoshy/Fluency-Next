@@ -45,13 +45,22 @@
   Merge Lemmas control is hidden for surface-only releases. Published and
   browser-verified `fr-speech-pilot-0005` through guest entry, French setup,
   20-card Learn start, card flip, meaning, and three-example display.
+- Gate 12 (language-agnostic harvesting): added a shared streaming harvester,
+  shared Speech rules, French normalization/rule overlays, and explicit
+  Tatoeba and aligned-OpenSubtitles adapters. The run reads only its own
+  surface inventory, requires raw snapshots inside the external workspace,
+  retains up to 60 candidates per surface, preserves source-specific
+  provenance in one canonical sentence schema, hashes every input/output, and
+  refuses overwrite or source fallback. Synthetic French tests prove 20
+  surface cards x 3 candidates for Tatoeba and movie/line provenance for
+  OpenSubtitles. No real corpus run or WSD was executed.
 
 ## Not started
 
-- Fresh frequency, dictionary, and sentence-source adapters.
+- Fresh frequency and dictionary adapters.
 - Wiktionary snapshot selection and implementation of the normalized French
   `wiktionary-sense-menu/v1` adapter.
-- Execution of the 200-card inventory and 600-sentence harvest.
+- Execution of a real French inventory and sentence harvest.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
 - Spanish and legacy progress migration.

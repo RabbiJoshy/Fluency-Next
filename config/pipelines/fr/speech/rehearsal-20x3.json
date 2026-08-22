@@ -1,6 +1,6 @@
 {
   "profile_version": "speech-pipeline-profile/v1",
-  "profile_id": "french_speech_audit_200x3",
+  "profile_id": "french_speech_rehearsal_20x3",
   "language": "fr",
   "locale": "fr-FR",
   "mode": "speech",
@@ -15,7 +15,7 @@
     "fallback_policy": "none"
   },
   "scope": {
-    "surface_limit": 200,
+    "surface_limit": 20,
     "examples_per_surface": 3,
     "shortfall_policy": "block_release"
   },

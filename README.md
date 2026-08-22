@@ -31,11 +31,14 @@ transplanted Fluency application running a 25-card French Speech pilot are
 implemented. The old app's split French data URLs resolve only to files
 generated inside the manually active immutable release, and those aliases are
 never service-worker cached. The first fresh French audit profile is locked to
-200 surface cards and three examples per card. Its Wiktionary-ready sense-menu
-boundary normalizes dictionary data without making lemmas card identities. The
-profile creates six inspectable stage folders without loading historical deck
-data, installing model packages, executing WSD, or activating a release. Fresh
-source adapters, model pins, release diagnostics in the transplanted UI,
+200 surface cards and three examples per card. Its language-agnostic harvester
+uses shared Speech rules plus French and source adapters, reads only run-owned
+surface inventories, and supports explicit Tatoeba or aligned OpenSubtitles
+snapshots without fallback. Its Wiktionary-ready sense-menu boundary normalizes
+dictionary data without making lemmas card identities. The profile creates six
+inspectable stage folders without loading historical deck data, installing
+model packages, executing WSD, or activating a release. Fresh frequency and
+dictionary adapters, model pins, release diagnostics in the transplanted UI,
 Spanish migration, Artist mode, and production integration are not complete.
 
 See `docs/runbooks/local-speech-pilot.md` for the exact local test flow.

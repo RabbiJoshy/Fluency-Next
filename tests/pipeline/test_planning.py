@@ -35,6 +35,9 @@ class PipelinePlanningTests(unittest.TestCase):
         )
         self.assertEqual(self.profile["sense_menu"]["join_key"], "surface_card_id")
         self.assertEqual(self.profile["sense_menu"]["lemma_role"], "lookup_metadata_only")
+        self.assertEqual(self.profile["harvest"]["source_policy"], "exclusive")
+        self.assertEqual(self.profile["harvest"]["sources"], ["tatoeba"])
+        self.assertEqual(self.profile["harvest"]["candidate_cap_per_surface"], 60)
 
     def test_profile_rejects_legacy_or_fallback_inputs(self) -> None:
         for field, value in (("allow_legacy_inputs", True), ("fallback_policy", "missing_only")):
@@ -69,6 +72,14 @@ class PipelinePlanningTests(unittest.TestCase):
             self.assertEqual(
                 sense_contract["source_adapter"]["output_schema"], "sense-menu/v1"
             )
+            harvest_contract = json.loads(
+                (target / "stages/03_sentence_harvest/contract.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                harvest_contract["external_inputs"],
+                ["fresh_tatoeba_source_snapshot"],
+            )
+            self.assertEqual(harvest_contract["method"]["source_policy"], "exclusive")
 
 
 if __name__ == "__main__":

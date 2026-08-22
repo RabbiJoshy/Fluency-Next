@@ -4,7 +4,7 @@
   "title": "Fresh Speech pipeline profile",
   "type": "object",
   "additionalProperties": false,
-  "required": ["profile_version", "profile_id", "language", "locale", "mode", "identity", "source_policy", "scope", "sense_menu", "stage_order", "wsd", "release"],
+  "required": ["profile_version", "profile_id", "language", "locale", "mode", "identity", "source_policy", "scope", "sense_menu", "harvest", "stage_order", "wsd", "release"],
   "properties": {
     "profile_version": {"const": "speech-pipeline-profile/v1"},
     "profile_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
@@ -36,7 +36,7 @@
       "additionalProperties": false,
       "required": ["surface_limit", "examples_per_surface", "shortfall_policy"],
       "properties": {
-        "surface_limit": {"const": 200},
+        "surface_limit": {"type": "integer", "minimum": 1},
         "examples_per_surface": {"const": 3},
         "shortfall_policy": {"const": "block_release"}
       }
@@ -51,6 +51,23 @@
         "output_schema": {"const": "sense-menu/v1"},
         "join_key": {"const": "surface_card_id"},
         "lemma_role": {"const": "lookup_metadata_only"}
+      }
+    },
+    "harvest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shared_policy", "language_policy", "source_policy", "sources", "candidate_cap_per_surface"],
+      "properties": {
+        "shared_policy": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "language_policy": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "source_policy": {"enum": ["exclusive", "explicit_union"]},
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*$"}
+        },
+        "candidate_cap_per_surface": {"type": "integer", "minimum": 3}
       }
     },
     "stage_order": {

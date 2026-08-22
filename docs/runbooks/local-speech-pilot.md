@@ -121,3 +121,33 @@ and the expected output folder. Run that command in this repository, then let
 the assistant inspect counts, schemas, hashes, source evidence, shortfalls, and
 model pins before the next stage. A command never activates a release; release
 composition, validation, visual audit, and activation remain separate gates.
+
+## Sentence-harvest command (after inventory approval)
+
+The harvester deliberately requires the same run's
+`stages/01_inventory/output/inventory.json` and `frequency-ranks.json`. Once
+that preceding layer has been built and audited, a Tatoeba-only run is:
+
+```bash
+PYTHONPATH=src python3.12 -m fluency pipeline harvest \
+  --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace \
+  --run-id <approved-run-id> \
+  --source tatoeba=/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/tatoeba/fr-en/fra-eng.zip
+```
+
+The result is written once under
+`runs/fr/speech/<run-id>/stages/03_sentence_harvest/output/`. Inspect
+`report.json`, `candidates.json`, `sentence-bank.jsonl`, and `manifest.json`.
+Running the command again against that run is rejected rather than merging or
+overwriting candidates.
+
+An OpenSubtitles-only profile uses `sources: ["opensubtitles"]` and passes an
+aligned snapshot directory instead. That directory contains
+`OpenSubtitles.en-fr.fr`, `OpenSubtitles.en-fr.en`,
+`OpenSubtitles.en-fr.ids`, and a `snapshot.json` with version
+`opensubtitles-aligned-snapshot/v1`, language pair, snapshot ID, license,
+attribution, and source URL. The command then changes only its explicit source:
+
+```bash
+--source opensubtitles=/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/opensubtitles/en-fr/<snapshot-id>
+```

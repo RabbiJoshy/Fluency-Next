@@ -64,6 +64,22 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(args.pipeline_command, "plan")
         self.assertEqual(args.profile, Path("/tmp/profile.json"))
 
+    def test_pipeline_harvest_requires_an_explicit_run_and_source(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "pipeline",
+                "harvest",
+                "--workspace",
+                "/tmp/fluency-workspace",
+                "--run-id",
+                "20260822T130000Z-1234abcd",
+                "--source",
+                "tatoeba=/tmp/fluency-workspace/raw/tatoeba/fra-eng.zip",
+            ]
+        )
+        self.assertEqual(args.pipeline_command, "harvest")
+        self.assertEqual(args.source, ["tatoeba=/tmp/fluency-workspace/raw/tatoeba/fra-eng.zip"])
+
     def test_existing_app_data_path_resolves_through_active_release(self) -> None:
         import json
         import tempfile

@@ -1,0 +1,13 @@
+{
+  "config_version": "harvest-source-policy/v1",
+  "policy_id": "opensubtitles-v1",
+  "source": "opensubtitles",
+  "adapter": "opensubtitles-aligned/v1",
+  "snapshot_metadata_version": "opensubtitles-aligned-snapshot/v1",
+  "file_templates": {
+    "target_text": "OpenSubtitles.en-{language}.{language}",
+    "translation_text": "OpenSubtitles.en-{language}.en",
+    "provenance_ids": "OpenSubtitles.en-{language}.ids"
+  },
+  "translation_language": "en"
+}

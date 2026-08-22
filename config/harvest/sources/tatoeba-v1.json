@@ -1,0 +1,17 @@
+{
+  "config_version": "harvest-source-policy/v1",
+  "policy_id": "tatoeba-v1",
+  "source": "tatoeba",
+  "adapter": "tatoeba/v1",
+  "archive_member_by_language": {
+    "fr": "fra.txt"
+  },
+  "columns": {
+    "translation_text": 0,
+    "target_text": 1,
+    "attribution": 2
+  },
+  "translation_language": "en",
+  "license_prefix": "CC-BY 2.0 (France)",
+  "sentence_url_template": "https://tatoeba.org/en/sentences/show/{sentence_id}"
+}

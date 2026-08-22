@@ -1,0 +1,29 @@
+{
+  "config_version": "harvest-shared-policy/v1",
+  "policy_id": "speech-v1",
+  "candidate_cap_per_surface": 60,
+  "quality": {
+    "minimum_target_tokens": 4,
+    "maximum_target_tokens": 16,
+    "minimum_translation_tokens": 2,
+    "maximum_translation_tokens": 24,
+    "minimum_translation_ratio": 0.4,
+    "maximum_translation_ratio": 2.5,
+    "reject_identical_sides": true,
+    "reject_all_caps": true,
+    "reject_markup": true
+  },
+  "easiness": {
+    "preferred_minimum_tokens": 6,
+    "preferred_maximum_tokens": 12,
+    "short_penalty_weight": 0.6,
+    "long_penalty_weight": 0.3,
+    "first_new_word_discount": 0.35,
+    "unranked_assumed_rank": 60000
+  },
+  "provenance": {
+    "require_attribution": true,
+    "require_license": true,
+    "require_source_record_id": true
+  }
+}

@@ -82,8 +82,11 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
 
     scope = profile.get("scope")
     _require(isinstance(scope, dict), "audit scope is required")
-    _require(scope.get("surface_limit") == 200, "first French audit must contain exactly 200 surfaces")
-    _require(scope.get("examples_per_surface") == 3, "first French audit must target three examples per surface")
+    _require(
+        isinstance(scope.get("surface_limit"), int) and scope["surface_limit"] > 0,
+        "surface limit must be a positive integer",
+    )
+    _require(scope.get("examples_per_surface") == 3, "Speech profiles must target three final examples per surface")
     _require(scope.get("shortfall_policy") == "block_release", "example shortfalls must block release")
 
     sense_menu = profile.get("sense_menu")
@@ -99,6 +102,35 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
         sense_menu.get("snapshot_id") is None
         or (isinstance(sense_menu.get("snapshot_id"), str) and bool(sense_menu["snapshot_id"])),
         "sense-menu snapshot ID is invalid",
+    )
+
+    harvest = profile.get("harvest")
+    _require(isinstance(harvest, dict), "harvest policy is required")
+    for field in ("shared_policy", "language_policy"):
+        _require(
+            isinstance(harvest.get(field), str) and bool(harvest[field]),
+            f"harvest {field} is required",
+        )
+    _require(
+        harvest.get("source_policy") in {"exclusive", "explicit_union"},
+        "harvest source policy is invalid",
+    )
+    sources = harvest.get("sources")
+    _require(
+        isinstance(sources, list)
+        and bool(sources)
+        and len(sources) == len(set(sources))
+        and all(isinstance(source, str) and source for source in sources),
+        "harvest sources are invalid",
+    )
+    _require(
+        harvest.get("source_policy") != "exclusive" or len(sources) == 1,
+        "exclusive harvesting requires exactly one source",
+    )
+    _require(
+        isinstance(harvest.get("candidate_cap_per_surface"), int)
+        and harvest["candidate_cap_per_surface"] >= scope["examples_per_surface"],
+        "harvest candidate cap cannot be below the final example target",
     )
 
     _require(profile.get("stage_order") == list(STAGE_ORDER), "pipeline stage order is not canonical")
@@ -146,9 +178,10 @@ def _acceptance(stage: str, *, surfaces: int, examples: int) -> list[str]:
             "every sense has a stable ID, part of speech, translation, and source reference",
         ],
         "sentence_harvest": [
-            f"exactly {examples} accepted bilingual sentence records",
-            "exactly three accepted examples for every surface",
-            "license/source reference retained per sentence",
+            f"all {surfaces} surfaces scanned against the explicitly selected source snapshots",
+            "at least three retained candidates per surface before WSD",
+            "source record, license, attribution, and snapshot hash retained per sentence",
+            "candidate pools remain larger than the final three-example selection",
         ],
         "wsd_assignments": [
             f"all {examples} harvested sentences resolved against the selected sense-menu artifact",
@@ -187,7 +220,10 @@ def _stage_contract(profile: dict[str, Any], stage: str, ordinal: int) -> dict[s
         contract["external_inputs"] = ["fresh_dictionary_source_snapshot"]
         contract["source_adapter"] = profile["sense_menu"]
     elif stage == "sentence_harvest":
-        contract["external_inputs"] = ["fresh_sentence_source_snapshot"]
+        contract["external_inputs"] = [
+            f"fresh_{source}_source_snapshot" for source in profile["harvest"]["sources"]
+        ]
+        contract["method"] = profile["harvest"]
     elif stage == "wsd_assignments":
         contract["method"] = profile["wsd"]
     return contract
@@ -236,6 +272,7 @@ def create_pipeline_plan(
                 profile["scope"]["surface_limit"]
                 * profile["scope"]["examples_per_surface"]
             ),
+            "candidate_cap_per_surface": profile["harvest"]["candidate_cap_per_surface"],
         },
         "stage_order": list(STAGE_ORDER),
         "release_activation": "manual_only",

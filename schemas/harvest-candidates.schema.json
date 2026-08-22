@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/harvest-candidates.schema.json",
+  "title": "Run-owned harvest candidates",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidates_version", "run_id", "language", "mode", "source_policy", "sources", "candidate_cap_per_surface", "cards"],
+  "properties": {
+    "candidates_version": {"const": "harvest-candidates/v1"},
+    "run_id": {"type": "string", "pattern": "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "mode": {"const": "speech"},
+    "source_policy": {"enum": ["exclusive", "explicit_union"]},
+    "sources": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "candidate_cap_per_surface": {"type": "integer", "minimum": 3},
+    "cards": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["card_id", "surface_key", "display_form", "rank", "candidates"],
+        "properties": {
+          "card_id": {"type": "string", "pattern": "^card_[a-z]{2,3}_[0-9a-f]{32}$"},
+          "surface_key": {"type": "string", "minLength": 1},
+          "display_form": {"type": "string", "minLength": 1},
+          "rank": {"type": "integer", "minimum": 1},
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sentence_id", "metrics"],
+              "properties": {
+                "sentence_id": {"type": "string", "pattern": "^sentence_[0-9a-f]{32}$"},
+                "metrics": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["score", "frequency_burden", "length_penalty", "target_tokens", "harder_tokens"],
+                  "properties": {
+                    "score": {"type": "number", "minimum": 0},
+                    "frequency_burden": {"type": "number", "minimum": 0},
+                    "length_penalty": {"type": "number", "minimum": 0},
+                    "target_tokens": {"type": "integer", "minimum": 1},
+                    "harder_tokens": {"type": "integer", "minimum": 0}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

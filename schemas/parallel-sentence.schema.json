@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/parallel-sentence.schema.json",
+  "title": "Source-neutral parallel sentence with source-specific provenance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_version", "sentence_id", "source", "target", "translation"],
+  "properties": {
+    "record_version": {"const": "parallel-sentence/v1"},
+    "sentence_id": {"type": "string", "pattern": "^sentence_[0-9a-f]{32}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "adapter", "snapshot_id", "snapshot_content_id", "source_record_id", "license", "attribution"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "adapter": {"type": "string", "minLength": 1},
+        "snapshot_id": {"type": "string", "minLength": 1},
+        "snapshot_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "source_record_id": {"type": "string", "minLength": 1},
+        "license": {"type": "string", "minLength": 1},
+        "attribution": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "minLength": 1},
+        "document": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title_id", "subtitle_id", "line", "aligned_row"],
+          "properties": {
+            "title_id": {"type": "string", "minLength": 1},
+            "subtitle_id": {"type": "string", "minLength": 1},
+            "line": {"type": "string", "minLength": 1},
+            "aligned_row": {"type": "integer", "minimum": 1}
+          }
+        }
+      }
+    },
+    "target": {"$ref": "#/$defs/side"},
+    "translation": {"$ref": "#/$defs/side"}
+  },
+  "$defs": {
+    "side": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "text"],
+      "properties": {
+        "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+        "text": {"type": "string", "minLength": 1},
+        "source_sentence_id": {"type": "string", "minLength": 1},
+        "contributor": {"type": "string"},
+        "url": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
