@@ -148,7 +148,7 @@ The measured audit and two historical ID collisions are recorded in
 
 ### Phase 2 — Spanish run profiles and language policies
 
-**Owner:** Codex. **Cost:** quick.
+**Owner:** Codex. **Cost:** quick. **Status:** complete 2026-08-22.
 
 Add Spanish Speech rehearsal and audit profiles (20×3 and 200×3), then a full
 profile later. Add configuration—not language forks—for:
@@ -162,6 +162,15 @@ profile later. Add configuration—not language forks—for:
 - external WSD bundle requirements.
 
 Planning a run must create only the immutable skeleton and execute no stage.
+
+Implemented as shared configuration boundaries under `config/inventory/`,
+`config/languages/es/`, `config/harvest/`, `config/sense_menu/`, `config/wsd/`
+and `config/pipelines/es/speech/`. The Spanish profiles deliberately retain
+`pending-explicit-source-approval` for inventory ranking and
+`blocked_pending_assets` for WSD. These are visible gates, not fallbacks. The
+current `sd-beto-cal-v5` method is identified at its audited source commit, but
+no historical assignment is referenced and no model asset is claimed runnable
+until its immutable migration is complete.
 
 **Exit:** profiles validate, plan deterministically, and explicitly forbid lemma
 identity, legacy inputs, fallback and automatic activation.

@@ -2,6 +2,12 @@
   "config_version": "sense-menu-language-policy/v1",
   "policy_id": "fr-v1",
   "language": "fr",
+  "provider": "wiktionary",
+  "card_binding": {
+    "identity": "surface-card/v1",
+    "headword_role": "lookup_metadata_only"
+  },
+  "menu_order_role": "provider_prior",
   "redirects": {
     "require_source_case_match": true,
     "reject_tags": ["abbreviation", "initialism"],

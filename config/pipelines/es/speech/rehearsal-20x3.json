@@ -1,0 +1,47 @@
+{
+  "profile_version": "speech-pipeline-profile/v1",
+  "profile_id": "spanish_speech_rehearsal_20x3",
+  "language": "es",
+  "locale": "es-ES",
+  "mode": "speech",
+  "identity": {"unit_type": "surface", "identity_version": "surface-card/v1", "allow_lemma_identity": false},
+  "source_policy": {"fresh_snapshots_only": true, "allow_legacy_inputs": false, "fallback_policy": "none"},
+  "scope": {"surface_limit": 20, "examples_per_surface": 3, "shortfall_policy": "publish_explicit"},
+  "inventory": {
+    "source_adapter": "spanish-surface-frequency/v1",
+    "language_policy": "es-v1",
+    "source_edition": "pending-explicit-source-approval",
+    "frequency_measure": "pending-explicit-source-approval",
+    "output_schema": "surface-inventory/v1",
+    "identity_unit": "surface",
+    "lemma_role": "excluded"
+  },
+  "sense_menu": {
+    "source_adapter": "spanishdict-sense-menu/v1",
+    "language_policy": "es-spanishdict-v1",
+    "source_edition": "spanishdict-pinned-snapshot",
+    "gloss_language": "en",
+    "snapshot_id": null,
+    "output_schema": "sense-menu/v1",
+    "join_key": "surface_card_id",
+    "lemma_role": "lookup_metadata_only"
+  },
+  "harvest": {
+    "shared_policy": "speech-v1",
+    "language_policy": "es-v1",
+    "source_policy": "exclusive",
+    "sources": ["opensubtitles"],
+    "candidate_cap_per_surface": 60
+  },
+  "stage_order": ["inventory", "sense_menu", "sentence_harvest", "wsd_assignments", "example_selection", "release_build"],
+  "wsd": {
+    "strategy": "language-adapted-closed-menu/v1",
+    "shared_profile": "closed-menu-provider-prior-v1",
+    "language_profile": "es-v1",
+    "model_profile": "es-sd-beto-cal-v5-migration-v1",
+    "require_model_pins": true,
+    "execution_status": "blocked_pending_assets",
+    "model_revisions": {}
+  },
+  "release": {"activation": "manual", "fallback_policy": "none"}
+}

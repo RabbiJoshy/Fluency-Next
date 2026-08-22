@@ -1,0 +1,54 @@
+{
+  "config_version": "wsd-model-profile/v1",
+  "profile_id": "es-sd-beto-cal-v5-migration-v1",
+  "language": "es",
+  "execution_status": "blocked_pending_assets",
+  "source_method_id": "sd-beto-cal-v5",
+  "source_repository_commit": "23f1ad4387feb4a599815eaa6846e1201b5f402a",
+  "provider_prior": {
+    "enabled": true,
+    "source": "spanishdict_menu_order"
+  },
+  "gloss": {
+    "enabled": true,
+    "model_revision": "gemini-embedding-001",
+    "task_type": "SEMANTIC_SIMILARITY",
+    "dimensions": 3072,
+    "cache_lookup": "exact_text"
+  },
+  "token_tuple_vote": {
+    "enabled": true,
+    "model_revision": "dccuchile/bert-base-spanish-wwm-cased",
+    "prototype_content_id": "sha256:1ec0de1d85cdb608af3c8b579a90bbc4a1db8d62957c3d8a30e7d58456595777",
+    "minimum_margin": null,
+    "activation": "legacy_gated_override"
+  },
+  "calibration": {
+    "enabled": true,
+    "model_revision": "sha256:bf1ea4d6116dd7eeaf377428cf62deb2bce0c4af75d402764e698255e281dd55",
+    "feature_version": "sd-beto-cal-v5-legacy",
+    "validation_scope": "dictionary_examples_only",
+    "release_role": "evidence_only"
+  },
+  "alignment": {
+    "enabled": false,
+    "candidate_method": "sd-beto-cal-align-v5",
+    "candidate_model": "bert-base-multilingual-cased",
+    "status": "held_out_after_benchmark",
+    "benchmark": {"better": 18, "worse": 13, "lateral": 19}
+  },
+  "generative_escalation": false,
+  "alternate_methods": {
+    "low_confidence_gemini_escalation": "ported_but_not_enabled",
+    "aligned_english_leaf_correction": "ported_but_not_enabled"
+  },
+  "asset_gate": {
+    "required_before_ready": [
+      "gemini_exact_text_embedding_cache",
+      "beto_token_vector_cache",
+      "beto_token_prototypes",
+      "legacy_calibrator"
+    ],
+    "assignment_outputs_are_inputs": false
+  }
+}

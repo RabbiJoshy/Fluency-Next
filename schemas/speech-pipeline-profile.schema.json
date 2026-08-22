@@ -62,7 +62,7 @@
       "properties": {
         "source_adapter": {"type": "string", "pattern": "^[a-z0-9-]+/v[0-9]+$"},
         "language_policy": {"type": "string", "pattern": "^[a-z0-9-]+$"},
-        "source_edition": {"const": "enwiktionary"},
+        "source_edition": {"type": "string", "minLength": 1},
         "gloss_language": {"const": "en"},
         "snapshot_id": {"type": ["string", "null"]},
         "output_schema": {"const": "sense-menu/v1"},
@@ -100,7 +100,7 @@
         "language_profile": {"type": "string", "pattern": "^[a-z0-9-]+$"},
         "model_profile": {"type": "string", "pattern": "^[a-z0-9-]+$"},
         "require_model_pins": {"const": true},
-        "execution_status": {"enum": ["blocked_pending_benchmark", "ready"]},
+        "execution_status": {"enum": ["blocked_pending_assets", "blocked_pending_benchmark", "ready"]},
         "model_revisions": {"type": "object", "additionalProperties": {"type": "string"}}
       }
     },

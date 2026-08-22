@@ -131,6 +131,16 @@
   update only their own event, while a later report on the same card/field
   remains separate. Client-build and source-record IDs are promoted for common
   audits, and resolution state can identify the release that fixed a report.
+- Gate 23 (Spanish planning contracts): added non-executing Spanish Speech
+  rehearsal (20×3) and audit (200×3) profiles using the shared surface,
+  harvesting, menu, WSD and release contracts. Spanish normalization preserves
+  accents and complete observed clitic surfaces; SpanishDict headwords remain
+  lookup metadata; response mismatches and fuzzy corrections are explicit; and
+  aligned OpenSubtitles is the exclusive configured audit source. The audited
+  `sd-beto-cal-v5` method, source commit, Gemini/BETO/calibrator identities and
+  held-out alignment result are captured in a blocked method profile. No old
+  assignment, model asset, inventory, corpus stage or release was executed or
+  activated. The frequency source remains an explicit approval gate.
 
 ## Not started
 
@@ -138,7 +148,8 @@
   through the immutable Stage 04 boundary.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
-- Spanish and legacy progress migration.
+- Fresh Spanish frequency-source approval, inventory adapter and 20×3/200×3
+  surface inventory runs. The legacy progress crosswalk itself is complete.
 - Release diagnostics and release-frozen resume behind the transplanted app.
 - Artist mode.
 

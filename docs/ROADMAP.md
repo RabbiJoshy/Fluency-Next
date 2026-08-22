@@ -127,8 +127,10 @@ until explicitly approved.
 
 ## Step 5 — Migrate Spanish into the clean architecture
 
-**Status: source/component ledger and canonical/legacy-alias crosswalk
-complete; Spanish run profiles and language policies are next.** See
+**Status: source/component ledger, canonical/legacy-alias crosswalk, and
+Spanish 20×3/200×3 planning profiles and language policies are complete. The
+next decision is the authoritative Spanish frequency source for the fresh
+surface inventory.** See
 `docs/migration/0003-spanish-speech-migration-roadmap.md` for the approval-gated
 sequence. WSD remains a replaceable external assignment layer and does not
 block the inventory, menu, harvest, unassigned release or app-compatibility

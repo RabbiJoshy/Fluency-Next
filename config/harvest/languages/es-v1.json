@@ -1,0 +1,21 @@
+{
+  "config_version": "harvest-language-policy/v1",
+  "policy_id": "es-v1",
+  "language": "es",
+  "normalization": {
+    "unicode_form": "NFC",
+    "casefold": true,
+    "canonical_apostrophe": "'",
+    "apostrophe_variants": ["’", "‘", "ʼ", "‛", "＇"],
+    "collapse_whitespace": true
+  },
+  "matching": {
+    "boundary_policy": "unicode_word",
+    "token_pattern": "[^\\W\\d_]+(?:['’-][^\\W\\d_]+)*"
+  },
+  "sentence_rules": {
+    "reject_contains_apostrophe": false,
+    "reject_contains_hyphen": false,
+    "forbidden_substrings": ["http://", "https://", "<", ">", "♪", "♫"]
+  }
+}

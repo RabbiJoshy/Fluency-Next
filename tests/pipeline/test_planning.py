@@ -17,6 +17,7 @@ from fluency.pipeline.planning import (
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 PROFILE_PATH = REPOSITORY_ROOT / "config" / "pipelines" / "fr" / "speech" / "audit-200x3.json"
+SPANISH_PROFILE_PATH = REPOSITORY_ROOT / "config" / "pipelines" / "es" / "speech" / "audit-200x3.json"
 
 
 class PipelinePlanningTests(unittest.TestCase):
@@ -70,6 +71,24 @@ class PipelinePlanningTests(unittest.TestCase):
     def test_ready_wsd_requires_nonempty_model_pins(self) -> None:
         changed = deepcopy(self.profile)
         changed["wsd"]["execution_status"] = "ready"
+        with self.assertRaises(PipelineProfileError):
+            validate_pipeline_profile(changed)
+
+    def test_spanish_profile_uses_shared_contracts_without_claiming_readiness(self) -> None:
+        profile = load_pipeline_profile(SPANISH_PROFILE_PATH)
+        self.assertEqual(profile["language"], "es")
+        self.assertEqual(profile["identity"]["unit_type"], "surface")
+        self.assertEqual(profile["inventory"]["source_adapter"], "spanish-surface-frequency/v1")
+        self.assertEqual(profile["inventory"]["source_edition"], "pending-explicit-source-approval")
+        self.assertEqual(profile["sense_menu"]["source_adapter"], "spanishdict-sense-menu/v1")
+        self.assertEqual(profile["sense_menu"]["source_edition"], "spanishdict-pinned-snapshot")
+        self.assertEqual(profile["harvest"]["sources"], ["opensubtitles"])
+        self.assertEqual(profile["wsd"]["execution_status"], "blocked_pending_assets")
+        self.assertEqual(profile["wsd"]["model_revisions"], {})
+
+    def test_blocked_spanish_profile_cannot_claim_runnable_model_pins(self) -> None:
+        changed = load_pipeline_profile(SPANISH_PROFILE_PATH)
+        changed["wsd"]["model_revisions"] = {"gloss.model_revision": "unverified"}
         with self.assertRaises(PipelineProfileError):
             validate_pipeline_profile(changed)
 

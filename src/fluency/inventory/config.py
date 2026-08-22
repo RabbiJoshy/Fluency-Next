@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from fluency.languages.french.surfaces import normalize_surface
+from fluency.languages.surfaces import normalizer_for_language
 
 
 POLICY_VERSION = "inventory-language-policy/v1"
@@ -33,6 +33,7 @@ def load_inventory_language_policy(
         raise InventoryPolicyError("unsupported inventory language policy")
     if policy.get("policy_id") != policy_id or policy.get("language") != language:
         raise InventoryPolicyError("inventory language policy identity does not match the run")
+    normalize_surface = normalizer_for_language(language)
     raw_exclusions = policy.get("surface_exclusions")
     if not isinstance(raw_exclusions, dict):
         raise InventoryPolicyError("surface_exclusions must be an object")

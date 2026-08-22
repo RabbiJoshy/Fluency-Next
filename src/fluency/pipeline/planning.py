@@ -115,7 +115,10 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
         "sense-menu language policy is required",
     )
     _require(sense_menu.get("output_schema") == "sense-menu/v1", "unsupported sense-menu output")
-    _require(sense_menu.get("source_edition") == "enwiktionary", "French sense glosses must come from English Wiktionary")
+    _require(
+        isinstance(sense_menu.get("source_edition"), str) and bool(sense_menu["source_edition"]),
+        "sense-menu source edition is required",
+    )
     _require(sense_menu.get("gloss_language") == "en", "WSD requires English sense glosses")
     _require(sense_menu.get("join_key") == "surface_card_id", "sense menus must join by surface-card identity")
     _require(sense_menu.get("lemma_role") == "lookup_metadata_only", "lemmas cannot become card identity")
@@ -168,7 +171,8 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
         )
     _require(wsd.get("require_model_pins") is True, "WSD models must be pinned before execution")
     _require(
-        wsd.get("execution_status") in {"blocked_pending_benchmark", "ready"},
+        wsd.get("execution_status")
+        in {"blocked_pending_assets", "blocked_pending_benchmark", "ready"},
         "WSD execution status is invalid",
     )
     revisions = wsd.get("model_revisions")
@@ -182,8 +186,8 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
         "a ready WSD profile requires pinned model revisions",
     )
     _require(
-        wsd["execution_status"] != "blocked_pending_benchmark" or not revisions,
-        "a benchmark-blocked WSD profile cannot claim model revisions",
+        not wsd["execution_status"].startswith("blocked_") or not revisions,
+        "a blocked WSD profile cannot claim runnable model revisions",
     )
 
     release = profile.get("release")

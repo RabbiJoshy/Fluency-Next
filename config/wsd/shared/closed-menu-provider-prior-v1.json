@@ -1,0 +1,19 @@
+{
+  "config_version": "wsd-shared-profile/v1",
+  "profile_id": "closed-menu-provider-prior-v1",
+  "fallback_policy": "none",
+  "decision_order": [
+    "candidate_preparation",
+    "provider_prior",
+    "gloss",
+    "token_tuple_vote",
+    "provider_leaf_repair",
+    "calibration",
+    "alignment",
+    "disposition"
+  ],
+  "assignment_identity": ["card_id", "sentence_id"],
+  "menu_binding": "exact_analysis_id",
+  "confidence_policy": "final_decision_path_only",
+  "generative_escalation": false
+}

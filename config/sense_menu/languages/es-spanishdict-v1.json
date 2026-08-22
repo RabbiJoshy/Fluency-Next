@@ -1,0 +1,31 @@
+{
+  "config_version": "sense-menu-language-policy/v1",
+  "policy_id": "es-spanishdict-v1",
+  "language": "es",
+  "provider": "spanishdict",
+  "card_binding": {
+    "identity": "surface-card/v1",
+    "headword_role": "lookup_metadata_only"
+  },
+  "menu_order_role": "provider_prior",
+  "stable_leaf_identity": "provider_sense_id",
+  "provider_fields_namespace": "provider_data.spanishdict",
+  "response_mismatch": {
+    "preserve_query_and_response": true,
+    "exact_surface_response": "accept",
+    "conjugation_response": "retain_as_lookup_candidate",
+    "fuzzy_correction": "quarantine",
+    "unexplained_mismatch": "no_menu"
+  },
+  "lookup_candidates": {
+    "sources": ["provider_response", "conjugator", "clitic_analysis"],
+    "may_replace_surface_card": false,
+    "deduplicate_by": ["headword", "part_of_speech", "evidence_type"]
+  },
+  "leaf_requirements": {
+    "translation": "required_or_explicit_missing",
+    "context": "optional",
+    "usage_and_construction_notes": "optional_provider_data",
+    "dictionary_examples": "optional_provider_data"
+  }
+}

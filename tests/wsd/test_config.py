@@ -8,6 +8,7 @@ from fluency.wsd.config import WSDProfileError, load_wsd_profiles
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 PIPELINE_PROFILE = REPOSITORY_ROOT / "config/pipelines/fr/speech/rehearsal-20x3.json"
+SPANISH_PIPELINE_PROFILE = REPOSITORY_ROOT / "config/pipelines/es/speech/rehearsal-20x3.json"
 
 
 class WSDProfileTests(unittest.TestCase):
@@ -30,6 +31,20 @@ class WSDProfileTests(unittest.TestCase):
         changed["wsd"]["execution_status"] = "ready"
         with self.assertRaises(WSDProfileError):
             load_wsd_profiles(REPOSITORY_ROOT, changed)
+
+    def test_spanish_method_snapshot_loads_but_waits_for_migrated_assets(self):
+        pipeline = load_pipeline_profile(SPANISH_PIPELINE_PROFILE)
+        shared, language, model, config_id = load_wsd_profiles(
+            REPOSITORY_ROOT, pipeline
+        )
+        self.assertIn("provider_prior", shared["decision_order"])
+        self.assertEqual(language["clitic_gate"]["method"], "spanish-se-only/v1")
+        self.assertEqual(model["source_method_id"], "sd-beto-cal-v5")
+        self.assertEqual(model["execution_status"], "blocked_pending_assets")
+        self.assertFalse(model["alignment"]["enabled"])
+        self.assertTrue(config_id.startswith("sha256:"))
+        with self.assertRaises(WSDProfileError):
+            load_wsd_profiles(REPOSITORY_ROOT, pipeline, require_ready=True)
 
 
 if __name__ == "__main__":

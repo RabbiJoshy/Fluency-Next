@@ -1,0 +1,25 @@
+{
+  "config_version": "wsd-language-profile/v1",
+  "profile_id": "es-v1",
+  "language": "es",
+  "surface_locator": "spanish-tokenizer/v1",
+  "sense_menu_adapter": "spanishdict-sense-menu/v1",
+  "card_identity": "surface-card/v1",
+  "lemma_role": "lookup_metadata_only",
+  "morphology_gate": {
+    "status": "enabled",
+    "method": "bridged-occurrence-pos/v1",
+    "scope": "candidate_filter_only"
+  },
+  "clitic_gate": {
+    "status": "enabled",
+    "method": "spanish-se-only/v1",
+    "scope": "candidate_filter_only",
+    "may_replace_surface_card": false
+  },
+  "provider_leaf_repair": {
+    "status": "enabled",
+    "method": "spanishdict-renderable-leaf/v1"
+  },
+  "pos_bridge": "spanishdict-ud-v1"
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": "es-tokenization/v1",
+  "unicode_normalization": "NFC",
+  "casefold": true,
+  "accent_folding": false,
+  "card_identity": "complete_observed_surface",
+  "attached_clitics": {
+    "identity_role": "preserve_surface",
+    "lookup_role": "may_propose_base_headword",
+    "may_replace_surface_card": false
+  },
+  "apostrophe_policy": "preserve_observed_character",
+  "hyphen_policy": "preserve_observed_character"
+}

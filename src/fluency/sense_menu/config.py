@@ -31,6 +31,32 @@ def load_sense_menu_language_policy(
         raise SenseMenuPolicyError("unsupported sense-menu language policy")
     if policy.get("policy_id") != policy_id or policy.get("language") != language:
         raise SenseMenuPolicyError("sense-menu language policy identity does not match the run")
+    provider = policy.get("provider")
+    if not isinstance(provider, str) or not provider:
+        raise SenseMenuPolicyError("sense-menu provider is required")
+    card_binding = policy.get("card_binding")
+    if not isinstance(card_binding, dict):
+        raise SenseMenuPolicyError("sense-menu card binding is required")
+    if card_binding.get("identity") != "surface-card/v1":
+        raise SenseMenuPolicyError("sense menus must bind to surface-card identity")
+    if card_binding.get("headword_role") != "lookup_metadata_only":
+        raise SenseMenuPolicyError("dictionary headwords cannot become card identity")
+    if policy.get("menu_order_role") != "provider_prior":
+        raise SenseMenuPolicyError("dictionary menu order must be labelled as a provider prior")
+    if provider == "spanishdict":
+        mismatch = policy.get("response_mismatch")
+        if not isinstance(mismatch, dict):
+            raise SenseMenuPolicyError("SpanishDict response-mismatch policy is required")
+        if mismatch.get("preserve_query_and_response") is not True:
+            raise SenseMenuPolicyError("SpanishDict query and response evidence must be preserved")
+        if mismatch.get("fuzzy_correction") != "quarantine":
+            raise SenseMenuPolicyError("SpanishDict fuzzy corrections must be quarantined")
+        lookup = policy.get("lookup_candidates")
+        if not isinstance(lookup, dict) or lookup.get("may_replace_surface_card") is not False:
+            raise SenseMenuPolicyError("SpanishDict lookup candidates cannot replace a surface card")
+        return policy
+    if provider != "wiktionary":
+        raise SenseMenuPolicyError(f"unsupported sense-menu provider: {provider}")
     redirects = policy.get("redirects")
     if not isinstance(redirects, dict):
         raise SenseMenuPolicyError("sense-menu redirect policy is required")
