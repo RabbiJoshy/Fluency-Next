@@ -30,11 +30,10 @@ contracts, French tokenization boundary, exact release composition, and the
 original Fluency product shell running a 25-card French Speech pilot are
 implemented. Learn, Review, exact-session resume, and set completion use
 release-owned level/set membership so research releases cannot be mixed by
-accident. A non-active full French compatibility candidate imports the old
-split deck into 9,863 surface cards with exact source/run provenance; its
-single-file form is retained for comparison while the activation format is
-still being optimized. The pilot is curated fixture data: new corpus ingestion,
-embeddings, replacement WSD, calibration, Spanish migration, Artist mode, and
-production integration have not been implemented yet.
+accident. The first fresh French audit profile is locked to 200 surface cards
+and three examples per card. It creates six inspectable stage folders without
+loading historical deck data, installing model packages, executing WSD, or
+activating a release. New source adapters, model pins, Spanish migration,
+Artist mode, and production integration have not been implemented yet.
 
 See `docs/runbooks/local-speech-pilot.md` for the exact local test flow.

@@ -42,7 +42,7 @@ def _load_object(path: Path) -> dict[str, Any]:
     return value
 
 
-def validate_deck(deck: dict[str, Any], *, allow_legacy_study_structure: bool = False) -> None:
+def validate_deck(deck: dict[str, Any]) -> None:
     _require(deck.get("deck_version") == SPEECH_DECK_VERSION, "unsupported deck version")
     _require(isinstance(deck.get("release_id"), str), "deck release_id is required")
     language = deck.get("language")
@@ -51,13 +51,10 @@ def validate_deck(deck: dict[str, Any], *, allow_legacy_study_structure: bool = 
     cards = deck.get("cards")
     _require(isinstance(cards, list) and cards, "deck cards must be a non-empty list")
     study_structure = deck.get("study_structure")
-    if study_structure is None and allow_legacy_study_structure:
-        levels = None
-    else:
-        _require(isinstance(study_structure, dict), "deck study_structure is required")
-        _require(study_structure.get("structure_version") == "study-structure/v1", "unsupported study structure")
-        levels = study_structure.get("levels")
-        _require(isinstance(levels, list) and levels, "study structure needs levels")
+    _require(isinstance(study_structure, dict), "deck study_structure is required")
+    _require(study_structure.get("structure_version") == "study-structure/v1", "unsupported study structure")
+    levels = study_structure.get("levels")
+    _require(isinstance(levels, list) and levels, "study structure needs levels")
 
     card_ids: set[str] = set()
     sense_ids: set[str] = set()
@@ -84,9 +81,7 @@ def validate_deck(deck: dict[str, Any], *, allow_legacy_study_structure: bool = 
             for field in ("primary_count", "aggregate_count"):
                 value = frequency.get(field)
                 _require(isinstance(value, int) and value >= 0, f"card frequency {field} is invalid")
-        aliases = card.get("legacy_aliases")
-        if aliases is not None:
-            _require(isinstance(aliases, list) and all(isinstance(item, dict) for item in aliases), "card legacy aliases are invalid")
+        _require("legacy_aliases" not in card, "legacy aliases are not allowed in clean releases")
 
         meanings = card.get("meanings")
         _require(isinstance(meanings, list) and meanings, f"card {surface_key} needs a meaning")
@@ -101,12 +96,7 @@ def validate_deck(deck: dict[str, Any], *, allow_legacy_study_structure: bool = 
             _require(bool(meaning.get("assignment_status")), "meaning assignment status is invalid")
             _require(bool(meaning.get("part_of_speech")), "meaning part_of_speech is required")
             _require(bool(meaning.get("translation")), "meaning translation is required")
-            if "legacy_sources" in meaning:
-                _require(
-                    isinstance(meaning["legacy_sources"], list)
-                    and all(isinstance(item, dict) for item in meaning["legacy_sources"]),
-                    "meaning legacy sources are invalid",
-                )
+            _require("legacy_sources" not in meaning, "legacy meaning sources are not allowed")
 
         examples = card.get("examples")
         _require(isinstance(examples, list), f"card {surface_key} examples must be a list")
@@ -120,33 +110,27 @@ def validate_deck(deck: dict[str, Any], *, allow_legacy_study_structure: bool = 
             _require(bool(example.get("provenance")), "example provenance is invalid")
             _require(bool(example.get("target")), "example target text is required")
             _require(bool(example.get("english")), "example English text is required")
-            if "legacy_sources" in example:
-                _require(
-                    isinstance(example["legacy_sources"], list)
-                    and all(isinstance(item, dict) for item in example["legacy_sources"]),
-                    "example legacy sources are invalid",
-                )
+            _require("legacy_sources" not in example, "legacy example sources are not allowed")
 
-    if levels is not None:
-        structured_card_ids: list[str] = []
-        level_ids: set[str] = set()
-        set_ids: set[str] = set()
-        for level in levels:
-            _require(isinstance(level, dict) and bool(level.get("level_id")) and bool(level.get("label")), "study level is invalid")
-            _require(level["level_id"] not in level_ids, f"duplicate level ID: {level['level_id']}")
-            level_ids.add(level["level_id"])
-            sets = level.get("sets")
-            _require(isinstance(sets, list) and sets, f"level {level['level_id']} needs sets")
-            for study_set in sets:
-                _require(isinstance(study_set, dict) and bool(study_set.get("set_id")) and bool(study_set.get("label")), "study set is invalid")
-                _require(study_set["set_id"] not in set_ids, f"duplicate set ID: {study_set['set_id']}")
-                set_ids.add(study_set["set_id"])
-                ids = study_set.get("card_ids")
-                _require(isinstance(ids, list) and ids, f"set {study_set['set_id']} needs card IDs")
-                _require(len(ids) == len(set(ids)), f"set {study_set['set_id']} repeats a card")
-                structured_card_ids.extend(ids)
-        _require(len(structured_card_ids) == len(set(structured_card_ids)), "a card appears in more than one study set")
-        _require(set(structured_card_ids) == card_ids, "study structure and deck cards disagree")
+    structured_card_ids: list[str] = []
+    level_ids: set[str] = set()
+    set_ids: set[str] = set()
+    for level in levels:
+        _require(isinstance(level, dict) and bool(level.get("level_id")) and bool(level.get("label")), "study level is invalid")
+        _require(level["level_id"] not in level_ids, f"duplicate level ID: {level['level_id']}")
+        level_ids.add(level["level_id"])
+        sets = level.get("sets")
+        _require(isinstance(sets, list) and sets, f"level {level['level_id']} needs sets")
+        for study_set in sets:
+            _require(isinstance(study_set, dict) and bool(study_set.get("set_id")) and bool(study_set.get("label")), "study set is invalid")
+            _require(study_set["set_id"] not in set_ids, f"duplicate set ID: {study_set['set_id']}")
+            set_ids.add(study_set["set_id"])
+            ids = study_set.get("card_ids")
+            _require(isinstance(ids, list) and ids, f"set {study_set['set_id']} needs card IDs")
+            _require(len(ids) == len(set(ids)), f"set {study_set['set_id']} repeats a card")
+            structured_card_ids.extend(ids)
+    _require(len(structured_card_ids) == len(set(structured_card_ids)), "a card appears in more than one study set")
+    _require(set(structured_card_ids) == card_ids, "study structure and deck cards disagree")
 
 
 def validate_composition(composition: dict[str, Any]) -> None:
@@ -201,7 +185,7 @@ def validate_composition(composition: dict[str, Any]) -> None:
 
 
 def validate_manifest(
-    manifest: dict[str, Any], deck_path: Path, composition_path: Path, *, allow_legacy_study_structure: bool = False
+    manifest: dict[str, Any], deck_path: Path, composition_path: Path
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     _require(
         manifest.get("manifest_version") == RELEASE_MANIFEST_VERSION,
@@ -229,7 +213,7 @@ def validate_manifest(
     deck = _load_object(deck_path)
     composition = _load_object(composition_path)
     validate_composition(composition)
-    validate_deck(deck, allow_legacy_study_structure=allow_legacy_study_structure)
+    validate_deck(deck)
     _require(deck.get("release_id") == manifest.get("release_id"), "release IDs disagree")
     _require(composition.get("release_id") == manifest.get("release_id"), "composition and manifest release IDs disagree")
     for field in ("language", "locale", "mode", "created_at", "publication_status", "progress_namespace"):
@@ -264,13 +248,12 @@ def validate_active_release(active: dict[str, Any]) -> None:
 
 
 def validate_release_bundle(
-    release_directory: Path, *, allow_legacy_study_structure: bool = False
+    release_directory: Path,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     manifest = _load_object(release_directory / "manifest.json")
     deck, composition = validate_manifest(
         manifest,
         release_directory / "deck.json",
         release_directory / "composition.json",
-        allow_legacy_study_structure=allow_legacy_study_structure,
     )
     return manifest, deck, composition

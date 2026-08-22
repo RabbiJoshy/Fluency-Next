@@ -47,9 +47,9 @@ PYTHONPATH=src python3.12 -m fluency release activate fr-speech-pilot-0004 --wor
 To preview a non-active approved candidate, use
 `?release=<catalogued-release-id>`. Unknown and uncatalogued IDs fail closed;
 the app never substitutes the active release or fills gaps from another deck.
-Preserved releases created before the study-structure contract are exposed
-through a labelled, runtime-only single-set adapter; their immutable files are
-not rewritten.
+Releases created before the study-structure contract are unsupported. Every
+candidate must validate against the current contract; no runtime adapter fills
+in missing structure or data.
 
 Generic composition takes an already assembled compact deck plus a reviewed
 composition document and does not activate the result:
@@ -76,25 +76,35 @@ candidate, and activate it deliberately.
 The first pilot UI is preserved at `docs/reference/pilot-ui-v1.html` and as Git
 tag `pilot-ui-v1`; it is not the production app entry point.
 
-## Full legacy French candidate
+## Fresh French 200 × 3 audit skeleton
 
-The exact old split deck can be imported without modifying or activating it:
+Create an inspectable run skeleton without downloading sources, loading a
+model, harvesting sentences, or running WSD:
 
 ```bash
-PYTHONPATH=src python3.12 -m fluency import legacy-speech \
+PYTHONPATH=src python3.12 -m fluency pipeline plan \
   --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace \
-  --language fr \
-  --index /Users/joshuathomasamar/PycharmProjects/Fluency/Data/French/vocabulary.index.json \
-  --examples /Users/joshuathomasamar/PycharmProjects/Fluency/Data/French/vocabulary.examples.json \
-  --release-id fr-speech-legacy-0001
+  --profile config/pipelines/fr/speech/audit-200x3.json
 ```
 
-Preview it with `?release=fr-speech-legacy-0001`. The command snapshots both
-inputs by SHA-256, writes a deterministic run with explicit diagnostics, and
-rebuilds the candidate catalog. It never changes `active.json`.
+The resulting folder is deliberately readable:
 
-`fr-speech-legacy-0001` is intentionally a 33 MB full-fidelity benchmark. Do
-not activate it as the final format. Browser measurement showed that a compact
-card directory plus 50 level shards would reduce startup data to about 2.47 MB
-and defer full card metadata to 383–950 KB level files; that format requires a
-separate decision and release ID.
+```text
+runs/fr/speech/<run-id>/
+├── manifest.json
+├── profile.json
+├── plan.json
+└── stages/
+    ├── 01_inventory/contract.json
+    ├── 02_sense_menu/contract.json
+    ├── 03_sentence_harvest/contract.json
+    ├── 04_wsd_assignments/contract.json
+    ├── 05_example_selection/contract.json
+    └── 06_release_build/contract.json
+```
+
+All contracts begin as `pending`. The profile blocks lemma identity, legacy
+inputs, cross-run fallbacks, example shortfalls, automatic activation, and
+unpinned WSD models. The WSD architecture is fixed to embedding retrieval plus
+a language-specific reranker; the exact French model revisions are intentionally
+unselected until that decision is reviewed.

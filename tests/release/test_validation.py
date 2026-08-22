@@ -25,6 +25,12 @@ class ReleaseValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ReleaseValidationError, "structure and deck"):
             validate_deck(deck)
 
+    def test_legacy_provenance_fields_are_rejected(self) -> None:
+        deck = deepcopy(self.deck)
+        deck["cards"][0]["legacy_aliases"] = []
+        with self.assertRaisesRegex(ReleaseValidationError, "legacy aliases"):
+            validate_deck(deck)
+
     def test_release_contract_schemas_are_valid_json(self) -> None:
         schema_root = REPOSITORY_ROOT / "schemas"
         for filename in (
@@ -35,7 +41,7 @@ class ReleaseValidationTests(unittest.TestCase):
             "release-catalog.schema.json",
             "speech-deck.schema.json",
             "study-structure.schema.json",
-            "legacy-speech-import.schema.json",
+            "speech-pipeline-profile.schema.json",
         ):
             with self.subTest(filename=filename):
                 schema = json.loads((schema_root / filename).read_text(encoding="utf-8"))

@@ -30,6 +30,17 @@ class CompositionTests(unittest.TestCase):
         self.assertTrue(catalog["candidates"][0]["active"])
         self.assertEqual(catalog["candidates"][0]["fallback_layers"], 0)
 
+    def test_catalog_excludes_invalid_historical_candidates(self):
+        historical = self.release.parent / "historical-release"
+        historical.mkdir()
+        (historical / "composition.json").write_text("{}\n", encoding="utf-8")
+        (historical / "manifest.json").write_text("{}\n", encoding="utf-8")
+        catalog = build_catalog(self.workspace, "fr", "speech")
+        self.assertEqual(
+            [item["release_id"] for item in catalog["candidates"]],
+            ["fr-speech-pilot-0004"],
+        )
+
     def test_dependency_drift_fails_closed(self):
         broken = deepcopy(self.composition)
         broken["layers"]["example_selection"]["requires"]["inventory"] = "sha256:" + "0" * 64

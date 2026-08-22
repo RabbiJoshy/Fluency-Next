@@ -12,10 +12,7 @@ from typing import Sequence
 from urllib.parse import unquote, urlsplit
 
 from fluency.core.workspace import Workspace
-from fluency.languages.french.legacy_speech import (
-    DEFAULT_RELEASE_ID as DEFAULT_LEGACY_FRENCH_RELEASE_ID,
-    build_legacy_french_release,
-)
+from fluency.pipeline.planning import create_pipeline_plan, load_pipeline_profile
 from fluency.release.activation import activate_release
 from fluency.release.catalog import build_catalog, write_catalog
 from fluency.release.composition import compose_release, load_json_object
@@ -108,14 +105,15 @@ def build_parser() -> argparse.ArgumentParser:
     compose.add_argument("--composition", type=Path, required=True, help="exact release-composition JSON")
     compose.add_argument("--deck", type=Path, required=True, help="already assembled compact deck JSON")
 
-    import_data = subparsers.add_parser("import", help="snapshot external data into an immutable candidate")
-    import_actions = import_data.add_subparsers(dest="import_command", required=True)
-    legacy_speech = import_actions.add_parser("legacy-speech", help="import a historical split Speech deck")
-    legacy_speech.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
-    legacy_speech.add_argument("--language", choices=("fr",), default="fr")
-    legacy_speech.add_argument("--index", type=Path, required=True)
-    legacy_speech.add_argument("--examples", type=Path, required=True)
-    legacy_speech.add_argument("--release-id", default=DEFAULT_LEGACY_FRENCH_RELEASE_ID)
+    pipeline = subparsers.add_parser("pipeline", help="plan clean, auditable data runs")
+    pipeline_actions = pipeline.add_subparsers(dest="pipeline_command", required=True)
+    pipeline_plan = pipeline_actions.add_parser(
+        "plan", help="create a non-executing run skeleton from an exact profile"
+    )
+    pipeline_plan.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    pipeline_plan.add_argument("--profile", type=Path, required=True)
     return parser
 
 
@@ -191,24 +189,23 @@ def handle_release(args: argparse.Namespace) -> int:
     raise AssertionError(f"Unhandled release command: {args.release_command}")
 
 
-def handle_import(args: argparse.Namespace) -> int:
+def handle_pipeline(args: argparse.Namespace) -> int:
     workspace = Workspace.load(_workspace_path(args.workspace))
-    if args.import_command == "legacy-speech" and args.language == "fr":
-        release_directory, run_directory, summary = build_legacy_french_release(
-            workspace,
-            index_path=args.index,
-            examples_path=args.examples,
-            release_id=args.release_id,
+    if args.pipeline_command == "plan":
+        profile = load_pipeline_profile(args.profile)
+        run_directory = create_pipeline_plan(workspace, profile)
+        target = (
+            profile["scope"]["surface_limit"]
+            * profile["scope"]["examples_per_surface"]
         )
-        print(f"Composed French Speech candidate: {release_directory}")
-        print(f"Import run: {run_directory}")
+        print(f"Created fresh pipeline skeleton: {run_directory}")
         print(
-            f"Cards: {summary['surface_cards']} surfaces from {summary['legacy_rows']} legacy rows; "
-            f"examples: {summary['surface_examples']}"
+            f"Audit target: {profile['scope']['surface_limit']} surface cards, "
+            f"{profile['scope']['examples_per_surface']} examples each ({target} total)"
         )
-        print("Activation unchanged. Select the candidate explicitly for review.")
+        print("No data stages were executed and no release was activated.")
         return 0
-    raise AssertionError(f"Unhandled import command: {args.import_command}")
+    raise AssertionError(f"Unhandled pipeline command: {args.pipeline_command}")
 
 
 class FluencyRequestHandler(SimpleHTTPRequestHandler):
@@ -279,8 +276,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handle_pilot(args.pilot_command, args.workspace)
     if args.command == "release":
         return handle_release(args)
-    if args.command == "import":
-        return handle_import(args)
+    if args.command == "pipeline":
+        return handle_pipeline(args)
     raise AssertionError(f"Unhandled command: {args.command}")
 
 

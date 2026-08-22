@@ -129,6 +129,7 @@ def create_run_manifest(
     profile: str,
     config_hash: str,
     inputs: Mapping[str, str],
+    stages: tuple[str, ...] = (),
     git_commit: str | None = None,
     started_at: datetime | None = None,
     suffix: str | None = None,
@@ -143,6 +144,7 @@ def create_run_manifest(
         created_at=_utc_text(started_at),
         config_hash=config_hash,
         inputs=dict(inputs),
+        stages=stages,
         git_commit=git_commit,
     )
 
@@ -211,4 +213,3 @@ class StageManifest:
             outputs=dict(outputs),
             completed_at=_utc_text(datetime.now(UTC) if at is None else at),
         )
-

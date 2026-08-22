@@ -54,25 +54,6 @@ function validateBundle(language, mode, pointer, manifest, deck, composition) {
   requireValue(["none", "explicit_missing_only"].includes(composition.fallback_policy), "Release fallback policy is invalid");
 }
 
-function withLegacyStudyStructure(deck) {
-  if (deck.study_structure) return deck;
-  return {
-    ...deck,
-    study_structure: {
-      structure_version: "study-structure/v1",
-      levels: [{
-        level_id: "pilot",
-        label: "Pilot",
-        sets: [{
-          set_id: "pilot-set-1",
-          label: "Set 1",
-          card_ids: deck.cards.map((card) => card.card_id),
-        }],
-      }],
-    },
-  };
-}
-
 export async function loadRelease(language, mode = "speech") {
   const base = `${language.release_base}/${mode}/`;
   const catalog = await fetchJson(`${base}catalog.json`, "Release catalog");
@@ -90,12 +71,10 @@ export async function loadRelease(language, mode = "speech") {
   const manifestUrl = new URL(pointer.manifest_path, new URL(base, window.location.origin));
   const manifest = await fetchJson(manifestUrl, "Release manifest");
   requireValue(manifest.deck_path === "deck.json" && manifest.composition_path === "composition.json", "Release asset paths are not canonical");
-  const [sourceDeck, composition] = await Promise.all([
+  const [deck, composition] = await Promise.all([
     fetchJson(new URL(manifest.deck_path, manifestUrl), "Speech deck", manifest.deck_content_id),
     fetchJson(new URL(manifest.composition_path, manifestUrl), "Release composition", manifest.composition_content_id),
   ]);
-  const studyStructureAdapted = !sourceDeck.study_structure;
-  const deck = withLegacyStudyStructure(sourceDeck);
   validateBundle(language, mode, pointer, manifest, deck, composition);
-  return Object.freeze({ active: pointer, manifest, deck, composition, catalog, candidate, studyStructureAdapted, selectedExplicitly: Boolean(requested) });
+  return Object.freeze({ active: pointer, manifest, deck, composition, catalog, candidate, selectedExplicitly: Boolean(requested) });
 }

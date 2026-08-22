@@ -34,7 +34,7 @@ class ProductShellTests(unittest.TestCase):
             "deckProgressSegments",
         ):
             self.assertIn(f'id="{required_id}"', html)
-        self.assertIn('src="src/legacy-boot.js"', html)
+        self.assertIn('src="src/boot.js"', html)
         self.assertNotIn('src="js/main.js', html)
         self.assertNotIn("spotify-player.js", html)
 
@@ -45,7 +45,7 @@ class ProductShellTests(unittest.TestCase):
 
     def test_release_runtime_exposes_exact_candidate_and_layer_provenance(self) -> None:
         client = (APP_ROOT / "src" / "core" / "release-client.js").read_text(encoding="utf-8")
-        boot = (APP_ROOT / "src" / "legacy-boot.js").read_text(encoding="utf-8")
+        boot = (APP_ROOT / "src" / "boot.js").read_text(encoding="utf-8")
         self.assertIn("release-catalog/v1", client)
         self.assertIn("composition_content_id", client)
         self.assertIn("Release & layer audit", boot)
@@ -67,7 +67,7 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("Card Data", options)
 
     def test_set_lifecycle_keeps_learn_review_resume_and_completion_separate(self) -> None:
-        boot = (APP_ROOT / "src" / "legacy-boot.js").read_text(encoding="utf-8")
+        boot = (APP_ROOT / "src" / "boot.js").read_text(encoding="utf-8")
         queues = (
             APP_ROOT / "src" / "features" / "study" / "study-queues.js"
         ).read_text(encoding="utf-8")

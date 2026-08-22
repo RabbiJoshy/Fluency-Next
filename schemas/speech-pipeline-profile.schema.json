@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/speech-pipeline-profile.schema.json",
+  "title": "Fresh Speech pipeline profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile_version", "profile_id", "language", "locale", "mode", "identity", "source_policy", "scope", "stage_order", "wsd", "release"],
+  "properties": {
+    "profile_version": {"const": "speech-pipeline-profile/v1"},
+    "profile_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "locale": {"type": "string", "minLength": 2},
+    "mode": {"const": "speech"},
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit_type", "identity_version", "allow_lemma_identity"],
+      "properties": {
+        "unit_type": {"const": "surface"},
+        "identity_version": {"const": "surface-card/v1"},
+        "allow_lemma_identity": {"const": false}
+      }
+    },
+    "source_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fresh_snapshots_only", "allow_legacy_inputs", "fallback_policy"],
+      "properties": {
+        "fresh_snapshots_only": {"const": true},
+        "allow_legacy_inputs": {"const": false},
+        "fallback_policy": {"const": "none"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface_limit", "examples_per_surface", "shortfall_policy"],
+      "properties": {
+        "surface_limit": {"const": 200},
+        "examples_per_surface": {"const": 3},
+        "shortfall_policy": {"const": "block_release"}
+      }
+    },
+    "stage_order": {
+      "const": ["inventory", "sense_menu", "sentence_harvest", "wsd_assignments", "example_selection", "release_build"]
+    },
+    "wsd": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "require_model_pins", "model_revisions"],
+      "properties": {
+        "strategy": {"const": "embedding_retrieval_plus_language_reranker/v1"},
+        "require_model_pins": {"const": true},
+        "model_revisions": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["activation", "fallback_policy"],
+      "properties": {
+        "activation": {"const": "manual"},
+        "fallback_policy": {"const": "none"}
+      }
+    }
+  }
+}

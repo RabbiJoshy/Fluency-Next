@@ -8,7 +8,11 @@ from typing import Any
 
 from fluency.core.workspace import Workspace
 from fluency.release.io import atomic_write
-from fluency.release.validation import RELEASE_CATALOG_VERSION, validate_release_bundle
+from fluency.release.validation import (
+    RELEASE_CATALOG_VERSION,
+    ReleaseValidationError,
+    validate_release_bundle,
+)
 
 
 def build_catalog(workspace: Workspace, language: str, mode: str) -> dict[str, Any]:
@@ -22,9 +26,12 @@ def build_catalog(workspace: Workspace, language: str, mode: str) -> dict[str, A
         for directory in sorted(root.iterdir()):
             if not directory.is_dir() or not (directory / "composition.json").is_file():
                 continue
-            manifest, deck, composition = validate_release_bundle(
-                directory, allow_legacy_study_structure=True
-            )
+            try:
+                manifest, deck, composition = validate_release_bundle(directory)
+            except ReleaseValidationError:
+                if directory.name == active_id:
+                    raise
+                continue
             fallback_layers = sum("fallback" in selection for selection in composition["layers"].values())
             candidates.append({
                 "release_id": manifest["release_id"],
