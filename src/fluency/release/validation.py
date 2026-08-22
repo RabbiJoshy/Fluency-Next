@@ -234,10 +234,16 @@ def validate_manifest(
     app_contract = manifest.get("app_contract")
     _require(isinstance(app_contract, dict), "release app contract is required")
     _require(app_contract.get("contract_version") == APP_CONTRACT_VERSION, "unsupported app contract")
-    for path_field, hash_field, expected_path in (
+    required_app_assets = (
         ("index_path", "index_content_id", "app/vocabulary.index.json"),
         ("examples_path", "examples_content_id", "app/vocabulary.examples.json"),
-    ):
+    )
+    optional_app_assets = (
+        ("study_structure_path", "study_structure_content_id", "app/study-structure.json"),
+    )
+    for path_field, hash_field, expected_path in required_app_assets + optional_app_assets:
+        if path_field.startswith("study_structure") and path_field not in app_contract:
+            continue
         _require(app_contract.get(path_field) == expected_path, f"app contract {path_field} is invalid")
         asset_path = deck_path.parent / expected_path
         _require(asset_path.is_file(), f"app contract asset is missing: {expected_path}")

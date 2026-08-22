@@ -91,6 +91,9 @@ export const state = {
     cefrLevelsConfig: null,
     ppmData: null,
     totalPpm: 0,
+    // Immutable level/set membership supplied by the active Speech release.
+    // Null keeps legacy/Artist decks on their existing CEFR or coverage UI.
+    releaseStudyStructure: null,
 
     // Auth / progress
     GOOGLE_SCRIPT_URL: '',

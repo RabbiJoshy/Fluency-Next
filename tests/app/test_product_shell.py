@@ -49,6 +49,10 @@ class ProductShellTests(unittest.TestCase):
         }
         self.assertEqual(enabled, {"french"})
         self.assertNotIn("ppmDataPath", config["languages"]["french"])
+        self.assertEqual(
+            config["languages"]["french"]["studyStructurePath"],
+            "Data/French/study-structure.json",
+        )
         self.assertFalse((APP_ROOT / "Data").exists())
         self.assertFalse((APP_ROOT / "Artists").exists())
 
@@ -84,6 +88,7 @@ class ProductShellTests(unittest.TestCase):
     def test_active_release_aliases_are_never_cached(self) -> None:
         worker = (APP_ROOT / "service-worker.js").read_text(encoding="utf-8")
         self.assertIn("vocabulary\\.(?:index|examples)", worker)
+        self.assertIn("study-structure", worker)
         self.assertIn("cache: 'no-store'", worker)
 
     def test_pilot_interface_remains_a_readable_reference(self) -> None:

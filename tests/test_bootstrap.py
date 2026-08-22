@@ -172,6 +172,7 @@ class BootstrapTests(unittest.TestCase):
                         "app_contract": {
                             "index_path": "app/vocabulary.index.json",
                             "examples_path": "app/vocabulary.examples.json",
+                            "study_structure_path": "app/study-structure.json",
                         }
                     }
                 ),

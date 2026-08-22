@@ -1,9 +1,9 @@
-import './state.js?v=20260819b';
+import './state.js?v=20260822b';
 
 async function loadConfig() {
     try {
         const [configResponse, cefrResponse] = await Promise.all([
-            fetch('config/config.json'),
+            fetch('config/config.json?v=20260822b', { cache: 'no-store' }),
             fetch('config/cefr_levels.json')
         ]);
         config = await configResponse.json();
@@ -57,6 +57,25 @@ async function loadConfig() {
     } catch (error) {
         console.error('Failed to load config:', error);
         alert('Failed to load configuration. Please refresh the page.');
+    }
+}
+
+async function loadReleaseStudyStructure(language) {
+    releaseStudyStructure = null;
+    const path = config.languages[language]?.studyStructurePath;
+    if (!path || activeArtist) return null;
+    try {
+        const response = await fetch(path, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const structure = await response.json();
+        if (structure?.structure_version !== 'study-structure/v1' || !Array.isArray(structure.levels)) {
+            throw new Error('unsupported study structure');
+        }
+        releaseStudyStructure = structure;
+        return structure;
+    } catch (error) {
+        console.warn('Release study structure unavailable; using legacy levels:', error);
+        return null;
     }
 }
 
@@ -232,5 +251,6 @@ function getPercentageLevelRanges() {
 window.loadConfig = loadConfig;
 window.getCefrLevels = getCefrLevels;
 window.loadPpmData = loadPpmData;
+window.loadReleaseStudyStructure = loadReleaseStudyStructure;
 window.recalculateCumulativePercents = recalculateCumulativePercents;
 window.getPercentageLevelRanges = getPercentageLevelRanges;

@@ -97,12 +97,14 @@ example's complete metadata and sense assignment.
 
 ## Step 4 — Truncated real French run and deck audit
 
-**Status: inactive real-data candidate
-`fr-speech-real-tatoeba-unassigned-0001` is built from run
+**Status: real-data candidate
+`fr-speech-real-tatoeba-unassigned-0003` is locally active from run
 `20260822T172017Z-651bcd8e`. It has 200 cards, 600 real examples, complete
-Wiktionary menus, and explicit unassigned status. Local app activation and
-visual audit are next; external WSD can attach later without replacing the
-selected sentences.**
+Wiktionary menus, and explicit unassigned status. The exact transplanted app
+has been browser-verified through 10 release-owned numbered levels, a real
+20-card Learn set, card flip, and three-example display. External WSD can attach
+later without replacing the selected sentences. Broader frontend cleanup and
+the detailed deck/content audit remain.**
 
 Create a fresh, small French run using real corpus data—likely OpenSubtitles
 when its French snapshot is ready. Build and inspect the surface inventory,

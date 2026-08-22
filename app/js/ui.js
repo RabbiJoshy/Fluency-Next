@@ -1,6 +1,6 @@
 // Setup panel UI: language tabs, stable level selector, and automatic set progress.
 // Key functions: renderLanguageTabs(), renderLevelSelector(), renderRangeSelector().
-import './state.js?v=20260819b';
+import './state.js?v=20260822b';
 
 const GLOBAL_STUDY_DEFAULTS_KEY = 'fluency_global_study_defaults_v1';
 let _setupLevelSelectionWasManual = false;
@@ -450,6 +450,7 @@ function setupLanguageTabs() {
                     if (!ppmData && langPpmPath) {
                         await loadPpmData(selectedLanguage);
                     }
+                    await loadReleaseStudyStructure(selectedLanguage);
 
                     loadingIndicator.classList.remove('visible');
                     document.getElementById('step2').style.display = 'block';
@@ -582,7 +583,11 @@ async function findFirstIncompleteLevelBtn(language, buttons) {
         const btn = buttons[buttonIndex];
         let minWord, maxWord;
         let rankBasis = 'source';
-        if (percentageMode && ppmData && ppmData.length > 0) {
+        if (btn.dataset.releaseLevel === 'true') {
+            minWord = parseInt(btn.dataset.startRank);
+            maxWord = parseInt(btn.dataset.endRank);
+            rankBasis = 'source';
+        } else if (percentageMode && ppmData && ppmData.length > 0) {
             minWord = parseInt(btn.dataset.startRank);
             maxWord = parseInt(btn.dataset.endRank);
             rankBasis = btn.dataset.rankBasis || 'source';
@@ -648,7 +653,21 @@ async function renderLevelSelector(language, { preferActionable = false } = {}) 
     // each snap point is one of the percentageLevels (70%, 80%, …, 100%).
     // The level buttons are still rendered (hidden) because renderRangeSelector
     // and other code paths read .level-btn.selected for startRank/endRank.
-    if (percentageMode && ppmData && ppmData.length > 0) {
+    const releaseLevels = !activeArtist && Array.isArray(releaseStudyStructure?.levels)
+        ? releaseStudyStructure.levels
+        : [];
+    if (releaseLevels.length > 0) {
+        container.classList.remove('level-selector--slider');
+        container.innerHTML = releaseLevels.map(level => `
+            <button class="level-btn" data-level="${level.level_id}"
+                    data-short="${level.label}" data-full="${level.label}"
+                    data-start-rank="${level.start_rank}" data-end-rank="${level.end_rank + 1}"
+                    data-rank-basis="source" data-release-level="true"
+                    title="${level.label}: ranks ${level.start_rank}–${level.end_rank}">
+                ${level.label}
+            </button>
+        `).join('');
+    } else if (percentageMode && ppmData && ppmData.length > 0) {
         // Smart segment boundaries (both modes): pick stable baseline snap
         // points that target ~equal cards-per-segment with frequency-cliff labels
         // where the cliffs exist in the data. Algorithm auto-scales —
@@ -1767,7 +1786,11 @@ async function renderRangeSelector() {
     const selectedLevelBtn = document.querySelector('.level-btn.selected');
     // Artist Extra category groups carry their own rank block on the selected
     // level button and are independent of percentage/CEFR mode.
-    if (selectedLevelBtn?.dataset.rankBasis === 'category') {
+    if (selectedLevelBtn?.dataset.releaseLevel === 'true') {
+        minWord = parseInt(selectedLevelBtn.dataset.startRank);
+        maxWord = parseInt(selectedLevelBtn.dataset.endRank);
+        rankBasis = 'source';
+    } else if (selectedLevelBtn?.dataset.rankBasis === 'category') {
         minWord = parseInt(selectedLevelBtn.dataset.startRank);
         maxWord = parseInt(selectedLevelBtn.dataset.endRank);
         rankBasis = 'category';

@@ -31,12 +31,16 @@ DEFAULT_PORT = 4173
 APP_DATA_ROUTES = {
     "/Data/French/vocabulary.index.json": ("fr", "index_path"),
     "/Data/French/vocabulary.examples.json": ("fr", "examples_path"),
+    "/Data/French/study-structure.json": ("fr", "study_structure_path"),
     "/Data/Spanish/vocabulary.index.json": ("es", "index_path"),
     "/Data/Spanish/vocabulary.examples.json": ("es", "examples_path"),
+    "/Data/Spanish/study-structure.json": ("es", "study_structure_path"),
     "/Data/Dutch/vocabulary.index.json": ("nl", "index_path"),
     "/Data/Dutch/vocabulary.examples.json": ("nl", "examples_path"),
+    "/Data/Dutch/study-structure.json": ("nl", "study_structure_path"),
     "/Data/Portuguese/vocabulary.index.json": ("pt", "index_path"),
     "/Data/Portuguese/vocabulary.examples.json": ("pt", "examples_path"),
+    "/Data/Portuguese/study-structure.json": ("pt", "study_structure_path"),
 }
 SAFE_ACTIVE_RELEASE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 

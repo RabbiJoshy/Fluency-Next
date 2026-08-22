@@ -99,11 +99,18 @@
   the whole deck. The app adapter maps unassigned examples to its existing
   unassigned sense-cycle UI instead of inventing a sense link.
 - Gate 19 (real French app candidate): selected 600 examples from the verified
-  Tatoeba harvest without WSD and composed inactive release
-  `fr-speech-real-tatoeba-unassigned-0001`. It contains 200 surface cards,
+  Tatoeba harvest without WSD and composed the real-data candidate family
+  `fr-speech-real-tatoeba-unassigned-0001`–`0003`. It contains 200 surface cards,
   1,180 card-scoped Wiktionary sense options, full per-example source metadata,
-  and exactly 600 explicitly unassigned examples. The release validates and is
-  not active.
+  and exactly 600 explicitly unassigned examples.
+- Gate 20 (release-owned setup verified): fixed the transplanted app adapter so
+  a wholly unassigned deck remains teachable without claiming a sense. Every
+  release now publishes its immutable numbered levels and set membership as an
+  app asset; active vocabulary, examples and study structure all bypass stale
+  service-worker aliases. Locally activated and browser-verified
+  `fr-speech-real-tatoeba-unassigned-0003`: French setup shows 10 numbered
+  levels, Level 1 shows one 20-card set, Learn opens the real rank-1 card
+  `de`, and its three unassigned Tatoeba examples render normally.
 
 ## Not started
 
@@ -116,5 +123,5 @@
 - Artist mode.
 
 No production system or existing Fluency repository has been modified. No old
-French deck data is an input to the clean pipeline. The active pilot uses
-curated fixture content and makes no production coverage or WSD claims.
+French deck data is an input to the clean pipeline. The active local candidate
+uses the fresh Tatoeba run and makes no WSD or corpus-coverage claims.

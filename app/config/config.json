@@ -239,6 +239,7 @@
       "name": "French",
       "indexPath": "Data/French/vocabulary.index.json",
       "examplesPath": "Data/French/vocabulary.examples.json",
+      "studyStructurePath": "Data/French/study-structure.json",
       "exampleTargetField": "example_french",
       "exampleEnglishField": "example_english",
       "hasData": true,

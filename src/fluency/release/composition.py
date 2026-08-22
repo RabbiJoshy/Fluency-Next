@@ -49,6 +49,7 @@ def compose_release(workspace: Workspace, composition: dict[str, Any], deck: dic
     app_index, app_examples = build_app_compatibility_assets(deck)
     app_index_bytes = json_bytes(app_index)
     app_examples_bytes = json_bytes(app_examples)
+    study_structure_bytes = json_bytes(deck["study_structure"])
     wsd_selection = composition["layers"].get("wsd_assignments")
     if wsd_selection is None:
         omissions = {item["layer"]: item["reason"] for item in composition["omitted_layers"]}
@@ -76,6 +77,8 @@ def compose_release(workspace: Workspace, composition: dict[str, Any], deck: dic
             "index_content_id": content_id(app_index_bytes),
             "examples_path": "app/vocabulary.examples.json",
             "examples_content_id": content_id(app_examples_bytes),
+            "study_structure_path": "app/study-structure.json",
+            "study_structure_content_id": content_id(study_structure_bytes),
         },
     }
     manifest_bytes = json_bytes(manifest)
@@ -91,6 +94,7 @@ def compose_release(workspace: Workspace, composition: dict[str, Any], deck: dic
         "manifest.json": manifest_bytes,
         "app/vocabulary.index.json": app_index_bytes,
         "app/vocabulary.examples.json": app_examples_bytes,
+        "app/study-structure.json": study_structure_bytes,
     }
     if release_directory.exists():
         if any(not (release_directory / name).is_file() or (release_directory / name).read_bytes() != payload for name, payload in expected.items()):

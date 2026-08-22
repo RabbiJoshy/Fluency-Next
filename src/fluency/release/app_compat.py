@@ -89,16 +89,26 @@ def build_app_compatibility_assets(
         }
         split_examples: dict[str, Any] = {"m": buckets}
         if unassigned_senses or unassigned_examples:
-            old_card["sense_cycles"] = [
+            # Normal-mode setup intentionally rejects cards with no primary
+            # meaning. Represent the app's existing unassigned cycle as that
+            # primary meaning, not as the secondary artist-only `sense_cycles`
+            # field, so an entirely unassigned Speech deck remains teachable.
+            # The renderer still sees `unassigned: true` and never presents the
+            # pooled examples as evidence for a particular dictionary leaf.
+            first = unassigned_senses[0] if unassigned_senses else {}
+            meanings.append(
                 {
                     "pos": "SENSE_CYCLE",
-                    "translation": "",
-                    "cycle_pos": "X",
-                    "allSenses": unassigned_senses,
+                    "translation": first.get("translation", "Unassigned examples"),
+                    "frequency": "1.000000",
+                    "source": "release",
+                    "assignment_method": "unassigned",
                     "unassigned": True,
+                    "cycle_pos": first.get("pos", "X"),
+                    "allSenses": unassigned_senses,
                 }
-            ]
-            split_examples["s"] = [unassigned_examples]
+            )
+            buckets.append(unassigned_examples)
         frequency = card.get("frequency")
         if isinstance(frequency, dict) and isinstance(frequency.get("primary_count"), int):
             old_card["corpus_count"] = frequency["primary_count"]

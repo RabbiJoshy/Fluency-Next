@@ -32,14 +32,14 @@ class AppCompatibilityTests(unittest.TestCase):
         app_card = index[0]
         app_examples = examples[app_card["id"]]
 
-        self.assertEqual(app_card["meanings"], [])
-        self.assertTrue(app_card["sense_cycles"][0]["unassigned"])
+        self.assertEqual(len(app_card["meanings"]), 1)
+        self.assertTrue(app_card["meanings"][0]["unassigned"])
         self.assertEqual(
-            app_card["sense_cycles"][0]["allSenses"][0]["sense_id"],
+            app_card["meanings"][0]["allSenses"][0]["sense_id"],
             card["meanings"][0]["sense_id"],
         )
-        self.assertEqual(len(app_examples["s"][0]), 3)
-        self.assertNotIn("assignment_method", app_examples["s"][0][0])
+        self.assertEqual(len(app_examples["m"][0]), 3)
+        self.assertNotIn("assignment_method", app_examples["m"][0][0])
 
 
 if __name__ == "__main__":
