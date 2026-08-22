@@ -45,9 +45,12 @@ are reported and block a later release, but they do not borrow old examples.
 
 ## Supported adapters
 
-- `tatoeba/v1` streams the bilingual ZIP and preserves its CC-BY attribution,
-  sentence IDs, contributors, URLs, archive date when present, and snapshot
-  hash.
+- `tatoeba-weekly/v1` joins Tatoeba's official per-language detailed-sentence
+  and direct-translation-link exports. A required `snapshot.json` pins the
+  language pair, retrieval identity, upstream URLs/headers, license, and
+  attribution. The adapter retains both sentence IDs, both contributors,
+  timestamps, stable URLs, and a hash of every compressed source file. It does
+  not depend on the separately repackaged ManyThings bilingual ZIP.
 - `opensubtitles-aligned/v1` streams three aligned target, English, and `.ids`
   files. A required `snapshot.json` supplies the exact corpus snapshot ID,
   license, attribution, and source URL. Alignment-length mismatches fail closed.

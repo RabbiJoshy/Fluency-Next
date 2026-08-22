@@ -96,7 +96,7 @@ def _adapter_for(
     language: str,
 ) -> CorpusAdapter:
     adapter = source_policy["adapter"]
-    if adapter == "tatoeba/v1":
+    if adapter == "tatoeba-weekly/v1":
         return TatoebaAdapter(path=path, target_language=language, policy=source_policy)
     if adapter == "opensubtitles-aligned/v1":
         return OpenSubtitlesAdapter(

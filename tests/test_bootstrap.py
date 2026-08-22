@@ -74,11 +74,14 @@ class BootstrapTests(unittest.TestCase):
                 "--run-id",
                 "20260822T130000Z-1234abcd",
                 "--source",
-                "tatoeba=/tmp/fluency-workspace/raw/tatoeba/fra-eng.zip",
+                "tatoeba=/tmp/fluency-workspace/raw/tatoeba/fr-en/snapshot",
             ]
         )
         self.assertEqual(args.pipeline_command, "harvest")
-        self.assertEqual(args.source, ["tatoeba=/tmp/fluency-workspace/raw/tatoeba/fra-eng.zip"])
+        self.assertEqual(
+            args.source,
+            ["tatoeba=/tmp/fluency-workspace/raw/tatoeba/fr-en/snapshot"],
+        )
 
     def test_pipeline_sense_menu_requires_explicit_snapshot_identity(self) -> None:
         args = build_parser().parse_args(

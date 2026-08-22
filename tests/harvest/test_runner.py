@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 import json
+import bz2
 from pathlib import Path
 import tempfile
 import unittest
-from zipfile import ZipFile
 
 from fluency.core.identity import build_card_id
 from fluency.core.workspace import Workspace
@@ -83,23 +83,60 @@ class HarvestRunnerTests(unittest.TestCase):
             json.dumps(frequency, ensure_ascii=False), encoding="utf-8"
         )
 
-        snapshot = workspace.root / "raw/tatoeba/fr-en/fra-eng.zip"
-        snapshot.parent.mkdir(parents=True)
-        rows: list[str] = []
+        snapshot = workspace.root / "raw/tatoeba/fr-en/tatoeba-2026-08-22-fr-en"
+        snapshot.mkdir(parents=True)
+        metadata = {
+            "snapshot_version": "tatoeba-weekly-snapshot/v1",
+            "snapshot_id": "tatoeba-2026-08-22-fr-en",
+            "target_language": "fr",
+            "target_code": "fra",
+            "translation_language": "en",
+            "translation_code": "eng",
+            "license": "CC BY 2.0 FR",
+            "license_url": "https://creativecommons.org/licenses/by/2.0/fr/",
+            "attribution": "Tatoeba contributors",
+            "source_url": "https://tatoeba.org/en/downloads",
+            "source_files": {
+                "target_sentences": {
+                    "filename": "fra_sentences_detailed.tsv.bz2",
+                    "url": "https://downloads.tatoeba.org/exports/per_language/fra/fra_sentences_detailed.tsv.bz2",
+                },
+                "translation_sentences": {
+                    "filename": "eng_sentences_detailed.tsv.bz2",
+                    "url": "https://downloads.tatoeba.org/exports/per_language/eng/eng_sentences_detailed.tsv.bz2",
+                },
+                "links": {
+                    "filename": "eng-fra_links.tsv.bz2",
+                    "url": "https://downloads.tatoeba.org/exports/per_language/eng/eng-fra_links.tsv.bz2",
+                },
+            },
+        }
+        (snapshot / "snapshot.json").write_text(json.dumps(metadata), encoding="utf-8")
+        target_rows: list[str] = []
+        translation_rows: list[str] = []
+        link_rows: list[str] = []
         sentence_number = 1000
         for surface in SURFACES:
             for variant in ("maintenant", "souvent", "ensemble"):
                 sentence_number += 2
-                rows.append(
-                    f"This shows {surface} very clearly.\t"
-                    f"Voici vraiment {surface} devant nous {variant}.\t"
-                    "CC-BY 2.0 (France) Attribution: "
-                    f"tatoeba.org #{sentence_number - 1} (EnglishUser) & "
-                    f"#{sentence_number} (FrenchUser)"
+                translation_id = sentence_number - 1
+                target_id = sentence_number
+                translation_rows.append(
+                    f"{translation_id}\teng\tThis shows {surface} very clearly.\t"
+                    "EnglishUser\t2026-08-01 10:00:00\t\\N"
                 )
-        with ZipFile(snapshot, "w") as archive:
-            archive.writestr("_about.txt", "Date of this file:\n2026-08-20\n")
-            archive.writestr("fra.txt", "\n".join(rows) + "\n")
+                target_rows.append(
+                    f"{target_id}\tfra\tVoici vraiment {surface} devant nous {variant}.\t"
+                    "FrenchUser\t2026-08-01 10:00:00\t\\N"
+                )
+                link_rows.append(f"{translation_id}\t{target_id}")
+        for filename, rows in (
+            ("fra_sentences_detailed.tsv.bz2", target_rows),
+            ("eng_sentences_detailed.tsv.bz2", translation_rows),
+            ("eng-fra_links.tsv.bz2", link_rows),
+        ):
+            with bz2.open(snapshot / filename, "wt", encoding="utf-8") as stream:
+                stream.write("\n".join(rows) + "\n")
         return workspace, run, snapshot
 
     def test_builds_auditable_run_owned_candidate_pool(self) -> None:
@@ -150,8 +187,8 @@ class HarvestRunnerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             workspace, run, snapshot = self._build_run(root)
-            outside = root / "old-repo-copy.zip"
-            outside.write_bytes(snapshot.read_bytes())
+            outside = root / "old-repo-copy"
+            outside.mkdir()
             with self.assertRaisesRegex(HarvestRunError, "workspace raw"):
                 harvest_run_stage(
                     REPOSITORY_ROOT,

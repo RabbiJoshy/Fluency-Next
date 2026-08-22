@@ -33,7 +33,9 @@ changed without stale data, accidental fallback, or hidden legacy machinery.
 
 ## Step 1 — Language-agnostic harvesting
 
-**Status: complete in commit `7784d1a`; signed off 2026-08-22.**
+**Status: architecture signed off 2026-08-22. Official-weekly Tatoeba source
+contract implemented; first real French harvest is the remaining execution
+check.**
 
 Build one streaming harvesting engine with shared Speech rules, replaceable
 language policies, and replaceable corpus adapters. Tatoeba and aligned
@@ -51,7 +53,8 @@ Implemented boundaries:
 - `<workspace>/runs/<language>/speech/<run-id>/stages/03_sentence_harvest/`
   — immutable, run-owned output.
 
-No real French corpus run and no WSD were executed in this step.
+The current French audit has completed its fresh 200-surface inventory and
+Wiktionary sense menu. No real French corpus harvest or WSD has yet executed.
 
 ## Step 2 — Port and generalize the best Spanish WSD
 
@@ -88,8 +91,8 @@ example's complete metadata and sense assignment.
 
 ## Step 4 — Truncated real French run and deck audit
 
-**Status: execution ready through the real inventory and sense-menu stages; no
-real run has been executed yet.**
+**Status: real inventory and sense menu completed in run
+`20260822T172017Z-651bcd8e`; official Tatoeba harvest is next.**
 
 Create a fresh, small French run using real corpus data—likely OpenSubtitles
 when its French snapshot is ready. Build and inspect the surface inventory,

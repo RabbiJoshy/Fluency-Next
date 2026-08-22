@@ -198,17 +198,31 @@ The result is written once under
 surface's analysis/sense count and every `no_menu`; rerunning against the same
 run is rejected rather than overwriting it.
 
-## Sentence-harvest command (after inventory approval)
+## Official Tatoeba snapshot and sentence harvest
+
+The Tatoeba adapter consumes the official weekly detailed French and English
+sentence exports plus their direct link export. It does not consume a
+ManyThings ZIP. Download the three files and create their pinned manifest in
+one operation (change the retrieval date when taking a later snapshot):
+
+```bash
+cd /Users/joshuathomasamar/PycharmProjects/Fluency-Next
+python3.12 scripts/fetch_tatoeba_snapshot.py \
+  --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace \
+  --snapshot-id tatoeba-weekly-retrieved-2026-08-22-fr-en \
+  --language fr \
+  --translation-language en
+```
 
 The harvester deliberately requires the same run's
-`stages/01_inventory/output/inventory.json` and `frequency-ranks.json`. Once
-that preceding layer has been built and audited, a Tatoeba-only run is:
+`stages/01_inventory/output/inventory.json` and `frequency-ranks.json`. After
+the download completes, run:
 
 ```bash
 PYTHONPATH=src python3.12 -m fluency pipeline harvest \
   --workspace /Users/joshuathomasamar/PycharmProjects/Fluency-Workspace \
   --run-id <approved-run-id> \
-  --source tatoeba=/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/tatoeba/fr-en/fra-eng.zip
+  --source tatoeba=/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace/raw/tatoeba/fr-en/tatoeba-weekly-retrieved-2026-08-22-fr-en
 ```
 
 The result is written once under

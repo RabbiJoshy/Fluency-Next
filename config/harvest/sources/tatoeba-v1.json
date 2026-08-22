@@ -2,16 +2,21 @@
   "config_version": "harvest-source-policy/v1",
   "policy_id": "tatoeba-v1",
   "source": "tatoeba",
-  "adapter": "tatoeba/v1",
-  "archive_member_by_language": {
-    "fr": "fra.txt"
-  },
-  "columns": {
-    "translation_text": 0,
-    "target_text": 1,
-    "attribution": 2
-  },
+  "adapter": "tatoeba-weekly/v1",
+  "snapshot_metadata_version": "tatoeba-weekly-snapshot/v1",
   "translation_language": "en",
-  "license_prefix": "CC-BY 2.0 (France)",
+  "language_codes": {
+    "fr": "fra",
+    "es": "spa",
+    "nl": "nld",
+    "pt": "por",
+    "en": "eng"
+  },
+  "file_templates": {
+    "target_sentences": "{target_code}_sentences_detailed.tsv.bz2",
+    "translation_sentences": "{translation_code}_sentences_detailed.tsv.bz2",
+    "links": "{translation_code}-{target_code}_links.tsv.bz2"
+  },
+  "license": "CC BY 2.0 FR",
   "sentence_url_template": "https://tatoeba.org/en/sentences/show/{sentence_id}"
 }

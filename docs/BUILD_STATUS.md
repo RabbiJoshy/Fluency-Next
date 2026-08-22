@@ -72,12 +72,18 @@
   surface exclusions live in a French policy overlay; `ca` is excluded without
   redirect because its Lexique frequency and Wiktionary meaning conflict, while
   accented `ça` retains its own identity.
+- Gate 15 (official Tatoeba snapshot contract): replaced the ManyThings ZIP
+  assumption with Tatoeba's official weekly detailed French/English sentence
+  exports and direct translation links. A pinned directory manifest preserves
+  the exact language pair, upstream headers and URLs, license, contributors,
+  sentence IDs and timestamps; all compressed inputs contribute to the stage
+  hash. The same adapter is configured for French, Spanish, Dutch and
+  Portuguese language codes.
 
 ## Not started
 
-- Execution of a real French inventory and sentence harvest.
-- Audit of the real normalized French menu and design of the frozen French WSD
-  benchmark.
+- Execution and audit of the real French sentence harvest.
+- Design of the frozen French WSD benchmark.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
 - Spanish and legacy progress migration.
