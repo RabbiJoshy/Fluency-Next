@@ -264,7 +264,8 @@ and explicit per-card shortfalls.
 
 ### Phase 6 — First visible Spanish release without WSD
 
-**Owner:** Codex. **Cost:** quick after harvest.
+**Owner:** Codex. **Status:** inactive release built and validated 2026-08-22;
+activation and live app audit remain.
 
 Select up to three examples per card using only source quality, translation,
 easiness and diversity rules. Compose an inactive 200-card release whose
@@ -275,8 +276,12 @@ This is the earliest point at which Josh sees a real clean Spanish deck. It
 tests ordering, UI, provenance, source selection, release isolation and progress
 aliases without pretending WSD is finished.
 
-**Exit:** local Spanish setup, Learn/Review, exact resume, Card Data, flags and
-three examples work in the actual app; French remains unchanged.
+Release `es-speech-audit-200-unassigned-20260822` contains 200 cards, all 600
+examples, and 2,352 browsable SpanishDict meanings. No WSD or fallback ran.
+
+**Exit remaining:** activate the local candidate, then verify Spanish setup,
+Learn/Review, exact resume, Card Data, flags and three examples in the actual
+app while French remains unchanged.
 
 ### Phase 7 — Typed Spanish enrichment layers
 

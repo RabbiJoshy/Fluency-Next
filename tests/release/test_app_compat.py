@@ -41,6 +41,19 @@ class AppCompatibilityTests(unittest.TestCase):
         self.assertEqual(len(app_examples["m"][0]), 3)
         self.assertNotIn("assignment_method", app_examples["m"][0][0])
 
+    def test_meaning_provider_metadata_reaches_the_app_contract(self) -> None:
+        seed = json.loads(default_seed_path().read_text(encoding="utf-8"))
+        deck = build_pilot_deck(seed)
+        deck["cards"][0]["meanings"][0]["metadata"] = {
+            "source_adapter": "spanishdict-sense-menu/v1",
+            "sense_provider_metadata": {"translation_status": "present"},
+        }
+        index, _ = build_app_compatibility_assets(deck)
+        self.assertEqual(
+            index[0]["meanings"][0]["metadata"]["source_adapter"],
+            "spanishdict-sense-menu/v1",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

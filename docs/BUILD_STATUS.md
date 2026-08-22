@@ -182,6 +182,14 @@
   seven quarantined plural twins, 146 explicit missing translations, and one
   honest no-menu card (`sr`). No scraper, fallback, WSD, final selection,
   release build or activation ran.
+- Gate 28 (unassigned Spanish audit release): generalized the run candidate
+  builder so provider, locale, label and progress namespace are not hard-coded
+  to French/Wiktionary, and preserved complete menu metadata into the app data.
+  Explicitly missing translations are valid only with provider status and a
+  usable context. Inactive release `es-speech-audit-200-unassigned-20260822`
+  validates with 200 cards, 2,352 SpanishDict meanings and exactly 600 examples.
+  Every example and meaning remains explicitly unassigned; no WSD, fallback or
+  active-pointer change occurred.
 
 ## Not started
 
@@ -189,9 +197,8 @@
   through the immutable Stage 04 boundary.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
-- Build the first explicitly unassigned Spanish audit release from the completed
-  inventory, menu and candidate layers. Full corpus-frequency compilation and
-  raw reharvest remain optional future experiments.
+- Activate and audit the inactive Spanish candidate in the actual app. Full
+  corpus-frequency compilation and raw reharvest remain optional experiments.
 - Release diagnostics and release-frozen resume behind the transplanted app.
 - Artist mode.
 

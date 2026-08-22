@@ -54,7 +54,7 @@
       "properties": {
         "sense_id": {"type": "string", "minLength": 1},
         "part_of_speech": {"type": "string", "minLength": 1},
-        "translation": {"type": "string", "minLength": 1},
+        "translation": {"type": "string"},
         "context": {"type": "string", "minLength": 1},
         "detail": {"type": "string", "minLength": 1},
         "source": {"type": "string", "minLength": 1},
@@ -62,7 +62,8 @@
         "menu_analysis_id": {"type": "string", "minLength": 1},
         "source_sense_id": {"type": "string", "minLength": 1},
         "source_reference": {"type": "string", "minLength": 1},
-        "assignment_status": {"type": "string", "minLength": 1}
+        "assignment_status": {"type": "string", "minLength": 1},
+        "metadata": {"type": "object"}
       }
     },
     "example": {

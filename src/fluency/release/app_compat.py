@@ -73,6 +73,8 @@ def build_app_compatibility_assets(
             for field in ("headword", "menu_analysis_id", "source_sense_id", "source_reference"):
                 if meaning.get(field):
                     old_meaning[field] = meaning[field]
+            if "metadata" in meaning:
+                old_meaning["metadata"] = meaning["metadata"]
             if meaning["assignment_status"] == "unassigned":
                 old_meaning["unassigned"] = True
                 unassigned_senses.append(old_meaning)

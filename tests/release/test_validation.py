@@ -32,6 +32,19 @@ class ReleaseValidationTests(unittest.TestCase):
         ):
             validate_deck(deck)
 
+    def test_blank_translation_requires_explicit_provider_status_and_context(self) -> None:
+        deck = deepcopy(self.deck)
+        meaning = deck["cards"][0]["meanings"][0]
+        meaning["translation"] = ""
+        with self.assertRaisesRegex(ReleaseValidationError, "explicit missing"):
+            validate_deck(deck)
+
+        meaning["context"] = "provider supplied a construction note"
+        meaning["metadata"] = {
+            "sense_provider_metadata": {"translation_status": "explicit_missing"}
+        }
+        validate_deck(deck)
+
     def test_study_structure_must_cover_each_card_exactly_once(self) -> None:
         deck = deepcopy(self.deck)
         deck["study_structure"]["levels"][0]["sets"][0]["card_ids"].pop()

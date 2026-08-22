@@ -108,6 +108,8 @@ def build_inactive_run_candidate(
     menu_by_card = {card["card_id"]: card for card in menus.get("cards", [])}
     candidates_by_card = {card["card_id"]: card for card in candidates.get("cards", [])}
     limit = profile["scope"]["examples_per_surface"]
+    menu_adapter = str(menus.get("source_adapter", ""))
+    menu_provider = "spanishdict" if menu_adapter.startswith("spanishdict-") else "wiktionary"
 
     selection_cards: list[dict[str, Any]] = []
     cards: list[dict[str, Any]] = []
@@ -151,8 +153,15 @@ def build_inactive_run_candidate(
                     "part_of_speech": analysis["part_of_speech"],
                     "translation": sense["translation"],
                     "source_reference": sense["source_reference"],
-                    "source": "wiktionary",
+                    "source": menu_provider,
                     "assignment_status": "unassigned",
+                    "metadata": {
+                        "source_adapter": menu_adapter,
+                        "source_edition": menus.get("source_edition"),
+                        "source_analysis_key": analysis.get("source_analysis_key"),
+                        "analysis_provider_metadata": analysis.get("provider_metadata", {}),
+                        "sense_provider_metadata": sense.get("provider_metadata", {}),
+                    },
                 }
                 if sense.get("definition"):
                     meaning["context"] = sense["definition"]
@@ -294,13 +303,13 @@ def build_inactive_run_candidate(
     composition = {
         "composition_version": "release-composition/v1",
         "release_id": release_id,
-        "label": "French Speech · real Tatoeba audit · unassigned",
+        "label": f"{profile['locale']} Speech · real-data audit · unassigned",
         "language": language,
         "locale": profile["locale"],
         "mode": mode,
         "created_at": created_at.astimezone(UTC).isoformat().replace("+00:00", "Z"),
         "publication_status": "inactive_audit",
-        "progress_namespace": "fr-speech-next",
+        "progress_namespace": f"{language}-{mode}-next",
         "conflict_policy": "error",
         "fallback_policy": "none",
         "layers": {

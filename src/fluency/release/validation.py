@@ -99,7 +99,21 @@ def validate_deck(deck: dict[str, Any]) -> None:
             _require(bool(assignment_status), "meaning assignment status is invalid")
             local_sense_statuses[sense_id] = assignment_status
             _require(bool(meaning.get("part_of_speech")), "meaning part_of_speech is required")
-            _require(bool(meaning.get("translation")), "meaning translation is required")
+            translation = meaning.get("translation")
+            _require(isinstance(translation, str), "meaning translation must be a string")
+            if not translation:
+                metadata = meaning.get("metadata")
+                provider_metadata = (
+                    metadata.get("sense_provider_metadata")
+                    if isinstance(metadata, dict)
+                    else None
+                )
+                _require(
+                    isinstance(provider_metadata, dict)
+                    and provider_metadata.get("translation_status") == "explicit_missing"
+                    and bool(meaning.get("context")),
+                    "blank meaning requires explicit missing status and context",
+                )
             _require("legacy_sources" not in meaning, "legacy meaning sources are not allowed")
 
         examples = card.get("examples")
