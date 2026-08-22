@@ -245,6 +245,20 @@
   zero morphology rows, so a cue table would be unused dead weight. The shell
   cache moved to `flashcards-v276` / `20260822n`. Artist migration now has no
   remaining Speech-architecture blocker.
+- Gate 35 (immutable Artist catalog): added typed Lyrics manifest and
+  composition contracts plus build, validation, activation and read-only app
+  routing. Locally active release `lyrics-legacy-parity-20260822` freezes five
+  configured Spanish/French sources into exactly 36 hashed app files without
+  copying the old mutable `Artists/` tree or deleted monoliths. It contains
+  21,678 source-card rows and records historical assignments honestly as
+  retained parity outputs rather than clean WSD results. The browser validates
+  the catalog before use, loads release/layer provenance for audit flags and
+  bypasses both current and pre-migration service-worker catalog caches. Bad
+  Bunny's 295-song setup, a 20-card Learn set, lyric display, all-example Card
+  Data, custom one-song deck construction, French no-song/no-art degradation
+  and return to Speech all passed in the transplanted product UI. The obsolete
+  Artist monolith variant branch was removed. Shell cache moved to
+  `flashcards-v278` / `20260822p`.
 
 ## Not started
 
@@ -256,7 +270,8 @@
   one provenance-bearing test flag after confirming the backend deployment.
   Full corpus-frequency compilation and raw reharvest remain optional.
 - Release diagnostics and release-frozen resume behind the transplanted app.
-- Artist mode.
+- Clean raw-lyrics ingestion, line alignment and regenerated Artist assignments;
+  the parity release intentionally retains current materialized outputs.
 
 The existing Fluency repository's local Apps Script and matching client were
 updated for schema compatibility, but nothing was remotely deployed. No old

@@ -82,6 +82,8 @@ class ReleaseValidationTests(unittest.TestCase):
             "study-structure.schema.json",
             "speech-pipeline-profile.schema.json",
             "conjugation-layer.schema.json",
+            "lyrics-release-manifest.schema.json",
+            "lyrics-release-composition.schema.json",
             "wsd-assignment.schema.json",
             "wsd-assignment-bundle.schema.json",
         ):

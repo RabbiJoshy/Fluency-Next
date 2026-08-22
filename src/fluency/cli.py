@@ -12,6 +12,12 @@ from pathlib import Path, PurePosixPath
 from typing import Sequence
 from urllib.parse import unquote, urlsplit
 
+from fluency.artist.release import (
+    activate_lyrics_release,
+    build_lyrics_catalog_release,
+    resolve_active_lyrics_asset,
+    validate_lyrics_release,
+)
 from fluency.core.workspace import Workspace
 from fluency.enrichments.conjugations import build_conjugation_layer, pin_jehle_snapshot
 from fluency.harvest.runner import harvest_run_stage
@@ -186,6 +192,26 @@ def build_parser() -> argparse.ArgumentParser:
     conjugations.add_argument("--sense-menu", type=Path, required=True)
     conjugations.add_argument("--source-snapshot", type=Path, required=True)
     conjugations.add_argument("--locale", default="es-ES")
+
+    artist = subparsers.add_parser(
+        "artist", help="build, validate, and activate immutable Lyrics catalogs"
+    )
+    artist_actions = artist.add_subparsers(dest="artist_command", required=True)
+    artist_build = artist_actions.add_parser(
+        "build-catalog-release",
+        help="freeze the configured legacy Artist app assets into one exact release",
+    )
+    artist_build.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    artist_build.add_argument("--source-repository", type=Path, required=True)
+    artist_build.add_argument("--release-id", required=True)
+    for action in ("validate", "activate"):
+        action_parser = artist_actions.add_parser(action)
+        action_parser.add_argument(
+            "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+        )
+        action_parser.add_argument("release_id")
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -520,6 +546,38 @@ def handle_enrichment(args: argparse.Namespace) -> int:
     raise AssertionError(f"Unhandled enrichment command: {args.enrichment_command}")
 
 
+def handle_artist(args: argparse.Namespace) -> int:
+    workspace = Workspace.load(_workspace_path(args.workspace))
+    if args.artist_command == "build-catalog-release":
+        output = build_lyrics_catalog_release(
+            workspace,
+            source_repository=args.source_repository,
+            release_id=args.release_id,
+        )
+        manifest, _ = validate_lyrics_release(output)
+        print(f"Built immutable Lyrics catalog release: {output}")
+        print(
+            f"Frozen {manifest['artist_count']} artist sources across "
+            f"{', '.join(manifest['languages'])}; {manifest['card_count']} source-card rows."
+        )
+        print("Historical materialized assignments were retained explicitly for product parity.")
+        print("No Artist pipeline, model, Google Sheet, or release activation was run.")
+        return 0
+    release_directory = workspace.root / "releases/lyrics" / args.release_id
+    if args.artist_command == "validate":
+        manifest, _ = validate_lyrics_release(release_directory)
+        print(
+            f"Valid Lyrics release {manifest['release_id']}: "
+            f"{manifest['artist_count']} artists, {manifest['card_count']} source-card rows."
+        )
+        return 0
+    if args.artist_command == "activate":
+        active = activate_lyrics_release(workspace, args.release_id)
+        print(f"Activated local Lyrics catalog: {active}")
+        return 0
+    raise AssertionError(f"Unhandled artist command: {args.artist_command}")
+
+
 def handle_pipeline(args: argparse.Namespace) -> int:
     workspace = Workspace.load(_workspace_path(args.workspace))
     if args.pipeline_command == "plan":
@@ -686,6 +744,11 @@ class FluencyRequestHandler(SimpleHTTPRequestHandler):
 
     def translate_path(self, path: str) -> str:
         request_path = unquote(urlsplit(path).path)
+        active_lyrics_asset = resolve_active_lyrics_asset(
+            self.releases_directory, request_path
+        )
+        if active_lyrics_asset is not None:
+            return str(active_lyrics_asset)
         active_app_asset = resolve_active_app_asset(
             self.releases_directory, request_path
         )
@@ -748,6 +811,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handle_migration(args)
     if args.command == "enrichment":
         return handle_enrichment(args)
+    if args.command == "artist":
+        return handle_artist(args)
     if args.command == "release":
         return handle_release(args)
     if args.command == "pipeline":

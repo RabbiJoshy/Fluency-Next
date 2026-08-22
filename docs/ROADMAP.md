@@ -147,11 +147,15 @@ and debugging machinery while retaining explicit language adapters.
 
 ## Step 6 — Migrate Artist mode and shell mechanics
 
-**Status: ready to start. Full Artist data/release migration has not started.
-The shared Speech/app gate passed on 2026-08-22. The existing
-choose-your-own song picker is retained in the transplanted shell, and its
-per-user song plus artist selection contract is now forward-compatible with
-the shared Apps Script backend.**
+**Status: product-parity Artist migration is complete and locally ready for
+audit. Immutable release `lyrics-legacy-parity-20260822` selects five real
+Spanish/French sources, 21,678 source-card rows and exactly 36 app assets. Bad
+Bunny study, complete example metadata, custom one-song deck construction,
+French optional-field degradation and Speech switching are browser-verified.
+The clean raw-lyrics/assignment rebuild is deliberately a later R&D release,
+not hidden inside this migration.** See
+`docs/migration/0008-artist-mode-migration-roadmap.md` for the exact retention,
+deletion, routing and future-pipeline boundaries.
 
 Bring Artist mode, artist-specific data and selection, playback/shell mechanics,
 and shared app integration into the clean release architecture. Artist mode is

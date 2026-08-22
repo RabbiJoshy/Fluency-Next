@@ -1,21 +1,22 @@
-import './theme.js?v=20260822n';
-import './state.js?v=20260822n';
-import './offline-db.js?v=20260822n';
-import './sync-queue.js?v=20260822n';
-import { initOfflineContent } from './offline-content.js?v=20260822n';
-import './speech.js?v=20260822n';
-import './artist-ui.js?v=20260822n';
-import './auth.js?v=20260822n';
-import './about-example.js?v=20260822n';
-import './estimation.js?v=20260822n';
-import './config.js?v=20260822n';
-import './progress.js?v=20260822n';
-import './knowledge.js?v=20260822n';
-import './ui.js?v=20260822n';
-import './vocab.js?v=20260822n';
-import './song-sets.js?v=20260822n';
-import './vocabulary-import.js?v=20260822n';
-import './flashcards.js?v=20260822n';
+import './theme.js?v=20260822p';
+import './state.js?v=20260822p';
+import './offline-db.js?v=20260822p';
+import './sync-queue.js?v=20260822p';
+import { initOfflineContent } from './offline-content.js?v=20260822p';
+import './speech.js?v=20260822p';
+import './artist-ui.js?v=20260822p';
+import './auth.js?v=20260822p';
+import './about-example.js?v=20260822p';
+import './estimation.js?v=20260822p';
+import './config.js?v=20260822p';
+import './progress.js?v=20260822p';
+import './knowledge.js?v=20260822p';
+import './ui.js?v=20260822p';
+import './vocab.js?v=20260822p';
+import './song-sets.js?v=20260822p';
+import './vocabulary-import.js?v=20260822p';
+import './flashcards.js?v=20260822p';
+import { validateArtistCatalog } from './data-contracts.js?v=20260822p';
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import
 // immediately for an artist URL so it races setup/data loading, but keep it
@@ -23,7 +24,7 @@ import './flashcards.js?v=20260822n';
 // lazy module stubs in flashcards.js.
 const _initialParams = new URLSearchParams(window.location.search);
 const _spotifyModulePromise = (_initialParams.has('artist') || _initialParams.get('mode') === 'badbunny')
-    ? import('./spotify.js?v=20260822n').catch(error => {
+    ? import('./spotify.js?v=20260822p').catch(error => {
         console.warn('Spotify controls deferred:', error);
         return null;
     })
@@ -121,6 +122,10 @@ if ('serviceWorker' in navigator) {
 
 // All available artist configs, keyed by slug. Loaded once from artists.json.
 let allArtistsConfig = null;
+// The query key crosses the one-time migration boundary from the old worker,
+// which cached the unversioned empty catalog. The current worker routes this
+// pathname network-only, so later release activations remain immediately live.
+const ARTIST_CATALOG_URL = 'config/artists.json?contract=lyrics-v1';
 // Slugs of artists currently selected for multi-artist merge
 let selectedArtistSlugs = [];
 const CUSTOM_ARTIST_SLUG = 'custom';
@@ -169,8 +174,11 @@ async function resolveArtist() {
     if (!artistSlug) return; // normal mode
 
     try {
-        const response = await fetch('config/artists.json');
-        allArtistsConfig = await response.json();
+        const response = await fetch(ARTIST_CATALOG_URL, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Artist catalog HTTP ${response.status}`);
+        allArtistsConfig = validateArtistCatalog(await response.json(), {
+            source: 'config/artists.json'
+        });
 
         // Tag each config with its slug
         for (const [slug, cfg] of Object.entries(allArtistsConfig)) {
@@ -360,6 +368,7 @@ loadConfig().then(async () => {
         const promptForCustomSongs = activeArtist.customSongSource && selectedSongIds.length === 0;
         try {
             selectedLanguage = activeArtist.language || 'spanish';
+            await loadReleaseProvenance(selectedLanguage);
             applyLanguageColorTheme();
             // Hide step 1 entirely (language auto-selected)
             document.getElementById('step1').style.display = 'none';
@@ -767,7 +776,10 @@ async function showLyricsPicker(language, anchorBtn = null) {
     let artists = allArtistsConfig;
     try {
         if (!artists) {
-            artists = await fetch('config/artists.json').then(response => response.json());
+            artists = await fetch(ARTIST_CATALOG_URL, { cache: 'no-store' }).then(response => {
+                if (!response.ok) throw new Error(`Artist catalog HTTP ${response.status}`);
+                return response.json();
+            }).then(value => validateArtistCatalog(value, { source: 'config/artists.json' }));
             allArtistsConfig = artists;
             window._allArtistsConfig = artists;
         }

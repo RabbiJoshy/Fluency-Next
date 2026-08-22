@@ -1,9 +1,9 @@
-import './state.js?v=20260822n';
+import './state.js?v=20260822p';
 
 async function loadConfig() {
     try {
         const [configResponse, cefrResponse] = await Promise.all([
-            fetch('config/config.json?v=20260822n', { cache: 'no-store' }),
+            fetch('config/config.json?v=20260822p', { cache: 'no-store' }),
             fetch('config/cefr_levels.json')
         ]);
         config = await configResponse.json();
@@ -34,25 +34,15 @@ async function loadConfig() {
             config.languages[lang] = {
                 ...config.languages[lang],
                 name: `${config.languages[lang].name} (${activeArtist.name})`,
-                dataPath: activeArtist.dataPath,
-                indexPath: activeArtist.indexPath || activeArtist.dataPath,
+                dataPath: null,
+                indexPath: activeArtist.indexPath,
                 examplesPath: activeArtist.examplesPath || null,
                 masterPath: activeArtist.masterPath || null,
                 ppmDataPath: null, // PPM data is embedded in artist vocabulary JSON
                 colorTheme: activeArtist.colorTheme || config.languages[lang].colorTheme
             };
-            // ?variant=X → load alternate monolith for A/B testing
-            // e.g. ?variant=cascade_crossencoder → BadBunnyvocabulary_cascade_crossencoder.json
-            const variant = new URLSearchParams(window.location.search).get('variant');
-            if (variant) {
-                config.languages[lang].dataPath = activeArtist.dataPath.replace('.json', `_${variant}.json`);
-                config.languages[lang].indexPath = config.languages[lang].dataPath;
-                config.languages[lang].examplesPath = null;
-                config.languages[lang].masterPath = null;
-                document.title = `${activeArtist.name} Vocabulary (${variant})`;
-            }
             percentageMode = true;
-            if (!variant) document.title = `${activeArtist.name} Vocabulary`;
+            document.title = `${activeArtist.name} Vocabulary`;
         }
     } catch (error) {
         console.error('Failed to load config:', error);
@@ -83,9 +73,10 @@ async function loadReleaseStudyStructure(language) {
 async function loadReleaseProvenance(language) {
     window._activeReleaseProvenance = {};
     const languageConfig = config.languages[language] || {};
-    const manifestPath = languageConfig.releaseManifestPath;
-    const compositionPath = languageConfig.releaseCompositionPath;
-    if (activeArtist || !manifestPath || !compositionPath) return null;
+    const releaseConfig = activeArtist || languageConfig;
+    const manifestPath = releaseConfig.releaseManifestPath;
+    const compositionPath = releaseConfig.releaseCompositionPath;
+    if (!manifestPath || !compositionPath) return null;
     try {
         const [manifestResponse, compositionResponse] = await Promise.all([
             fetch(manifestPath, { cache: 'no-store' }),
@@ -101,19 +92,29 @@ async function loadReleaseProvenance(language) {
         if (!manifest?.release_id || manifest.release_id !== composition?.release_id) {
             throw new Error('release manifest/composition mismatch');
         }
-        const runIds = [...new Set(Object.values(composition.layers || {})
+        const layers = composition.layers || {};
+        const runIds = [...new Set(Object.values(layers)
             .map(layer => layer?.source_id)
             .filter(Boolean))];
+        const activeArtistLayer = activeArtist
+            ? layers[`artist:${activeArtist.slug}`]
+            : null;
+        const activeRunId = activeArtistLayer?.source_id
+            || (runIds.length === 1 ? runIds[0] : '');
         window._activeReleaseProvenance = {
             schemaVersion: 1,
             releaseId: manifest.release_id,
             createdAt: manifest.created_at || composition.created_at || '',
-            runId: runIds.length === 1 ? runIds[0] : '',
+            runId: activeRunId,
             runIds,
             deckContentId: manifest.deck_content_id || '',
+            catalogContentId: manifest.catalog_content_id || '',
             compositionContentId: manifest.composition_content_id || '',
-            wsd: manifest.wsd || {},
-            layers: composition.layers || {},
+            wsd: manifest.wsd || {
+                enabled: null,
+                status: manifest.assignment_status || 'not_recorded'
+            },
+            layers,
             omittedLayers: composition.omitted_layers || []
         };
         return window._activeReleaseProvenance;

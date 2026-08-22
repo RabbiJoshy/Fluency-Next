@@ -55,3 +55,36 @@ export function validateExamplesSplit(data, { source = 'examples split' } = {}) 
     }
     return data;
 }
+
+export function validateArtistCatalog(data, { source = 'artist catalog' } = {}) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        throw contractError(source, 'expected an object keyed by artist slug');
+    }
+    const pathOwners = new Map();
+    for (const [slug, artist] of Object.entries(data)) {
+        if (!/^[a-z0-9][a-z0-9-]*$/u.test(slug)) {
+            throw contractError(source, `invalid artist slug ${slug}`);
+        }
+        if (!artist || typeof artist !== 'object' || Array.isArray(artist)) {
+            throw contractError(source, `artist ${slug} must be an object`);
+        }
+        for (const field of ['name', 'language', 'indexPath', 'examplesPath', 'masterPath', 'releaseId']) {
+            if (typeof artist[field] !== 'string' || !artist[field].trim()) {
+                throw contractError(source, `artist ${slug} has no ${field}`);
+            }
+        }
+        for (const field of ['indexPath', 'examplesPath']) {
+            const path = artist[field];
+            const owner = pathOwners.get(path);
+            if (owner && owner !== slug) {
+                throw contractError(source, `artists ${owner} and ${slug} share ${field} ${path}`);
+            }
+            pathOwners.set(path, slug);
+        }
+        if (typeof artist.releaseManifestPath !== 'string'
+            || typeof artist.releaseCompositionPath !== 'string') {
+            throw contractError(source, `artist ${slug} has incomplete release provenance`);
+        }
+    }
+    return data;
+}

@@ -143,7 +143,20 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("study-structure", worker)
         self.assertIn("release-(?:manifest|composition)", worker)
         self.assertIn("conjugations", worker)
+        self.assertIn("pathname === '/config/artists.json'", worker)
+        self.assertIn("pathname.startsWith('/Artists/')", worker)
         self.assertIn("cache: 'no-store'", worker)
+
+    def test_artist_catalog_is_validated_and_loads_release_provenance(self) -> None:
+        main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        contracts = (APP_ROOT / "js" / "data-contracts.js").read_text(encoding="utf-8")
+        config = (APP_ROOT / "js" / "config.js").read_text(encoding="utf-8")
+        self.assertIn("validateArtistCatalog", main)
+        self.assertIn("config/artists.json?contract=lyrics-v1", main)
+        self.assertIn("export function validateArtistCatalog", contracts)
+        self.assertIn("await loadReleaseProvenance(selectedLanguage)", main)
+        self.assertIn("const releaseConfig = activeArtist || languageConfig", config)
+        self.assertIn("layers[`artist:${activeArtist.slug}`]", config)
 
     def test_audit_accounts_and_flags_use_release_provenance(self) -> None:
         auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
