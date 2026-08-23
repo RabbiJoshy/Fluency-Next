@@ -3,6 +3,16 @@
   "entries": [
     {
       "date": "2026-08-23",
+      "commit": "7432402",
+      "summary": "The active workspace now has two explicit demonstration decks",
+      "detail": [
+        "French Speech keeps its fresh 200-card Tatoeba release, while Spanish Lyrics keeps a self-contained Bad Bunny-only release.",
+        "Spanish Speech and French Lyrics now say they are awaiting a fresh run instead of attempting to load archived evidence.",
+        "All other migration runs, source copies, previews and candidates were moved into a dated recoverable archive outside the live workspace."
+      ]
+    },
+    {
+      "date": "2026-08-23",
       "commit": "97de51d",
       "summary": "Artist acceptance now covers French Lyrics, offline decks and playlist restoration",
       "detail": [
