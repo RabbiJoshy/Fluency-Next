@@ -3217,15 +3217,15 @@
             flex-shrink: 0;
         }
 
-        /* The front uses the same fixed grammar bay as the back. It is centred
-           vertically against the primary prompt and holds a 2 x 2 grid
-           without changing size or obscuring one label with another. */
+        /* The front uses the same fixed top-right grammar bay as the back.
+           Its contents are centred within that bay and can use a 2 x 2 grid
+           without changing position or obscuring one label with another. */
         .card-front .card-pos-list,
         .card-pos-list {
             position: absolute;
-            top: 50%;
+            top: 30px;
             right: 30px;
-            transform: translateY(-50%);
+            transform: none;
             z-index: 4;
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3252,6 +3252,7 @@
         }
         @media (max-width: 767px) {
             .card-pos-list {
+                top: 20px;
                 right: 16px;
                 width: 144px;
                 min-height: 64px;
