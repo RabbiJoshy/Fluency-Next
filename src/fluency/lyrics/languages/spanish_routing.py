@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 from pathlib import Path
 import re
@@ -89,6 +90,73 @@ def _decision(
     }
 
 
+@dataclass(frozen=True, slots=True)
+class SpanishRoutingResources:
+    """Parsed language resources shared safely across artist-scoped routers."""
+
+    forms: dict[str, frozenset[str]]
+    spanish_frequency: dict[str, int]
+    english: frozenset[str]
+    loanwords: frozenset[str]
+    conjugations: dict[str, Any]
+    caps: dict[str, Any]
+    elision_skips: frozenset[str]
+
+    @classmethod
+    def load(
+        cls,
+        *,
+        known_forms: Path,
+        spanish_frequency: Path,
+        english_frequency: Path,
+        english_loanwords: Path,
+        conjugation_reverse: Path,
+        caps_stats: Path,
+        elision_mapping: Path,
+    ) -> "SpanishRoutingResources":
+        raw_forms = _read_json(known_forms)
+        if not isinstance(raw_forms, dict):
+            raise ValueError("Spanish routing requires the POS-bearing spanish_forms object")
+        loanword_value = _read_json(english_loanwords)
+        conjugation_value = _read_json(conjugation_reverse)
+        if not isinstance(conjugation_value, dict):
+            raise ValueError("Spanish conjugation reverse index must contain an object")
+        caps_value = _read_json(caps_stats)
+        if not isinstance(caps_value, dict):
+            raise ValueError("Spanish capitalization statistics must contain an object")
+        elisions = _read_json(elision_mapping)
+        return cls(
+            forms={
+                str(word).casefold(): frozenset(
+                    part for part in str(pos).casefold().split(",") if part
+                )
+                for word, pos in raw_forms.items()
+            },
+            spanish_frequency=_frequencies(spanish_frequency),
+            english=_wordlist(english_frequency),
+            loanwords=frozenset(
+                str(word).casefold()
+                for word in (
+                    loanword_value.keys()
+                    if isinstance(loanword_value, dict)
+                    else loanword_value
+                )
+            ),
+            conjugations={
+                str(word).casefold(): rows
+                for word, rows in conjugation_value.items()
+            },
+            caps={str(word).casefold(): value for word, value in caps_value.items()},
+            elision_skips=frozenset(
+                str(item.get("word", "")).casefold()
+                for item in elisions
+                if isinstance(item, dict)
+                and item.get("action") == "skip"
+                and item.get("word")
+            ),
+        )
+
+
 class SpanishLiveRouter:
     """Current Spanish Artist routing decisions without legacy output lookup."""
 
@@ -98,47 +166,39 @@ class SpanishLiveRouter:
     def __init__(
         self,
         *,
-        known_forms: Path,
-        spanish_frequency: Path,
-        english_frequency: Path,
-        english_loanwords: Path,
-        conjugation_reverse: Path,
-        caps_stats: Path,
-        elision_mapping: Path,
+        known_forms: Path | None = None,
+        spanish_frequency: Path | None = None,
+        english_frequency: Path | None = None,
+        english_loanwords: Path | None = None,
+        conjugation_reverse: Path | None = None,
+        caps_stats: Path | None = None,
+        elision_mapping: Path | None = None,
         routing_overrides: Path | None = None,
         artist_id: str | None = None,
         song_id: str | None = None,
+        resources: SpanishRoutingResources | None = None,
     ) -> None:
-        raw_forms = _read_json(known_forms)
-        if not isinstance(raw_forms, dict):
-            raise ValueError("Spanish routing requires the POS-bearing spanish_forms object")
-        self.forms = {
-            str(word).casefold(): frozenset(
-                part for part in str(pos).casefold().split(",") if part
-            )
-            for word, pos in raw_forms.items()
-        }
-        self.spanish_frequency = _frequencies(spanish_frequency)
-        self.english = _wordlist(english_frequency)
-        loanwords = _read_json(english_loanwords)
-        self.loanwords = frozenset(
-            str(word).casefold()
-            for word in (loanwords.keys() if isinstance(loanwords, dict) else loanwords)
-        )
-        conjugations = _read_json(conjugation_reverse)
-        if not isinstance(conjugations, dict):
-            raise ValueError("Spanish conjugation reverse index must contain an object")
-        self.conjugations = {str(word).casefold(): rows for word, rows in conjugations.items()}
-        caps = _read_json(caps_stats)
-        if not isinstance(caps, dict):
-            raise ValueError("Spanish capitalization statistics must contain an object")
-        self.caps = {str(word).casefold(): value for word, value in caps.items()}
-        elisions = _read_json(elision_mapping)
-        self.elision_skips = frozenset(
-            str(item.get("word", "")).casefold()
-            for item in elisions
-            if isinstance(item, dict) and item.get("action") == "skip" and item.get("word")
-        )
+        if resources is None:
+            paths = {
+                "known_forms": known_forms,
+                "spanish_frequency": spanish_frequency,
+                "english_frequency": english_frequency,
+                "english_loanwords": english_loanwords,
+                "conjugation_reverse": conjugation_reverse,
+                "caps_stats": caps_stats,
+                "elision_mapping": elision_mapping,
+            }
+            missing = sorted(name for name, path in paths.items() if path is None)
+            if missing:
+                raise ValueError("Spanish routing resources are missing: " + ", ".join(missing))
+            resources = SpanishRoutingResources.load(**paths)  # type: ignore[arg-type]
+        self.forms = resources.forms
+        self.spanish_frequency = resources.spanish_frequency
+        self.english = resources.english
+        self.loanwords = resources.loanwords
+        self.conjugations = resources.conjugations
+        self.caps = resources.caps
+        self.elision_skips = resources.elision_skips
         self.overrides = (
             RoutingOverrideRegistry(
                 routing_overrides,

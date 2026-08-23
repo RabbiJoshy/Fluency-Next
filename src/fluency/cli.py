@@ -25,6 +25,10 @@ from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
 from fluency.inventory.runner import build_inventory_stage
 from fluency.lyrics.ingest import ingest_legacy_genius_song
 from fluency.lyrics.corpus import build_lyrics_corpus_plan, ingest_lyrics_corpus_plan
+from fluency.lyrics.corpus_process import (
+    build_lyrics_corpus_processing_profile,
+    process_lyrics_corpus_plan,
+)
 from fluency.lyrics.consolidate import consolidate_lyrics_run
 from fluency.lyrics.assemble import assemble_lyrics_app_stage
 from fluency.lyrics.preview import build_clean_lyrics_preview_release
@@ -248,6 +252,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     lyrics_ingest_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
     lyrics_ingest_corpus.add_argument("--plan", type=Path, required=True)
+    lyrics_process_corpus = lyrics_actions.add_parser(
+        "process-corpus",
+        help="process every pinned song with one exact language profile and safe resume",
+    )
+    lyrics_process_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_process_corpus.add_argument("--plan", type=Path, required=True)
+    lyrics_process_corpus.add_argument("--profile", type=Path, required=True)
+    lyrics_plan_processing = lyrics_actions.add_parser(
+        "plan-processing-profile",
+        help="pin shared and artist-specific inputs for one exact corpus processing run",
+    )
+    lyrics_plan_processing.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_plan_processing.add_argument("--plan", type=Path, required=True)
+    lyrics_plan_processing.add_argument("--config", type=Path, required=True)
+    lyrics_plan_processing.add_argument("--source-repository", type=Path, required=True)
+    lyrics_plan_processing.add_argument("--profile-id", required=True)
     lyrics_ingest = lyrics_actions.add_parser(
         "ingest-legacy-genius",
         help="pin and normalize one song from a legacy Genius batch",
@@ -767,6 +787,46 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             f"resumed/skipped {result['skipped_this_invocation']}."
         )
         print("No token routing, WSD, deck assembly, release build, or activation was run.")
+        return 0
+    if args.lyrics_command == "process-corpus":
+        def show_processing_progress(event: dict) -> None:
+            if event["completed"] == 1 or event["completed"] % 25 == 0 or event["completed"] == event["planned"]:
+                print(
+                    f"Lyrics processing {event['completed']}/{event['planned']}: "
+                    f"{event['artist_slug']} song {event['source_record_id']} ({event['action']})",
+                    flush=True,
+                )
+
+        result = process_lyrics_corpus_plan(
+            workspace,
+            plan_path=args.plan,
+            profile_path=args.profile,
+            progress=show_processing_progress,
+        )
+        print(f"Completed exact Lyrics corpus processing: {result['report_path']}")
+        print(
+            f"Verified {result['song_run_count']} immutable processing stages: "
+            f"created {result['created_this_invocation']}, "
+            f"resumed/skipped {result['skipped_this_invocation']}."
+        )
+        print("No lexical menu, WSD, deck assembly, release build, or activation was run.")
+        return 0
+    if args.lyrics_command == "plan-processing-profile":
+        output = build_lyrics_corpus_processing_profile(
+            workspace,
+            plan_path=args.plan,
+            config_path=args.config,
+            source_repository=args.source_repository,
+            profile_id=args.profile_id,
+        )
+        profile = json.loads(output.read_text(encoding="utf-8"))
+        print(f"Pinned immutable Lyrics processing profile: {output}")
+        print(
+            f"Selected {len(profile['shared_inputs'])} shared inputs and "
+            f"{sum(len(value) for value in profile['artist_inputs'].values())} "
+            f"artist-specific inputs across {len(profile['artist_inputs'])} sources."
+        )
+        print("No song processing, lexical menu, WSD, deck, release, or activation was run.")
         return 0
     if args.lyrics_command == "ingest-legacy-genius":
         output = ingest_legacy_genius_song(

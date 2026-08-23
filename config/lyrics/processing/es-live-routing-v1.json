@@ -1,0 +1,46 @@
+{
+  "profile_source_version": "lyrics-corpus-processing-profile-source/v1",
+  "language": "es",
+  "routing_mode": "live",
+  "shared_inputs": {
+    "conjugation_reverse": "sha256:a73e8666f0117b677d5e48bac69089b0b3445e3301906a3639d3ad1b4a04665d",
+    "elision_mapping": "sha256:a6669aa445b6af431c122420f2b724e01bb599b76e1cfb575b3b4f0b9ad6d1e2",
+    "english_frequency": "sha256:5351ff405b1126ef555791dd4d9798a48e3e9a501a9fc481a9da957752cfb458",
+    "english_loanwords": "sha256:fc23ba942b4da12ad171e79a3df0558817d0ae687a7bde439f4a972b86d2f126",
+    "frequency_snapshot": "sha256:dcff3ad4316192f4dc4ff7d26e637c6ff314ef1ca0f3f720c5649018a71056c0",
+    "known_forms": "sha256:b03b768be013b70e80852a90e8818a37effc2dda50ec6df73e9724403c1535f2",
+    "lexeme_register": "sha256:597703220af76972aceba0fe08c5f0fff485b08e352feeacca45c5b4c3058b62",
+    "multi_word_elisions": "sha256:0533cbf7c539729ec6a37b526906c135924d1b4cd25adf83506d0cbee764ef29",
+    "routing_overrides": "sha256:73ec6400c881c2abbdf24662cc0a812d9d704dbad00643ee87ea77cce46f1b5e"
+  },
+  "artist_sources": [
+    {
+      "artist_slug": "bad-bunny",
+      "inputs": {
+        "caps_stats": "Artists/spanish/Bad Bunny/data/layers/caps_stats.json",
+        "routing_snapshot": "Artists/spanish/Bad Bunny/data/known_vocab/word_routing.json"
+      }
+    },
+    {
+      "artist_slug": "rosalia",
+      "inputs": {
+        "caps_stats": "Artists/spanish/Rosalía/data/layers/caps_stats.json",
+        "routing_snapshot": "Artists/spanish/Rosalía/data/known_vocab/word_routing.json"
+      }
+    },
+    {
+      "artist_slug": "young-miko",
+      "inputs": {
+        "caps_stats": "Artists/spanish/Young Miko/data/layers/caps_stats.json",
+        "routing_snapshot": "Artists/spanish/Young Miko/data/known_vocab/word_routing.json"
+      }
+    },
+    {
+      "artist_slug": "spanish-test-playlist",
+      "inputs": {
+        "caps_stats": "Artists/spanish/SpanishTestPlaylist/data/layers/caps_stats.json",
+        "routing_snapshot": "Artists/spanish/SpanishTestPlaylist/data/known_vocab/word_routing.json"
+      }
+    }
+  ]
+}

@@ -601,10 +601,31 @@ corrupt or conflicting runs fail visibly instead of being mistaken for
 completed work. Progress is reported every 25 songs, and the deterministic
 corpus completion record is written only after all 914 song runs verify.
 
-The executor passed the complete 189-test migration suite on fixtures,
-including optional translation materialization, exact resume and deliberate
-corruption detection. The real 914-song ingest remains the next long local
-command; it will not route tokens, run WSD, build a deck or activate a release.
+The full command completed all 914 source runs without resuming or reusing any
+pre-existing run. The completion record is bound to the exact plan hash.
+Samples spanning the first and last song of all four sources verified source
+identity plus fully aligned, partially aligned and zero-alignment degradation.
+No routing, WSD, deck or release stage ran and the active release did not move.
+
+Resumable-processing checkpoint (2026-08-23): the next bulk executor is ready
+for tokenization, normalization, elision restoration and live routing. Its
+profile pins nine shared Spanish resources and two separate inputs for each
+artist: capitalization statistics and the legacy routing comparator. This
+separation prevents Bad Bunny evidence from leaking into Rosalía, Young Miko
+or the test playlist. The mature comparator remains comparison evidence only;
+current routing is recomputed directly. Heavy resources are verified and
+parsed once per exact artist profile, while the lightweight router retains
+song/artist scope for future typed JSTA overrides.
+
+The executor writes no false partial completion record, resumes only after
+checking exact inputs, implementation identity, stage references and every
+output hash, and keeps processing implementation identity sensitive to the
+language adapter, router, override registry and lineage code. The immutable
+profile is `es-live-routing-v1-20260823`. Fixture coverage verifies both the
+old one-song interface and the bulk interface, exact resume and corruption
+rejection; the complete suite is 190/190. The real 914-song processing run has
+not started and will not build menus, run WSD, assemble a deck or activate a
+release.
 
 #### 9. Add further languages through adapters
 
@@ -634,10 +655,10 @@ Before making Fluency-Next the live repository:
 
 ### Immediate next action
 
-Run the pinned 914-song source ingest locally, then inspect its exact completion
-record and sampled song outputs. After that, add a corpus runner over the
-existing processing, lexical-menu, WSD preparation/import, consolidation and
-assembly functions rather than inventing parallel implementations. Do not
+Run the exact 914-song processing profile locally, then inspect its completion
+record, aggregate routing counts and samples from all four sources. After that,
+extend the same resumable runner over the existing lexical-menu and WSD
+preparation functions. WSD execution remains a separate long boundary; do not
 change `active.json`. A deliberate flag submission, non-empty Review queue and
 completion/progress write remain production-backend checks, not reasons to hold
 the clean data architecture in a one-song state.

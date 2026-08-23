@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from collections import Counter
 import json
@@ -12,10 +13,19 @@ import tempfile
 import unicodedata
 from typing import Any
 
-from fluency.core.artifacts import ArtifactMetadata, artifact_directory, store_artifact_bytes
+from fluency.core.artifacts import (
+    ArtifactMetadata,
+    artifact_directory,
+    store_artifact_bytes,
+    verify_artifact,
+)
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
-from fluency.lyrics.languages import load_live_lyrics_router, load_lyrics_adapter
+from fluency.lyrics.languages import (
+    load_live_lyrics_router,
+    load_live_lyrics_routing_resources,
+    load_lyrics_adapter,
+)
 from fluency.lyrics.lineage import build_lineage_event
 from fluency.lyrics.routing import RoutingSnapshot
 from fluency.release.io import atomic_write, json_bytes
@@ -23,10 +33,58 @@ from fluency.release.io import atomic_write, json_bytes
 
 STAGE_VERSION = "lyrics-processing-stage/v2"
 TOKENIZER_ID = "unicode-lyrics-tokenizer/v1"
+PROCESSING_INPUT_SPECS = {
+    "es": {
+        "elision_mapping": "spanish-elision-mapping/v1",
+        "multi_word_elisions": "spanish-multi-word-elisions/v1",
+        "known_forms": "spanish-known-forms/v1",
+        "frequency_snapshot": "spanish-surface-frequency/v1",
+        "lexeme_register": "spanish-lexeme-register/v1",
+        "routing_snapshot": "legacy-word-routing/v2",
+        "english_frequency": "english-surface-frequency/v1",
+        "english_loanwords": "spanish-english-loanwords/v1",
+        "conjugation_reverse": "spanish-conjugation-reverse/v1",
+        "caps_stats": "artist-capitalization-stats/v1",
+        "routing_overrides": "lyrics-routing-overrides/v1",
+    }
+}
+PROCESSING_INPUT_FILENAMES = {
+    "elision_mapping": "elision-mapping.json",
+    "multi_word_elisions": "multi-word-elisions.json",
+    "known_forms": "spanish-known-forms.json",
+    "frequency_snapshot": "spanish-surface-frequency.txt",
+    "lexeme_register": "spanish-lexeme-register.json",
+    "routing_snapshot": "word-routing.json",
+    "english_frequency": "english-surface-frequency.txt",
+    "english_loanwords": "spanish-english-loanwords.json",
+    "conjugation_reverse": "spanish-conjugation-reverse.json",
+    "caps_stats": "artist-capitalization-stats.json",
+    "routing_overrides": "lyrics-routing-overrides.json",
+}
+PROCESSING_TEXT_INPUTS = frozenset({"frequency_snapshot", "english_frequency"})
+BASE_INPUTS = frozenset({
+    "elision_mapping", "multi_word_elisions", "known_forms",
+    "frequency_snapshot", "lexeme_register", "routing_snapshot",
+})
+LIVE_INPUTS = frozenset({
+    "english_frequency", "english_loanwords", "conjugation_reverse", "caps_stats",
+})
 
 
 class LyricsProcessingError(ValueError):
     """Raised when a processing stage is incomplete, mutable, or mismatched."""
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedLyricsProcessing:
+    """Verified and parsed resources reusable across one exact corpus run."""
+
+    language: str
+    routing_mode: str
+    pinned: dict[str, ArtifactMetadata]
+    adapter: Any
+    comparison_router: RoutingSnapshot
+    routing_resources: Any | None
 
 
 def _read_json(path: Path) -> Any:
@@ -125,6 +183,98 @@ def _payload_path(workspace: Workspace, metadata: ArtifactMetadata) -> Path:
     return artifact_directory(workspace, metadata.artifact_id) / metadata.filename
 
 
+def processing_implementation_content_id(language: str) -> str:
+    if language != "es":
+        raise LyricsProcessingError(f"no processing implementation is installed for {language!r}")
+    return canonical_content_id(
+        {
+            "process": file_content_id(Path(__file__)),
+            "adapter": file_content_id(Path(__file__).parent / "languages" / "spanish.py"),
+            "language_registry": file_content_id(
+                Path(__file__).parent / "languages" / "__init__.py"
+            ),
+            "routing": file_content_id(Path(__file__).with_name("routing.py")),
+            "spanish_routing": file_content_id(
+                Path(__file__).parent / "languages" / "spanish_routing.py"
+            ),
+            "routing_overrides": file_content_id(Path(__file__).with_name("overrides.py")),
+            "lineage": file_content_id(Path(__file__).with_name("lineage.py")),
+        }
+    )
+
+
+def prepare_lyrics_processing(
+    workspace: Workspace,
+    *,
+    language: str,
+    routing_mode: str,
+    artifact_ids: dict[str, str],
+) -> PreparedLyricsProcessing:
+    """Verify and parse one exact language profile once for a corpus execution."""
+
+    specs = PROCESSING_INPUT_SPECS.get(language)
+    if specs is None:
+        raise LyricsProcessingError(f"no Lyrics processing profile is installed for {language!r}")
+    if routing_mode not in {"snapshot", "live"}:
+        raise LyricsProcessingError("routing mode must be 'snapshot' or 'live'")
+    required = set(BASE_INPUTS)
+    allowed = set(BASE_INPUTS)
+    if routing_mode == "live":
+        required.update(LIVE_INPUTS)
+        allowed.update(LIVE_INPUTS)
+        allowed.add("routing_overrides")
+    missing = sorted(required - artifact_ids.keys())
+    unexpected = sorted(artifact_ids.keys() - allowed)
+    if missing or unexpected:
+        details = []
+        if missing:
+            details.append("missing=" + ",".join(missing))
+        if unexpected:
+            details.append("unexpected=" + ",".join(unexpected))
+        raise LyricsProcessingError("processing profile inputs do not match: " + "; ".join(details))
+    pinned: dict[str, ArtifactMetadata] = {}
+    for name, artifact_id in artifact_ids.items():
+        try:
+            metadata = verify_artifact(workspace, artifact_id)
+        except ValueError as error:
+            raise LyricsProcessingError(f"processing input is unavailable or corrupt: {name}") from error
+        if metadata.schema != specs[name]:
+            raise LyricsProcessingError(
+                f"processing input {name} has schema {metadata.schema!r}; expected {specs[name]!r}"
+            )
+        pinned[name] = metadata
+    paths = {name: _payload_path(workspace, metadata) for name, metadata in pinned.items()}
+    adapter = load_lyrics_adapter(
+        language,
+        elision_mapping=paths["elision_mapping"],
+        multi_word_elisions=paths["multi_word_elisions"],
+        known_forms=paths["known_forms"],
+        frequency_snapshot=paths["frequency_snapshot"],
+        lexeme_register=paths["lexeme_register"],
+    )
+    comparison_router = RoutingSnapshot(paths["routing_snapshot"])
+    routing_resources = None
+    if routing_mode == "live":
+        routing_resources = load_live_lyrics_routing_resources(
+            language,
+            known_forms=paths["known_forms"],
+            spanish_frequency=paths["frequency_snapshot"],
+            english_frequency=paths["english_frequency"],
+            english_loanwords=paths["english_loanwords"],
+            conjugation_reverse=paths["conjugation_reverse"],
+            caps_stats=paths["caps_stats"],
+            elision_mapping=paths["elision_mapping"],
+        )
+    return PreparedLyricsProcessing(
+        language=language,
+        routing_mode=routing_mode,
+        pinned=pinned,
+        adapter=adapter,
+        comparison_router=comparison_router,
+        routing_resources=routing_resources,
+    )
+
+
 def _comparison_class(current: dict[str, Any], baseline: dict[str, Any]) -> str:
     if (current["bucket"], current.get("target")) == (baseline["bucket"], baseline.get("target")):
         return "match"
@@ -142,12 +292,12 @@ def process_lyrics_run(
     *,
     run_id: str,
     language: str,
-    elision_mapping: Path,
-    multi_word_elisions: Path,
-    known_forms: Path,
-    frequency_snapshot: Path,
-    lexeme_register: Path,
-    routing_snapshot: Path,
+    elision_mapping: Path | None = None,
+    multi_word_elisions: Path | None = None,
+    known_forms: Path | None = None,
+    frequency_snapshot: Path | None = None,
+    lexeme_register: Path | None = None,
+    routing_snapshot: Path | None = None,
     routing_mode: str = "snapshot",
     english_frequency: Path | None = None,
     english_loanwords: Path | None = None,
@@ -155,6 +305,7 @@ def process_lyrics_run(
     caps_stats: Path | None = None,
     routing_overrides: Path | None = None,
     started_at: datetime | None = None,
+    _prepared: PreparedLyricsProcessing | None = None,
 ) -> Path:
     """Create occurrence, normalized-unit, route, and lineage artifacts once."""
 
@@ -173,64 +324,74 @@ def process_lyrics_run(
     if output_directory.exists():
         raise LyricsProcessingError("processing output already exists; create a new run instead of overwriting it")
 
-    pinned: dict[str, ArtifactMetadata] = {
-        "elision_mapping": _pin_json(workspace, elision_mapping, filename="elision-mapping.json", schema="spanish-elision-mapping/v1"),
-        "multi_word_elisions": _pin_json(workspace, multi_word_elisions, filename="multi-word-elisions.json", schema="spanish-multi-word-elisions/v1"),
-        "known_forms": _pin_json(workspace, known_forms, filename="spanish-known-forms.json", schema="spanish-known-forms/v1"),
-        "frequency_snapshot": _pin_text(workspace, frequency_snapshot, filename="spanish-surface-frequency.txt", schema="spanish-surface-frequency/v1"),
-        "lexeme_register": _pin_json(workspace, lexeme_register, filename="spanish-lexeme-register.json", schema="spanish-lexeme-register/v1"),
-        "routing_snapshot": _pin_json(workspace, routing_snapshot, filename="word-routing.json", schema="legacy-word-routing/v2"),
-    }
-    if routing_mode not in {"snapshot", "live"}:
-        raise LyricsProcessingError("routing mode must be 'snapshot' or 'live'")
-    if routing_mode == "live":
-        live_paths = {
-            "english_frequency": english_frequency,
-            "english_loanwords": english_loanwords,
-            "conjugation_reverse": conjugation_reverse,
-            "caps_stats": caps_stats,
+    if _prepared is None:
+        base_paths = {
+            "elision_mapping": elision_mapping,
+            "multi_word_elisions": multi_word_elisions,
+            "known_forms": known_forms,
+            "frequency_snapshot": frequency_snapshot,
+            "lexeme_register": lexeme_register,
+            "routing_snapshot": routing_snapshot,
         }
-        missing = sorted(name for name, path in live_paths.items() if path is None)
-        if missing:
-            raise LyricsProcessingError("live routing is missing required inputs: " + ", ".join(missing))
-        pinned.update(
-            {
-                "english_frequency": _pin_text(workspace, english_frequency, filename="english-surface-frequency.txt", schema="english-surface-frequency/v1"),
-                "english_loanwords": _pin_json(workspace, english_loanwords, filename="spanish-english-loanwords.json", schema="spanish-english-loanwords/v1"),
-                "conjugation_reverse": _pin_json(workspace, conjugation_reverse, filename="spanish-conjugation-reverse.json", schema="spanish-conjugation-reverse/v1"),
-                "caps_stats": _pin_json(workspace, caps_stats, filename="artist-capitalization-stats.json", schema="artist-capitalization-stats/v1"),
-            }
-        )
-        if routing_overrides is not None:
-            pinned["routing_overrides"] = _pin_json(
-                workspace,
-                routing_overrides,
-                filename="lyrics-routing-overrides.json",
-                schema="lyrics-routing-overrides/v1",
+        missing_base = sorted(name for name, path in base_paths.items() if path is None)
+        if missing_base:
+            raise LyricsProcessingError(
+                "processing is missing required inputs: " + ", ".join(missing_base)
             )
+        pinned: dict[str, ArtifactMetadata] = {
+            "elision_mapping": _pin_json(workspace, elision_mapping, filename="elision-mapping.json", schema="spanish-elision-mapping/v1"),  # type: ignore[arg-type]
+            "multi_word_elisions": _pin_json(workspace, multi_word_elisions, filename="multi-word-elisions.json", schema="spanish-multi-word-elisions/v1"),  # type: ignore[arg-type]
+            "known_forms": _pin_json(workspace, known_forms, filename="spanish-known-forms.json", schema="spanish-known-forms/v1"),  # type: ignore[arg-type]
+            "frequency_snapshot": _pin_text(workspace, frequency_snapshot, filename="spanish-surface-frequency.txt", schema="spanish-surface-frequency/v1"),  # type: ignore[arg-type]
+            "lexeme_register": _pin_json(workspace, lexeme_register, filename="spanish-lexeme-register.json", schema="spanish-lexeme-register/v1"),  # type: ignore[arg-type]
+            "routing_snapshot": _pin_json(workspace, routing_snapshot, filename="word-routing.json", schema="legacy-word-routing/v2"),  # type: ignore[arg-type]
+        }
+        if routing_mode == "live":
+            live_paths = {
+                "english_frequency": english_frequency,
+                "english_loanwords": english_loanwords,
+                "conjugation_reverse": conjugation_reverse,
+                "caps_stats": caps_stats,
+            }
+            missing = sorted(name for name, path in live_paths.items() if path is None)
+            if missing:
+                raise LyricsProcessingError("live routing is missing required inputs: " + ", ".join(missing))
+            pinned.update(
+                {
+                    "english_frequency": _pin_text(workspace, english_frequency, filename="english-surface-frequency.txt", schema="english-surface-frequency/v1"),  # type: ignore[arg-type]
+                    "english_loanwords": _pin_json(workspace, english_loanwords, filename="spanish-english-loanwords.json", schema="spanish-english-loanwords/v1"),  # type: ignore[arg-type]
+                    "conjugation_reverse": _pin_json(workspace, conjugation_reverse, filename="spanish-conjugation-reverse.json", schema="spanish-conjugation-reverse/v1"),  # type: ignore[arg-type]
+                    "caps_stats": _pin_json(workspace, caps_stats, filename="artist-capitalization-stats.json", schema="artist-capitalization-stats/v1"),  # type: ignore[arg-type]
+                }
+            )
+            if routing_overrides is not None:
+                pinned["routing_overrides"] = _pin_json(
+                    workspace,
+                    routing_overrides,
+                    filename="lyrics-routing-overrides.json",
+                    schema="lyrics-routing-overrides/v1",
+                )
+        prepared = prepare_lyrics_processing(
+            workspace,
+            language=language,
+            routing_mode=routing_mode,
+            artifact_ids={name: metadata.artifact_id for name, metadata in pinned.items()},
+        )
+    else:
+        prepared = _prepared
+        if prepared.language != language or prepared.routing_mode != routing_mode:
+            raise LyricsProcessingError("prepared processing resources do not match the run")
+    pinned = prepared.pinned
     inputs = {
         **{name: metadata.artifact_id for name, metadata in pinned.items()},
         "source_lines": source_manifest["outputs"]["lines.jsonl"],
     }
-    adapter = load_lyrics_adapter(
-        language,
-        elision_mapping=_payload_path(workspace, pinned["elision_mapping"]),
-        multi_word_elisions=_payload_path(workspace, pinned["multi_word_elisions"]),
-        known_forms=_payload_path(workspace, pinned["known_forms"]),
-        frequency_snapshot=_payload_path(workspace, pinned["frequency_snapshot"]),
-        lexeme_register=_payload_path(workspace, pinned["lexeme_register"]),
-    )
-    comparison_router = RoutingSnapshot(_payload_path(workspace, pinned["routing_snapshot"]))
+    adapter = prepared.adapter
+    comparison_router = prepared.comparison_router
     if routing_mode == "live":
         router = load_live_lyrics_router(
             language,
-            known_forms=_payload_path(workspace, pinned["known_forms"]),
-            spanish_frequency=_payload_path(workspace, pinned["frequency_snapshot"]),
-            english_frequency=_payload_path(workspace, pinned["english_frequency"]),
-            english_loanwords=_payload_path(workspace, pinned["english_loanwords"]),
-            conjugation_reverse=_payload_path(workspace, pinned["conjugation_reverse"]),
-            caps_stats=_payload_path(workspace, pinned["caps_stats"]),
-            elision_mapping=_payload_path(workspace, pinned["elision_mapping"]),
+            resources=prepared.routing_resources,
             routing_overrides=(
                 _payload_path(workspace, pinned["routing_overrides"])
                 if "routing_overrides" in pinned
@@ -453,14 +614,7 @@ def process_lyrics_run(
             "started_at": started_at.isoformat().replace("+00:00", "Z"),
             "completed_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "methods": {"tokenize": TOKENIZER_ID, "normalize": adapter.method_id, "route": router.method_id},
-            "implementation_content_id": canonical_content_id(
-                {
-                    "process": file_content_id(Path(__file__)),
-                    "adapter": file_content_id(Path(__file__).parent / "languages" / "spanish.py"),
-                    "routing": file_content_id(Path(__file__).with_name("routing.py")),
-                    "spanish_routing": file_content_id(Path(__file__).parent / "languages" / "spanish_routing.py"),
-                }
-            ),
+            "implementation_content_id": processing_implementation_content_id(language),
             "inputs": inputs,
             "outputs": outputs,
         }

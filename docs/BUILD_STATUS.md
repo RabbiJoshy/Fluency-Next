@@ -292,8 +292,21 @@
   references, completion state and all output hashes. A deterministic corpus
   completion record is emitted only when the whole plan verifies. Fixture
   coverage proves optional translation materialization, an all-skip rerun and
-  conflict detection; the full suite is 189/189. The real 914-song command has
-  not run, and no routing, WSD, deck, release or activation was performed.
+  conflict detection. The real command then created and verified all 914 song
+  runs. Samples across every artist confirmed full, partial and absent optional
+  alignments. No routing, WSD, deck, release or activation was performed.
+- Gate 39 (artist-scoped corpus processing boundary): added a resumable bulk
+  runner over the existing tokenization, normalization, elision-restoration and
+  live-routing implementation. Immutable profile
+  `es-live-routing-v1-20260823` pins nine shared language resources plus the
+  distinct capitalization statistics and legacy routing comparator for each of
+  the four sources; Bad Bunny evidence cannot leak into another artist. Heavy
+  resources are cached per artist profile, typed overrides remain artist/song
+  scoped, and the historical routing snapshot is comparison evidence only.
+  Exact input, implementation, stage-reference and output-hash validation gates
+  resume and final completion. Both one-song and corpus interfaces, safe resume
+  and corruption rejection pass in the 190/190 suite. The real 914-song
+  processing run has not started; no menu, WSD, deck, release or activation ran.
 
 ## Not started
 
