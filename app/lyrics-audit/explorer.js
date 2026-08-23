@@ -15,6 +15,13 @@ function resolvedComparisons(clean) {
   return (clean?.routes || []).map((route) => state.data.routing_profiles?.[route.profile_id]?.comparison).filter(Boolean);
 }
 
+function resolvedLexical(clean) {
+  return (clean?.lexical_candidates || []).map((candidate) => {
+    const profile = candidate.profile_id ? state.data.lexical_profiles?.[candidate.profile_id] : null;
+    return profile ? { ...profile, lexical_candidate_id: candidate.lexical_candidate_id, analysis_unit_id: candidate.analysis_unit_id } : candidate;
+  });
+}
+
 function tokenClasses(token) {
   const classes = ["token"];
   if (token.changed) classes.push("changed");
@@ -35,7 +42,24 @@ function tokenMatches(token) {
   if (state.filter === "route-changed" && !routeChanged(token)) return false;
   if (state.filter === "excluded" && token.current_route?.status !== "excluded") return false;
   if (state.filter === "unresolved" && token.current_route?.status !== "unresolved") return false;
+  if (state.filter === "no-menu" && !resolvedLexical(token.clean_processing).some((item) => item.status === "no_menu")) return false;
   return !state.query || token.surface.toLocaleLowerCase().includes(state.query);
+}
+
+function lexicalHtml(clean) {
+  const candidates = resolvedLexical(clean);
+  if (!candidates.length) return `<div class="no-evidence">No clean lexical-menu record is attached to this token. Nothing is inferred from the old app assignment.</div>`;
+  return candidates.map((candidate) => {
+    if (candidate.status !== "ready") {
+      const lookup = candidate.lookup_form ? ` Lookup attempted as <strong>${escapeHtml(candidate.lookup_form)}</strong>.` : " No dictionary lookup was attempted.";
+      return `<div class="lexical-candidate"><div class="state-box"><small>${escapeHtml(candidate.status)} · no sense assigned</small><strong>${escapeHtml((candidate.reason_codes || []).join(" + "))}</strong></div><div class="no-evidence">${lookup} This explicit state continues downstream; it is not a dropped token.</div></div>`;
+    }
+    const analyses = (candidate.analyses || []).map((analysis) => {
+      const senses = (analysis.senses || []).map((sense) => `<li><strong>${escapeHtml(sense.translation || "No translation")}</strong>${sense.definition ? `<span>${escapeHtml(sense.definition)}</span>` : ""}<code>${escapeHtml(sense.sense_id)} · ${escapeHtml(sense.source_reference)}</code></li>`).join("");
+      return `<details class="menu-analysis"><summary><strong>${escapeHtml(analysis.headword || "No headword")}</strong><span>${escapeHtml(analysis.part_of_speech || "POS unavailable")} · ${(analysis.senses || []).length} options</span></summary><ol>${senses}</ol></details>`;
+    }).join("");
+    return `<div class="lexical-candidate"><div class="state-box"><small>lookup form · ${escapeHtml(candidate.provider.source_adapter)}</small><strong>${escapeHtml(candidate.lookup_form)}</strong></div>${analyses}<div class="menu-warning">Menu options only. WSD has not selected any analysis or sense.</div></div>`;
+  }).join("");
 }
 
 function routingHtml(clean, token) {
@@ -145,6 +169,7 @@ function renderTrace(token, line) {
           </div>
           ${clean ? `<div class="stage current"><div class="stage-title"><strong>Clean recomputation</strong><span class="evidence-kind">new direct lineage</span></div><div class="comparison"><div class="state-box"><small>${escapeHtml(clean.surface)} · ${escapeHtml(clean.tokenizer_method)}</small><strong>${escapeHtml(clean.normalized_form)}</strong></div><span>→</span><div class="state-box"><small>${escapeHtml(clean.units.map((unit) => unit.reason_code).join(" + "))}</small><strong>${escapeHtml(clean.units.map((unit) => unit.operation).join(" + "))}</strong></div></div></div>` : ""}
           <div class="stage current"><div class="stage-title"><strong>Route</strong><span class="evidence-kind">${resolvedRoutes(clean)[0]?.evidence_kind === "direct" ? "direct policy trace" : resolvedRoutes(clean)[0]?.evidence_kind === "human_review" ? "attributed human override" : "current snapshot"}</span></div>${routingHtml(clean, token)}</div>
+          <div class="stage current"><div class="stage-title"><strong>Build lexical menu</strong><span class="evidence-kind">direct · pre-WSD</span></div>${lexicalHtml(clean)}</div>
           <div class="stage current"><div class="stage-title"><strong>Materialize in app</strong><span class="evidence-kind">current release</span></div>${assignmentHtml(line.app_assignments, token)}</div>
         </div>
       </section>
@@ -218,7 +243,7 @@ async function loadSong(songId) {
   picker.disabled = true;
   $("songTitle").textContent = `Loading ${entry.title}…`;
   try {
-    const response = await fetch(`data/${entry.bundle}?v=7`, { cache: "no-store" });
+    const response = await fetch(`data/${entry.bundle}?v=8`, { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const bundle = await response.json();
     if (requestId !== state.requestId) return;
@@ -245,13 +270,13 @@ async function loadSong(songId) {
 
 async function start() {
   if (window.location.protocol === "file:") {
-    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=7";
+    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=8";
     $("songTitle").textContent = "Local server required";
     $("artistName").innerHTML = `This explorer loads its audit bundle over HTTP. <a href="${servedUrl}">Open the working explorer</a>.`;
     return;
   }
   try {
-    const response = await fetch("data/catalog.json?v=7", { cache: "no-store" });
+    const response = await fetch("data/catalog.json?v=8", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     state.catalog = await response.json();
     const picker = $("songSelect");

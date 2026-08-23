@@ -24,6 +24,7 @@ from fluency.harvest.runner import harvest_run_stage
 from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
 from fluency.inventory.runner import build_inventory_stage
 from fluency.lyrics.ingest import ingest_legacy_genius_song
+from fluency.lyrics.lexical import build_lyrics_lexical_menu_stage
 from fluency.lyrics.process import process_lyrics_run
 from fluency.migration.legacy_identity import write_legacy_crosswalk
 from fluency.migration.spanish_assets import migrate_spanish_retained_assets
@@ -260,6 +261,16 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="optional typed registry; omitted means no human routing overrides",
     )
+    lyrics_menu = lyrics_actions.add_parser(
+        "menu",
+        help="build provider-neutral lexical candidates without running WSD",
+    )
+    lyrics_menu.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_menu.add_argument("--run-id", required=True)
+    lyrics_menu.add_argument("--language", required=True)
+    lyrics_menu.add_argument("--dictionary-snapshot", type=Path, required=True)
+    lyrics_menu.add_argument("--snapshot-id", required=True)
+    lyrics_menu.add_argument("--language-policy", required=True)
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -692,6 +703,32 @@ def handle_lyrics(args: argparse.Namespace) -> int:
                 "routing is explicitly sourced from the pinned migration snapshot."
             )
         print("No WSD, deck assembly, release build, or activation was run.")
+        return 0
+    if args.lyrics_command == "menu":
+        output = build_lyrics_lexical_menu_stage(
+            project_root(),
+            workspace,
+            run_id=args.run_id,
+            language=args.language,
+            dictionary_snapshot=args.dictionary_snapshot,
+            snapshot_id=args.snapshot_id,
+            language_policy_id=args.language_policy,
+        )
+        report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+        print(f"Completed immutable Lyrics lexical-menu layer: {output}")
+        print(
+            f"Emitted {report['candidate_count']} occurrence-bound candidates: "
+            + ", ".join(
+                f"{status}={count}"
+                for status, count in report["status_counts"].items()
+            )
+            + "."
+        )
+        print(
+            f"Provider menu contains {report['ready_analysis_count']} analyses and "
+            f"{report['ready_sense_count']} sense leaves."
+        )
+        print("No sense was assigned; no deck, release, or activation was created.")
         return 0
     raise AssertionError(f"Unhandled lyrics command: {args.lyrics_command}")
 

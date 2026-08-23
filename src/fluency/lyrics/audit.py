@@ -114,6 +114,7 @@ def build_bundle(
     candidate_run: str,
     source_ingest: Path | None = None,
     process_output: Path | None = None,
+    lexical_output: Path | None = None,
 ) -> dict[str, Any]:
     evidence = legacy_artist_root / "data" / "evidence"
     candidate_ledger = evidence / "ledger" / "runs" / candidate_run
@@ -160,6 +161,11 @@ def build_bundle(
     route_profile_ids: dict[str, str] = {}
     routing_profiles: dict[str, dict[str, Any]] = {}
     process_lineage_event_count = 0
+    lexical_by_unit: dict[str, dict[str, Any]] = {}
+    lexical_profile_ids: dict[str, str] = {}
+    lexical_profiles: dict[str, dict[str, Any]] = {}
+    lexical_report: dict[str, Any] | None = None
+    lexical_lineage_event_count = 0
     if source_ingest is not None:
         source_ingest = source_ingest.expanduser().resolve()
         ingested_song = _read_json(source_ingest / "song.json")
@@ -206,6 +212,26 @@ def build_bundle(
                 "comparison": route_comparisons.get(route["normalized_form"]),
             }
         process_lineage_event_count = sum(1 for _ in _read_jsonl(process_output / "lineage.jsonl"))
+    if lexical_output is not None:
+        if process_output is None:
+            raise ValueError("lexical output requires its matching process output")
+        lexical_output = lexical_output.expanduser().resolve()
+        lexical_report = _read_json(lexical_output / "report.json")
+        lexical_by_unit = {
+            candidate["analysis_unit_id"]: candidate
+            for candidate in _read_jsonl(lexical_output / "lexical-candidates.jsonl")
+        }
+        for analysis_unit_id, candidate in lexical_by_unit.items():
+            profile = {
+                key: candidate[key]
+                for key in (
+                    "status", "lookup_form", "lookup_card_id", "provider", "analyses", "reason_codes"
+                )
+            }
+            profile_id = "lexical_profile_" + canonical_content_id(profile).removeprefix("sha256:")[:32]
+            lexical_profile_ids[analysis_unit_id] = profile_id
+            lexical_profiles[profile_id] = profile
+        lexical_lineage_event_count = sum(1 for _ in _read_jsonl(lexical_output / "lineage.jsonl"))
 
     changed_count = 0
     restored_count = 0
@@ -245,6 +271,15 @@ def build_bundle(
                 if unit["analysis_unit_id"] in processed_routes
             ]
             clean_route = clean_route_records[0] if len(clean_route_records) == 1 else None
+            clean_lexical_refs = [
+                {
+                    "lexical_candidate_id": lexical_by_unit[unit["analysis_unit_id"]]["lexical_candidate_id"],
+                    "analysis_unit_id": unit["analysis_unit_id"],
+                    "profile_id": lexical_profile_ids[unit["analysis_unit_id"]],
+                }
+                for unit in clean_units
+                if unit["analysis_unit_id"] in lexical_by_unit
+            ]
             current_route = (
                 {
                     "status": clean_route["status"],
@@ -286,6 +321,7 @@ def build_bundle(
                             "normalized_form": " + ".join(unit["normalized_form"] for unit in clean_units),
                             "units": clean_units,
                             "routes": clean_route_refs,
+                            "lexical_candidates": clean_lexical_refs,
                             "tokenizer_method": (process_manifest or {}).get("methods", {}).get("tokenize"),
                             "normalizer_method": (process_manifest or {}).get("methods", {}).get("normalize"),
                             "router_method": (process_manifest or {}).get("methods", {}).get("route"),
@@ -330,6 +366,11 @@ def build_bundle(
     ]
     if process_output and not direct_routing:
         limitations.insert(2, "Routing uses a pinned materialized migration snapshot until the shared router itself is ported.")
+    if lexical_output:
+        limitations.insert(
+            3,
+            "The clean lexical layer exposes complete provider menus and explicit abstentions; WSD has not selected a sense.",
+        )
     return {
         "schema": "fluency.lyrics-audit-bundle/v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -351,6 +392,7 @@ def build_bundle(
             },
         ],
         "routing_profiles": routing_profiles,
+        "lexical_profiles": lexical_profiles,
         "comparison": {
             "baseline_run_id": baseline_run,
             "candidate_run_id": candidate_run,
@@ -362,6 +404,8 @@ def build_bundle(
             "aligned_line_count": len(alignments_by_line),
             "source_lineage_event_count": source_lineage_event_count,
             "process_lineage_event_count": process_lineage_event_count,
+            "lexical_lineage_event_count": lexical_lineage_event_count,
+            "lexical_status_counts": (lexical_report or {}).get("status_counts", {}),
         },
         "evidence": {
             "source_ingest": (
@@ -382,6 +426,11 @@ def build_bundle(
                 if process_output
                 else "reconstructed lookup against the current materialized word_routing.json"
             ),
+            "lexical_menu": (
+                "direct provider-neutral menu candidates; lookup identity is separate from surface identity and WSD has not run"
+                if lexical_output
+                else "not included in this audit bundle"
+            ),
             "app_assignments": "current materialized immutable Artist release",
         },
         "limitations": limitations,
@@ -398,6 +447,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--source-ingest", type=Path)
     parser.add_argument("--process-output", type=Path)
+    parser.add_argument("--lexical-output", type=Path)
     args = parser.parse_args()
     bundle = build_bundle(
         legacy_artist_root=args.legacy_artist_root,
@@ -407,9 +457,13 @@ def main() -> None:
         candidate_run=args.candidate_run,
         source_ingest=args.source_ingest,
         process_output=args.process_output,
+        lexical_output=args.lexical_output,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(bundle, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    args.output.write_text(
+        json.dumps(bundle, ensure_ascii=False, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
     print(f"Built lyrics audit bundle: {args.output}")
 
 

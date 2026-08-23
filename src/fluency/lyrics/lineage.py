@@ -12,7 +12,7 @@ PHASES = frozenset(
     {"acquire", "extract", "align", "normalize", "tag", "route", "menu", "assign", "consolidate", "assemble", "review"}
 )
 OPERATIONS = frozenset(
-    {"preserve", "normalize", "split", "merge", "align", "tag", "route", "abstain", "assign", "exclude", "materialize", "override"}
+    {"preserve", "normalize", "split", "merge", "align", "tag", "route", "lookup", "abstain", "assign", "exclude", "materialize", "override"}
 )
 EVIDENCE_KINDS = frozenset({"direct", "reconstructed", "materialized_snapshot", "human_review"})
 
@@ -76,4 +76,3 @@ def validate_lineage_event(event: dict[str, Any]) -> None:
             for ref in refs
         ):
             raise ValueError(f"lineage event {field} are invalid")
-

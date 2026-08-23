@@ -49,6 +49,25 @@ class LyricsAuditCatalogTests(unittest.TestCase):
                 units[reference["analysis_unit_id"]]["normalized_form"],
             )
 
+    def test_clean_lexical_references_cover_every_unit_without_claiming_wsd(self):
+        bundle = json.loads((DATA_ROOT / "estamos-arriba.json").read_text(encoding="utf-8"))
+        profiles = bundle["lexical_profiles"]
+        references = [
+            candidate
+            for line in bundle["song"]["lines"]
+            for occurrence in line["occurrences"]
+            if occurrence.get("clean_processing")
+            for candidate in occurrence["clean_processing"]["lexical_candidates"]
+        ]
+        self.assertEqual(len(references), bundle["comparison"]["occurrence_count"])
+        self.assertEqual(
+            sum(bundle["comparison"]["lexical_status_counts"].values()),
+            len(references),
+        )
+        self.assertIn("WSD has not run", bundle["evidence"]["lexical_menu"])
+        for reference in references:
+            self.assertIn(reference["profile_id"], profiles)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -183,6 +183,16 @@ The development bundle keeps occurrence-specific route IDs but stores each
 identical routing decision/policy trace once as a normalized-form profile, so
 the extra auditability does not duplicate the same trace hundreds of times.
 
+The same run now also contains an immutable provider-neutral lexical-menu
+layer. All 585 analysis units remain visible: 463 have one or more menu
+analyses, 59 are explicit `no_menu` records, 45 are route-ineligible and 18 are
+held for proper-name review. The 203 attempted lookup forms are resolved from
+the pinned SpanishDict snapshot through the shared Speech adapter. Surface card
+identity remains separate from lookup identity (for example, `líbrame` may
+look up `librar` without becoming the `librar` card). No WSD, deck assembly,
+release or activation occurred. Auditor v8 exposes every analysis and sense
+leaf, plus an exact 59-token no-menu filter.
+
 The clean router deliberately does not import the legacy scattered noise,
 proper-name, English or cognate override lists as truth. Unknown forms remain
 visible in `sense_discovery`; capitalization-only proper-name evidence becomes
@@ -206,7 +216,7 @@ Environment map:
 - new code repository: `/Users/joshuathomasamar/PycharmProjects/Fluency-Next`;
 - legacy reference repository: `/Users/joshuathomasamar/PycharmProjects/Fluency`;
 - generated-data workspace: `/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace`;
-- current auditor: `http://127.0.0.1:4173/lyrics-audit/?v=7` when serving
+- current auditor: `http://127.0.0.1:4173/lyrics-audit/?v=8` when serving
   `Fluency-Next/app` on port 4173;
 - active parity release:
   `Fluency-Workspace/releases/lyrics/lyrics-legacy-parity-20260822`.
@@ -214,7 +224,7 @@ Environment map:
 Before editing, run `git status --short`, read this file, inspect commits
 `d4f2810`, `a9c83e5`, and `d75403d`, and run
 `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3.12 -m unittest discover -s tests -p 'test_*.py'`.
-The checkpoint has 163 passing tests. Treat the legacy repository as a source
+The checkpoint has 171 passing tests. Treat the legacy repository as a source
 of behavior and retained artifacts, not as the destination for new code.
 
 ### Non-negotiable constraints
@@ -258,8 +268,9 @@ of behavior and retained artifacts, not as the destination for new code.
 5. Normalized analysis units and route decisions have explicit schemas. The
    clean Spanish router recomputes every decision from pinned automatic evidence;
    the legacy routing snapshot is comparison evidence only.
-6. The one-song auditor exposes source, alignment, legacy run comparison, clean
-   recomputation, routing provenance and current release assignments.
+6. The multi-song auditor exposes source, alignment, legacy run comparison,
+   clean recomputation, routing provenance, lexical menus and current release
+   assignments, degrading explicitly when a song only has legacy evidence.
 7. The Google Apps Script changes made earlier in the migration preserve flag
    run/release provenance, playlist selection and `JSTA` audit privileges.
 
@@ -325,7 +336,7 @@ its interface into the learner app unless Joshua explicitly chooses elements.
 Acceptance gate: switching songs and runs must not reload or blend the wrong
 bundle, and every displayed value must expose its evidence boundary.
 
-#### 3. Build the lexical-menu boundary
+#### 3. Build the lexical-menu boundary — complete
 
 For analysis units routed to vocabulary/WSD, create a language-neutral lexical
 candidate contract. It should carry the surface occurrence, normalized form,
@@ -345,6 +356,14 @@ Reuse the mature Speech menu architecture where possible:
 
 Acceptance gate: the same generic menu record validates for SpanishDict and
 Wiktionary examples, including empty optional fields.
+
+Acceptance gate passed in `bad-bunny-estamos-arriba-source-v7`. The shared
+contract was exercised with SpanishDict and Kaikki/Wiktionary fixtures; nullable
+lemma/headword/POS fields remain metadata, while surface identity is required.
+The real Spanish run produced 585 occurrence-bound candidates, 960 attached
+analyses and 5,409 sense leaves. Missing menus and route abstentions are typed
+records, and the explorer states prominently that none of the menu options has
+been selected by WSD.
 
 #### 4. Add WSD as a replaceable stage
 
