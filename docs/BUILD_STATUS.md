@@ -414,7 +414,7 @@ uses the fresh Tatoeba run and makes no WSD or corpus-coverage claims.
   manifest.
 - The deliberate JSTA flag is confirmed in FlaggedWords with its exact release,
   run, client build and non-empty provenance JSON.
-- Final inactive candidate `fluency-next-acceptance-candidate-20260823-v4`
-  contains 91 hashed files and 75,660,754 bytes. It is not deployed.
+- Final inactive candidate `fluency-next-acceptance-candidate-20260823-v5`
+  contains 91 hashed files and 75,661,383 bytes. It is not deployed.
 - Production cutover remains blocked only by the explicit per-deck
   clean-versus-retained data decision and subsequent deployment approval.

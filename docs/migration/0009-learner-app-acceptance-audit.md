@@ -61,8 +61,8 @@ to delete independently of the pending clean-versus-retained deck decision.
 
 ## Deployment candidate
 
-`fluency-next-acceptance-candidate-20260823-v4` contains 91 hashed files and
-75,660,754 bytes. It selects exactly:
+`fluency-next-acceptance-candidate-20260823-v5` contains 91 hashed files and
+75,661,383 bytes. It selects exactly:
 
 - Spanish Speech `es-speech-audit-200-unassigned-jehle-20260822`;
 - French Speech `fr-speech-real-tatoeba-unassigned-0003`;
@@ -73,7 +73,7 @@ the static site. Nothing was uploaded, activated or deprecated.
 
 ## Offline and release tests
 
-- The v2 candidate served through an ordinary static HTTP server; the final v4
+- The v2 candidate served through an ordinary static HTTP server; the final v5
   includes the same verified offline behavior plus corrected help and fresh-
   login synchronization, and was integrity-validated by the same builder.
 - Its explicit Lyrics download installed 62.1 MB and all five Artist sources.

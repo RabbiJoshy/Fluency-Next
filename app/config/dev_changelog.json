@@ -3,6 +3,16 @@
   "entries": [
     {
       "date": "2026-08-23",
+      "commit": "97de51d",
+      "summary": "Artist acceptance now covers French Lyrics, offline decks and playlist restoration",
+      "detail": [
+        "French Lyrics is available from the language-first chooser and opens its real Artist source without loading Speech first.",
+        "An explicitly downloaded immutable Lyrics release can launch offline while the active catalogue remains network-authoritative whenever a connection exists.",
+        "A fresh named login now restores its saved cross-artist playlist from SongSets, including contributing-artist provenance."
+      ]
+    },
+    {
+      "date": "2026-08-23",
       "commit": "ed83c92",
       "summary": "Language choice now leads directly to a lightweight Speech or Lyrics decision",
       "detail": [

@@ -780,8 +780,8 @@ network-only active Artist alias to fall back only to the currently installed
 immutable catalogue; a server-stopped Bad Bunny launch passed. Explicit preview
 and active release switching also passed. Fresh JSTA login restores its remote
 playlist, and the deliberate provenance flag is confirmed in FlaggedWords.
-Final inactive candidate `fluency-next-acceptance-candidate-20260823-v4`
-contains 91 hashed files and 75,660,754 bytes. See
+Final inactive candidate `fluency-next-acceptance-candidate-20260823-v5`
+contains 91 hashed files and 75,661,383 bytes. See
 `0009-learner-app-acceptance-audit.md`.
 
 Production cutover remains deferred. Josh will first decide whether each final
