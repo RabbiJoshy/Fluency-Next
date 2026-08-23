@@ -3,6 +3,16 @@
   "entries": [
     {
       "date": "2026-08-23",
+      "commit": "b602c56",
+      "summary": "Multi-headword card backs no longer repeat lemma labels",
+      "detail": [
+        "Each lemma remains visible in its existing part-of-speech and headword row.",
+        "Redundant horizontal lemma strips above the corresponding sense rows were removed.",
+        "Sense grouping, selection highlighting and source order are unchanged."
+      ]
+    },
+    {
+      "date": "2026-08-23",
       "commit": "7432402",
       "summary": "The active workspace now has two explicit demonstration decks",
       "detail": [
