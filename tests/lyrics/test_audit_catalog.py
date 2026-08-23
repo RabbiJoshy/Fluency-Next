@@ -31,7 +31,8 @@ class LyricsAuditCatalogTests(unittest.TestCase):
         self.assertIn('badge = wsd.kind === "automatic" ? "1" : "W"', explorer)
         self.assertIn("Automatic assignment: the exact lexical menu contained one sense", explorer)
         self.assertIn('id="evidenceHeadline"', page)
-        self.assertIn('explorer.js?v=17', page)
+        self.assertIn('explorer.js?v=18', page)
+        self.assertIn('entry.bundle.startsWith("/")', explorer)
 
     def test_catalog_points_to_distinct_matching_song_bundles(self):
         catalog = json.loads((DATA_ROOT / "catalog.json").read_text(encoding="utf-8"))
