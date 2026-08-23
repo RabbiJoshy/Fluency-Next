@@ -2175,7 +2175,7 @@
 
         .back-headword-row {
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             align-items: center;
             gap: 8px 10px;
             position: relative;
@@ -2670,60 +2670,34 @@
             border-left: 1px solid rgba(var(--sense-match-rgb), 0.38);
         }
 
-        /* The legend owns the top-right corner of the card back and keeps it
-           whether there is one pill or several: `margin-left: auto` pushes it
-           off the headword, and the pills pack to the right edge so a second
-           or third POS grows the group leftwards instead of relocating it. */
+        /* A fixed grammar bay keeps one to four POS labels stable beside the
+           headword. One or two labels form one centred row; three or four use
+           two rows. Every alternative stays fully legible. */
         .back-pos-legend {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-auto-rows: minmax(30px, auto);
             align-items: center;
-            justify-content: flex-end;
+            justify-items: stretch;
+            align-content: center;
             gap: 5px;
             margin: 0 0 0 auto;
-            flex: 0 1 auto;
+            flex: 0 0 176px;
+            width: 176px;
+            min-height: 70px;
         }
-        .back-pos-legend.has-tabs {
-            gap: 0;
+        .back-pos-legend.pos-count-1 {
+            grid-template-columns: auto;
+            justify-content: center;
         }
-
-        /* Multi-POS cards use a compact deck of real pills. The selected POS
-           remains fully legible; every inactive analysis keeps a coloured,
-           abbreviated tab peeking beside it. This communicates two or three
-           possibilities without replacing them with an opaque +N count. */
-        .pos-peek-stack {
-            flex-wrap: nowrap;
-            gap: 0;
-            isolation: isolate;
-            overflow: visible;
+        .back-pos-legend.pos-count-1 .card-pos {
+            width: auto;
+            min-width: 78px;
         }
-        .pos-peek-stack .pos-stack-item + .pos-stack-item,
-        .pos-peek-stack .front-pos-unit + .front-pos-unit {
-            margin-left: -8px;
-        }
-        .pos-peek-stack .is-active {
-            position: relative;
-            z-index: 3;
-        }
-        .pos-peek-stack .is-inactive {
-            position: relative;
-            z-index: 1;
-        }
-        .pos-peek-stack .pos-stack-pill.is-inactive,
-        .pos-peek-stack .is-inactive > .pos-stack-pill {
-            width: 48px;
-            padding-inline: 10px;
-            overflow: hidden;
-            justify-content: flex-start;
-        }
-        .pos-short-label {
-            display: none;
-        }
-        .pos-peek-stack .is-inactive .pos-full-label {
-            display: none;
-        }
-        .pos-peek-stack .is-inactive .pos-short-label {
-            display: inline;
+        .back-pos-legend.pos-count-3 > :last-child {
+            grid-column: 1 / -1;
+            width: calc(50% - 2.5px);
+            justify-self: center;
         }
 
         /* Word + its single POS pill share the top line (.back-headword-row,
@@ -2750,10 +2724,12 @@
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            padding: 8px 16px;
+            justify-content: center;
+            width: 100%;
+            padding: 7px 9px;
             min-width: 0;
             font-family: var(--font-reading);
-            font-size: 16.5px;
+            font-size: 14px;
             font-weight: 600;
             line-height: 1;
             text-transform: none;
@@ -2781,6 +2757,12 @@
             background: color-mix(in srgb, currentColor 23%, transparent);
             border-color: color-mix(in srgb, currentColor 68%, transparent);
             box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 18%, transparent), 0 3px 10px rgba(0, 0, 0, 0.22);
+        }
+        .card-pos-list .front-pos-unit.is-inactive {
+            opacity: 0.66;
+        }
+        .card-pos-list .front-pos-unit.is-active {
+            opacity: 1;
         }
         .back-pos-dot {
             width: 7px;
@@ -3235,27 +3217,54 @@
             flex-shrink: 0;
         }
 
-        /* The front pill occupies the same corner as the back's POS legend, so
-           flipping doesn't move the grammar around. `top`/`right` track the
-           card face's own padding (30px desktop / 20px mobile below). */
+        /* The front uses the same fixed grammar bay as the back. It is centred
+           vertically against the primary prompt and holds a 2 x 2 grid
+           without changing size or obscuring one label with another. */
         .card-front .card-pos-list,
         .card-pos-list {
             position: absolute;
-            top: 30px;
+            top: 50%;
             right: 30px;
+            transform: translateY(-50%);
             z-index: 4;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: flex-start;
-            justify-content: flex-end;
-            gap: 7px;
-            max-width: 60%;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-auto-rows: minmax(30px, auto);
+            place-content: center;
+            align-items: center;
+            gap: 5px;
+            width: 176px;
+            min-height: 70px;
             margin-bottom: 0;
+        }
+        .card-pos-list.pos-count-1 {
+            grid-template-columns: auto;
+            justify-content: center;
+        }
+        .card-pos-list.pos-count-1 .card-pos {
+            width: auto;
+            min-width: 78px;
+        }
+        .card-pos-list.pos-count-3 > :last-child {
+            grid-column: 1 / -1;
+            width: calc(50% - 2.5px);
+            justify-self: center;
         }
         @media (max-width: 767px) {
             .card-pos-list {
-                top: 20px;
-                right: 20px;
+                right: 16px;
+                width: 144px;
+                min-height: 64px;
+            }
+            .back-pos-legend {
+                flex-basis: 144px;
+                width: 144px;
+                min-height: 64px;
+            }
+            .card-pos-list .card-pos,
+            .back-pos-legend .card-pos,
+            .back-pos-unit .card-pos {
+                padding-inline: 7px;
             }
         }
         /* Child cards used to push the POS pills down 62px to clear the exit
@@ -3263,20 +3272,29 @@
            corner is free and every card keeps the same pill position. */
         .card-pos-list .card-pos {
             margin-bottom: 0;
-            /* Same scale as the back legend's pills, which are 10% up on the
-               old front size. */
-            padding: 8px 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 7px 9px;
             border-radius: 999px;
             background: color-mix(in srgb, currentColor 14%, transparent);
             border-color: color-mix(in srgb, currentColor 38%, transparent);
             font-family: var(--font-reading);
-            font-size: 16.5px;
+            font-size: 14px;
             font-weight: 650;
             line-height: 1;
             text-transform: none;
         }
         .card-pos-list .card-pos.has-morph-toggle {
             cursor: pointer;
+        }
+        @media (max-width: 767px) {
+            .card-pos-list .card-pos,
+            .back-pos-legend .card-pos,
+            .back-pos-unit .card-pos {
+                font-size: 12.5px;
+            }
         }
 
 

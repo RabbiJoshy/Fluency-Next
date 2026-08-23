@@ -185,17 +185,19 @@ class ProductShellTests(unittest.TestCase):
         self.assertNotIn("headword-group-label", flashcards)
         self.assertNotIn("headword-group-label", css)
 
-    def test_multi_pos_controls_peek_without_reordering_visible_senses(self) -> None:
+    def test_multi_pos_controls_use_bounded_grid_without_reordering_senses(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
         css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
-        self.assertIn("const posShortName = pos =>", flashcards)
-        self.assertIn("has-tabs pos-peek-stack", flashcards)
+        self.assertIn("pos-count-${Math.min(allPOS.length, 4)}", flashcards)
+        self.assertIn("pos-count-${Math.min(posItems.length, 4)}", flashcards)
         self.assertIn("pos === activeDisplayPos ? 'is-active' : 'is-inactive'", flashcards)
         self.assertIn("function orderMeaningEntriesForDisplay(meanings)", flashcards)
         self.assertNotIn("[entries[activeIndex]", flashcards)
         self.assertIn("const orderedMembers = members;", flashcards)
         self.assertIn("activeSense.scrollIntoView", flashcards)
-        self.assertIn(".pos-peek-stack .is-inactive .pos-short-label", css)
+        self.assertIn("grid-template-columns: repeat(2, minmax(0, 1fr))", css)
+        self.assertIn(".card-pos-list.pos-count-3 > :last-child", css)
+        self.assertNotIn("pos-peek-stack", css)
 
     def test_optional_conjugations_join_by_dictionary_headword_not_identity_lemma(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")

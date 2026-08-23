@@ -3685,18 +3685,7 @@ function updateCard({ announceHeadword = false } = {}) {
         return labels[String(pos || '').toUpperCase()]
             || String(pos || '').toLowerCase().replace(/^./, char => char.toUpperCase());
     };
-    const posShortName = pos => {
-        const labels = {
-            NOUN: 'N', VERB: 'V', AUX: 'Aux', ADJ: 'Adj', ADV: 'Adv',
-            PREP: 'Prep', ADP: 'Prep', CONJ: 'Conj', CCONJ: 'Conj',
-            SCONJ: 'Conj', PRON: 'Pro', DET: 'Det', INTJ: 'Int',
-            NUM: 'Num', PROPN: 'PN'
-        };
-        const normalized = String(pos || '').toUpperCase();
-        return labels[normalized] || normalized.slice(0, 3);
-    };
-    const posLabelHTML = pos => `<span class="pos-full-label">${posDisplayName(pos)}</span>`
-        + `<span class="pos-short-label" aria-hidden="true">${posShortName(pos)}</span>`;
+    const posLabelHTML = pos => `<span class="pos-full-label">${posDisplayName(pos)}</span>`;
     // The verb POS pill retains the complete popover on every face. In the
     // production direction its coupled subject + tense/mood rows are also
     // repeated as a compact, always-visible cue beneath the English senses;
@@ -3837,22 +3826,22 @@ function updateCard({ announceHeadword = false } = {}) {
                     || ((left?.index || 0) - (right?.index || 0));
             });
         const stacked = allPOS.length > 1;
-        frontPOSEl.classList.toggle('pos-peek-stack', stacked);
+        frontPOSEl.classList.add(`pos-count-${Math.min(allPOS.length, 4)}`);
         frontPOSEl.innerHTML = allPOS.map(pos =>
             renderFrontPosUnit(
                 pos,
                 isVerbPos(pos),
-                `card-pos${stacked ? ' pos-stack-pill' : ''}`,
+                'card-pos',
                 stacked ? (pos === activeDisplayPos ? 'is-active' : 'is-inactive') : ''
             )
         ).join('');
-        frontPOSEl.style.display = allPOS.length > 0 ? 'flex' : 'none';
+        frontPOSEl.style.display = allPOS.length > 0 ? 'grid' : 'none';
     } else if (card.partOfSpeech) {
         frontPOSEl.innerHTML = renderFrontPosUnit(
             card.partOfSpeech,
             isVerbPos(card.partOfSpeech)
         );
-        frontPOSEl.style.display = 'flex';
+        frontPOSEl.style.display = 'grid';
     } else {
         frontPOSEl.style.display = 'none';
     }
@@ -4052,7 +4041,7 @@ function updateCard({ announceHeadword = false } = {}) {
             const posPills = posItems.map(({ pos, meaningIndex }) => {
                 if (hasBackPosTabs) {
                     const stackState = pos === activeBackPos ? 'is-active' : 'is-inactive';
-                    return `<button type="button" class="card-pos back-pos-tab pos-stack-item pos-stack-pill ${stackState} ${getPosColorClass(pos)}${pos === activeBackPos ? ' selected' : ''}" role="tab" aria-selected="${pos === activeBackPos}" aria-label="${posDisplayName(pos)}" onclick="selectPartOfSpeech(event, ${meaningIndex}, '${pos}')"><span class="back-pos-dot" aria-hidden="true"></span>${posLabelHTML(pos)}</button>`;
+                    return `<button type="button" class="card-pos back-pos-tab ${stackState} ${getPosColorClass(pos)}${pos === activeBackPos ? ' selected' : ''}" role="tab" aria-selected="${pos === activeBackPos}" aria-label="${posDisplayName(pos)}" onclick="selectPartOfSpeech(event, ${meaningIndex}, '${pos}')"><span class="back-pos-dot" aria-hidden="true"></span>${posLabelHTML(pos)}</button>`;
                 }
                 // Verb morphology is hidden until the pill is pressed, rather
                 // than showing permanently; a non-verb pill (nothing to
@@ -4069,7 +4058,7 @@ function updateCard({ announceHeadword = false } = {}) {
                 </span>`;
             });
             if (!hideRedundantSingleBackPos) {
-                backPosLegendHTML = `<div class="back-pos-legend${hasBackPosTabs ? ' has-tabs pos-peek-stack' : ''}"${hasBackPosTabs ? ' role="tablist"' : ''} aria-label="Filter senses by part of speech">${posPills.join('')}</div>`;
+                backPosLegendHTML = `<div class="back-pos-legend${hasBackPosTabs ? ' has-tabs' : ''} pos-count-${Math.min(posItems.length, 4)}"${hasBackPosTabs ? ' role="tablist"' : ''} aria-label="Filter senses by part of speech">${posPills.join('')}</div>`;
             }
         }
     }
