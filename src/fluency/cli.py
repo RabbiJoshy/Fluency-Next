@@ -26,6 +26,7 @@ from fluency.inventory.runner import build_inventory_stage
 from fluency.lyrics.ingest import ingest_legacy_genius_song
 from fluency.lyrics.consolidate import consolidate_lyrics_run
 from fluency.lyrics.assemble import assemble_lyrics_app_stage
+from fluency.lyrics.preview import build_clean_lyrics_preview_release
 from fluency.lyrics.lexical import build_lyrics_lexical_menu_stage
 from fluency.lyrics.process import process_lyrics_run
 from fluency.lyrics.wsd import prepare_lyrics_wsd_stage
@@ -328,6 +329,17 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_assemble.add_argument("--language", required=True)
     lyrics_assemble.add_argument("--artist-slug", required=True)
     lyrics_assemble.add_argument("--comparison-release", type=Path)
+    lyrics_preview = lyrics_actions.add_parser(
+        "build-preview-release",
+        help="package one clean app assembly as a validated inactive Lyrics release",
+    )
+    lyrics_preview.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_preview.add_argument("--run-id", required=True)
+    lyrics_preview.add_argument("--language", required=True)
+    lyrics_preview.add_argument("--artist-slug", required=True)
+    lyrics_preview.add_argument("--release-id", required=True)
+    lyrics_preview.add_argument("--parity-release", type=Path, required=True)
+    lyrics_preview.add_argument("--song-source-id", required=True)
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -865,6 +877,21 @@ def handle_lyrics(args: argparse.Namespace) -> int:
                 f"selected-example delta {report['comparison']['selected_example_delta']:+d}."
             )
         print("No release was composed or activated.")
+        return 0
+    if args.lyrics_command == "build-preview-release":
+        output = build_clean_lyrics_preview_release(
+            workspace, run_id=args.run_id, language=args.language,
+            artist_slug=args.artist_slug, release_id=args.release_id,
+            parity_release=args.parity_release, song_source_id=args.song_source_id,
+        )
+        manifest, _composition = validate_lyrics_release(output)
+        comparison = json.loads((output / "comparison.json").read_text(encoding="utf-8"))
+        print(f"Built validated inactive Lyrics preview release: {output}")
+        print(
+            f"Packaged {manifest['card_count']} cards across {len(manifest['files'])} exact app files "
+            f"({comparison['payload_bytes']} bytes)."
+        )
+        print("The active Lyrics release was not changed.")
         return 0
     raise AssertionError(f"Unhandled lyrics command: {args.lyrics_command}")
 

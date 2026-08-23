@@ -12,7 +12,7 @@ import './config.js?v=20260822p';
 import './progress.js?v=20260822p';
 import './knowledge.js?v=20260822p';
 import './ui.js?v=20260822p';
-import './vocab.js?v=20260822p';
+import './vocab.js?v=20260823u';
 import './song-sets.js?v=20260822p';
 import './vocabulary-import.js?v=20260822p';
 import './flashcards.js?v=20260822p';
@@ -125,7 +125,37 @@ let allArtistsConfig = null;
 // The query key crosses the one-time migration boundary from the old worker,
 // which cached the unversioned empty catalog. The current worker routes this
 // pathname network-only, so later release activations remain immediately live.
-const ARTIST_CATALOG_URL = 'config/artists.json?contract=lyrics-v1';
+const ACTIVE_ARTIST_CATALOG_URL = 'config/artists.json?contract=lyrics-v1';
+
+function requestedLyricsRelease() {
+    const value = new URLSearchParams(window.location.search).get('lyricsRelease') || '';
+    return /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value) ? value : '';
+}
+
+function artistCatalogUrl() {
+    const releaseId = requestedLyricsRelease();
+    return releaseId
+        ? `/releases/lyrics/${encodeURIComponent(releaseId)}/app/config/artists.json`
+        : ACTIVE_ARTIST_CATALOG_URL;
+}
+
+function bindArtistCatalogToRelease(catalog, releaseId) {
+    if (!releaseId) return catalog;
+    const appBase = `/releases/lyrics/${encodeURIComponent(releaseId)}/app/`;
+    for (const artist of Object.values(catalog)) {
+        for (const field of ['indexPath', 'examplesPath', 'masterPath', 'songsPath', 'albumsDictionary', 'defaultAlbumArt', 'pickerImage']) {
+            if (typeof artist[field] === 'string' && artist[field]) artist[field] = appBase + artist[field];
+        }
+        if (artist.albumImageMap) {
+            artist.albumImageMap = Object.fromEntries(
+                Object.entries(artist.albumImageMap).map(([album, path]) => [album, appBase + path])
+            );
+        }
+        artist.releaseManifestPath = `/releases/lyrics/${encodeURIComponent(releaseId)}/manifest.json`;
+        artist.releaseCompositionPath = `/releases/lyrics/${encodeURIComponent(releaseId)}/composition.json`;
+    }
+    return catalog;
+}
 // Slugs of artists currently selected for multi-artist merge
 let selectedArtistSlugs = [];
 const CUSTOM_ARTIST_SLUG = 'custom';
@@ -174,11 +204,12 @@ async function resolveArtist() {
     if (!artistSlug) return; // normal mode
 
     try {
-        const response = await fetch(ARTIST_CATALOG_URL, { cache: 'no-store' });
+        const previewRelease = requestedLyricsRelease();
+        const response = await fetch(artistCatalogUrl(), { cache: 'no-store' });
         if (!response.ok) throw new Error(`Artist catalog HTTP ${response.status}`);
-        allArtistsConfig = validateArtistCatalog(await response.json(), {
+        allArtistsConfig = bindArtistCatalogToRelease(validateArtistCatalog(await response.json(), {
             source: 'config/artists.json'
-        });
+        }), previewRelease);
 
         // Tag each config with its slug
         for (const [slug, cfg] of Object.entries(allArtistsConfig)) {
@@ -776,7 +807,7 @@ async function showLyricsPicker(language, anchorBtn = null) {
     let artists = allArtistsConfig;
     try {
         if (!artists) {
-            artists = await fetch(ARTIST_CATALOG_URL, { cache: 'no-store' }).then(response => {
+            artists = await fetch(artistCatalogUrl(), { cache: 'no-store' }).then(response => {
                 if (!response.ok) throw new Error(`Artist catalog HTTP ${response.status}`);
                 return response.json();
             }).then(value => validateArtistCatalog(value, { source: 'config/artists.json' }));

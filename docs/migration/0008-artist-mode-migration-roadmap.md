@@ -488,8 +488,24 @@ words already exist in the parity vocabulary; the clean one-song policy selects
 243 more examples than the parity release currently exposes for this song.
 That difference is reported for review, not silently blended.
 
-The remaining acceptance check is to package this exact payload in an inactive
-preview release and exercise it through the real learner app and Card Data UI.
+Inactive-preview checkpoint (2026-08-23): release
+`lyrics-clean-estamos-arriba-preview-20260823` packages that exact payload with
+one pinned parity song record and optional Spotify mapping. It validates as six
+hashed app files (968,145 bytes), remains explicitly inactive, and leaves
+`active.json` on `lyrics-legacy-parity-20260822`. The real learner app can open
+the release directly through `lyricsRelease=...`: its one-song catalog, 162
+surface cards, release-derived levels, 17-card first Learn set, real sense
+assignment, translated/translation-missing examples and all ten selected
+examples for `arriba` render correctly. Release-bound unfinished-set resume was
+added and browser-verified back to the exact `arriba` card. That test also fixed
+an old lazy-data bug where restoring selected songs validated a not-yet-loaded
+examples payload and left the loading screen stuck.
+
+The remaining UI acceptance check is narrower: make the Card Data surface
+expose each example's complete occurrence/route/menu/WSD/source lineage as an
+example-first drill-down. It currently lists every selected example and the
+shared assignment evidence, but does not yet expose every example-specific
+field interactively.
 
 #### 6. Compose and compare a clean immutable Artist release
 
@@ -579,11 +595,12 @@ Before making Fluency-Next the live repository:
 
 ### Immediate next action
 
-Compose an inactive one-song preview release around the clean split payload,
-reusing only the parity shell/song/media files that are explicitly named in its
-composition. Open it through the real learner app, verify Card Data can scrub
-every selected example and its provenance, and compare Learn/Review behavior.
-Do not change `active.json` until that preview is accepted.
+Complete the bounded example-first Card Data drill-down against the inactive
+one-song preview, then exercise Review/flagging/progress fallbacks that are
+possible with the current JSTA state. Do not change `active.json`. Once the
+preview UI is accepted, extend the same release composer and comparison report
+from one song to the full clean Spanish Artist corpus rather than inventing a
+second packaging path.
 
 The key separation is now enforceable: shell and study behavior can evolve
 without rebuilding corpus data, while a new Artist data run can be activated

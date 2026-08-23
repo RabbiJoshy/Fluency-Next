@@ -259,6 +259,19 @@
   and return to Speech all passed in the transplanted product UI. The obsolete
   Artist monolith variant branch was removed. Shell cache moved to
   `flashcards-v278` / `20260822p`.
+- Gate 36 (clean one-song learner preview): packaged the clean `Estamos Arriba`
+  assembly as validated inactive release
+  `lyrics-clean-estamos-arriba-preview-20260823` with 162 exact surface cards,
+  349 selected examples and six hashed app files. The active pointer remains on
+  `lyrics-legacy-parity-20260822`. The real learner UI browser-verified the
+  one-song catalog, release-derived levels, 17-card Learn set, WSD sense,
+  available and missing translations, all ten `arriba` examples, and exact
+  unfinished-set resume. Preview selection now uses release-versioned asset
+  URLs; saved Lyrics sessions carry their release ID; release-mismatched legacy
+  sessions cannot contaminate a preview. Resume also now tolerates the intended
+  lazy absence of examples before the first deck load. Shell cache moved to
+  `flashcards-v282`; the remaining bounded UI item is an example-first drilldown
+  of every occurrence's complete lineage in Card Data.
 
 ## Not started
 
@@ -269,9 +282,10 @@
 - Exercise Spanish Review once JSTA has real progress and deliberately submit
   one provenance-bearing test flag after confirming the backend deployment.
   Full corpus-frequency compilation and raw reharvest remain optional.
-- Release diagnostics and release-frozen resume behind the transplanted app.
-- Clean raw-lyrics ingestion, line alignment and regenerated Artist assignments;
-  the parity release intentionally retains current materialized outputs.
+- Full per-example lineage drill-down in the learner Card Data modal.
+- Scale the clean one-song Lyrics release path to the full Spanish Artist corpus;
+  the active parity release still intentionally retains current materialized
+  outputs until that comparison is reviewed.
 
 The existing Fluency repository's local Apps Script and matching client were
 updated for schema compatibility, but nothing was remotely deployed. No old

@@ -39,6 +39,24 @@ function activeStudySessionScope() {
     });
 }
 
+function currentLyricsReleaseId() {
+    if (!activeArtist) return '';
+    return String(activeArtist.releaseId || '').trim();
+}
+
+// A saved Lyrics position belongs to the immutable release that produced its
+// card IDs and examples. Preview URLs are deliberately strict: a legacy
+// snapshot with no release identity must never bleed into a release being
+// audited. The active production release still accepts old unversioned
+// snapshots once, preserving backwards compatibility for existing learners.
+function studySessionMatchesCurrentRelease(snapshot) {
+    if (!snapshot || snapshot.mode !== 'lyrics' || !activeArtist) return true;
+    const currentReleaseId = currentLyricsReleaseId();
+    if (!currentReleaseId) return true;
+    if (snapshot.releaseId) return snapshot.releaseId === currentReleaseId;
+    return !new URLSearchParams(window.location.search).has('lyricsRelease');
+}
+
 // Resume resolution. Inside a deck, only that deck's own saved session is
 // offered — previously the single global snapshot could send a learner who had
 // just opened Bad Bunny into a Speech set, redirecting the URL to get there.
@@ -46,11 +64,15 @@ function getLastStudySession() {
     const scope = activeStudySessionScope();
     if (!scope) return readStudySession(LAST_STUDY_SESSION_KEY);
     const scoped = readStudySession(`${LAST_STUDY_SESSION_KEY}:${scope}`);
-    if (scoped) return scoped;
+    if (scoped && studySessionMatchesCurrentRelease(scoped)) return scoped;
     // Pre-migration sessions only exist under the global key; use one only
     // when it already belongs to the deck in front of the learner.
     const latest = readStudySession(LAST_STUDY_SESSION_KEY);
-    return latest && studySessionScope(latest) === scope ? latest : null;
+    return latest
+        && studySessionScope(latest) === scope
+        && studySessionMatchesCurrentRelease(latest)
+        ? latest
+        : null;
 }
 
 function renderResumeLastSetCard() {
@@ -148,6 +170,7 @@ function saveStudySessionSnapshot() {
     const snapshot = {
         savedAt: new Date().toISOString(),
         mode: activeArtist ? 'lyrics' : 'speech',
+        releaseId: activeArtist ? currentLyricsReleaseId() || null : null,
         artistSlug: window._urlArtistSlug || null,
         artistSlugs: (window._selectedArtistSlugs || []).slice(),
         songIds: activeArtist ? selectedSongIds.slice() : [],
@@ -211,6 +234,7 @@ async function resumeLastStudySession() {
         url.search = '';
         if (snapshot.mode === 'lyrics' && snapshot.artistSlug) {
             url.searchParams.set('artist', snapshot.artistSlug);
+            if (snapshot.releaseId) url.searchParams.set('lyricsRelease', snapshot.releaseId);
             if (snapshot.artistVocabularyScope === 'extra') url.searchParams.set('scope', 'extra');
         }
         url.searchParams.set('resume', '1');
@@ -258,10 +282,16 @@ async function resumeLastStudySession() {
         const restored = snapshot.songIds.map(String).filter(id => available.has(id));
         if (restored.length) {
             selectedSongIds = restored;
-            window.setActiveExamplesData?.(
-                window._cachedExamplesDataRaw || window._cachedExamplesData,
-                activeArtist?.examplesPath || null,
-            );
+            const cachedExamples = window._cachedExamplesDataRaw || window._cachedExamplesData;
+            // Examples are deliberately lazy. A setup-page resume can restore
+            // the selected songs before that optional payload has ever been
+            // fetched; let loadVocabularyData fetch and filter it below.
+            if (cachedExamples) {
+                window.setActiveExamplesData?.(
+                    cachedExamples,
+                    activeArtist?.examplesPath || null,
+                );
+            }
         }
     }
     window.renderArtistSourceSummary?.();
@@ -895,18 +925,26 @@ window.trackDataFreshness = trackDataFreshness;
 // afterwards.
 const joinedIndexCacheByPath = new Map();
 
+function rememberLyricsReleaseVocabulary(indexPath, data) {
+    const releaseId = activeArtist?.releaseId;
+    if (!releaseId || !indexPath || !Array.isArray(data)) return;
+    window._lyricsReleaseVocabularyCache = { releaseId, indexPath, data };
+}
+
 async function fetchAndJoinIndex(langConfig) {
     const indexPath = langConfig.indexPath || langConfig.dataPath;
 
     // Preserve the legacy active-source pointers for search/modal consumers,
     // while retaining other sources in the path-keyed cache.
     if (window._cachedJoinedIndex && window._cachedJoinedIndexPath === indexPath) {
+        rememberLyricsReleaseVocabulary(indexPath, window._cachedJoinedIndex);
         return window._cachedJoinedIndex;
     }
     if (joinedIndexCacheByPath.has(indexPath)) {
         const cached = joinedIndexCacheByPath.get(indexPath);
         window._cachedJoinedIndex = cached;
         window._cachedJoinedIndexPath = indexPath;
+        rememberLyricsReleaseVocabulary(indexPath, cached);
         return cached;
     }
 
@@ -938,6 +976,7 @@ async function fetchAndJoinIndex(langConfig) {
     window._cachedJoinedIndex = data;
     window._cachedJoinedIndexPath = indexPath;
     joinedIndexCacheByPath.set(indexPath, data);
+    rememberLyricsReleaseVocabulary(indexPath, data);
     return data;
 }
 
@@ -945,7 +984,13 @@ async function fetchActiveVocabularyData(langConfig) {
     const selectedSlugs = window._selectedArtistSlugs || [];
     const allConfigs = window._allArtistsConfig;
     if (!(activeArtist && selectedSlugs.length > 1 && allConfigs)) {
-        const vocabulary = await fetchAndJoinIndex(langConfig);
+        const indexPath = langConfig.indexPath || langConfig.dataPath;
+        const exactReleaseCache = window._lyricsReleaseVocabularyCache;
+        const vocabulary = activeArtist?.releaseId
+            && exactReleaseCache?.releaseId === activeArtist.releaseId
+            && exactReleaseCache.indexPath === indexPath
+            ? exactReleaseCache.data
+            : await fetchAndJoinIndex(langConfig);
         return window.filterActiveSongVocabulary?.(vocabulary) || vocabulary;
     }
 
@@ -1451,6 +1496,11 @@ function buildFilteredVocab(vocabData) {
 }
 
 async function loadVocabularyData(rangeString, opts = {}) {
+    const updateResumeLoading = detail => {
+        if (!opts.resumeSnapshot) return;
+        const element = document.getElementById('appLoadingDetail');
+        if (element) element.textContent = detail;
+    };
     // Deck construction mutates the selected entries while attaching examples
     // and trimming artist senses. Force setup to rebuild its immutable view
     // when the learner returns to the menu.
@@ -1504,6 +1554,7 @@ async function loadVocabularyData(rangeString, opts = {}) {
         // Single/multi-artist selection shares one source so setup ranges and
         // the committed deck see identical merged entries and examples.
         const vocabularyData = await fetchActiveVocabularyData(langConfig);
+        updateResumeLoading('Matching the saved cards to this exact release…');
         // Derived from the data we already hold, so it costs nothing to keep
         // current on every deck build. It used to be recomputed only for
         // resume snapshots, which left it at its `false` default on any route
@@ -1628,6 +1679,7 @@ async function loadVocabularyData(rangeString, opts = {}) {
             if (studyMode === 'new') await window.renderRangeSelector?.();
             return;
         }
+        updateResumeLoading('Restoring examples and sense assignments…');
 
         // Everything below may attach examples, pool lemma siblings, or prune
         // the artist sense menu. The next setup/filter pass will restore the
@@ -1699,6 +1751,7 @@ async function loadVocabularyData(rangeString, opts = {}) {
         } else {
             // Fallback: monolith path — examples are inline in vocabularyData
         }
+        updateResumeLoading('Rebuilding your saved card order…');
 
         // Lemma mode: dropped sibling forms contribute their example lines to
         // the surviving one-card-per-lemma card (deduped inside the helper).
@@ -2065,6 +2118,7 @@ async function loadVocabularyData(rangeString, opts = {}) {
         // transition keep the app-level loading screen above this atomic DOM
         // update, so the previous card never flashes between sets.
         await new Promise(resolve => requestAnimationFrame(resolve));
+        updateResumeLoading('Opening the card where you stopped…');
         document.getElementById('setupPanel').classList.add('hidden');
         document.getElementById('appContent').classList.remove('hidden');
         loadingMsg.style.display = 'none';

@@ -158,6 +158,16 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("const releaseConfig = activeArtist || languageConfig", config)
         self.assertIn("layers[`artist:${activeArtist.slug}`]", config)
 
+    def test_lyrics_preview_and_resume_are_bound_to_an_exact_release(self) -> None:
+        main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        vocab = (APP_ROOT / "js" / "vocab.js").read_text(encoding="utf-8")
+        self.assertIn("lyricsRelease", main)
+        self.assertIn("bindArtistCatalogToRelease", main)
+        self.assertIn("releaseId: activeArtist ? currentLyricsReleaseId()", vocab)
+        self.assertIn("studySessionMatchesCurrentRelease", vocab)
+        self.assertIn("url.searchParams.set('lyricsRelease', snapshot.releaseId)", vocab)
+        self.assertIn("if (cachedExamples)", vocab)
+
     def test_audit_accounts_and_flags_use_release_provenance(self) -> None:
         auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
         modals = (APP_ROOT / "js" / "flashcards-modals.js").read_text(encoding="utf-8")
