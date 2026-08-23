@@ -2682,8 +2682,8 @@
             align-content: center;
             gap: 5px;
             margin: 0 0 0 auto;
-            flex: 0 0 176px;
-            width: 176px;
+            flex: 0 0 206px;
+            width: 206px;
             min-height: 70px;
         }
         .back-pos-legend.pos-count-1 {
@@ -2728,6 +2728,7 @@
             width: 100%;
             padding: 7px 9px;
             min-width: 0;
+            white-space: nowrap;
             font-family: var(--font-reading);
             font-size: 14px;
             font-weight: 600;
@@ -3233,7 +3234,7 @@
             place-content: center;
             align-items: center;
             gap: 5px;
-            width: 176px;
+            width: 206px;
             min-height: 70px;
             margin-bottom: 0;
         }
@@ -3254,12 +3255,12 @@
             .card-pos-list {
                 top: 20px;
                 right: 16px;
-                width: 144px;
+                width: 176px;
                 min-height: 64px;
             }
             .back-pos-legend {
-                flex-basis: 144px;
-                width: 144px;
+                flex-basis: 176px;
+                width: 176px;
                 min-height: 64px;
             }
             .card-pos-list .card-pos,
@@ -3277,6 +3278,7 @@
             align-items: center;
             justify-content: center;
             width: 100%;
+            white-space: nowrap;
             padding: 7px 9px;
             border-radius: 999px;
             background: color-mix(in srgb, currentColor 14%, transparent);
