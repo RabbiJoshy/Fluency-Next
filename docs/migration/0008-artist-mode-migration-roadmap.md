@@ -174,25 +174,298 @@ leading-aphesis occurrences (`'Tamo` to `estamos`) and one preservation of
 `Yeh` where the old overlay inherited `eh`. The lineage explorer now exposes
 this clean processing record for every token.
 
-## Remaining Artist work
+## Continuation handoff: remainder of the migration
 
-These are subsequent R&D phases, not blockers for starting the Artist audit:
+This section is the authoritative continuation plan. A new agent should start
+here rather than infer the remaining work from chat history. The two completed
+implementation checkpoints are commits `d4f2810` (source lineage) and `a9c83e5`
+(clean processing lineage). The verified run is
+`runs/es/lyrics/bad-bunny-estamos-arriba-source-v4` in the external workspace.
 
-1. ~~Define a language-agnostic raw-lyrics and line-alignment source contract.~~
-   Completed with a real immutable Bad Bunny source run.
-2. ~~Make tokenization and normalization emit lineage while they run.~~ Complete
-   for the shared runner and Spanish adapter. Port the live routing algorithm
-   next; the current route record correctly names its pinned migration snapshot.
-3. Build a clean Artist inventory/example/assignment pipeline that emits the
-   same split app contract.
-4. Recompute assignments with the selected shared WSD architecture and explicit
-   language adapters; do not modify this parity release in place.
-5. Publish a new immutable release and compare it against this parity baseline.
-6. Add new languages by catalog/config and typed source adapters, with song,
-   artwork, translation, timestamps and playback all remaining optional.
-7. Move offline Artist downloads to release-versioned URLs before claiming
-   offline release switching. The stable active aliases intentionally fail
-   closed when offline today.
+Environment map:
+
+- new code repository: `/Users/joshuathomasamar/PycharmProjects/Fluency-Next`;
+- legacy reference repository: `/Users/joshuathomasamar/PycharmProjects/Fluency`;
+- generated-data workspace: `/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace`;
+- current auditor: `http://127.0.0.1:4173/lyrics-audit/?v=4` when serving
+  `Fluency-Next/app` on port 4173;
+- active parity release:
+  `Fluency-Workspace/releases/lyrics/lyrics-legacy-parity-20260822`.
+
+Before editing, run `git status --short`, read this file, inspect commits
+`d4f2810` and `a9c83e5`, and run
+`PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3.12 -m unittest discover -s tests -p 'test_*.py'`.
+The checkpoint has 163 passing tests. Treat the legacy repository as a source
+of behavior and retained artifacts, not as the destination for new code.
+
+### Non-negotiable constraints
+
+- Preserve the existing learner-facing app behavior and layout. Refactoring the
+  implementation is welcome; redesigning the product is a separate, explicit
+  decision. The development-only lineage explorer is not the learner app.
+- Spanish card identity is surface-based. Do not quietly restore lemma-indexed
+  cards. Lemmas and dictionary headwords are nullable analysis metadata.
+- Never overwrite a run or release. A changed input, policy or implementation
+  creates a new immutable run. Activation selects one exact release; it never
+  merges that release with old assignments.
+- Generated data belongs in `Fluency-Workspace`, not the code repository. The
+  repository owns runners, adapters, schemas, small audit fixtures and app code.
+- Every output must name its exact inputs, implementation/method, run and
+  evidence kind. Missing data is represented as an explicit nullable field or
+  abstention, not guessed. Historical snapshots must be labelled snapshots.
+- Shared engines are language-agnostic. Language quirks belong in adapters and
+  configuration. Artist mode and Speech mode should reuse contracts where the
+  underlying decision is genuinely the same.
+- Do not wait for the final WSD research decision. Build a typed WSD boundary
+  that can accept the current best Spanish method and later replace it without
+  changing token, route, deck or app contracts.
+- Keep the retained Spanish harvested sentences and Gemini embeddings. Discard
+  stale assignments freely because they are cheap to reproduce. Never mix
+  assignments from two runs implicitly.
+- Give Joshua commands for genuinely long harvesting, embedding or WSD runs.
+  Quick schema, import, parity and unit checks should be run by the agent.
+
+### What is already complete
+
+1. The old learner app shell and Artist behavior have a local parity release,
+   including song selection, custom playlists, progress identity, artwork,
+   playback metadata and Card Data.
+2. Artist release selection is exact and fail-closed. Stable app URLs resolve
+   through one active manifest without silently falling back to an old release.
+3. Raw song acquisition, line extraction and optional translation alignment
+   have typed records, stable identities and direct lineage.
+4. Shared Unicode tokenization now emits exact-span occurrences. Spanish
+   normalization/elision restoration is isolated behind a language adapter.
+5. Normalized analysis units and route decisions have explicit schemas. The
+   present route output is truthfully marked as a lookup against a pinned legacy
+   routing snapshot; it is not yet a recomputation by the clean router.
+6. The one-song auditor exposes source, alignment, legacy run comparison, clean
+   recomputation, routing provenance and current release assignments.
+7. The Google Apps Script changes made earlier in the migration preserve flag
+   run/release provenance, playlist selection and `JSTA` audit privileges.
+
+### Remaining work, in execution order
+
+#### 1. Port the live word-routing engine
+
+Replace `RoutingSnapshot` as the decision-maker with a shared deterministic
+router that consumes normalized analysis units plus pinned resources. Preserve
+the snapshot adapter only as a baseline comparator.
+
+The shared router should express generic dispositions such as normal
+vocabulary, conjugation, derivation, clitic/compound handling, proper noun,
+foreign language, noise, low-frequency exclusion, review and unresolved.
+Spanish-specific proper-name, clitic, surface-form and lexical rules belong in
+`src/fluency/lyrics/languages/spanish.py` or a sibling Spanish routing adapter.
+Do not turn Spanish categories into required categories for French, Portuguese
+or Dutch.
+
+Required outputs:
+
+- one route decision per analysis unit, including selected bucket, optional
+  target, confidence/evidence, reason codes and all consulted artifact IDs;
+- direct route lineage rather than `materialized_snapshot` evidence;
+- a parity report against the pinned `word_routing.json`, with every difference
+  grouped as intended, regression, newly resolved or previously stale;
+- explicit unresolved and review outputs that continue through the audit path.
+
+Acceptance gate: run the clean router over `Estamos Arriba`; every route must be
+accounted for, the auditor must display old snapshot versus clean route, and no
+WSD or release activation may occur during this step.
+
+#### 2. Generalize the auditor to multiple songs and run comparison
+
+Do this after clean routing so the UI is built around the final pre-WSD record
+shape. Replace the hard-coded `estamos-arriba.json` assumption with a small
+auditor catalog and song selector. It must support at least two songs from one
+artist, then songs from different artists/languages without changing the UI.
+
+For a selected song, retain the whole-song token map and token drawer. Add:
+
+- selection of baseline and candidate run where both contain that song;
+- filters for route changes, normalization changes, proper names, noise,
+  unresolved items, WSD changes and release inclusion;
+- a compact per-song summary of added, removed and changed decisions;
+- a token history view showing its records across runs without pretending that
+  unrelated occurrence IDs are identical;
+- graceful messages when a run lacks translations, artwork, playback, routes,
+  menus, WSD or final assignments.
+
+Keep this auditor as a development tool under `app/lyrics-audit/`. Do not merge
+its interface into the learner app unless Joshua explicitly chooses elements.
+
+Acceptance gate: switching songs and runs must not reload or blend the wrong
+bundle, and every displayed value must expose its evidence boundary.
+
+#### 3. Build the lexical-menu boundary
+
+For analysis units routed to vocabulary/WSD, create a language-neutral lexical
+candidate contract. It should carry the surface occurrence, normalized form,
+optional lemma, optional dictionary headword, POS analysis and sense-menu
+leaves. No field other than the surface occurrence identity should be assumed
+to exist in every language.
+
+Reuse the mature Speech menu architecture where possible:
+
+- Spanish can use SpanishDict-compatible headword/POS/sense leaves;
+- French can use Kaikki/Wiktionary headword/POS/sense leaves;
+- future providers plug in through adapters without changing downstream WSD;
+- menu providers may propose lookup headwords but may never replace the Spanish
+  surface-card identity;
+- missing/ambiguous menus produce review or abstention records, not dropped
+  tokens.
+
+Acceptance gate: the same generic menu record validates for SpanishDict and
+Wiktionary examples, including empty optional fields.
+
+#### 4. Add WSD as a replaceable stage
+
+Port the current best Spanish embeddings-based WSD exactly as it exists when
+this step begins. Do not use this migration to re-litigate model quality. The
+stage consumes routed analysis units, lexical menus, sentence/song context and
+the retained embedding artifacts. It emits assignments or explicit
+abstentions with scores, selected menu leaf, headword/POS analysis, method ID,
+configuration identity and input artifact IDs.
+
+The WSD runner must be shared with Speech where feasible, with language
+adapters for menu shape, clitics, lemmatization/alignment and other real
+language differences. Lyrics-specific context assembly belongs in a mode
+adapter rather than the scoring core.
+
+Required safeguards:
+
+- no assignment from another run can enter the output unless explicitly named
+  in a composition manifest;
+- embeddings are joined by content/stable identity, never filename alone;
+- a missing embedding, menu or confident sense degrades to an auditable
+  abstention;
+- rerunning WSD creates a new stage/run and leaves tokenization, normalization
+  and routing artifacts reusable when their inputs are unchanged.
+
+Acceptance gate: run a small real-song sample, inspect changes in the auditor,
+and verify that activating nothing leaves the learner app on the parity release.
+
+#### 5. Consolidate occurrences into Artist cards and examples
+
+Build the clean equivalent of the old Artist assignment/consolidation layers.
+This converts per-occurrence WSD output into the existing split app contract:
+artist `index.json`, `examples.json`, language `vocabulary_master.json`, and
+optional song/album/media files.
+
+Rules:
+
+- cards remain surface-based for Spanish;
+- every example retains song, artist, line, translation, source, occurrence,
+  normalization, route, menu, WSD and run/release provenance where available;
+- repeated occurrences may consolidate into one card/sense, but their lineage
+  remains separately inspectable;
+- proper nouns, noise, exclusions and abstentions remain reportable even when
+  they do not become study cards;
+- ordering and example caps are explicit policies recorded in the run;
+- optional translation, artwork, Spotify/timestamp data and albums may be empty
+  without invalidating the deck.
+
+Acceptance gate: the clean sample validates against the same app-facing schema
+as the parity release and Card Data can scrub all metadata for every example.
+
+#### 6. Compose and compare a clean immutable Artist release
+
+Create a new release; never alter `lyrics-legacy-parity-20260822`. Its
+composition manifest must name the exact source, processing, routing, menu,
+WSD, consolidation and media artifacts used.
+
+Produce a release comparison covering:
+
+- cards/examples added, removed and changed;
+- per-song coverage and exclusions;
+- sense-assignment and route changes;
+- missing optional media/translation fields;
+- orphaned files, duplicate IDs and index/examples mismatches;
+- payload size and app-load regression.
+
+Only after the report is reviewed should the clean release be activated
+locally. Keep rollback as a one-manifest selection back to the parity release.
+
+Acceptance gate: exercise whole-artist mode, choose-your-own playlist, Learn,
+Review, resume, completion, Card Data, flagging and progress persistence. Switch
+back to Speech and confirm its active release and state are unchanged.
+
+#### 7. Perform the bounded learner-app audit
+
+This is a cleanup/parity audit, not a redesign. Remove dead branches that are no
+longer reachable under the new contracts, consolidate duplicate loaders and
+make schema failures visible. Prefer optional typed fields and explicit UI
+fallbacks over provider- or language-specific conditionals.
+
+Specifically verify:
+
+- information remains available from the study-settings radial and the active
+  card experience;
+- Card Data is organized by example at the highest level and lets the user
+  scrub every example's complete metadata;
+- dynamic languages, levels, sets and Artist catalogs come from the selected
+  release metadata;
+- Learn/Review, unfinished-set resume and completion retain old behavior;
+- empty translations, images, song lists, playback, menus, assignments or
+  provenance render useful absence states rather than blocking the deck;
+- flags include user, language, mode, card/example/occurrence IDs, run/release,
+  stage/method and timestamp;
+- `JSTA` sees admin information and flagging controls;
+- playlist selection round-trips through the Google Sheet for each user.
+
+Acceptance gate: compare the new app and legacy app side by side using a short
+checklist. Any intentional product change must be listed separately from
+migration parity.
+
+#### 8. Scale the Spanish Artist run
+
+After the truncated release is accepted, run the full Spanish Artist corpus
+through the same immutable stages. Reuse unchanged source, translation and
+embedding artifacts. Joshua should execute long WSD/embedding commands locally;
+the agent should inspect manifests, reports and sampled auditor views afterward.
+
+Do not activate merely because the run completed. Validate exact artifact
+counts, sample multiple artists/songs, review differences from the parity
+release and then explicitly choose the new release.
+
+#### 9. Add further languages through adapters
+
+Implement French first, then Portuguese and Dutch, without forking the pipeline.
+Each language supplies only its real differences: tokenizer overrides if ever
+needed, normalization/elision policy, lexeme resources, routing rules, menu
+provider and WSD adapter. The shared occurrence, lineage, menu, assignment,
+release and app contracts remain unchanged.
+
+For each language, begin with a one- or two-song audit release. Missing artist
+catalogs, translations, playback and artwork are valid. Do not require a
+SpanishDict-shaped provider response from Wiktionary/Kaikki.
+
+#### 10. Finish offline and deployment migration
+
+Before making Fluency-Next the live repository:
+
+- use release-versioned URLs for offline Artist assets rather than caching
+  mutable active aliases;
+- verify service-worker cache versioning and release switching;
+- test the production Google Apps Script deployment with provenance flags,
+  playlist memory and `JSTA` privileges;
+- perform local and deployed smoke tests for Speech and Artist modes;
+- create the new GitHub app/deployment only after local parity is signed off;
+- retain the old repository/deployment as rollback until the new release has
+  survived real use, then deprecate it explicitly.
+
+### Immediate next action
+
+Start with **Port the live word-routing engine**. Inspect the mature Spanish
+routing code in the legacy repository, list its true inputs and decisions, and
+separate shared routing mechanics from Spanish policy before editing. Keep
+`RoutingSnapshot` as the comparator. The first deliverable is a route-parity
+report for `bad-bunny-estamos-arriba-source-v4`, not a WSD run and not a new
+learner release.
+
+After that, add multi-song support to the lineage explorer before starting the
+menu/WSD stages. This gives the remaining migration a scalable audit surface
+rather than forcing progress to be inspected inside the learner app.
 
 The key separation is now enforceable: shell and study behavior can evolve
 without rebuilding corpus data, while a new Artist data run can be activated
