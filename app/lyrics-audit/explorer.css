@@ -94,6 +94,7 @@ h1 { margin: 0; font-size: clamp(34px, 5vw, 62px); line-height: .98; letter-spac
 .token.changed { color: var(--amber); background: rgba(247,199,108,.08); border-bottom-color: rgba(247,199,108,.45); }
 .token.restored { color: var(--cyan); background: rgba(118,228,212,.09); border-bottom-color: rgba(118,228,212,.5); }
 .token.excluded { color: var(--red); text-decoration: line-through; text-decoration-color: rgba(255,143,145,.5); }
+.token.route-changed:not(.excluded) { border-bottom-color: rgba(184,165,255,.55); }
 .token.selected { outline: 1px solid var(--cyan); outline-offset: 2px; }
 .token-id { display: none; color: var(--faint); font: 7px "SFMono-Regular", monospace; margin-left: 4px; }
 .show-ids .token-id { display: inline; }
@@ -136,6 +137,18 @@ h1 { margin: 0; font-size: clamp(34px, 5vw, 62px); line-height: .98; letter-spac
 .state-box strong { overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
 .comparison > span { color: var(--faint); text-align: center; }
 .mono-block { padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--muted); font: 9px/1.5 "SFMono-Regular", monospace; word-break: break-all; }
+.route-reason { margin-top: 7px; color: var(--violet); font: 9px/1.4 "SFMono-Regular", monospace; }
+.policy-trace { margin-top: 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.policy-trace summary { padding: 9px; color: var(--muted); font-size: 9px; cursor: pointer; }
+.policy-trace ol { list-style: none; margin: 0; padding: 0 9px 9px; }
+.policy { padding: 7px 0; border-top: 1px solid var(--line-soft); }
+.policy > div { display: flex; justify-content: space-between; gap: 8px; }
+.policy strong, .policy span, .policy small, .policy code { font-size: 8px; }
+.policy strong { color: var(--text); }
+.policy span, .policy small { color: var(--faint); }
+.policy.match span { color: var(--cyan); }
+.policy small, .policy code { display: block; margin-top: 4px; overflow-wrap: anywhere; }
+.policy code { color: var(--muted); }
 .assignment { padding: 11px; border: 1px solid var(--line); border-radius: 9px; margin-bottom: 8px; }
 .assignment strong { font-size: 12px; }
 .assignment p { margin: 5px 0; color: var(--text); font-size: 11px; }

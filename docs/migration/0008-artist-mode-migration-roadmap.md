@@ -37,9 +37,11 @@ src/fluency/lyrics/
   ingest.py                  immutable source-ingestion stage and legacy adapter
   process.py                 shared token occurrence and analysis-unit runner
   routing.py                 explicit migration-snapshot routing adapter
+  overrides.py               one typed, scoped human-override registry
   languages/
     base.py                  common normalization adapter contract
     spanish.py               Spanish elision and normalization policy
+    spanish_routing.py       ordered Spanish routing policies and evidence
 schemas/
   lyrics-release-manifest.schema.json
   lyrics-release-composition.schema.json
@@ -51,6 +53,8 @@ schemas/
   lyrics-occurrence.schema.json
   lyrics-analysis-unit.schema.json
   lyrics-route-decision.schema.json
+  lyrics-route-comparison.schema.json
+  lyrics-routing-overrides.schema.json
 app/
   config/artists.json        empty static fallback only
   lyrics-audit/              development-only lineage explorer
@@ -162,17 +166,31 @@ alignment absences and 105 lineage events. Both raw legacy inputs are pinned by
 content identity in the workspace object store. No routing, WSD, deck or active
 release changed.
 
-`bad-bunny-estamos-arriba-source-v4` is the verified clean processing checkpoint. It
+`bad-bunny-estamos-arriba-source-v7` is the verified clean processing and live-routing checkpoint. It
 emits 585 exact-span token occurrences, 585 normalized analysis units, 585
-route decisions and 1,755 direct lineage events. Tokenization and Spanish
-elision restoration are recomputed; routing is deliberately labelled as a
-decision against a pinned migration snapshot rather than misrepresented as a
-new router result. Every policy input is read back from its immutable object-
-store artifact before computation. Against the mature Spanish normalization overlay it matches
+route decisions and 1,755 lineage events. Tokenization, Spanish elision restoration,
+and word routing are recomputed directly from pinned inputs. The old
+`word_routing.json` is retained only as an explicitly identified comparator.
+Every word records the complete ordered policy trace, the inputs each policy
+consulted, its final reason, and the exact artifact IDs. Against the mature
+Spanish normalization overlay it matches
 574 of 585 occurrences (98.12%). The eleven differences are ten newly handled
 leading-aphesis occurrences (`'Tamo` to `estamos`) and one preservation of
 `Yeh` where the old overlay inherited `eh`. The lineage explorer now exposes
-this clean processing record for every token.
+this clean processing record for every token, including the old-versus-clean
+routing decision and every passed or matched policy.
+The development bundle keeps occurrence-specific route IDs but stores each
+identical routing decision/policy trace once as a normalized-form profile, so
+the extra auditability does not duplicate the same trace hundreds of times.
+
+The clean router deliberately does not import the legacy scattered noise,
+proper-name, English or cognate override lists as truth. Unknown forms remain
+visible in `sense_discovery`; capitalization-only proper-name evidence becomes
+an explicit review candidate rather than a silent exclusion; interjection-only
+lexical entries have their own spoken-particle disposition. Any future manual
+decision must live in `config/lyrics/routing-overrides.json` with an ID, reason,
+author, timestamp and scope. The registry is empty by default, and conflicting
+active entries fail loudly.
 
 ## Continuation handoff: remainder of the migration
 
@@ -180,14 +198,14 @@ This section is the authoritative continuation plan. A new agent should start
 here rather than infer the remaining work from chat history. The two completed
 implementation checkpoints are commits `d4f2810` (source lineage) and `a9c83e5`
 (clean processing lineage). The verified run is
-`runs/es/lyrics/bad-bunny-estamos-arriba-source-v4` in the external workspace.
+`runs/es/lyrics/bad-bunny-estamos-arriba-source-v7` in the external workspace.
 
 Environment map:
 
 - new code repository: `/Users/joshuathomasamar/PycharmProjects/Fluency-Next`;
 - legacy reference repository: `/Users/joshuathomasamar/PycharmProjects/Fluency`;
 - generated-data workspace: `/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace`;
-- current auditor: `http://127.0.0.1:4173/lyrics-audit/?v=4` when serving
+- current auditor: `http://127.0.0.1:4173/lyrics-audit/?v=7` when serving
   `Fluency-Next/app` on port 4173;
 - active parity release:
   `Fluency-Workspace/releases/lyrics/lyrics-legacy-parity-20260822`.
@@ -237,8 +255,8 @@ of behavior and retained artifacts, not as the destination for new code.
 4. Shared Unicode tokenization now emits exact-span occurrences. Spanish
    normalization/elision restoration is isolated behind a language adapter.
 5. Normalized analysis units and route decisions have explicit schemas. The
-   present route output is truthfully marked as a lookup against a pinned legacy
-   routing snapshot; it is not yet a recomputation by the clean router.
+   clean Spanish router recomputes every decision from pinned automatic evidence;
+   the legacy routing snapshot is comparison evidence only.
 6. The one-song auditor exposes source, alignment, legacy run comparison, clean
    recomputation, routing provenance and current release assignments.
 7. The Google Apps Script changes made earlier in the migration preserve flag
@@ -246,7 +264,7 @@ of behavior and retained artifacts, not as the destination for new code.
 
 ### Remaining work, in execution order
 
-#### 1. Port the live word-routing engine
+#### 1. Port the live word-routing engine — complete
 
 Replace `RoutingSnapshot` as the decision-maker with a shared deterministic
 router that consumes normalized analysis units plus pinned resources. Preserve
@@ -269,9 +287,12 @@ Required outputs:
   grouped as intended, regression, newly resolved or previously stale;
 - explicit unresolved and review outputs that continue through the audit path.
 
-Acceptance gate: run the clean router over `Estamos Arriba`; every route must be
-accounted for, the auditor must display old snapshot versus clean route, and no
-WSD or release activation may occur during this step.
+Acceptance gate passed in `bad-bunny-estamos-arriba-source-v7`: all 585
+occurrences are accounted for across 237 distinct forms. The comparator groups
+208 matches, four intentional removals of the old low-frequency drop, one newly
+resolved form and 24 review-required differences. The auditor displays the old
+snapshot beside the clean route and expands every evaluated policy. No WSD,
+deck assembly or release activation occurred.
 
 #### 2. Generalize the auditor to multiple songs and run comparison
 

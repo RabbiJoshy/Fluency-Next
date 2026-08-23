@@ -23,6 +23,32 @@ class LyricsAuditCatalogTests(unittest.TestCase):
             self.assertEqual(bundle["artist"]["name"], song["artist"])
             self.assertEqual(bundle["language"], song["language"])
 
+    def test_clean_route_references_resolve_to_deduplicated_profiles(self):
+        bundle = json.loads((DATA_ROOT / "estamos-arriba.json").read_text(encoding="utf-8"))
+        profiles = bundle["routing_profiles"]
+        units = {
+            unit["analysis_unit_id"]: unit
+            for line in bundle["song"]["lines"]
+            for occurrence in line["occurrences"]
+            if occurrence.get("clean_processing")
+            for unit in occurrence["clean_processing"]["units"]
+        }
+        references = [
+            route
+            for line in bundle["song"]["lines"]
+            for occurrence in line["occurrences"]
+            if occurrence.get("clean_processing")
+            for route in occurrence["clean_processing"]["routes"]
+        ]
+        self.assertEqual(len(references), bundle["comparison"]["occurrence_count"])
+        self.assertLess(len(profiles), len(references))
+        for reference in references:
+            profile = profiles[reference["profile_id"]]
+            self.assertEqual(
+                profile["decision"]["normalized_form"],
+                units[reference["analysis_unit_id"]]["normalized_form"],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

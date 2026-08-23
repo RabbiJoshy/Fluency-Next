@@ -4,21 +4,62 @@ const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
 const shortId = (value) => value ? `${value.slice(0, 8)}…` : "not preserved";
 
+function resolvedRoutes(clean) {
+  return (clean?.routes || []).map((route) => {
+    const profile = route.profile_id ? state.data.routing_profiles?.[route.profile_id] : null;
+    return profile ? { ...profile.decision, route_id: route.route_id, analysis_unit_id: route.analysis_unit_id } : route;
+  });
+}
+
+function resolvedComparisons(clean) {
+  return (clean?.routes || []).map((route) => state.data.routing_profiles?.[route.profile_id]?.comparison).filter(Boolean);
+}
+
 function tokenClasses(token) {
   const classes = ["token"];
   if (token.changed) classes.push("changed");
   if (token.restored) classes.push("restored");
   if (token.current_route?.status === "excluded") classes.push("excluded");
+  if (routeChanged(token)) classes.push("route-changed");
   if (state.selected === token.occurrence_id) classes.push("selected");
   return classes.join(" ");
+}
+
+function routeChanged(token) {
+  return resolvedComparisons(token.clean_processing).some((item) => item.classification !== "match");
 }
 
 function tokenMatches(token) {
   if (state.filter === "changed" && !token.changed) return false;
   if (state.filter === "restored" && !token.restored) return false;
+  if (state.filter === "route-changed" && !routeChanged(token)) return false;
   if (state.filter === "excluded" && token.current_route?.status !== "excluded") return false;
   if (state.filter === "unresolved" && token.current_route?.status !== "unresolved") return false;
   return !state.query || token.surface.toLocaleLowerCase().includes(state.query);
+}
+
+function routingHtml(clean, token) {
+  const routes = resolvedRoutes(clean);
+  if (!routes.length) {
+    return `<div class="state-box"><small>${escapeHtml(token.current_route.status)}</small><strong>${escapeHtml(token.current_route.label)}</strong></div>`;
+  }
+  const route = routes[0];
+  const comparison = resolvedComparisons(clean)[0];
+  const decision = comparison ? `
+    <div class="comparison route-comparison">
+      <div class="state-box"><small>legacy snapshot</small><strong>${escapeHtml(comparison.baseline.bucket)}</strong></div>
+      <span>→</span>
+      <div class="state-box"><small>${escapeHtml(comparison.classification)}</small><strong>${escapeHtml(comparison.current.bucket)}</strong></div>
+    </div>` : `<div class="state-box"><small>${escapeHtml(route.status)}</small><strong>${escapeHtml(route.bucket)}</strong></div>`;
+  const policies = (route.policy_trace || []).map((policy) => `
+    <li class="policy ${escapeHtml(policy.outcome)}">
+      <div><strong>${escapeHtml(policy.policy_id)}</strong><span>${escapeHtml(policy.outcome)}</span></div>
+      <small>${escapeHtml(policy.inputs?.length ? policy.inputs.join(" + ") : "no external input")}</small>
+      <code>${escapeHtml(JSON.stringify(policy.evidence || {}))}</code>
+    </li>`).join("");
+  return `${decision}
+    <div class="route-reason">${escapeHtml((route.reason_codes || []).join(" + "))}</div>
+    <details class="policy-trace"><summary>Evaluated ${(route.policy_trace || []).length} named policies</summary><ol>${policies}</ol></details>`;
 }
 
 function lineMatches(line) {
@@ -103,7 +144,7 @@ function renderTrace(token, line) {
             <div class="comparison"><div class="state-box"><small>${escapeHtml(baseline.label)}</small><strong>${escapeHtml(before.normalized_form)}</strong></div><span>→</span><div class="state-box"><small>${escapeHtml(candidate.label)}</small><strong>${escapeHtml(after.normalized_form)}</strong></div></div>
           </div>
           ${clean ? `<div class="stage current"><div class="stage-title"><strong>Clean recomputation</strong><span class="evidence-kind">new direct lineage</span></div><div class="comparison"><div class="state-box"><small>${escapeHtml(clean.surface)} · ${escapeHtml(clean.tokenizer_method)}</small><strong>${escapeHtml(clean.normalized_form)}</strong></div><span>→</span><div class="state-box"><small>${escapeHtml(clean.units.map((unit) => unit.reason_code).join(" + "))}</small><strong>${escapeHtml(clean.units.map((unit) => unit.operation).join(" + "))}</strong></div></div></div>` : ""}
-          <div class="stage current"><div class="stage-title"><strong>Route</strong><span class="evidence-kind">${clean ? "pinned migration snapshot" : "current snapshot"}</span></div><div class="state-box"><small>${escapeHtml(token.current_route.status)}</small><strong>${escapeHtml(token.current_route.label)}</strong></div></div>
+          <div class="stage current"><div class="stage-title"><strong>Route</strong><span class="evidence-kind">${resolvedRoutes(clean)[0]?.evidence_kind === "direct" ? "direct policy trace" : resolvedRoutes(clean)[0]?.evidence_kind === "human_review" ? "attributed human override" : "current snapshot"}</span></div>${routingHtml(clean, token)}</div>
           <div class="stage current"><div class="stage-title"><strong>Materialize in app</strong><span class="evidence-kind">current release</span></div>${assignmentHtml(line.app_assignments, token)}</div>
         </div>
       </section>
@@ -139,7 +180,7 @@ function renderHeader() {
   $("alignmentCount").textContent = data.comparison.aligned_line_count.toLocaleString();
   const hasCleanProcessing = data.comparison.process_lineage_event_count > 0;
   $("evidenceSummary").innerHTML = hasCleanProcessing
-    ? "<strong>Evidence boundary:</strong> historical normalization is compared from two preserved runs. Clean processing has direct lineage; routing names its pinned migration snapshot, and app assignments remain current release records."
+    ? `<strong>Evidence boundary:</strong> historical normalization is compared from two preserved runs. ${escapeHtml(data.evidence.routing)}, while app assignments remain current release records.`
     : "<strong>Evidence boundary:</strong> this song currently has the preserved legacy normalization comparison and current release records. Clean source and processing lineage have not been generated for it yet.";
   $("evidenceList").innerHTML = Object.entries(data.evidence).map(([key, value]) => `<div><strong>${escapeHtml(key)}</strong><span>${escapeHtml(value)}</span></div>`).join("");
   $("limitationsList").innerHTML = data.limitations.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
@@ -177,7 +218,7 @@ async function loadSong(songId) {
   picker.disabled = true;
   $("songTitle").textContent = `Loading ${entry.title}…`;
   try {
-    const response = await fetch(`data/${entry.bundle}?v=6`, { cache: "no-store" });
+    const response = await fetch(`data/${entry.bundle}?v=7`, { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const bundle = await response.json();
     if (requestId !== state.requestId) return;
@@ -204,13 +245,13 @@ async function loadSong(songId) {
 
 async function start() {
   if (window.location.protocol === "file:") {
-    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=6";
+    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=7";
     $("songTitle").textContent = "Local server required";
     $("artistName").innerHTML = `This explorer loads its audit bundle over HTTP. <a href="${servedUrl}">Open the working explorer</a>.`;
     return;
   }
   try {
-    const response = await fetch("data/catalog.json?v=6", { cache: "no-store" });
+    const response = await fetch("data/catalog.json?v=7", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     state.catalog = await response.json();
     const picker = $("songSelect");

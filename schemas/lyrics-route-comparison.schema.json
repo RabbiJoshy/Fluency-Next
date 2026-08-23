@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/lyrics-route-comparison.schema.json",
+  "title": "One grouped clean-versus-baseline Lyrics routing comparison",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_version", "comparison_id", "run_id", "normalized_form", "occurrence_count", "classification", "baseline_snapshot_content_id", "baseline", "current"],
+  "properties": {
+    "record_version": {"const": "lyrics-route-comparison/v1"},
+    "comparison_id": {"type": "string", "pattern": "^comparison_[0-9a-f]{32}$"},
+    "run_id": {"type": "string", "minLength": 1},
+    "normalized_form": {"type": "string", "minLength": 1},
+    "occurrence_count": {"type": "integer", "minimum": 1},
+    "classification": {"enum": ["match", "intended_policy_change", "newly_resolved", "regression_candidate", "review_required"]},
+    "baseline_snapshot_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "baseline": {"$ref": "#/$defs/baselineDecision"},
+    "current": {"$ref": "#/$defs/currentDecision"}
+  },
+  "$defs": {
+    "baselineDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method_id", "status", "bucket", "target"],
+      "properties": {
+        "method_id": {"type": "string", "minLength": 1},
+        "status": {"enum": ["excluded", "classified", "derived", "review", "unresolved"]},
+        "bucket": {"type": "string", "minLength": 1},
+        "target": {"type": ["string", "null"]}
+      }
+    },
+    "currentDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method_id", "status", "bucket", "target", "reason_codes", "evidence_kind", "input_artifact_ids"],
+      "properties": {
+        "method_id": {"type": "string", "minLength": 1},
+        "status": {"enum": ["excluded", "classified", "derived", "review", "unresolved"]},
+        "bucket": {"type": "string", "minLength": 1},
+        "target": {"type": ["string", "null"]},
+        "reason_codes": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "evidence_kind": {"enum": ["direct", "human_review"]},
+        "input_artifact_ids": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
+      }
+    }
+  }
+}

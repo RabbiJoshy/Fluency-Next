@@ -8,7 +8,7 @@
       "artist": "Bad Bunny",
       "language": "es",
       "bundle": "estamos-arriba.json",
-      "coverage": "clean processing + legacy comparison"
+      "coverage": "live routing + full policy trace"
     },
     {
       "song_id": "9614104",

@@ -15,13 +15,13 @@ from typing import Any
 from fluency.core.artifacts import ArtifactMetadata, artifact_directory, store_artifact_bytes
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
-from fluency.lyrics.languages import load_lyrics_adapter
+from fluency.lyrics.languages import load_live_lyrics_router, load_lyrics_adapter
 from fluency.lyrics.lineage import build_lineage_event
 from fluency.lyrics.routing import RoutingSnapshot
 from fluency.release.io import atomic_write, json_bytes
 
 
-STAGE_VERSION = "lyrics-processing-stage/v1"
+STAGE_VERSION = "lyrics-processing-stage/v2"
 TOKENIZER_ID = "unicode-lyrics-tokenizer/v1"
 
 
@@ -110,8 +110,31 @@ def _pin_json(workspace: Workspace, path: Path, *, filename: str, schema: str) -
     )
 
 
+def _pin_text(workspace: Workspace, path: Path, *, filename: str, schema: str) -> ArtifactMetadata:
+    return store_artifact_bytes(
+        workspace,
+        path.expanduser().resolve().read_bytes(),
+        filename=filename,
+        media_type="text/plain",
+        schema=schema,
+        created_by_stage=STAGE_VERSION,
+    )
+
+
 def _payload_path(workspace: Workspace, metadata: ArtifactMetadata) -> Path:
     return artifact_directory(workspace, metadata.artifact_id) / metadata.filename
+
+
+def _comparison_class(current: dict[str, Any], baseline: dict[str, Any]) -> str:
+    if (current["bucket"], current.get("target")) == (baseline["bucket"], baseline.get("target")):
+        return "match"
+    if baseline["bucket"] == "exclude.low_frequency" and current["bucket"] == "sense_discovery":
+        return "intended_policy_change"
+    if baseline["bucket"] == "unresolved" and current["bucket"] != "unresolved":
+        return "newly_resolved"
+    if current["bucket"] == "unresolved" and baseline["bucket"] != "unresolved":
+        return "regression_candidate"
+    return "review_required"
 
 
 def process_lyrics_run(
@@ -125,6 +148,12 @@ def process_lyrics_run(
     frequency_snapshot: Path,
     lexeme_register: Path,
     routing_snapshot: Path,
+    routing_mode: str = "snapshot",
+    english_frequency: Path | None = None,
+    english_loanwords: Path | None = None,
+    conjugation_reverse: Path | None = None,
+    caps_stats: Path | None = None,
+    routing_overrides: Path | None = None,
     started_at: datetime | None = None,
 ) -> Path:
     """Create occurrence, normalized-unit, route, and lineage artifacts once."""
@@ -138,26 +167,47 @@ def process_lyrics_run(
         raise LyricsProcessingError("lyrics run language or mode does not match")
     source_output = run_directory / "stages" / "01_source_ingest" / "output"
     source_manifest = _read_json(source_output / "manifest.json")
+    source_song = _read_json(source_output / "song.json")
     lines = _read_jsonl(source_output / "lines.jsonl")
     output_directory = run_directory / "stages" / "02_process" / "output"
     if output_directory.exists():
         raise LyricsProcessingError("processing output already exists; create a new run instead of overwriting it")
 
-    pinned = {
+    pinned: dict[str, ArtifactMetadata] = {
         "elision_mapping": _pin_json(workspace, elision_mapping, filename="elision-mapping.json", schema="spanish-elision-mapping/v1"),
         "multi_word_elisions": _pin_json(workspace, multi_word_elisions, filename="multi-word-elisions.json", schema="spanish-multi-word-elisions/v1"),
         "known_forms": _pin_json(workspace, known_forms, filename="spanish-known-forms.json", schema="spanish-known-forms/v1"),
-        "frequency_snapshot": store_artifact_bytes(
-            workspace,
-            frequency_snapshot.expanduser().resolve().read_bytes(),
-            filename="spanish-surface-frequency.txt",
-            media_type="text/plain",
-            schema="spanish-surface-frequency/v1",
-            created_by_stage=STAGE_VERSION,
-        ),
+        "frequency_snapshot": _pin_text(workspace, frequency_snapshot, filename="spanish-surface-frequency.txt", schema="spanish-surface-frequency/v1"),
         "lexeme_register": _pin_json(workspace, lexeme_register, filename="spanish-lexeme-register.json", schema="spanish-lexeme-register/v1"),
         "routing_snapshot": _pin_json(workspace, routing_snapshot, filename="word-routing.json", schema="legacy-word-routing/v2"),
     }
+    if routing_mode not in {"snapshot", "live"}:
+        raise LyricsProcessingError("routing mode must be 'snapshot' or 'live'")
+    if routing_mode == "live":
+        live_paths = {
+            "english_frequency": english_frequency,
+            "english_loanwords": english_loanwords,
+            "conjugation_reverse": conjugation_reverse,
+            "caps_stats": caps_stats,
+        }
+        missing = sorted(name for name, path in live_paths.items() if path is None)
+        if missing:
+            raise LyricsProcessingError("live routing is missing required inputs: " + ", ".join(missing))
+        pinned.update(
+            {
+                "english_frequency": _pin_text(workspace, english_frequency, filename="english-surface-frequency.txt", schema="english-surface-frequency/v1"),
+                "english_loanwords": _pin_json(workspace, english_loanwords, filename="spanish-english-loanwords.json", schema="spanish-english-loanwords/v1"),
+                "conjugation_reverse": _pin_json(workspace, conjugation_reverse, filename="spanish-conjugation-reverse.json", schema="spanish-conjugation-reverse/v1"),
+                "caps_stats": _pin_json(workspace, caps_stats, filename="artist-capitalization-stats.json", schema="artist-capitalization-stats/v1"),
+            }
+        )
+        if routing_overrides is not None:
+            pinned["routing_overrides"] = _pin_json(
+                workspace,
+                routing_overrides,
+                filename="lyrics-routing-overrides.json",
+                schema="lyrics-routing-overrides/v1",
+            )
     inputs = {
         **{name: metadata.artifact_id for name, metadata in pinned.items()},
         "source_lines": source_manifest["outputs"]["lines.jsonl"],
@@ -170,7 +220,27 @@ def process_lyrics_run(
         frequency_snapshot=_payload_path(workspace, pinned["frequency_snapshot"]),
         lexeme_register=_payload_path(workspace, pinned["lexeme_register"]),
     )
-    router = RoutingSnapshot(_payload_path(workspace, pinned["routing_snapshot"]))
+    comparison_router = RoutingSnapshot(_payload_path(workspace, pinned["routing_snapshot"]))
+    if routing_mode == "live":
+        router = load_live_lyrics_router(
+            language,
+            known_forms=_payload_path(workspace, pinned["known_forms"]),
+            spanish_frequency=_payload_path(workspace, pinned["frequency_snapshot"]),
+            english_frequency=_payload_path(workspace, pinned["english_frequency"]),
+            english_loanwords=_payload_path(workspace, pinned["english_loanwords"]),
+            conjugation_reverse=_payload_path(workspace, pinned["conjugation_reverse"]),
+            caps_stats=_payload_path(workspace, pinned["caps_stats"]),
+            elision_mapping=_payload_path(workspace, pinned["elision_mapping"]),
+            routing_overrides=(
+                _payload_path(workspace, pinned["routing_overrides"])
+                if "routing_overrides" in pinned
+                else None
+            ),
+            artist_id=source_song.get("artist", {}).get("id"),
+            song_id=source_song.get("song_id"),
+        )
+    else:
+        router = comparison_router
     started_at = datetime.now(UTC) if started_at is None else started_at.astimezone(UTC)
 
     occurrences: list[dict[str, Any]] = []
@@ -179,6 +249,7 @@ def process_lyrics_run(
     events: list[dict[str, Any]] = []
     normalization_reasons: dict[str, int] = {}
     route_counts: dict[str, int] = {}
+    comparison_rows: dict[tuple[str, str, str | None, str, str | None], dict[str, Any]] = {}
     for line in lines:
         scanned = _scan_tokens(line["text"])
         enclosed = _enclosed_ranges(line["text"])
@@ -261,18 +332,68 @@ def process_lyrics_run(
                     )
                 )
                 route = router.route(normalized_unit.form)
+                baseline_route = comparison_router.route(normalized_unit.form)
+                comparison_class = _comparison_class(route, baseline_route)
+                comparison_key = (
+                    normalized_unit.form,
+                    route["bucket"],
+                    route.get("target"),
+                    baseline_route["bucket"],
+                    baseline_route.get("target"),
+                )
+                if comparison_key not in comparison_rows:
+                    comparison_rows[comparison_key] = {
+                        "record_version": "lyrics-route-comparison/v1",
+                        "comparison_id": _stable_id(
+                            "comparison",
+                            {
+                                "version": "lyrics-route-comparison/v1",
+                                "run_id": run_id,
+                                "normalized_form": normalized_unit.form,
+                                "current": [route["bucket"], route.get("target")],
+                                "baseline": [baseline_route["bucket"], baseline_route.get("target")],
+                            },
+                        ),
+                        "run_id": run_id,
+                        "normalized_form": normalized_unit.form,
+                        "occurrence_count": 0,
+                        "classification": comparison_class,
+                        "baseline_snapshot_content_id": inputs["routing_snapshot"],
+                        "baseline": {
+                            "method_id": comparison_router.method_id,
+                            "status": baseline_route["status"],
+                            "bucket": baseline_route["bucket"],
+                            "target": baseline_route.get("target"),
+                        },
+                        "current": {
+                            "method_id": router.method_id,
+                            "status": route["status"],
+                            "bucket": route["bucket"],
+                            "target": route.get("target"),
+                            "reason_codes": route["reason_codes"],
+                            "evidence_kind": route.get("evidence_kind", router.evidence_kind),
+                            "input_artifact_ids": [
+                                inputs[name] for name in route["consulted_inputs"]
+                            ],
+                        },
+                    }
+                comparison_rows[comparison_key]["occurrence_count"] += 1
                 route_id = _stable_id(
                     "route",
-                    {"version": "lyrics-route-decision/v1", "analysis_unit_id": unit_id, **route},
+                    {"version": "lyrics-route-decision/v2", "analysis_unit_id": unit_id, **route},
                 )
                 route_record = {
-                    "record_version": "lyrics-route-decision/v1",
+                    "record_version": "lyrics-route-decision/v2",
                     "route_id": route_id,
                     "analysis_unit_id": unit_id,
                     "normalized_form": normalized_unit.form,
                     **route,
                     "method_id": router.method_id,
-                    "snapshot_content_id": inputs["routing_snapshot"],
+                    "evidence_kind": route.get("evidence_kind", router.evidence_kind),
+                    "input_artifact_ids": [
+                        inputs[name] for name in route["consulted_inputs"]
+                    ],
+                    "comparison_snapshot_content_id": inputs["routing_snapshot"],
                 }
                 routes.append(route_record)
                 route_counts[route["bucket"]] = route_counts.get(route["bucket"], 0) + 1
@@ -283,13 +404,15 @@ def process_lyrics_run(
                         operation="exclude" if route["status"] == "excluded" else "route",
                         run_id=run_id,
                         method_id=router.method_id,
-                        input_refs=[
-                            {"kind": "analysis_unit", "id": unit_id},
-                            {"kind": "routing_snapshot", "id": inputs["routing_snapshot"], "content_id": inputs["routing_snapshot"]},
+                        input_refs=[{"kind": "analysis_unit", "id": unit_id}] + [
+                            {"kind": "routing_input", "id": inputs[name], "content_id": inputs[name]}
+                            for name in route["consulted_inputs"]
                         ],
                         output_refs=[{"kind": "route_decision", "id": route_id}],
-                        evidence_kind="materialized_snapshot",
+                        evidence_kind=route.get("evidence_kind", router.evidence_kind),
                         decision=route,
+                        reason_codes=route["reason_codes"],
+                        language_adapter=router.method_id if routing_mode == "live" else None,
                     )
                 )
 
@@ -299,6 +422,8 @@ def process_lyrics_run(
         (temporary / "occurrences.jsonl").write_bytes(_jsonl_bytes(occurrences))
         (temporary / "analysis-units.jsonl").write_bytes(_jsonl_bytes(units))
         (temporary / "routes.jsonl").write_bytes(_jsonl_bytes(routes))
+        comparisons = sorted(comparison_rows.values(), key=lambda item: item["normalized_form"])
+        (temporary / "route-comparison.jsonl").write_bytes(_jsonl_bytes(comparisons))
         (temporary / "lineage.jsonl").write_bytes(_jsonl_bytes(events))
         units_per_occurrence = Counter(unit["occurrence_id"] for unit in units)
         report = {
@@ -312,11 +437,13 @@ def process_lyrics_run(
             ),
             "normalization_reasons": dict(sorted(normalization_reasons.items())),
             "route_counts": dict(sorted(route_counts.items())),
+            "route_comparison": dict(sorted(Counter(row["classification"] for row in comparisons).items())),
+            "route_comparison_form_count": len(comparisons),
             "lineage_event_count": len(events),
-            "routing_provenance": "materialized_snapshot",
+            "routing_provenance": router.evidence_kind,
         }
         (temporary / "report.json").write_bytes(json_bytes(report))
-        output_names = ("occurrences.jsonl", "analysis-units.jsonl", "routes.jsonl", "lineage.jsonl", "report.json")
+        output_names = ("occurrences.jsonl", "analysis-units.jsonl", "routes.jsonl", "route-comparison.jsonl", "lineage.jsonl", "report.json")
         outputs = {name: file_content_id(temporary / name) for name in output_names}
         manifest = {
             "manifest_version": STAGE_VERSION,
@@ -331,6 +458,7 @@ def process_lyrics_run(
                     "process": file_content_id(Path(__file__)),
                     "adapter": file_content_id(Path(__file__).parent / "languages" / "spanish.py"),
                     "routing": file_content_id(Path(__file__).with_name("routing.py")),
+                    "spanish_routing": file_content_id(Path(__file__).parent / "languages" / "spanish_routing.py"),
                 }
             ),
             "inputs": inputs,

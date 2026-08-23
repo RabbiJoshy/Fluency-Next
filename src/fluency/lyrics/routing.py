@@ -1,14 +1,22 @@
-"""Explicit routing-snapshot adapter for migration-stage Lyrics runs."""
+"""Shared Lyrics routing contract and legacy-snapshot comparator."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
+
+
+class LyricsRouter(Protocol):
+    method_id: str
+    evidence_kind: str
+
+    def route(self, form: str) -> dict[str, Any]: ...
 
 
 class RoutingSnapshot:
     method_id = "legacy-word-routing-snapshot/v1"
+    evidence_kind = "materialized_snapshot"
 
     def __init__(self, path: Path) -> None:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -32,14 +40,33 @@ class RoutingSnapshot:
     def route(self, form: str) -> dict[str, Any]:
         key = form.casefold()
         if key in self.exclude:
-            return {"status": "excluded", "bucket": f"exclude.{self.exclude[key]}", "target": None}
+            return self._decision("excluded", f"exclude.{self.exclude[key]}")
         if key in self.classifier:
-            return {"status": "classified", "bucket": f"classifier.{self.classifier[key]}", "target": None}
+            return self._decision("classified", f"classifier.{self.classifier[key]}")
         if key in self.derivations:
-            return {"status": "derived", "bucket": "derivation_map", "target": self.derivations[key]}
+            return self._decision("derived", "derivation_map", self.derivations[key])
         if key in self.clitics:
-            return {"status": "classified", "bucket": "clitic_merge", "target": self.clitics[key]}
+            return self._decision("classified", "clitic_merge", self.clitics[key])
         if key in self.discovery:
-            return {"status": "review", "bucket": "sense_discovery", "target": None}
-        return {"status": "unresolved", "bucket": "unresolved", "target": None}
+            return self._decision("review", "sense_discovery")
+        return self._decision("unresolved", "unresolved")
 
+    @staticmethod
+    def _decision(status: str, bucket: str, target: str | None = None) -> dict[str, Any]:
+        return {
+            "status": status,
+            "bucket": bucket,
+            "target": target,
+            "reason_codes": ["snapshot_bucket_lookup"],
+            "consulted_inputs": ["routing_snapshot"],
+            "details": {},
+            "policy_trace": [
+                {
+                    "policy_id": "legacy.snapshot_bucket_lookup/v1",
+                    "outcome": "match",
+                    "inputs": ["routing_snapshot"],
+                    "evidence": {"bucket": bucket},
+                }
+            ],
+            "evidence_kind": "materialized_snapshot",
+        }

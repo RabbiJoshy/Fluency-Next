@@ -250,6 +250,16 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_process.add_argument("--frequency-snapshot", type=Path, required=True)
     lyrics_process.add_argument("--lexeme-register", type=Path, required=True)
     lyrics_process.add_argument("--routing-snapshot", type=Path, required=True)
+    lyrics_process.add_argument("--routing-mode", choices=("snapshot", "live"), default="snapshot")
+    lyrics_process.add_argument("--english-frequency", type=Path)
+    lyrics_process.add_argument("--english-loanwords", type=Path)
+    lyrics_process.add_argument("--conjugation-reverse", type=Path)
+    lyrics_process.add_argument("--caps-stats", type=Path)
+    lyrics_process.add_argument(
+        "--routing-overrides",
+        type=Path,
+        help="optional typed registry; omitted means no human routing overrides",
+    )
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -656,6 +666,12 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             frequency_snapshot=args.frequency_snapshot,
             lexeme_register=args.lexeme_register,
             routing_snapshot=args.routing_snapshot,
+            routing_mode=args.routing_mode,
+            english_frequency=args.english_frequency,
+            english_loanwords=args.english_loanwords,
+            conjugation_reverse=args.conjugation_reverse,
+            caps_stats=args.caps_stats,
+            routing_overrides=args.routing_overrides,
         )
         report = json.loads((output / "report.json").read_text(encoding="utf-8"))
         print(f"Completed immutable Lyrics processing layer: {output}")
@@ -664,10 +680,17 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             f"{report['analysis_unit_count']} analysis units; emitted "
             f"{report['lineage_event_count']} lineage events."
         )
-        print(
-            "Normalization and elision restoration were recomputed directly; "
-            "routing is explicitly sourced from the pinned migration snapshot."
-        )
+        if report["routing_provenance"] == "direct":
+            print(
+                "Normalization, elision restoration, and routing were recomputed directly; "
+                "the pinned migration snapshot was used only for comparison."
+            )
+            print("Route comparison: " + json.dumps(report["route_comparison"], sort_keys=True))
+        else:
+            print(
+                "Normalization and elision restoration were recomputed directly; "
+                "routing is explicitly sourced from the pinned migration snapshot."
+            )
         print("No WSD, deck assembly, release build, or activation was run.")
         return 0
     raise AssertionError(f"Unhandled lyrics command: {args.lyrics_command}")

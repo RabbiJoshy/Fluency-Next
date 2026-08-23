@@ -4,16 +4,36 @@
   "title": "Provenanced route decision for one lyrics analysis unit",
   "type": "object",
   "additionalProperties": false,
-  "required": ["record_version", "route_id", "analysis_unit_id", "normalized_form", "status", "bucket", "target", "method_id", "snapshot_content_id"],
+  "required": ["record_version", "route_id", "analysis_unit_id", "normalized_form", "status", "bucket", "target", "reason_codes", "consulted_inputs", "details", "policy_trace", "method_id", "evidence_kind", "input_artifact_ids", "comparison_snapshot_content_id"],
   "properties": {
-    "record_version": {"const": "lyrics-route-decision/v1"},
+    "record_version": {"const": "lyrics-route-decision/v2"},
     "route_id": {"type": "string", "pattern": "^route_[0-9a-f]{32}$"},
     "analysis_unit_id": {"type": "string", "pattern": "^unit_[0-9a-f]{32}$"},
     "normalized_form": {"type": "string", "minLength": 1},
     "status": {"enum": ["excluded", "classified", "derived", "review", "unresolved"]},
     "bucket": {"type": "string", "minLength": 1},
     "target": {"type": ["string", "null"]},
+    "reason_codes": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "consulted_inputs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "details": {"type": "object"},
+    "policy_trace": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["policy_id", "outcome", "inputs", "evidence"],
+        "properties": {
+          "policy_id": {"type": "string", "minLength": 1},
+          "outcome": {"enum": ["match", "pass"]},
+          "inputs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "evidence": {"type": "object"}
+        }
+      }
+    },
     "method_id": {"type": "string", "minLength": 1},
-    "snapshot_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+    "evidence_kind": {"enum": ["direct", "human_review", "materialized_snapshot"]},
+    "input_artifact_ids": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}},
+    "comparison_snapshot_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
   }
 }

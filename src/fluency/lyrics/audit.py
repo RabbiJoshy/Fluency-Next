@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from fluency.core.hashing import canonical_content_id
+
 
 def _read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -154,6 +156,9 @@ def build_bundle(
     processed_by_line: dict[str, list[dict[str, Any]]] = defaultdict(list)
     processed_units: dict[str, list[dict[str, Any]]] = defaultdict(list)
     processed_routes: dict[str, dict[str, Any]] = {}
+    route_comparisons: dict[str, dict[str, Any]] = {}
+    route_profile_ids: dict[str, str] = {}
+    routing_profiles: dict[str, dict[str, Any]] = {}
     process_lineage_event_count = 0
     if source_ingest is not None:
         source_ingest = source_ingest.expanduser().resolve()
@@ -182,6 +187,24 @@ def build_bundle(
             route["analysis_unit_id"]: route
             for route in _read_jsonl(process_output / "routes.jsonl")
         }
+        comparison_path = process_output / "route-comparison.jsonl"
+        if comparison_path.exists():
+            route_comparisons = {
+                comparison["normalized_form"]: comparison
+                for comparison in _read_jsonl(comparison_path)
+            }
+        for analysis_unit_id, route in processed_routes.items():
+            decision = {
+                key: value
+                for key, value in route.items()
+                if key not in {"route_id", "analysis_unit_id"}
+            }
+            profile_id = "route_profile_" + canonical_content_id(decision).removeprefix("sha256:")[:32]
+            route_profile_ids[analysis_unit_id] = profile_id
+            routing_profiles[profile_id] = {
+                "decision": decision,
+                "comparison": route_comparisons.get(route["normalized_form"]),
+            }
         process_lineage_event_count = sum(1 for _ in _read_jsonl(process_output / "lineage.jsonl"))
 
     changed_count = 0
@@ -212,11 +235,21 @@ def build_bundle(
                 for unit in clean_units
                 if unit["analysis_unit_id"] in processed_routes
             ]
+            clean_route_refs = [
+                {
+                    "route_id": processed_routes[unit["analysis_unit_id"]]["route_id"],
+                    "analysis_unit_id": unit["analysis_unit_id"],
+                    "profile_id": route_profile_ids[unit["analysis_unit_id"]],
+                }
+                for unit in clean_units
+                if unit["analysis_unit_id"] in processed_routes
+            ]
             clean_route = clean_route_records[0] if len(clean_route_records) == 1 else None
             current_route = (
                 {
                     "status": clean_route["status"],
-                    "label": clean_route["bucket"].replace("_", " "),
+                    "label": clean_route["bucket"].replace(".", " · ").replace("_", " "),
+                    "evidence_kind": clean_route.get("evidence_kind"),
                 }
                 if clean_route
                 else _route_for(candidate_form, routing)
@@ -252,7 +285,7 @@ def build_bundle(
                             "span": clean_occurrence["span"],
                             "normalized_form": " + ".join(unit["normalized_form"] for unit in clean_units),
                             "units": clean_units,
-                            "routes": clean_route_records,
+                            "routes": clean_route_refs,
                             "tokenizer_method": (process_manifest or {}).get("methods", {}).get("tokenize"),
                             "normalizer_method": (process_manifest or {}).get("methods", {}).get("normalize"),
                             "router_method": (process_manifest or {}).get("methods", {}).get("route"),
@@ -286,6 +319,17 @@ def build_bundle(
         )
 
     title = segments[0].get("source", {}).get("title", song_id) if segments else song_id
+    direct_routing = bool(
+        process_manifest
+        and process_manifest.get("methods", {}).get("route") != "legacy-word-routing-snapshot/v1"
+    )
+    limitations = [
+        "The legacy ledger recorded language as 'und'; this adapter supplies 'es' from the selected artist release.",
+        "The two legacy normalization runs remain the historical comparison; clean processing is a new directly reproducible run.",
+        "App assignments are current materialized release records, not invented historical run events.",
+    ]
+    if process_output and not direct_routing:
+        limitations.insert(2, "Routing uses a pinned materialized migration snapshot until the shared router itself is ported.")
     return {
         "schema": "fluency.lyrics-audit-bundle/v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -306,6 +350,7 @@ def build_bundle(
                 "artifact_sha256": candidate_manifest.get("artifact", {}).get("sha256"),
             },
         ],
+        "routing_profiles": routing_profiles,
         "comparison": {
             "baseline_run_id": baseline_run,
             "candidate_run_id": candidate_run,
@@ -331,18 +376,15 @@ def build_bundle(
                 else "not included in this audit bundle"
             ),
             "routing": (
-                "direct route records against an explicitly pinned migration snapshot"
+                "direct policy evaluation with a per-word trace and pinned legacy snapshot comparison"
+                if direct_routing
+                else "route records against an explicitly pinned migration snapshot"
                 if process_output
                 else "reconstructed lookup against the current materialized word_routing.json"
             ),
             "app_assignments": "current materialized immutable Artist release",
         },
-        "limitations": [
-            "The legacy ledger recorded language as 'und'; this adapter supplies 'es' from the selected artist release.",
-            "The two legacy normalization runs remain the historical comparison; clean processing is a new directly reproducible run.",
-            "Routing uses a pinned materialized migration snapshot until the shared router itself is ported.",
-            "App assignments are current materialized release records, not invented historical run events.",
-        ],
+        "limitations": limitations,
     }
 
 

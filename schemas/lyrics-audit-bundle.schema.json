@@ -36,6 +36,7 @@
         }
       }
     },
+    "routing_profiles": {"type": "object", "additionalProperties": {"type": "object"}},
     "comparison": {"type": "object"},
     "evidence": {"type": "object", "additionalProperties": {"type": "string"}},
     "limitations": {"type": "array", "items": {"type": "string"}}
