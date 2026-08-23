@@ -7,6 +7,7 @@ Gemini cache is read-only; API misses are written to a run-scoped delta cache.
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
@@ -30,6 +31,24 @@ SPACY_POS_MODEL = "es_dep_news_trf@3.8.0"
 
 class LyricsWSDExecutionError(ValueError):
     pass
+
+
+@dataclass
+class SpanishV5Runtime:
+    vector: Any
+    spacy_model: Any
+    tokenizer: Any
+    token_model: Any
+    token_device: str
+    prototype_matrix: Any
+    prototype_index: dict[str, int]
+    calibrator: Any
+    high_cut: float
+    medium_cut: float
+    base_embeddings: Path
+    prototypes: Path
+    calibrator_root: Path
+    delta: Path
 
 
 def dotenv_value(path: Path, name: str) -> str | None:
@@ -118,9 +137,9 @@ def _load_vectors(base: Path, delta: Path, required: list[str], api_key: str | N
     return vector
 
 
-def _pos_tags(requests: list[dict[str, Any]]) -> dict[str, str | None]:
+def _pos_tags(requests: list[dict[str, Any]], model: Any | None = None) -> dict[str, str | None]:
     import spacy
-    model = spacy.load("es_dep_news_trf")
+    model = spacy.load("es_dep_news_trf") if model is None else model
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for request in requests:
         if request["eligibility"] == "ready":
@@ -135,14 +154,17 @@ def _pos_tags(requests: list[dict[str, Any]]) -> dict[str, str | None]:
     return result
 
 
-def _token_vectors(requests: list[dict[str, Any]]):
+def _token_vectors(
+    requests: list[dict[str, Any]], *, tokenizer: Any | None = None,
+    model: Any | None = None, device: str | None = None,
+):
     import numpy as np
     import torch
     from transformers import AutoModel, AutoTokenizer
     ready = [request for request in requests if request["eligibility"] == "ready"]
-    tokenizer = AutoTokenizer.from_pretrained(BETO_MODEL, revision=BETO_REVISION)
-    model = AutoModel.from_pretrained(BETO_MODEL, revision=BETO_REVISION, output_hidden_states=True)
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    tokenizer = tokenizer or AutoTokenizer.from_pretrained(BETO_MODEL, revision=BETO_REVISION)
+    model = model or AutoModel.from_pretrained(BETO_MODEL, revision=BETO_REVISION, output_hidden_states=True)
+    device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
     model.eval().to(device)
     output = {}
     print(f"Encoding {len(ready)} exact lyric occurrences with BETO on {device}...", flush=True)
@@ -167,11 +189,81 @@ def _token_vectors(requests: list[dict[str, Any]]):
     return output
 
 
+def spanish_v5_required_texts(workspace: Workspace, *, run_id: str) -> list[str]:
+    """Return exact Gemini texts needed by one prepared song without running models."""
+
+    run = workspace.root / "runs/es/lyrics" / run_id
+    requests = _records(run / "stages/04_wsd_prepare/output/requests.jsonl")
+    candidates = {
+        item["lexical_candidate_id"]: item
+        for item in _records(run / "stages/03_lexical_menu/output/lexical-candidates.jsonl")
+    }
+    analyses_by_card = index_menu_analyses(json.loads(
+        (run / "stages/03_lexical_menu/output/sense-menu.json").read_text(encoding="utf-8")
+    ))
+    texts: list[str] = []
+    for request in requests:
+        if request["eligibility"] != "ready":
+            continue
+        candidate = candidates[request["lexical_candidate_id"]]
+        analyses = resolve_candidate_analyses(candidate, analyses_by_card)
+        texts.append(request["context"]["text"])
+        texts.extend(
+            _gloss(candidate["lookup_form"], analysis, sense)
+            for analysis in analyses for sense in analysis["senses"]
+        )
+    return texts
+
+
+def build_spanish_v5_runtime(
+    workspace: Workspace, *, required_texts: list[str], delta: Path,
+    api_key: str | None = None, env_file: Path | None = None,
+) -> SpanishV5Runtime:
+    """Load expensive models once for one resumable execution branch."""
+
+    import joblib
+    import numpy as np
+    import spacy
+    import torch
+    from transformers import AutoModel, AutoTokenizer
+
+    base_embeddings = workspace.root / "raw/embeddings/google-gemini/gemini-embedding-001/recovered-2026-08-20-v1"
+    prototypes = workspace.root / "raw/wsd/assets/es/beto/prototypes-sd-beto-cal-v5-v1"
+    calibrator_root = workspace.root / "raw/wsd/assets/es/calibration/sd-beto-cal-v5-legacy-v1"
+    for path in (base_embeddings / "vec.npy", prototypes / "proto.npy", calibrator_root / "calibrator.joblib"):
+        if not path.is_file():
+            raise LyricsWSDExecutionError(f"required pinned WSD asset is missing: {path}")
+    resolved_api_key = api_key or os.environ.get("GEMINI_API_KEY")
+    if resolved_api_key is None and env_file is not None:
+        resolved_api_key = dotenv_value(env_file, "GEMINI_API_KEY")
+    vector = _load_vectors(base_embeddings, delta, required_texts, resolved_api_key)
+    print("Loading Spanish POS and BETO models once for this execution branch...", flush=True)
+    spacy_model = spacy.load("es_dep_news_trf")
+    tokenizer = AutoTokenizer.from_pretrained(BETO_MODEL, revision=BETO_REVISION)
+    token_model = AutoModel.from_pretrained(
+        BETO_MODEL, revision=BETO_REVISION, output_hidden_states=True
+    )
+    token_device = "mps" if torch.backends.mps.is_available() else "cpu"
+    token_model.eval().to(token_device)
+    calibrator = joblib.load(calibrator_root / "calibrator.joblib")
+    calibrator_manifest = json.loads((calibrator_root / "manifest.json").read_text(encoding="utf-8"))
+    cuts = calibrator_manifest.get("band_cuts") or {"high": 0.8776, "medium": 0.5528}
+    return SpanishV5Runtime(
+        vector=vector, spacy_model=spacy_model, tokenizer=tokenizer,
+        token_model=token_model, token_device=token_device,
+        prototype_matrix=np.load(prototypes / "proto.npy", mmap_mode="r"),
+        prototype_index=json.loads((prototypes / "proto_index.json").read_text(encoding="utf-8")),
+        calibrator=calibrator, high_cut=float(cuts.get("high", 0.8776)),
+        medium_cut=float(cuts.get("medium", 0.5528)), base_embeddings=base_embeddings,
+        prototypes=prototypes, calibrator_root=calibrator_root, delta=delta,
+    )
+
+
 def execute_spanish_v5_lyrics(
     repository_root: Path, workspace: Workspace, *, run_id: str,
     api_key: str | None = None, env_file: Path | None = None,
+    runtime: SpanishV5Runtime | None = None, output_path: Path | None = None,
 ) -> Path:
-    import joblib
     import numpy as np
     run = workspace.root / "runs/es/lyrics" / run_id
     request_path = run / "stages/04_wsd_prepare/output/requests.jsonl"
@@ -185,12 +277,6 @@ def execute_spanish_v5_lyrics(
         candidate_id: resolve_candidate_analyses(candidate, analyses_by_card)
         for candidate_id, candidate in candidates.items()
     }
-    base_embeddings = workspace.root / "raw/embeddings/google-gemini/gemini-embedding-001/recovered-2026-08-20-v1"
-    prototypes = workspace.root / "raw/wsd/assets/es/beto/prototypes-sd-beto-cal-v5-v1"
-    calibrator_root = workspace.root / "raw/wsd/assets/es/calibration/sd-beto-cal-v5-legacy-v1"
-    for path in (base_embeddings / "vec.npy", prototypes / "proto.npy", calibrator_root / "calibrator.joblib"):
-        if not path.is_file():
-            raise LyricsWSDExecutionError(f"required pinned WSD asset is missing: {path}")
     texts = []
     for request in requests:
         if request["eligibility"] != "ready":
@@ -202,20 +288,23 @@ def execute_spanish_v5_lyrics(
             _gloss(candidate["lookup_form"], analysis, sense)
             for analysis in analyses for sense in analysis["senses"]
         )
-    delta = workspace.root / "cache/derived/wsd/es" / run_id / "gemini-delta"
-    resolved_api_key = api_key or os.environ.get("GEMINI_API_KEY")
-    if resolved_api_key is None and env_file is not None:
-        resolved_api_key = dotenv_value(env_file, "GEMINI_API_KEY")
-    vector = _load_vectors(base_embeddings, delta, texts, resolved_api_key)
-    observed_pos = _pos_tags(requests)
-    token_vectors = _token_vectors(requests)
-    prototype_matrix = np.load(prototypes / "proto.npy", mmap_mode="r")
-    prototype_index = json.loads((prototypes / "proto_index.json").read_text(encoding="utf-8"))
-    calibrator = joblib.load(calibrator_root / "calibrator.joblib")
-    calibrator_manifest = json.loads((calibrator_root / "manifest.json").read_text(encoding="utf-8"))
-    cuts = calibrator_manifest.get("band_cuts") or {"high": 0.8776, "medium": 0.5528}
-    high_cut = float(cuts.get("high", 0.8776))
-    medium_cut = float(cuts.get("medium", 0.5528))
+    if runtime is None:
+        runtime = build_spanish_v5_runtime(
+            workspace, required_texts=texts,
+            delta=workspace.root / "cache/derived/wsd/es" / run_id / "gemini-delta",
+            api_key=api_key, env_file=env_file,
+        )
+    vector = runtime.vector
+    observed_pos = _pos_tags(requests, runtime.spacy_model)
+    token_vectors = _token_vectors(
+        requests, tokenizer=runtime.tokenizer, model=runtime.token_model,
+        device=runtime.token_device,
+    )
+    prototype_matrix = runtime.prototype_matrix
+    prototype_index = runtime.prototype_index
+    calibrator = runtime.calibrator
+    high_cut = runtime.high_cut
+    medium_cut = runtime.medium_cut
     results = []
     for request in requests:
         candidate = candidates[request["lexical_candidate_id"]]
@@ -333,15 +422,15 @@ def execute_spanish_v5_lyrics(
     def asset_ref(path: Path) -> dict[str, str]:
         return {"path": path.relative_to(workspace.root).as_posix(), "content_id": file_content_id(path)}
     asset_refs = {
-        "gemini_vectors": asset_ref(base_embeddings / "vec.npy"),
-        "gemini_index": asset_ref(base_embeddings / "vec_index.json"),
-        "beto_prototypes": asset_ref(prototypes / "proto.npy"),
-        "beto_prototype_index": asset_ref(prototypes / "proto_index.json"),
-        "calibrator": asset_ref(calibrator_root / "calibrator.joblib"),
+        "gemini_vectors": asset_ref(runtime.base_embeddings / "vec.npy"),
+        "gemini_index": asset_ref(runtime.base_embeddings / "vec_index.json"),
+        "beto_prototypes": asset_ref(runtime.prototypes / "proto.npy"),
+        "beto_prototype_index": asset_ref(runtime.prototypes / "proto_index.json"),
+        "calibrator": asset_ref(runtime.calibrator_root / "calibrator.joblib"),
     }
-    if (delta / "vec.npy").is_file():
-        asset_refs["gemini_delta_vectors"] = asset_ref(delta / "vec.npy")
-        asset_refs["gemini_delta_index"] = asset_ref(delta / "index.json")
+    if (runtime.delta / "vec.npy").is_file():
+        asset_refs["gemini_delta_vectors"] = asset_ref(runtime.delta / "vec.npy")
+        asset_refs["gemini_delta_index"] = asset_ref(runtime.delta / "index.json")
     method = {
         "profile_id": METHOD_PROFILE, "source_method_id": SOURCE_METHOD,
         "source_repository_commit": SOURCE_COMMIT, "implementation_version": "spanish-v5-lyrics-executor/v1",
@@ -361,7 +450,14 @@ def execute_spanish_v5_lyrics(
         "coverage": "complete_request_pool", "request_file_content_id": file_content_id(request_path),
         "sense_menu_content_id": file_content_id(menu_path), "method": method, "results": results,
     }
-    target = workspace.root / "raw/wsd/results/es/lyrics" / f"{run_id}-{METHOD_PROFILE}.json"
+    target = (
+        workspace.root / "raw/wsd/results/es/lyrics" / f"{run_id}-{METHOD_PROFILE}.json"
+        if output_path is None else output_path.expanduser().resolve()
+    )
+    try:
+        target.relative_to((workspace.root / "raw/wsd").resolve())
+    except ValueError as error:
+        raise LyricsWSDExecutionError("WSD result bundle must be written inside workspace/raw/wsd") from error
     if target.exists():
         raise LyricsWSDExecutionError(f"WSD result bundle already exists: {target}")
     atomic_write(target, bundle, workspace.root / ".fluency/temporary")

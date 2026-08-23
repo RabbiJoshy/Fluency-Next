@@ -697,6 +697,16 @@ index/example disagreement, missing declared assets and changed hashes before
 review. This orchestration is ready but cannot be executed until a WSD method
 branch and its dependent consolidation/assembly exist.
 
+Best-so-far execution checkpoint (2026-08-23): the pinned Spanish v5 method can
+now be used as an explicitly provisional full-corpus branch while WSD research
+continues. The corpus runner loads spaCy and BETO once rather than 914 times,
+collects the complete corpus's Gemini requirements before publishing any song
+bundle, writes cache misses to one branch-scoped delta, and safely resumes from
+already verified song bundles. It emits the exact provider-neutral result
+catalog consumed by the existing importer. The branch remains labelled
+`es-sd-beto-cal-v5-migration-v1`; replacing it later creates a sibling method
+branch and leaves source, routing, menus and requests untouched.
+
 #### 9. Add further languages through adapters
 
 Implement French first, then Portuguese and Dutch, without forking the pipeline.

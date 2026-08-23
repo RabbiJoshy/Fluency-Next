@@ -378,3 +378,14 @@ uses the fresh Tatoeba run and makes no WSD or corpus-coverage claims.
   song-coverage, optional-media and payload changes before activation.
 - Release validation runs before publication and the builder never writes
   `active.json`.
+## Gate 46 — Resumable best-so-far corpus WSD execution
+
+- The current pinned Spanish v5 method can execute the full prepared Lyrics
+  corpus as an explicitly provisional method branch.
+- spaCy, BETO, prototypes and calibration assets load once per invocation.
+- All Gemini requirements are collected before the first result bundle is
+  published, keeping the shared branch delta content-stable across resumes.
+- Existing song bundles are checked against their exact requests, menus and
+  method before being skipped.
+- Completion emits the provider-neutral bundle catalog required by the
+  method-branch importer; it still cannot import, compose, or activate a deck.

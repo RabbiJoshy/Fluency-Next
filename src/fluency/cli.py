@@ -36,6 +36,7 @@ from fluency.lyrics.corpus_results import import_lyrics_corpus_results
 from fluency.lyrics.corpus_consolidate import consolidate_lyrics_corpus
 from fluency.lyrics.corpus_assemble import assemble_lyrics_corpus
 from fluency.lyrics.corpus_release import build_clean_lyrics_corpus_release
+from fluency.lyrics.corpus_execute import execute_spanish_v5_corpus
 from fluency.lyrics.consolidate import consolidate_lyrics_run
 from fluency.lyrics.assemble import assemble_lyrics_app_stage
 from fluency.lyrics.preview import build_clean_lyrics_preview_release
@@ -297,6 +298,17 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_wsd_prepare_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
     lyrics_wsd_prepare_corpus.add_argument("--plan", type=Path, required=True)
     lyrics_wsd_prepare_corpus.add_argument("--lexical-report", type=Path, required=True)
+    lyrics_wsd_execute_corpus = lyrics_actions.add_parser(
+        "wsd-execute-corpus",
+        help="run the pinned best-so-far Spanish v5 method with one shared resumable model runtime",
+    )
+    lyrics_wsd_execute_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_wsd_execute_corpus.add_argument("--plan", type=Path, required=True)
+    lyrics_wsd_execute_corpus.add_argument("--preparation-report", type=Path, required=True)
+    lyrics_wsd_execute_corpus.add_argument(
+        "--env-file", type=Path,
+        help="optional dotenv file parsed as data for GEMINI_API_KEY; it is never executed",
+    )
     lyrics_wsd_import_corpus = lyrics_actions.add_parser(
         "wsd-import-corpus",
         help="import an exact complete catalog of per-song WSD bundles from any compliant method",
@@ -959,6 +971,28 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             f"resumed/skipped {result['skipped_this_invocation']}."
         )
         print("No WSD method ran; no assignment, deck, release, or activation was created.")
+        return 0
+    if args.lyrics_command == "wsd-execute-corpus":
+        def show_wsd_execution_progress(event: dict) -> None:
+            if event["completed"] == 1 or event["completed"] % 25 == 0 or event["completed"] == event["planned"]:
+                print(
+                    f"Lyrics placeholder WSD {event['completed']}/{event['planned']}: "
+                    f"{event['artist_slug']} song {event['source_record_id']} ({event['action']})",
+                    flush=True,
+                )
+
+        result = execute_spanish_v5_corpus(
+            project_root(), workspace, plan_path=args.plan,
+            preparation_report_path=args.preparation_report,
+            env_file=args.env_file, progress=show_wsd_execution_progress,
+        )
+        print(f"Completed best-so-far WSD bundle catalog: {result['catalog_path']}")
+        print(
+            f"Verified {result['song_run_count']} complete song bundles: "
+            f"created {result['created_this_invocation']}, "
+            f"resumed/skipped {result['skipped_this_invocation']}."
+        )
+        print("Results remain raw and inactive; no import, deck, release, or activation occurred.")
         return 0
     if args.lyrics_command == "wsd-import-corpus":
         def show_wsd_import_progress(event: dict) -> None:
