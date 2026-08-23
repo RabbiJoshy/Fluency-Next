@@ -564,7 +564,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     pipeline_run_release = pipeline_actions.add_parser(
         "build-run-release",
-        help="build an inactive real-data release with explicit unassigned examples",
+        help="build an inactive real-data release, attaching WSD assignments when stage 04 exists",
     )
     pipeline_run_release.add_argument(
         "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
@@ -1403,13 +1403,25 @@ def handle_pipeline(args: argparse.Namespace) -> int:
             conjugations_artifact_id=args.conjugations_artifact,
         )
         manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        deck = json.loads((output / "deck.json").read_text(encoding="utf-8"))
+        examples = [item for card in deck["cards"] for item in card["examples"]]
+        assigned = sum(1 for item in examples if item["assignment_status"] == "assigned")
         print(f"Built inactive real-data release: {output}")
-        print(
-            f"Published {manifest['card_count']} cards with explicit unassigned examples."
-        )
+        print(f"Published {manifest['card_count']} cards.")
+        # Reporting "no WSD was run" regardless of whether it ran made a real
+        # deck indistinguishable from an empty one at the console.
+        if assigned:
+            print(
+                f"Examples: {assigned} assigned, {len(examples) - assigned} unassigned "
+                f"(WSD assignments attached from stage 04)."
+            )
+        else:
+            print(
+                f"Examples: all {len(examples)} explicitly unassigned; no WSD stage was present."
+            )
         if args.conjugations_artifact:
             print(f"Conjugations: {args.conjugations_artifact}")
-        print("No WSD was run and the release was not activated.")
+        print("The release was not activated.")
         return 0
     raise AssertionError(f"Unhandled pipeline command: {args.pipeline_command}")
 

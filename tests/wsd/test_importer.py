@@ -115,6 +115,21 @@ class WSDImporterTests(unittest.TestCase):
             },
             "inputs": {name: file_content_id(path) for name, path in outputs.items()},
             "assignments": [assignment.to_dict()],
+            # Every bundle must account for the occurrences it did not evaluate,
+            # so the fixture declares a cap it never reached.
+            "sampling": {
+                "policy": {
+                    "policy_version": "wsd-occurrence-sampling/v1",
+                    "cap_per_surface": 10,
+                    "ranking_signal": "harvest_score_desc_then_sentence_id",
+                    "overflow_outcome": "not_evaluated_example_cap",
+                },
+                "surface_cards": 1,
+                "occurrences_considered": 1,
+                "occurrences_selected": 1,
+                "occurrences_not_evaluated": 0,
+                "surface_cards_reaching_cap": 0,
+            },
         }
         bundle_path = workspace.root / "raw/wsd/fixture/bundle.json"
         bundle_path.parent.mkdir(parents=True)

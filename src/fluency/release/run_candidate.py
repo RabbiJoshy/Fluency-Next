@@ -1,4 +1,14 @@
-"""Build an inactive real-data Speech candidate without requiring WSD."""
+"""Build an inactive real-data Speech candidate, using WSD assignments if present.
+
+WSD remains optional: the French demonstration has no assignment stage and must
+still build, so a missing stage 04 leaves every example explicitly `unassigned`
+rather than failing. Where stage 04 exists, its assignments are attached here.
+
+A multiword sense is not in the provider menu, so a card whose example was
+assigned to one gains a meaning row for it, marked with its own source. That is
+the intended placement: the expression lands on the component word's card via
+the occurrence that was selected as evidence, and card identity is untouched.
+"""
 
 from __future__ import annotations
 
@@ -54,6 +64,27 @@ def _sentence_bank(path: Path) -> dict[str, dict[str, Any]]:
     return records
 
 
+def _load_assignments(run: Path) -> dict[tuple[str, str], dict[str, Any]]:
+    """Stage 04 keyed by (card_id, sentence_id); empty when WSD did not run."""
+
+    path = run / "stages/04_wsd_assignments/output/assignments.jsonl"
+    if not path.exists():
+        return {}
+    rows: dict[tuple[str, str], dict[str, Any]] = {}
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise RunCandidateError(f"invalid WSD assignment row {number}") from error
+        card_id, sentence_id = row.get("card_id"), row.get("sentence_id")
+        if not card_id or not sentence_id:
+            raise RunCandidateError(f"WSD assignment row {number} lacks identity")
+        rows[(card_id, sentence_id)] = row
+    return rows
+
+
 def _scoped_sense_id(card_id: str, analysis_id: str, source_sense_id: str) -> str:
     digest = canonical_content_id(
         {"card_id": card_id, "analysis_id": analysis_id, "source_sense_id": source_sense_id}
@@ -107,6 +138,13 @@ def build_inactive_run_candidate(
     menus = _object(paths["sense_menu"])
     candidates = _object(paths["candidates"])
     sentences = _sentence_bank(paths["sentence_bank"])
+    assignments = _load_assignments(run)
+    if assignments:
+        # Stage 04 becomes an input to the release, so a deck can be traced back
+        # to the exact assignment set that produced it.
+        inputs["wsd_assignments"] = file_content_id(
+            run / "stages/04_wsd_assignments/output/assignments.jsonl"
+        )
     menu_by_card = {card["card_id"]: card for card in menus.get("cards", [])}
     candidates_by_card = {card["card_id"]: card for card in candidates.get("cards", [])}
     limit = profile["scope"]["examples_per_surface"]
@@ -141,6 +179,14 @@ def build_inactive_run_candidate(
             }
         )
 
+        assigned_here = {
+            key[1]: row
+            for key, row in assignments.items()
+            if key[0] == card_id and row.get("status") == "assigned"
+        }
+        assigned_scoped: set[str] = set()
+        multiword_meanings: dict[str, dict[str, Any]] = {}
+
         meanings: list[dict[str, Any]] = []
         for analysis in menu_card.get("analyses", []):
             for sense in analysis.get("senses", []):
@@ -169,17 +215,69 @@ def build_inactive_run_candidate(
                     meaning["context"] = sense["definition"]
                 meanings.append(meaning)
 
+        # A meaning is "assigned" when at least one selected example was assigned
+        # to it. Meanings nothing landed on stay explicitly unassigned rather
+        # than being dropped -- the menu is what was offered, not what won.
+        for sentence_id, row in assigned_here.items():
+            scoped = _scoped_sense_id(
+                card_id, row["menu_analysis_id"], row["selected_sense_id"]
+            )
+            assigned_scoped.add(scoped)
+            if (row.get("evidence") or {}).get("selected_multiword") and scoped not in {
+                item["sense_id"] for item in meanings
+            }:
+                expression = row["evidence"]["selected_multiword"]
+                declared = next(
+                    (
+                        item
+                        for item in (row.get("evidence") or {}).get("multiword_candidates", [])
+                        if item.get("expression") == expression
+                    ),
+                    {},
+                )
+                multiword_meanings[scoped] = {
+                    "sense_id": scoped,
+                    "source_sense_id": row["selected_sense_id"],
+                    "menu_analysis_id": row["menu_analysis_id"],
+                    "headword": expression,
+                    "part_of_speech": "PHRASE",
+                    "translation": declared.get("translation") or expression,
+                    "source_reference": "mwe-merged/v1",
+                    "source": "mwe-merged",
+                    "assignment_status": "assigned",
+                    "context": "multiword expression",
+                    "metadata": {
+                        "source_adapter": "mwe-merged/v1",
+                        "multiword_expression": expression,
+                        "multiword_evidence": [
+                            item
+                            for item in (row.get("evidence") or {}).get("multiword_candidates", [])
+                            if item.get("expression") == expression
+                        ],
+                    },
+                }
+        meanings.extend(multiword_meanings.values())
+        for meaning in meanings:
+            if meaning["sense_id"] in assigned_scoped:
+                meaning["assignment_status"] = "assigned"
+
         examples: list[dict[str, Any]] = []
         for item in selected:
             sentence_id = item["sentence_id"]
             sentence = sentences.get(sentence_id)
             if sentence is None:
                 raise RunCandidateError(f"selected sentence is absent: {sentence_id}")
+            row = assigned_here.get(sentence_id)
+            scoped_sense = (
+                _scoped_sense_id(card_id, row["menu_analysis_id"], row["selected_sense_id"])
+                if row
+                else None
+            )
             examples.append(
                 {
                     "example_id": _example_id(card_id, sentence_id),
-                    "sense_id": None,
-                    "assignment_status": "unassigned",
+                    "sense_id": scoped_sense,
+                    "assignment_status": "assigned" if row else "unassigned",
                     "target": sentence["target"]["text"],
                     "english": sentence["translation"]["text"],
                     "provenance": sentence["source"]["name"],

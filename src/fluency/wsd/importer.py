@@ -226,9 +226,21 @@ def import_wsd_assignments(
         "method",
         "inputs",
         "assignments",
+        "sampling",
     }
     if set(bundle) != expected_bundle_fields or bundle.get("bundle_version") != BUNDLE_VERSION:
         raise WSDAssignmentImportError("unsupported WSD assignment bundle")
+    sampling = bundle.get("sampling")
+    if not isinstance(sampling, dict) or not isinstance(sampling.get("policy"), dict):
+        raise WSDAssignmentImportError("WSD bundle must declare its occurrence sampling policy")
+    for name in ("occurrences_considered", "occurrences_selected", "occurrences_not_evaluated"):
+        if not isinstance(sampling.get(name), int):
+            raise WSDAssignmentImportError(f"WSD sampling report requires {name}")
+    if sampling["occurrences_selected"] + sampling["occurrences_not_evaluated"] != sampling["occurrences_considered"]:
+        # Coverage is the point of this stage: if selected and not-evaluated do
+        # not reconstitute what was considered, occurrences went missing between
+        # harvest and WSD without any outcome recording that they did.
+        raise WSDAssignmentImportError("WSD sampling counts do not account for every occurrence")
     if (
         bundle.get("run_id") != run_id
         or bundle.get("language") != language

@@ -184,6 +184,7 @@ def main() -> None:
     bank_path = stages / "03_sentence_harvest/output/sentence-bank.jsonl"
 
     menu = load_json(menu_path)
+    menu_stage_content_id = file_content_id(menu_path)
     candidates = load_json(candidates_path)
     run_id = candidates["run_id"]
     menu_by_card = {card["card_id"]: card for card in menu["cards"]}
@@ -323,7 +324,7 @@ def main() -> None:
             sentence_id=sentence_id,
             sentence=text,
             translation=translation,
-            sense_menu_content_id=menu["snapshot_content_id"] if analyses else None,
+            sense_menu_content_id=menu_stage_content_id if analyses else None,
             analyses=analyses,
         )
         assignment = runner.assign(request)
@@ -340,7 +341,7 @@ def main() -> None:
                 surface_form=card["display_form"],
                 sentence_id=sentence_id,
                 status="not_evaluated_example_cap" if has_menu else "no_menu",
-                sense_menu_content_id=menu["snapshot_content_id"] if has_menu else None,
+                sense_menu_content_id=menu_stage_content_id if has_menu else None,
                 menu_analysis_id=None,
                 selected_sense_id=None,
                 selected_tuple=None,
@@ -366,7 +367,7 @@ def main() -> None:
                 surface_form=card["display_form"],
                 sentence_id=sentence_id,
                 status="assigned",
-                sense_menu_content_id=menu["snapshot_content_id"],
+                sense_menu_content_id=menu_stage_content_id,
                 menu_analysis_id=analysis.menu_analysis_id,
                 selected_sense_id=leaf.sense_id,
                 selected_tuple=SelectedTuple(

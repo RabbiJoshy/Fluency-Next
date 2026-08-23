@@ -213,6 +213,11 @@ def multiword_evidence(
     return {
         "expression": entry.expression,
         "expression_id": entry.entry_id,
+        # The English gloss travels with the evidence so a consumer can render
+        # the card without re-opening the inventory -- otherwise the expression
+        # itself ends up displayed as its own translation.
+        "translation": entry.translations[0],
+        "additional_translations": list(entry.translations[1:]),
         "menu_analysis_id": analysis.menu_analysis_id,
         "span": [span[0], span[1]],
         "corpus_frequency": entry.corpus_frequency,
