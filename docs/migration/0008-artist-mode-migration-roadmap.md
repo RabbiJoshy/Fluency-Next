@@ -235,7 +235,7 @@ Environment map:
 Before editing, run `git status --short`, read this file, inspect commits
 `d4f2810`, `a9c83e5`, and `d75403d`, and run
 `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3.12 -m unittest discover -s tests -p 'test_*.py'`.
-The checkpoint has 173 passing tests. Treat the legacy repository as a source
+The checkpoint has 182 passing tests. Treat the legacy repository as a source
 of behavior and retained artifacts, not as the destination for new code.
 
 ### Non-negotiable constraints
@@ -411,6 +411,24 @@ is to port the current Spanish embeddings implementation behind this request
 boundary, define and validate the complete result bundle, then give Joshua the
 single slow local command for the real truncated run.
 
+Execution boundary checkpoint (2026-08-23): the exact v5 method commit and
+shipped defaults are pinned. Shared orchestration now exposes a language policy
+seam; Spanish supplies the measured `0.02 * 0.5^rank` menu prior, bridged
+occurrence-POS filter, conservative `se` gate and renderable-leaf repair. The
+BETO prototypes and legacy calibrator are preserved byte-for-byte with
+reconstructed provenance; old assignments and the old context-token cache are
+excluded. BETO occurrence vectors are regenerated from exact request spans.
+
+Lyrics has a complete result-bundle/import contract requiring one typed result
+for every one of the 585 requests. Assigned results must bind to the exact
+analysis and sense in the lexical artifact; all 59 no-menu, 45 ineligible and
+18 review records must remain explicit; partial, stale or invented selections
+fail before publication. Alignment and generative escalation remain ported
+options but disabled, matching the latest shipped base run. The real executor
+is ready and finds only 100 Gemini exact-text cache misses (55 new lyric lines
+plus 45 menu strings); the retained cache itself remains immutable and misses
+are written to a run-scoped delta.
+
 #### 5. Consolidate occurrences into Artist cards and examples
 
 Build the clean equivalent of the old Artist assignment/consolidation layers.
@@ -522,13 +540,13 @@ Before making Fluency-Next the live repository:
 
 ### Immediate next action
 
-Finish **Add WSD as a replaceable stage**. Audit the exact current Spanish
-embedding/alignment/clitic implementation, port it behind the prepared v2
-request boundary without changing its quality decisions, and implement a
-fail-closed result importer that requires one decision or explicit abstention
-for every request. Do not run the slow model inside an agent turn; once the
-command is ready, Joshua runs it locally and the agent validates its manifests
-and auditor output.
+Joshua runs the single real `lyrics wsd-execute` command recorded in the active
+task handoff. It fills the 100 run-scoped Gemini cache misses, tags the 55 unique
+lines, encodes the 463 exact occurrences with pinned BETO, applies the retained
+v5 calibrator and writes an inactive complete raw bundle. The agent then runs
+the quick `lyrics wsd-import`, validates all 585 bindings, adds WSD evidence to
+the lineage explorer, and proceeds to occurrence consolidation. No learner deck
+or active release changes during this checkpoint.
 
 The key separation is now enforceable: shell and study behavior can evolve
 without rebuilding corpus data, while a new Artist data run can be activated

@@ -208,9 +208,10 @@ does not contaminate a new WSD run.
 
 ### Port as versioned code, discard its outputs
 
-Pin the source implementation at audit commit
-`23f1ad4387feb4a599815eaa6846e1201b5f402a` and identify the base classifier as
-`sd-beto-cal-v5`. The reproducible stack is:
+Pin the v5 implementation at commit
+`78506bf6ee785049393b2a760eceecd083c53495` and identify its exact emitted
+method as `spanishdict-beto-cal-v5` (prompt `sd-beto-cal-v5`). The reproducible
+stack is:
 
 1. SpanishDict menu-order prior;
 2. bridged occurrence-POS filter;
@@ -296,6 +297,13 @@ The exact current calibrator files are retained under these hashes:
 calibrator.joblib bf1ea4d6116dd7eeaf377428cf62deb2bce0c4af75d402764e698255e281dd55
 manifest.json     fab2ef1dc7553b597b4be26f663b4aadb0ed9c70a64d06659590a7d785ac1930
 ```
+
+Migration checkpoint (2026-08-23): the prototype matrix/index/counts/manifest
+and calibrator/model manifest are now pinned under
+`raw/wsd/assets/es/` in the external workspace. Exact hashes are revalidated by
+the migration command. The old context-token cache is deliberately not copied:
+BETO occurrence vectors are derived per immutable run from exact target spans.
+No old assignment file was migrated.
 
 ## Source/menu and identity evidence
 

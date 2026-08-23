@@ -3,11 +3,13 @@
   "profile_id": "es-sd-beto-cal-v5-migration-v1",
   "language": "es",
   "execution_status": "blocked_pending_assets",
-  "source_method_id": "sd-beto-cal-v5",
-  "source_repository_commit": "23f1ad4387feb4a599815eaa6846e1201b5f402a",
+  "source_method_id": "spanishdict-beto-cal-v5",
+  "source_repository_commit": "78506bf6ee785049393b2a760eceecd083c53495",
   "provider_prior": {
     "enabled": true,
-    "source": "spanishdict_menu_order"
+    "source": "spanishdict_menu_order",
+    "weight": 0.02,
+    "decay": 0.5
   },
   "gloss": {
     "enabled": true,
@@ -18,9 +20,9 @@
   },
   "token_tuple_vote": {
     "enabled": true,
-    "model_revision": "dccuchile/bert-base-spanish-wwm-cased",
+    "model_revision": "dccuchile/bert-base-spanish-wwm-cased@c4d86612f51b4f46759c8390d1798c2febe71b93",
     "prototype_content_id": "sha256:1ec0de1d85cdb608af3c8b579a90bbc4a1db8d62957c3d8a30e7d58456595777",
-    "minimum_margin": null,
+    "minimum_margin": 0.02,
     "activation": "legacy_gated_override"
   },
   "calibration": {
@@ -45,10 +47,10 @@
   "asset_gate": {
     "required_before_ready": [
       "gemini_exact_text_embedding_cache",
-      "beto_token_vector_cache",
       "beto_token_prototypes",
       "legacy_calibrator"
     ],
+    "derived_per_run": ["beto_occurrence_vectors", "gemini_exact_text_cache_delta"],
     "assignment_outputs_are_inputs": false
   }
 }

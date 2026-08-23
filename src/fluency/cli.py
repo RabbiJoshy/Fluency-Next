@@ -27,9 +27,12 @@ from fluency.lyrics.ingest import ingest_legacy_genius_song
 from fluency.lyrics.lexical import build_lyrics_lexical_menu_stage
 from fluency.lyrics.process import process_lyrics_run
 from fluency.lyrics.wsd import prepare_lyrics_wsd_stage
+from fluency.lyrics.wsd_results import import_lyrics_wsd_results
+from fluency.lyrics.wsd_execute import execute_spanish_v5_lyrics
 from fluency.migration.legacy_identity import write_legacy_crosswalk
 from fluency.migration.spanish_assets import migrate_spanish_retained_assets
 from fluency.migration.spanish_dictionary import migrate_spanish_dictionary_snapshot
+from fluency.migration.spanish_wsd_assets import migrate_spanish_wsd_assets
 from fluency.pipeline.planning import create_pipeline_plan, load_pipeline_profile
 from fluency.release.activation import activate_release
 from fluency.release.catalog import build_catalog, write_catalog
@@ -170,6 +173,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
     )
     spanish_dictionary.add_argument("--source-repository", type=Path, required=True)
+    spanish_wsd = migration_actions.add_parser(
+        "spanish-wsd-assets",
+        help="pin exact BETO prototypes and legacy calibrator without assignments",
+    )
+    spanish_wsd.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    spanish_wsd.add_argument("--source-repository", type=Path, required=True)
     spanish_jehle = migration_actions.add_parser(
         "spanish-jehle-snapshot",
         help="pin one recovered Jehle conjugation CSV as immutable source evidence",
@@ -279,6 +288,22 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_wsd_prepare.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
     lyrics_wsd_prepare.add_argument("--run-id", required=True)
     lyrics_wsd_prepare.add_argument("--language", required=True)
+    lyrics_wsd_import = lyrics_actions.add_parser(
+        "wsd-import", help="validate and publish one complete occurrence-level WSD result bundle",
+    )
+    lyrics_wsd_import.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_wsd_import.add_argument("--run-id", required=True)
+    lyrics_wsd_import.add_argument("--language", required=True)
+    lyrics_wsd_import.add_argument("--bundle", type=Path, required=True)
+    lyrics_wsd_execute = lyrics_actions.add_parser(
+        "wsd-execute", help="run one explicitly pinned WSD method into a raw complete-result bundle",
+    )
+    lyrics_wsd_execute.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_wsd_execute.add_argument("--run-id", required=True)
+    lyrics_wsd_execute.add_argument("--language", required=True, choices=("es",))
+    lyrics_wsd_execute.add_argument(
+        "--method", required=True, choices=("es-sd-beto-cal-v5-migration-v1",),
+    )
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -580,6 +605,15 @@ def handle_migration(args: argparse.Namespace) -> int:
         print(f"Pinned offline SpanishDict snapshot: {target}")
         print("No built menu, WSD assignment, example selection, deck, or release was migrated.")
         return 0
+    if args.migration_command == "spanish-wsd-assets":
+        targets = migrate_spanish_wsd_assets(
+            workspace, source_repository=args.source_repository,
+        )
+        print("Pinned exact Spanish WSD reproduction assets:")
+        for family, path in targets.items():
+            print(f"  {family}: {path}")
+        print("No token vectors, assignments, deck, release, or activation was migrated.")
+        return 0
     if args.migration_command == "spanish-jehle-snapshot":
         target = pin_jehle_snapshot(
             workspace,
@@ -753,6 +787,24 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             f"{report['translation_available_count']} have optional aligned translations."
         )
         print("No WSD model ran; no assignment, deck, release, or activation was created.")
+        return 0
+    if args.lyrics_command == "wsd-import":
+        output = import_lyrics_wsd_results(
+            project_root(), workspace, run_id=args.run_id,
+            language=args.language, bundle_path=args.bundle,
+        )
+        report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+        counts = report["result_counts"]
+        print(f"Published complete immutable Lyrics WSD results: {output}")
+        print(", ".join(f"{status}={count}" for status, count in counts.items()))
+        print("No deck, release, or activation was created.")
+        return 0
+    if args.lyrics_command == "wsd-execute":
+        output = execute_spanish_v5_lyrics(
+            project_root(), workspace, run_id=args.run_id,
+        )
+        print(f"Created complete raw Lyrics WSD result bundle: {output}")
+        print("The result is inactive; run lyrics wsd-import only after validation.")
         return 0
     raise AssertionError(f"Unhandled lyrics command: {args.lyrics_command}")
 

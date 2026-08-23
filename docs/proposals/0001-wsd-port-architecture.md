@@ -3,10 +3,11 @@
 ## Status
 
 Approved after the Spanish WSD audit on 2026-08-22. The dependency-free
-contracts and orchestration skeleton are implemented. No models, prototypes,
-calibrators, historical assignments, or heavy ML dependencies have been copied
-into Fluency Next; the French model profile remains explicitly blocked pending
-the agreed benchmark.
+contracts and orchestration skeleton are implemented. On 2026-08-23 the exact
+BETO prototype and legacy calibrator files were pinned outside the repository
+as reconstructed runtime assets; historical assignments remain excluded and
+heavy ML packages remain an optional dependency group. The French model profile
+is still explicitly blocked pending the agreed benchmark.
 
 ## Authoritative Spanish reference
 

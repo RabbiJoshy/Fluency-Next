@@ -11,6 +11,7 @@ from typing import Any
 
 from fluency.core.hashing import validate_content_id
 from fluency.wsd.alignment import AlignmentCorrector
+from fluency.wsd.candidate_policy import CandidatePolicy
 from fluency.wsd.calibration import Calibrator
 from fluency.wsd.contracts import SelectedTuple, WSDAssignment
 from fluency.wsd.disposition import DispositionPolicy
@@ -28,6 +29,7 @@ class WSDExecutionProfile:
     alignment: bool
     generative_escalation: bool
     disposition: DispositionPolicy
+    candidate_preparation: bool = False
 
     def __post_init__(self) -> None:
         if self.tuple_vote_minimum_margin < 0:
@@ -43,6 +45,7 @@ class WSDComponents:
     token_reranker: TokenPrototypeReranker | None = None
     calibrator: Calibrator | None = None
     aligner: AlignmentCorrector | None = None
+    candidate_policy: CandidatePolicy | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +57,8 @@ class WSDRequest:
     translation: str
     sense_menu_content_id: str | None
     analyses: tuple[MenuAnalysis, ...]
+    target_span: tuple[int, int] | None = None
+    observed_pos: str | None = None
 
 
 class WSDConfigurationError(ValueError):
@@ -72,6 +77,7 @@ class ClosedMenuWSDRunner:
             ("token reranker", profile.token_tuple_vote, components.token_reranker),
             ("calibrator", profile.calibration, components.calibrator),
             ("aligner", profile.alignment, components.aligner),
+            ("candidate policy", profile.candidate_preparation, components.candidate_policy),
         )
         for name, enabled, component in required:
             if enabled and component is None:
@@ -117,9 +123,17 @@ class ClosedMenuWSDRunner:
         if any(analysis.card_id != request.card_id for analysis in request.analyses):
             raise ValueError("all candidate analyses must belong to the requested card")
 
-        occurrences = self.components.language.locate(
-            request.sentence, request.surface_form
-        )
+        if request.target_span is None:
+            occurrences = self.components.language.locate(request.sentence, request.surface_form)
+        else:
+            start, end = request.target_span
+            if not (0 <= start < end <= len(request.sentence)):
+                raise ValueError("target span falls outside the WSD context")
+            observed = request.sentence[start:end]
+            if observed != request.surface_form:
+                raise ValueError("target span does not reproduce the WSD surface")
+            from fluency.wsd.languages.base import TargetOccurrence
+            occurrences = (TargetOccurrence(observed, request.surface_form.casefold(), start, end),)
         if not occurrences:
             return WSDAssignment(
                 card_id=request.card_id,
@@ -136,9 +150,24 @@ class ClosedMenuWSDRunner:
                 model_revisions=self._model_revisions(),
             )
 
-        ranked = validated_leaf_scores(
-            self.components.gloss.score(request.sentence, request.analyses),
-            request.analyses,
+        analyses = request.analyses
+        preparation_evidence = None
+        if self.components.candidate_policy is not None:
+            prepared = self.components.candidate_policy.prepare(
+                sentence=request.sentence,
+                surface_form=request.surface_form,
+                observed_pos=request.observed_pos,
+                analyses=analyses,
+            )
+            analyses = prepared.analyses
+            preparation_evidence = dict(prepared.evidence)
+        raw_ranked = validated_leaf_scores(
+            self.components.gloss.score(request.sentence, analyses), analyses,
+        )
+        ranked = (
+            raw_ranked
+            if self.components.candidate_policy is None
+            else self.components.candidate_policy.adjust_scores(raw_ranked, analyses)
         )
         selected_score = ranked[0]
         decision_path = ["gloss"]
@@ -156,10 +185,16 @@ class ClosedMenuWSDRunner:
                 for item in ranked
             ],
         }
+        if preparation_evidence is not None:
+            evidence["candidate_preparation"] = preparation_evidence
+            evidence["raw_gloss_scores"] = [
+                {"menu_analysis_id": item.menu_analysis_id, "sense_id": item.sense_id, "score": item.score}
+                for item in raw_ranked
+            ]
 
         if self.components.token_reranker is not None:
             vote = self.components.token_reranker.vote(
-                request.sentence, request.surface_form, request.analyses
+                request.sentence, request.surface_form, analyses
             )
             evidence["token_tuple_vote"] = (
                 None
@@ -173,15 +208,31 @@ class ClosedMenuWSDRunner:
                 }
             )
             if vote is not None and vote.margin >= self.profile.tuple_vote_minimum_margin:
-                require_analysis(request.analyses, vote.menu_analysis_id)
+                require_analysis(analyses, vote.menu_analysis_id)
                 selected_score = next(
                     score for score in ranked if score.menu_analysis_id == vote.menu_analysis_id
                 )
                 decision_path.append("token_tuple_vote")
 
         selected_analysis = require_analysis(
-            request.analyses, selected_score.menu_analysis_id
+            analyses, selected_score.menu_analysis_id
         )
+        if self.components.candidate_policy is not None:
+            repaired = self.components.candidate_policy.repair_leaf(
+                sentence=request.sentence,
+                analyses=analyses,
+                selected=selected_score,
+                ranked_scores=ranked,
+            )
+            if repaired != selected_score:
+                evidence["leaf_repair"] = {
+                    "from_sense_id": selected_score.sense_id,
+                    "to_sense_id": repaired.sense_id,
+                    "menu_analysis_id": repaired.menu_analysis_id,
+                }
+                selected_score = repaired
+                selected_analysis = require_analysis(analyses, repaired.menu_analysis_id)
+                decision_path.append("leaf_repair")
         selected_sense = selected_analysis.sense(selected_score.sense_id)
         confidence: float | None = None
         if self.components.calibrator is not None:
@@ -203,14 +254,14 @@ class ClosedMenuWSDRunner:
                 sentence=request.sentence,
                 translation=request.translation,
                 surface_form=request.surface_form,
-                analyses=request.analyses,
+                analyses=analyses,
                 current_analysis_id=selected_analysis.menu_analysis_id,
                 current_sense_id=selected_sense.sense_id,
             )
             evidence["alignment"] = None
             if correction is not None:
                 corrected_analysis = require_analysis(
-                    request.analyses, correction.menu_analysis_id
+                    analyses, correction.menu_analysis_id
                 )
                 corrected_sense = corrected_analysis.sense(correction.sense_id)
                 evidence["alignment"] = {

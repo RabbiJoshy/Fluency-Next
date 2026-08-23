@@ -39,7 +39,7 @@ class WSDProfileTests(unittest.TestCase):
         )
         self.assertIn("provider_prior", shared["decision_order"])
         self.assertEqual(language["clitic_gate"]["method"], "spanish-se-only/v1")
-        self.assertEqual(model["source_method_id"], "sd-beto-cal-v5")
+        self.assertEqual(model["source_method_id"], "spanishdict-beto-cal-v5")
         self.assertEqual(model["execution_status"], "blocked_pending_assets")
         self.assertFalse(model["alignment"]["enabled"])
         self.assertTrue(config_id.startswith("sha256:"))
