@@ -11,12 +11,44 @@ from fluency.core.hashing import validate_content_id
 
 WSD_ASSIGNMENT_VERSION = "wsd-assignment/v1"
 WSD_STATUSES = frozenset({"assigned", "abstained", "rejected", "no_menu"})
+# v6 reorganises the stages into three roles. `constrain` and `multiword` run
+# before scoring, `commit` after it. The v5 names are retained so existing
+# French and lyrics records keep validating -- this is additive.
 DECISION_STAGES = frozenset(
-    {"gloss", "token_tuple_vote", "leaf_repair", "calibration", "alignment"}
+    {
+        "constrain",
+        "multiword",
+        "gloss",
+        "token_tuple_vote",
+        "leaf_repair",
+        "calibration",
+        "alignment",
+        "commit",
+    }
 )
-DECISION_ORDER = ("gloss", "token_tuple_vote", "leaf_repair", "calibration", "alignment")
+DECISION_ORDER = (
+    "constrain",
+    "multiword",
+    "gloss",
+    "token_tuple_vote",
+    "leaf_repair",
+    "calibration",
+    "alignment",
+    "commit",
+)
 
 AssignmentStatus = Literal["assigned", "abstained", "rejected", "no_menu"]
+
+# How much of the selected sense the card may publish. The selection is the same
+# either way; a lower level is a narrower claim, not a different answer.
+EMIT_LEVELS = frozenset({"leaf", "glosskey", "tuple"})
+EmitLevel = Literal["leaf", "glosskey", "tuple"]
+
+# Requirement: a single-option menu is not disambiguation and must never be
+# reported as though a model chose. The auditor already draws this line app-side
+# for lyrics; this puts it in the contract so speech cannot lose it.
+DECISION_KINDS = frozenset({"deterministic_default", "disambiguated"})
+DecisionKind = Literal["deterministic_default", "disambiguated"]
 _CARD_ID = re.compile(r"^card_[a-z]{2,3}_[0-9a-f]{32}$")
 _SENTENCE_ID = re.compile(r"^sentence_[0-9a-f]{32}$")
 _ANALYSIS_ID = re.compile(r"^analysis_[0-9a-f]{32}$")
@@ -68,6 +100,8 @@ class WSDAssignment:
     evidence: Mapping[str, Any]
     confidence: float | None
     model_revisions: Mapping[str, str]
+    emitted_level: EmitLevel | None = None
+    decision_kind: DecisionKind | None = None
     assignment_version: str = WSD_ASSIGNMENT_VERSION
 
     def __post_init__(self) -> None:
@@ -142,6 +176,10 @@ class WSDAssignment:
                 raise ValueError("assigned records require an exact selected sense and tuple")
             if not self.decision_path:
                 raise ValueError("assigned records require a decision path")
+            if self.emitted_level is not None and self.emitted_level not in EMIT_LEVELS:
+                raise ValueError("unsupported emitted level")
+            if self.decision_kind is not None and self.decision_kind not in DECISION_KINDS:
+                raise ValueError("unsupported decision kind")
         elif any(
             value is not None
             for value in (self.menu_analysis_id, self.selected_sense_id, self.selected_tuple)
@@ -166,6 +204,13 @@ class WSDAssignment:
             "confidence": self.confidence,
             "model_revisions": dict(sorted(self.model_revisions.items())),
         }
+        # Emitted only when set, so records written before v6 -- the French and
+        # lyrics demonstrations -- keep round-tripping through the exact-key
+        # check in from_dict.
+        if self.emitted_level is not None:
+            record["emitted_level"] = self.emitted_level
+        if self.decision_kind is not None:
+            record["decision_kind"] = self.decision_kind
         return record
 
     @classmethod
@@ -187,7 +232,9 @@ class WSDAssignment:
             "confidence",
             "model_revisions",
         }
-        if set(value) != expected:
+        optional = {"emitted_level", "decision_kind"}
+        keys = set(value)
+        if not expected <= keys or not keys <= expected | optional:
             raise ValueError("WSD assignment fields do not match the contract")
         decision_path = value["decision_path"]
         evidence = value["evidence"]
@@ -198,6 +245,8 @@ class WSDAssignment:
             raise ValueError("assignment evidence and model revisions must be objects")
         selected = value["selected_tuple"]
         return cls(
+            emitted_level=value.get("emitted_level"),
+            decision_kind=value.get("decision_kind"),
             assignment_version=value["assignment_version"],
             card_id=value["card_id"],
             surface_form=value["surface_form"],

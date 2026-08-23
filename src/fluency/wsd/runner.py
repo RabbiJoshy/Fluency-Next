@@ -7,13 +7,20 @@ behind explicit interfaces, so importing this module never installs or loads ML.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Mapping, Sequence
 
 from fluency.core.hashing import validate_content_id
 from fluency.wsd.alignment import AlignmentCorrector
 from fluency.wsd.candidate_policy import CandidatePolicy
 from fluency.wsd.calibration import Calibrator
+from fluency.wsd.commit import CommitPolicy, decide as commit_decide
 from fluency.wsd.contracts import SelectedTuple, WSDAssignment
+from fluency.wsd.multiword import (
+    MultiwordEntry,
+    is_multiword_analysis,
+    multiword_analyses,
+    multiword_evidence,
+)
 from fluency.wsd.disposition import DispositionPolicy
 from fluency.wsd.gloss_scoring import GlossScorer, LeafScore, validated_leaf_scores
 from fluency.wsd.languages.base import LanguageAdapter
@@ -30,6 +37,8 @@ class WSDExecutionProfile:
     generative_escalation: bool
     disposition: DispositionPolicy
     candidate_preparation: bool = False
+    multiword_candidates: bool = False
+    commit: CommitPolicy = CommitPolicy()
 
     def __post_init__(self) -> None:
         if self.tuple_vote_minimum_margin < 0:
@@ -46,6 +55,8 @@ class WSDComponents:
     calibrator: Calibrator | None = None
     aligner: AlignmentCorrector | None = None
     candidate_policy: CandidatePolicy | None = None
+    multiword_index: Mapping[str, Sequence[MultiwordEntry]] | None = None
+    multiword_inventory_content_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +89,7 @@ class ClosedMenuWSDRunner:
             ("calibrator", profile.calibration, components.calibrator),
             ("aligner", profile.alignment, components.aligner),
             ("candidate policy", profile.candidate_preparation, components.candidate_policy),
+            ("multiword index", profile.multiword_candidates, components.multiword_index),
         )
         for name, enabled, component in required:
             if enabled and component is None:
@@ -161,6 +173,30 @@ class ClosedMenuWSDRunner:
             )
             analyses = prepared.analyses
             preparation_evidence = dict(prepared.evidence)
+
+        # Multiword senses join AFTER the constraint stage and BEFORE scoring.
+        # After, because the POS and clitic rules were measured against the
+        # provider menu alone and a synthetic PHRASE analysis is not what they
+        # were calibrated on. Before, because the whole design is that a
+        # multiword sense COMPETES on the same score rather than overriding one.
+        multiword_records: list[dict[str, Any]] = []
+        if self.components.multiword_index is not None:
+            for analysis, entry, span in multiword_analyses(
+                card_id=request.card_id,
+                surface_form=request.surface_form,
+                sentence=request.sentence,
+                index=self.components.multiword_index,
+            ):
+                analyses = analyses + (analysis,)
+                multiword_records.append(
+                    multiword_evidence(
+                        analysis,
+                        entry,
+                        span,
+                        inventory_content_id=self.components.multiword_inventory_content_id,
+                    )
+                )
+
         raw_ranked = validated_leaf_scores(
             self.components.gloss.score(request.sentence, analyses), analyses,
         )
@@ -170,7 +206,9 @@ class ClosedMenuWSDRunner:
             else self.components.candidate_policy.adjust_scores(raw_ranked, analyses)
         )
         selected_score = ranked[0]
-        decision_path = ["gloss"]
+        # `multiword` precedes `gloss` in DECISION_ORDER because the candidates
+        # are added before scoring, so it is seeded rather than appended.
+        decision_path = (["multiword"] if multiword_records else []) + ["gloss"]
         evidence: dict[str, Any] = {
             "target_occurrences": [
                 {"start": item.start, "end": item.end, "observed_text": item.observed_text}
@@ -185,6 +223,8 @@ class ClosedMenuWSDRunner:
                 for item in ranked
             ],
         }
+        if multiword_records:
+            evidence["multiword_candidates"] = multiword_records
         if preparation_evidence is not None:
             evidence["candidate_preparation"] = preparation_evidence
             evidence["raw_gloss_scores"] = [
@@ -281,6 +321,37 @@ class ClosedMenuWSDRunner:
                     confidence = None
                     decision_path.append("alignment")
 
+        # COMMIT. Decide how specific a claim to publish, and record whether a
+        # choice was made at all. A single-candidate menu is a deterministic
+        # default, not disambiguation, and must never be reported as though a
+        # model chose between options.
+        candidate_leaf_count = sum(len(analysis.senses) for analysis in analyses)
+        decision_kind = (
+            "deterministic_default" if candidate_leaf_count <= 1 else "disambiguated"
+        )
+        commit_decision = commit_decide(ranked, analyses, self.profile.commit)
+        emitted_level = commit_decision.level
+        evidence["commit"] = {
+            "emitted_level": emitted_level,
+            "uncertain_axis": commit_decision.uncertain_axis,
+            "margins": dict(commit_decision.margins),
+            "escalate": commit_decision.escalate,
+            "candidate_leaf_count": candidate_leaf_count,
+            "decision_kind": decision_kind,
+            "policy": {
+                "leaf_minimum": self.profile.commit.leaf_minimum,
+                "glosskey_minimum": self.profile.commit.glosskey_minimum,
+                "tuple_minimum": self.profile.commit.tuple_minimum,
+            },
+        }
+        if self.profile.commit.enabled:
+            decision_path.append("commit")
+        evidence["selected_multiword"] = (
+            None
+            if not is_multiword_analysis(selected_analysis)
+            else selected_analysis.source_analysis_key
+        )
+
         status = self.profile.disposition.status(confidence)
         evidence["disposition"] = {
             "status": status,
@@ -318,4 +389,6 @@ class ClosedMenuWSDRunner:
             evidence=evidence,
             confidence=confidence,
             model_revisions=self._model_revisions(),
+            emitted_level=emitted_level,
+            decision_kind=decision_kind,
         )

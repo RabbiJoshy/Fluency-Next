@@ -29,7 +29,21 @@ POS_BRIDGE = {
     "PART": frozenset({"ADV", "ADP", "PRON"}),
     "PROPN": frozenset({"PROPN", "NOUN"}),
     "ADV": frozenset({"ADV", "PRON", "ADJ"}),
+    "AUX": frozenset({"VERB", "AUX", "PHRASE"}),
 }
+# AUX is the same UD/SpanishDict mismatch as DET and was missed when DET was
+# bridged. SpanishDict has no AUX category and files every auxiliary and modal
+# as VERB, while the tagger emits AUX. Unbridged, this function rejects VERB
+# *and* NOUN for an AUX token, so every analysis fails, the caller's
+# empty-set fallback fires, and the filter becomes a silent no-op on
+# `haber, ser, estar, deber, saber` -- the commonest verbs in speech.
+#
+# Measured in the reference repository on a 200-item panel stratified for hard
+# words: adding this entry took the POS filter over the menu prior from 67.3%
+# to 74.4%, +14 items of 199. That panel is 35% AUX by construction, so the
+# deck-wide value is proportionally smaller; the bug is real, its headline size
+# is inflated. It measures -1 on the older, easier 144-item panel, which is why
+# it read as noise there.
 TOKEN_RE = re.compile(r"[a-záéíóúüñ0-9']+")
 SOFT_COMPANION = re.compile(
     r"\b(?:often|sometimes|usually|frequently|typically|generally|normally|"
