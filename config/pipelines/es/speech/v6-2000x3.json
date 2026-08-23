@@ -34,7 +34,8 @@
     "language_policy": "es-spanishdict-v1",
     "source_edition": "spanishdict-pinned-snapshot",
     "gloss_language": "en",
-    "snapshot_id": "spanishdict-2026-08-19-cache-v1",
+    "snapshot_id": "spanishdict-complete-menu-2026-08-23-v1",
+    "minimum_card_coverage": 0.99,
     "output_schema": "sense-menu/v1",
     "join_key": "surface_card_id",
     "lemma_role": "lookup_metadata_only"

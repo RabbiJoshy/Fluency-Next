@@ -116,7 +116,7 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("sourceCardButton.onclick = openLyrics", ui)
         self.assertNotIn("sessionStorage.removeItem('fluencyPendingSpeechLanguage');\n            await continueToSpeech();", ui)
         self.assertIn("if (isResumeNavigation && !activeArtist && selectedLanguage === 'spanish')", main)
-        self.assertFalse(config["languages"]["spanish"]["capabilities"]["speech"])
+        self.assertTrue(config["languages"]["spanish"]["capabilities"]["speech"])
         self.assertTrue(config["languages"]["spanish"]["capabilities"]["lyrics"])
         self.assertTrue(config["languages"]["french"]["capabilities"]["speech"])
         self.assertFalse(config["languages"]["french"]["capabilities"]["lyrics"])

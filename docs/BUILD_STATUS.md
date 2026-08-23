@@ -438,3 +438,20 @@ uses the fresh Tatoeba run and makes no WSD or corpus-coverage claims.
   candidates, plus an exact move plan and restoration boundary.
 - The old Fluency repository and every cloud-backed user/progress/audit store
   were left unchanged.
+
+## Gate 50 — Complete SpanishDict menu and Spanish Speech v6 proof
+
+- Corrected the 200-card-only migration assumption that treated a 6,513-entry
+  raw surface cache as sufficient to reconstruct the full SpanishDict menu.
+  The complete 9,945-surface normalized menu is now hash-pinned as deterministic
+  dictionary evidence; no historical WSD assignments were migrated.
+- Spanish Speech profiles require at least 99% menu coverage. A partial cache
+  now fails the menu stage instead of silently producing a learner deck with
+  hundreds of unassigned cards.
+- Fresh run `20260823T215525Z-5836dcc4` built 4,300 analyses and 23,746 leaves
+  for 1,988/2,000 surfaces, retained 70,919 candidate occurrences, and executed
+  v6 WSD under the three-occurrence per-surface cap.
+- Active local release `es-speech-v6-2000x3-complete-menu-20260823` contains
+  2,000 cards, 5,962 assigned examples and 35 explicitly unassigned examples.
+  The running development server serves this release through the ordinary
+  Spanish app aliases; no production deployment changed.

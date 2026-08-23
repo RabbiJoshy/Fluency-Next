@@ -22,17 +22,33 @@ def _source_repository(root: Path) -> tuple[Path, dict[str, str]]:
         cache / "headword_cache.json": {"hola": {"dictionary_analyses": []}},
         layers / "spanish_forms.json": {"hola": {}},
         layers / "conjugation_reverse.json": {"digo": [{"lemma": "decir"}]},
+        layers / "sense_menu/spanishdict.json": {
+            "hola": [
+                {
+                    "headword": "hola",
+                    "senses": {
+                        "abc": {"pos": "INTJ", "translation": "hello"}
+                    },
+                }
+            ]
+        },
     }
     for path, payload in payloads.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload), encoding="utf-8")
     return repository, {
-        path.name: file_content_id(path).removeprefix("sha256:")
-        for path in payloads
+        "surface_cache.json": file_content_id(cache / "surface_cache.json").removeprefix("sha256:"),
+        "headword_cache.json": file_content_id(cache / "headword_cache.json").removeprefix("sha256:"),
+        "spanish_forms.json": file_content_id(layers / "spanish_forms.json").removeprefix("sha256:"),
+        "conjugation_reverse.json": file_content_id(layers / "conjugation_reverse.json").removeprefix("sha256:"),
+        "normalized_menu.json": file_content_id(
+            layers / "sense_menu/spanishdict.json"
+        ).removeprefix("sha256:"),
     }
 
 
 class SpanishDictionaryMigrationTests(unittest.TestCase):
-    def test_pins_only_offline_inputs_with_exact_hashes(self):
+    def test_pins_complete_offline_menu_inputs_with_exact_hashes(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             repository, hashes = _source_repository(root)
@@ -50,6 +66,7 @@ class SpanishDictionaryMigrationTests(unittest.TestCase):
                 {item["path"] for item in manifest["content_files"]},
                 set(hashes),
             )
+            self.assertEqual(manifest["coverage"]["normalized_menu_surfaces"], 1)
             self.assertFalse(any(workspace.root.rglob("*assignment*")))
             self.assertFalse(any(workspace.root.rglob("sense-menu.json")))
 

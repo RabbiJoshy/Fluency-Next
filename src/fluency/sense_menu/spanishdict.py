@@ -26,6 +26,7 @@ REQUIRED_FILES = (
     "spanish_forms.json",
     "conjugation_reverse.json",
 )
+NORMALIZED_MENU_FILE = "normalized_menu.json"
 CLITIC_SUFFIXES = (
     "selos", "selas", "melos", "melas", "noslo", "nosla", "telos", "telas",
     "selo", "sela", "melo", "mela", "telo", "tela", "nos", "los", "las",
@@ -67,7 +68,11 @@ def _normalize_analyses(value: object) -> list[dict[str, Any]]:
             continue
         senses = raw.get("senses") or []
         if isinstance(senses, dict):
-            senses = list(senses.values())
+            senses = [
+                {**deepcopy(sense), "_legacy_sense_id": str(sense_id)}
+                for sense_id, sense in senses.items()
+                if isinstance(sense, dict)
+            ]
         analyses.append(
             {
                 "headword": raw.get("headword"),
@@ -145,6 +150,11 @@ def _legacy_sense_ids(
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     for sense in senses:
+        retained_id = str(sense.get("_legacy_sense_id", "")).strip()
+        if retained_id and retained_id not in used_ids:
+            result[retained_id] = deepcopy(sense)
+            used_ids.add(retained_id)
+            continue
         digest = hashlib.md5(
             f"{headword}|{sense.get('pos', '')}|{sense.get('translation', '')}".encode("utf-8"),
             usedforsecurity=False,
@@ -173,6 +183,7 @@ class SpanishDictSenseMenuAdapter:
     snapshot_id: str = field(init=False)
     surface_cache: dict[str, Any] = field(init=False)
     headword_cache: dict[str, Any] = field(init=False)
+    normalized_menu: dict[str, Any] = field(init=False)
     spanish_forms: set[str] = field(init=False)
     conjugation_deaccented: dict[str, set[str]] = field(init=False)
     conjugation_original: dict[str, set[str]] = field(init=False)
@@ -205,6 +216,14 @@ class SpanishDictSenseMenuAdapter:
             if content_id != f"sha256:{record.get('sha256')}":
                 raise SpanishDictMenuError(f"SpanishDict snapshot hash changed: {filename}")
             content_ids[filename] = content_id
+        normalized_record = records.get(NORMALIZED_MENU_FILE)
+        if normalized_record is not None:
+            if not isinstance(normalized_record, dict):
+                raise SpanishDictMenuError("SpanishDict normalized menu record is invalid")
+            normalized_content_id = file_content_id(self.path / NORMALIZED_MENU_FILE)
+            if normalized_content_id != f"sha256:{normalized_record.get('sha256')}":
+                raise SpanishDictMenuError("SpanishDict snapshot hash changed: normalized_menu.json")
+            content_ids[NORMALIZED_MENU_FILE] = normalized_content_id
         self.snapshot_id = str(manifest.get("snapshot_id", ""))
         if not self.snapshot_id:
             raise SpanishDictMenuError("SpanishDict snapshot ID is missing")
@@ -213,6 +232,11 @@ class SpanishDictSenseMenuAdapter:
         )
         self.surface_cache = _load_object(self.path / "surface_cache.json")
         self.headword_cache = _load_object(self.path / "headword_cache.json")
+        self.normalized_menu = (
+            _load_object(self.path / NORMALIZED_MENU_FILE)
+            if normalized_record is not None
+            else {}
+        )
         forms = _load_object(self.path / "spanish_forms.json")
         reverse = _load_object(self.path / "conjugation_reverse.json")
         self.spanish_forms = {_deaccent(str(value)) for value in forms}
@@ -307,6 +331,9 @@ class SpanishDictSenseMenuAdapter:
         return total > 0 and spanish_like * 2 > total
 
     def _analyses(self, surface: str, quarantine: list[dict[str, str]]) -> list[dict[str, Any]]:
+        retained = self.normalized_menu.get(surface)
+        if isinstance(retained, list):
+            return _normalize_analyses(retained)
         surface_entry = self.surface_cache.get(surface)
         if not isinstance(surface_entry, dict):
             return []
@@ -473,7 +500,10 @@ class SpanishDictSenseMenuAdapter:
                                 "spanishdict": {
                                     key: deepcopy(value)
                                     for key, value in sense.items()
-                                    if key not in {"translation", "context", "pos", "headword", "source"}
+                                    if key not in {
+                                        "translation", "context", "pos", "headword", "source",
+                                        "_legacy_sense_id",
+                                    }
                                 },
                                 "legacy_menu_sense_id": sense_id,
                                 "context": str(sense.get("context", "")),
@@ -505,7 +535,12 @@ class SpanishDictSenseMenuAdapter:
                                     "query": surface,
                                     "response_headword": headword,
                                     "entry_language": (self.surface_cache.get(surface) or {}).get("entry_lang"),
-                                    "resolution": "direct" if not raw.get("surface_from") else raw.get("surface_relation", "redirect"),
+                                    "resolution": (
+                                        "retained_normalized_menu"
+                                        if surface in self.normalized_menu
+                                        else "direct" if not raw.get("surface_from")
+                                        else raw.get("surface_relation", "redirect")
+                                    ),
                                 },
                                 "menu_order_prior": len(normalized),
                             },

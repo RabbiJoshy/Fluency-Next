@@ -64,7 +64,7 @@
         "conjugation": "https://www.spanishdict.com/conjugate/{word}"
       },
       "capabilities": {
-        "speech": false,
+        "speech": true,
         "lyrics": true,
         "mergeLemmas": true,
         "cognateFilter": true,

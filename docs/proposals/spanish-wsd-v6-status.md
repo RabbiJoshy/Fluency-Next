@@ -36,7 +36,7 @@ PYTHONPATH=src python3 -m fluency.cli pipeline plan --workspace $W --profile $PR
 PYTHONPATH=src python3 -m fluency.cli pipeline inventory  --workspace $W --run-id $RUN --language es --mode speech \
   --snapshot $W/raw/frequency/fluency-2026-07-28-surface-ranking-v1 --snapshot-id fluency-2026-07-28-surface-ranking-v1
 PYTHONPATH=src python3 -m fluency.cli pipeline sense-menu --workspace $W --run-id $RUN --language es --mode speech \
-  --snapshot $W/raw/spanishdict/spanishdict-2026-08-19-cache-v1 --snapshot-id spanishdict-2026-08-19-cache-v1
+  --snapshot $W/raw/dictionaries/es/spanishdict/spanishdict-complete-menu-2026-08-23-v1 --snapshot-id spanishdict-complete-menu-2026-08-23-v1
 PYTHONPATH=src python3 -m fluency.cli pipeline harvest    --workspace $W --run-id $RUN --language es --mode speech \
   --source retained-opensubtitles=$W/raw/opensubtitles-retained/retained-opensubtitles-2026-08-15-harvest-v1
 

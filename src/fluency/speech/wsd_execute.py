@@ -284,12 +284,6 @@ def main() -> None:
     needed = {text for text in needed if text.strip()}
     print(f"candidate assignments: {len(work):,}   exact texts to embed: {len(needed):,}"
           f"   (skipped {empty} empty gloss texts)")
-    api_key = ""
-    for line in args.env_file.read_text(encoding="utf-8").splitlines():
-        if line.startswith("GEMINI_API_KEY"):
-            api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
-    if not api_key:
-        raise SystemExit("GEMINI_API_KEY is required for the gloss scorer")
     # run_dir is <workspace>/runs/<language>/<mode>/<run-id>, so the workspace
     # root is four levels up. Getting this wrong is silent: the cache is simply
     # written somewhere nothing will look for it and every run re-embeds.
@@ -307,6 +301,16 @@ def main() -> None:
         print(f"exact-text cache: {len(vectors):,} vectors at {cache_path}")
     missing = sorted(text for text in needed if text not in vectors)
     if missing:
+        api_key = ""
+        if args.env_file.is_file():
+            for line in args.env_file.read_text(encoding="utf-8").splitlines():
+                if line.startswith("GEMINI_API_KEY"):
+                    api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
+        if not api_key:
+            raise SystemExit(
+                f"{len(missing):,} exact-text embeddings are missing; "
+                "provide GEMINI_API_KEY via --env-file to create them"
+            )
         print(f"embedding {len(missing):,} cache misses into a run-scoped delta...")
         vectors.update(embed_texts(missing, api_key=api_key))
         import numpy as np

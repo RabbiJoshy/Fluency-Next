@@ -762,8 +762,8 @@ def handle_migration(args: argparse.Namespace) -> int:
             workspace,
             source_repository=args.source_repository,
         )
-        print(f"Pinned offline SpanishDict snapshot: {target}")
-        print("No built menu, WSD assignment, example selection, deck, or release was migrated.")
+        print(f"Pinned complete offline SpanishDict menu snapshot: {target}")
+        print("No WSD assignment, example selection, deck, or release was migrated.")
         return 0
     if args.migration_command == "spanish-wsd-assets":
         targets = migrate_spanish_wsd_assets(

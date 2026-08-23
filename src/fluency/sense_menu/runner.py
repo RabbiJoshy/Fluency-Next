@@ -141,6 +141,16 @@ def build_sense_menu_stage(
     else:
         raise SenseMenuRunError("no installed sense-menu adapter matches the run profile")
     menu, report = adapter.build(cards, snapshot_id=snapshot_id)
+    inventory_cards = int(report.get("inventory_cards", 0))
+    cards_ready = int(report.get("cards_ready", 0))
+    coverage = cards_ready / inventory_cards if inventory_cards else 0.0
+    report["card_coverage"] = coverage
+    minimum_coverage = profile["sense_menu"].get("minimum_card_coverage")
+    if minimum_coverage is not None and coverage < float(minimum_coverage):
+        raise SenseMenuRunError(
+            "sense-menu coverage is below the profile minimum: "
+            f"{cards_ready}/{inventory_cards} ({coverage:.2%}) < {float(minimum_coverage):.2%}"
+        )
 
     config = {
         "source_adapter": source_adapter,

@@ -1,4 +1,4 @@
-"""Pin the approved offline SpanishDict and morphology inputs."""
+"""Pin the complete approved offline SpanishDict menu and morphology inputs."""
 
 from __future__ import annotations
 
@@ -17,13 +17,14 @@ from fluency.release.io import json_bytes
 
 
 MANIFEST_VERSION = "spanishdict-snapshot/v1"
-SNAPSHOT_ID = "spanishdict-recovered-2026-08-22-v1"
+SNAPSHOT_ID = "spanishdict-complete-menu-2026-08-23-v1"
 AUDIT_COMMIT = "23f1ad4387feb4a599815eaa6846e1201b5f402a"
 EXPECTED_HASHES = {
     "surface_cache.json": "f0198ff03c124590c5e2a12d8db1439c1cf22b2cf21b09ef10129217843e46ce",
     "headword_cache.json": "7c379cb2641416237b34a191b4f1b63f27acaef13a85cccdc84885795066e98f",
     "spanish_forms.json": "b03b768be013b70e80852a90e8818a37effc2dda50ec6df73e9724403c1535f2",
     "conjugation_reverse.json": "a73e8666f0117b677d5e48bac69089b0b3445e3301906a3639d3ad1b4a04665d",
+    "normalized_menu.json": "8eb786341341bf169f565eb6f88945f8c263b574a94c5ca7f74a3dbf512063a8",
 }
 
 
@@ -53,7 +54,7 @@ def migrate_spanish_dictionary_snapshot(
     source_repository: Path,
     recovered_at: datetime | None = None,
 ) -> Path:
-    """Copy only offline menu inputs; never copy a built menu or assignments."""
+    """Copy the complete deterministic menu source; never copy assignments."""
 
     source_root = source_repository.expanduser().resolve()
     sources = {
@@ -61,6 +62,7 @@ def migrate_spanish_dictionary_snapshot(
         "headword_cache.json": source_root / "Data/Spanish/Senses/spanishdict/headword_cache.json",
         "spanish_forms.json": source_root / "Data/Spanish/layers/spanish_forms.json",
         "conjugation_reverse.json": source_root / "Data/Spanish/layers/conjugation_reverse.json",
+        "normalized_menu.json": source_root / "Data/Spanish/layers/sense_menu/spanishdict.json",
     }
     target = workspace.root / f"raw/dictionaries/es/spanishdict/{SNAPSHOT_ID}"
     if target.exists():
@@ -92,9 +94,18 @@ def migrate_spanish_dictionary_snapshot(
         conjugation_reverse = json.loads(
             (temporary / "conjugation_reverse.json").read_text(encoding="utf-8")
         )
+        normalized_menu = json.loads(
+            (temporary / "normalized_menu.json").read_text(encoding="utf-8")
+        )
         if not all(
             isinstance(value, dict)
-            for value in (surface_cache, headword_cache, spanish_forms, conjugation_reverse)
+            for value in (
+                surface_cache,
+                headword_cache,
+                spanish_forms,
+                conjugation_reverse,
+                normalized_menu,
+            )
         ):
             raise SpanishDictionaryMigrationError("dictionary inputs must be JSON objects")
         manifest = {
@@ -115,9 +126,10 @@ def migrate_spanish_dictionary_snapshot(
                 "headword_cache_entries": len(headword_cache),
                 "spanish_form_entries": len(spanish_forms),
                 "reverse_conjugation_entries": len(conjugation_reverse),
+                "normalized_menu_surfaces": len(normalized_menu),
             },
             "notes": [
-                "These are deterministic offline menu inputs, not a normalized menu.",
+                "The normalized menu is retained deterministic dictionary work, not a WSD assignment.",
                 "No HTTP client, WSD assignment, final example selection or release is included.",
             ],
         }

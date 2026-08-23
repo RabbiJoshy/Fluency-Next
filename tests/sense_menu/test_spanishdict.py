@@ -152,6 +152,50 @@ class SpanishDictSenseMenuTests(unittest.TestCase):
         self.assertEqual(leaves[0]["definition"], "used to express a quality")
         self.assertEqual(leaves[0]["provider_metadata"]["legacy_menu_sense_id"], "913")
 
+    def test_complete_normalized_menu_fills_surfaces_absent_from_raw_cache(self):
+        retained_path = self.snapshot / "normalized_menu.json"
+        retained_path.write_text(
+            json.dumps(
+                {
+                    "salvar": [
+                        {
+                            "headword": "salvar",
+                            "senses": {
+                                "kept7": {
+                                    "pos": "VERB",
+                                    "translation": "to save",
+                                    "context": "to rescue",
+                                }
+                            },
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        manifest_path = self.snapshot / "artifact.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["content_files"].append(
+            {
+                "path": "normalized_menu.json",
+                "sha256": file_content_id(retained_path).removeprefix("sha256:"),
+                "bytes": retained_path.stat().st_size,
+            }
+        )
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        cards = [{**create_card_record("es", "salvar").to_dict(), "rank": 1}]
+        menu, report = self.adapter().build(cards, snapshot_id="fixture-2026-08")
+        analysis = menu["cards"][0]["analyses"][0]
+        self.assertEqual(analysis["senses"][0]["sense_id"], "kept7")
+        self.assertEqual(
+            analysis["provider_metadata"]["spanishdict"]["resolution"],
+            "retained_normalized_menu",
+        )
+        self.assertEqual(report["cards_ready"], 1)
+        self.assertEqual(report["cards_without_menu"], 0)
+
     def test_snapshot_hash_change_is_rejected(self):
         (self.snapshot / "surface_cache.json").write_text("{}", encoding="utf-8")
         with self.assertRaises(SpanishDictMenuError):
