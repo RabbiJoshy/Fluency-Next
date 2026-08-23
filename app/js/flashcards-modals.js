@@ -1877,6 +1877,20 @@ function showSimpleFlagMenu() {
     if (note) note.value = '';
     const sendNote = document.getElementById('flagSimpleSendNote');
     if (sendNote) sendNote.disabled = true;
+    const provenance = document.getElementById('flagMenuProvenance');
+    if (provenance) {
+        const meaningIndex = (typeof currentMeaningIndex === 'number') ? currentMeaningIndex : 0;
+        const meaning = card.meanings?.[meaningIndex] || null;
+        const example = _simpleFlagExample(meaning, meaningIndex);
+        const attached = _flagRunProvenance(card, meaning, example).fields;
+        const chips = [
+            attached.releaseId ? `Release ${attached.releaseId}` : '',
+            attached.runId ? `Run ${attached.runId}` : '',
+        ].filter(Boolean);
+        provenance.innerHTML = chips.length
+            ? `<span>Attached automatically</span>${chips.map(value => `<code>${_escapeHtml(value)}</code>`).join('')}`
+            : '<span>Attached automatically</span><code>Card identity only · release/run unavailable</code>';
+    }
     _renderSimpleSenses();
     pop.hidden = false;
     pop.setAttribute('aria-hidden', 'false');

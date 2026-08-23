@@ -508,6 +508,11 @@ WSD request/result/method/path, source, alignment, translation, song and
 vocalist identities. A nested raw-record view guarantees newly added optional
 fields remain inspectable before a tailored presentation is written. The clean
 `que` card was browser-verified across six senses and all of their examples.
+The flag dialog also shows the exact release and selected-example run that will
+be attached before submission; no audit flag was sent during migration testing.
+Returning from the preview to Spanish Speech preserved its independent
+20-card set structure, and the preview's empty Review queue degraded to a Learn
+action without inventing review cards.
 
 #### 6. Compose and compare a clean immutable Artist release
 
@@ -597,11 +602,11 @@ Before making Fluency-Next the live repository:
 
 ### Immediate next action
 
-Exercise Review/flagging/progress fallbacks that are possible with the current
-JSTA state and record any parity gaps without turning this into a redesign. Do
-not change `active.json`. Once the preview UI is accepted, extend the same
-release composer and comparison report from one song to the full clean Spanish
-Artist corpus rather than inventing a second packaging path.
+Extend the same release composer and comparison report from one song to the
+full clean Spanish Artist corpus rather than inventing a second packaging path.
+Do not change `active.json`. A deliberate flag submission, non-empty Review
+queue and completion/progress write remain production-backend checks, not
+reasons to hold the clean data architecture in a one-song state.
 
 The key separation is now enforceable: shell and study behavior can evolve
 without rebuilding corpus data, while a new Artist data run can be activated

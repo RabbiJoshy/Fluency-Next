@@ -1200,6 +1200,23 @@
             color: var(--text-secondary);
             font: 500 12px/1.5 var(--font-reading);
         }
+        .flag-menu-provenance {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 5px;
+            margin: -7px 0 13px;
+            font-size: 10px;
+        }
+        .flag-menu-provenance span { opacity: .62; }
+        .flag-menu-provenance code {
+            max-width: 100%;
+            padding: 3px 6px;
+            border-radius: 999px;
+            background: color-mix(in srgb, currentColor 9%, transparent);
+            overflow-wrap: anywhere;
+            white-space: normal;
+        }
         .flag-menu .card-meta-section {
             margin-top: 17px;
         }

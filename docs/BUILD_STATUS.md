@@ -272,7 +272,10 @@
   lazy absence of examples before the first deck load. Card Data now provides
   an example-first expandable drilldown of every occurrence's complete typed
   lineage plus its raw future-proof record; the clean multi-sense `que` card
-  was browser-verified end to end. Shell cache moved to `flashcards-v283`.
+  was browser-verified end to end. The flag dialog visibly confirms its exact
+  preview release and source run without requiring a submission, empty Review
+  degrades to Learn-only, and switching back to Spanish Speech preserves its
+  independent 20-card set. Shell cache moved to `flashcards-v284`.
 
 ## Not started
 

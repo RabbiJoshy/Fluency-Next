@@ -181,6 +181,7 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("`flag|${flagId}`", auth)
         self.assertIn("schemaVersion: 4", auth)
         self.assertIn("function _flagRunProvenance", modals)
+        self.assertIn("Attached automatically", modals)
         self.assertIn("Release ID:", modals)
         self.assertEqual(
             config["languages"]["french"]["releaseManifestPath"],
