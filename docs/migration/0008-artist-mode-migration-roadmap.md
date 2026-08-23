@@ -431,6 +431,16 @@ are written to a run-scoped delta.
 This checkpoint is committed as `88fff5c` (**Port auditable Spanish v5 lyrics
 WSD**). It changes no active learner release.
 
+Real-song acceptance checkpoint (2026-08-23): the complete inactive
+`Estamos Arriba` run now contains all 585 typed WSD results: 463 assignments,
+59 explicit `no_menu` outcomes, 45 route-ineligible outcomes and 18 review
+outcomes. The executor reused retained Gemini embeddings and wrote only its
+exact cache misses to the run-scoped delta. Auditor v10 resolves each result
+back to its occurrence, menu analysis and sense leaf, and exposes the selected
+tuple, decision path, score evidence, method and stable IDs. Browser validation
+confirmed the 463-assignment count and a complete token trace with no console
+errors. No learner release was built or activated.
+
 #### 5. Consolidate occurrences into Artist cards and examples
 
 Build the clean equivalent of the old Artist assignment/consolidation layers.
@@ -542,13 +552,12 @@ Before making Fluency-Next the live repository:
 
 ### Immediate next action
 
-Joshua runs the single real `lyrics wsd-execute` command recorded in the active
-task handoff. It fills the 100 run-scoped Gemini cache misses, tags the 55 unique
-lines, encodes the 463 exact occurrences with pinned BETO, applies the retained
-v5 calibrator and writes an inactive complete raw bundle. The agent then runs
-the quick `lyrics wsd-import`, validates all 585 bindings, adds WSD evidence to
-the lineage explorer, and proceeds to occurrence consolidation. No learner deck
-or active release changes during this checkpoint.
+Build the shared occurrence-consolidation layer described above. It must consume
+the exact stage outputs already present in
+`bad-bunny-estamos-arriba-source-v7`, preserve surface-card identity and every
+occurrence's lineage, and emit explicit study-card and non-study dispositions.
+The first output remains an inactive one-song audit artifact; release assembly
+and activation are separate later decisions.
 
 The key separation is now enforceable: shell and study behavior can evolve
 without rebuilding corpus data, while a new Artist data run can be activated

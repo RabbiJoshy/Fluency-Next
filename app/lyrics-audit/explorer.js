@@ -22,6 +22,13 @@ function resolvedLexical(clean) {
   });
 }
 
+function resolvedWsd(clean) {
+  return (clean?.wsd_results || []).map((reference) => {
+    const profile = state.data.wsd_result_profiles?.[reference.result_id];
+    return profile ? { ...profile, result_id: reference.result_id, analysis_unit_id: reference.analysis_unit_id } : reference;
+  });
+}
+
 function tokenClasses(token) {
   const classes = ["token"];
   if (token.changed) classes.push("changed");
@@ -63,6 +70,26 @@ function lexicalHtml(clean) {
 }
 
 function wsdHtml(clean) {
+  const results = resolvedWsd(clean);
+  if (results.length) return results.map((result) => {
+    if (result.status !== "assigned") {
+      return `<div class="wsd-request"><div class="state-box"><small>${escapeHtml(result.status)} · explicit final disposition</small><strong>No sense assigned</strong></div><div class="route-reason">${escapeHtml((result.evidence?.reason_codes || []).join(" + ") || "No model execution required")}</div><code>${escapeHtml(result.result_id)}</code></div>`;
+    }
+    const lexical = resolvedLexical(clean).find((candidate) => (candidate.analyses || []).some((analysis) => analysis.menu_analysis_id === result.menu_analysis_id));
+    const analysis = lexical?.analyses?.find((item) => item.menu_analysis_id === result.menu_analysis_id);
+    const sense = analysis?.senses?.find((item) => item.sense_id === result.selected_sense_id);
+    const calibration = result.evidence?.calibration || {};
+    const vote = result.evidence?.token_tuple_vote || {};
+    const top = (result.evidence?.gloss_top || []).map((candidate) => `<li><strong>${escapeHtml(candidate.sense_id)}</strong><span>raw ${Number(candidate.raw).toFixed(4)} · with prior ${Number(candidate.adjusted).toFixed(4)}</span><code>${escapeHtml(candidate.analysis_id)}</code></li>`).join("");
+    const decisions = (result.decision_path || []).map((step) => `<span class="decision-pill">${escapeHtml(step.replaceAll("_", " "))}</span>`).join("");
+    return `<div class="wsd-result assigned">
+      <div class="state-box"><small>${escapeHtml(result.selected_tuple?.part_of_speech || "POS unavailable")} · ${escapeHtml(calibration.legacy_band || "unbanded")} legacy confidence band</small><strong>${escapeHtml(result.selected_tuple?.headword || "No headword")} → ${escapeHtml(sense?.translation || result.selected_sense_id)}</strong></div>
+      ${sense?.definition ? `<p class="wsd-definition">${escapeHtml(sense.definition)}</p>` : ""}
+      <div class="decision-path">${decisions}</div>
+      <div class="wsd-facts"><span>confidence ${Number(result.confidence).toFixed(4)}</span><span>BETO ${escapeHtml(vote.status || "not recorded")}${Number.isFinite(vote.gap) ? ` · gap ${Number(vote.gap).toFixed(4)}` : ""}</span></div>
+      <details class="policy-trace"><summary>Inspect top gloss evidence and exact IDs</summary><ol>${top}</ol><div class="mono-block">result: ${escapeHtml(result.result_id)}<br>analysis: ${escapeHtml(result.menu_analysis_id)}<br>sense: ${escapeHtml(result.selected_sense_id)}</div></details>
+    </div>`;
+  }).join("");
   const requests = clean?.wsd_requests || [];
   if (!requests.length) return `<div class="no-evidence">No WSD request exists for this token in the selected run.</div>`;
   return requests.map((request) => `<div class="wsd-request"><div class="state-box"><small>${escapeHtml(request.eligibility)} · ${request.translation_available ? "aligned translation available" : "source context only"}</small><strong>Prepared — model not run</strong></div><code>${escapeHtml(request.request_id)}</code></div>`).join("");
@@ -176,7 +203,7 @@ function renderTrace(token, line) {
           ${clean ? `<div class="stage current"><div class="stage-title"><strong>Clean recomputation</strong><span class="evidence-kind">new direct lineage</span></div><div class="comparison"><div class="state-box"><small>${escapeHtml(clean.surface)} · ${escapeHtml(clean.tokenizer_method)}</small><strong>${escapeHtml(clean.normalized_form)}</strong></div><span>→</span><div class="state-box"><small>${escapeHtml(clean.units.map((unit) => unit.reason_code).join(" + "))}</small><strong>${escapeHtml(clean.units.map((unit) => unit.operation).join(" + "))}</strong></div></div></div>` : ""}
           <div class="stage current"><div class="stage-title"><strong>Route</strong><span class="evidence-kind">${resolvedRoutes(clean)[0]?.evidence_kind === "direct" ? "direct policy trace" : resolvedRoutes(clean)[0]?.evidence_kind === "human_review" ? "attributed human override" : "current snapshot"}</span></div>${routingHtml(clean, token)}</div>
           <div class="stage current"><div class="stage-title"><strong>Build lexical menu</strong><span class="evidence-kind">direct · pre-WSD</span></div>${lexicalHtml(clean)}</div>
-          <div class="stage"><div class="stage-title"><strong>Disambiguate sense</strong><span class="evidence-kind">explicitly not run</span></div>${wsdHtml(clean)}</div>
+          <div class="stage ${resolvedWsd(clean).length ? "current" : ""}"><div class="stage-title"><strong>Disambiguate sense</strong><span class="evidence-kind">${resolvedWsd(clean).length ? "direct immutable result" : "explicitly not run"}</span></div>${wsdHtml(clean)}</div>
           <div class="stage current"><div class="stage-title"><strong>Materialize in app</strong><span class="evidence-kind">current release</span></div>${assignmentHtml(line.app_assignments, token)}</div>
         </div>
       </section>
@@ -210,6 +237,7 @@ function renderHeader() {
   $("changeCount").textContent = data.comparison.changed_occurrence_count.toLocaleString();
   $("restoreCount").textContent = data.comparison.restored_occurrence_count.toLocaleString();
   $("alignmentCount").textContent = data.comparison.aligned_line_count.toLocaleString();
+  $("wsdCount").textContent = (data.comparison.wsd_result_counts?.assigned || 0).toLocaleString();
   const hasCleanProcessing = data.comparison.process_lineage_event_count > 0;
   $("evidenceSummary").innerHTML = hasCleanProcessing
     ? `<strong>Evidence boundary:</strong> historical normalization is compared from two preserved runs. ${escapeHtml(data.evidence.routing)}, while app assignments remain current release records.`
@@ -250,7 +278,7 @@ async function loadSong(songId) {
   picker.disabled = true;
   $("songTitle").textContent = `Loading ${entry.title}…`;
   try {
-    const response = await fetch(`data/${entry.bundle}?v=9`, { cache: "no-store" });
+    const response = await fetch(`data/${entry.bundle}?v=10`, { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const bundle = await response.json();
     if (requestId !== state.requestId) return;

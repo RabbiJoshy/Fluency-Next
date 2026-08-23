@@ -116,6 +116,7 @@ def build_bundle(
     process_output: Path | None = None,
     lexical_output: Path | None = None,
     wsd_prepare_output: Path | None = None,
+    wsd_results_output: Path | None = None,
 ) -> dict[str, Any]:
     evidence = legacy_artist_root / "data" / "evidence"
     candidate_ledger = evidence / "ledger" / "runs" / candidate_run
@@ -169,6 +170,10 @@ def build_bundle(
     lexical_lineage_event_count = 0
     wsd_requests_by_unit: dict[str, dict[str, Any]] = {}
     wsd_prepare_report: dict[str, Any] | None = None
+    wsd_result_refs_by_unit: dict[str, dict[str, Any]] = {}
+    wsd_result_profiles: dict[str, dict[str, Any]] = {}
+    wsd_results_report: dict[str, Any] | None = None
+    wsd_method: dict[str, Any] | None = None
     if source_ingest is not None:
         source_ingest = source_ingest.expanduser().resolve()
         ingested_song = _read_json(source_ingest / "song.json")
@@ -249,6 +254,26 @@ def build_bundle(
             }
             for request in _read_jsonl(wsd_prepare_output / "requests.jsonl")
         }
+    if wsd_results_output is not None:
+        if wsd_prepare_output is None:
+            raise ValueError("WSD results require their matching preparation output")
+        wsd_results_output = wsd_results_output.expanduser().resolve()
+        wsd_results_report = _read_json(wsd_results_output / "report.json")
+        wsd_method = _read_json(wsd_results_output / "method.json")
+        for result in _read_jsonl(wsd_results_output / "results.jsonl"):
+            analysis_unit_id = result["target"]["id"]
+            result_id = result["result_id"]
+            if analysis_unit_id in wsd_result_refs_by_unit or result_id in wsd_result_profiles:
+                raise ValueError("WSD audit results contain duplicate identities")
+            wsd_result_refs_by_unit[analysis_unit_id] = {
+                "result_id": result_id,
+                "analysis_unit_id": analysis_unit_id,
+            }
+            wsd_result_profiles[result_id] = {
+                key: value
+                for key, value in result.items()
+                if key not in {"result_id", "target", "occurrence_id", "surface_card_id", "surface_form"}
+            }
 
     changed_count = 0
     restored_count = 0
@@ -344,6 +369,11 @@ def build_bundle(
                                 for unit in clean_units
                                 if unit["analysis_unit_id"] in wsd_requests_by_unit
                             ],
+                            "wsd_results": [
+                                wsd_result_refs_by_unit[unit["analysis_unit_id"]]
+                                for unit in clean_units
+                                if unit["analysis_unit_id"] in wsd_result_refs_by_unit
+                            ],
                             "tokenizer_method": (process_manifest or {}).get("methods", {}).get("tokenize"),
                             "normalizer_method": (process_manifest or {}).get("methods", {}).get("normalize"),
                             "router_method": (process_manifest or {}).get("methods", {}).get("route"),
@@ -391,7 +421,11 @@ def build_bundle(
     if lexical_output:
         limitations.insert(
             3,
-            "The clean lexical layer exposes complete provider menus and explicit abstentions; WSD has not selected a sense.",
+            (
+                "The clean lexical layer exposes complete provider menus and explicit abstentions; the selected sense is shown only where the imported WSD result binds to that exact menu."
+                if wsd_results_output
+                else "The clean lexical layer exposes complete provider menus and explicit abstentions; WSD has not selected a sense."
+            ),
         )
     return {
         "schema": "fluency.lyrics-audit-bundle/v1",
@@ -415,6 +449,7 @@ def build_bundle(
         ],
         "routing_profiles": routing_profiles,
         "lexical_profiles": lexical_profiles,
+        "wsd_result_profiles": wsd_result_profiles,
         "comparison": {
             "baseline_run_id": baseline_run,
             "candidate_run_id": candidate_run,
@@ -430,6 +465,8 @@ def build_bundle(
             "lexical_status_counts": (lexical_report or {}).get("status_counts", {}),
             "wsd_request_count": (wsd_prepare_report or {}).get("request_count", 0),
             "wsd_executable_request_count": (wsd_prepare_report or {}).get("executable_request_count", 0),
+            "wsd_result_counts": (wsd_results_report or {}).get("result_counts", {}),
+            "wsd_method_id": (wsd_method or {}).get("source_method_id"),
         },
         "evidence": {
             "source_ingest": (
@@ -451,12 +488,14 @@ def build_bundle(
                 else "reconstructed lookup against the current materialized word_routing.json"
             ),
             "lexical_menu": (
-                "direct provider-neutral menu candidates; lookup identity is separate from surface identity and WSD has not run"
+                "direct provider-neutral menu candidates; lookup identity remains separate from surface identity"
                 if lexical_output
                 else "not included in this audit bundle"
             ),
             "wsd": (
-                "complete immutable request coverage; execution status is not_run and no sense assignments exist"
+                "complete imported occurrence-level results from one exact method and asset set; no historical assignment fallback"
+                if wsd_results_output
+                else "complete immutable request coverage; execution status is not_run and no sense assignments exist"
                 if wsd_prepare_output
                 else "not included in this audit bundle"
             ),
@@ -478,6 +517,7 @@ def main() -> None:
     parser.add_argument("--process-output", type=Path)
     parser.add_argument("--lexical-output", type=Path)
     parser.add_argument("--wsd-prepare-output", type=Path)
+    parser.add_argument("--wsd-results-output", type=Path)
     args = parser.parse_args()
     bundle = build_bundle(
         legacy_artist_root=args.legacy_artist_root,
@@ -489,6 +529,7 @@ def main() -> None:
         process_output=args.process_output,
         lexical_output=args.lexical_output,
         wsd_prepare_output=args.wsd_prepare_output,
+        wsd_results_output=args.wsd_results_output,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
