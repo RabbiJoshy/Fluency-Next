@@ -2,6 +2,16 @@
   "_readme": "User-visible changes in the replacement app, newest first.",
   "entries": [
     {
+      "date": "2026-08-23",
+      "commit": "d5aecbb",
+      "summary": "Artist data now stays bound to one immutable release",
+      "detail": [
+        "The active Lyrics catalog rewrites vocabulary, examples, songs, artwork and Spotify data to release-versioned URLs before they are loaded.",
+        "Offline caches can retain immutable release assets without accidentally serving data from an older active release.",
+        "Preview and active releases now use the same loading path; release activation remains an explicit separate action."
+      ]
+    },
+    {
       "date": "2026-08-22",
       "commit": "7b6da6d",
       "summary": "Repeated audit flags now remain separate, traceable events",

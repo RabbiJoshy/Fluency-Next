@@ -12,7 +12,7 @@ import './config.js?v=20260822p';
 import './progress.js?v=20260822p';
 import './knowledge.js?v=20260822p';
 import './ui.js?v=20260822p';
-import './vocab.js?v=20260823u';
+import './vocab.js?v=20260823x';
 import './song-sets.js?v=20260822p';
 import './vocabulary-import.js?v=20260822p';
 import './flashcards.js?v=20260823w';
@@ -139,11 +139,12 @@ function artistCatalogUrl() {
         : ACTIVE_ARTIST_CATALOG_URL;
 }
 
-function bindArtistCatalogToRelease(catalog, releaseId) {
-    if (!releaseId) return catalog;
-    const appBase = `/releases/lyrics/${encodeURIComponent(releaseId)}/app/`;
+function bindArtistCatalogToRelease(catalog, requestedReleaseId = '') {
     for (const artist of Object.values(catalog)) {
-        for (const field of ['indexPath', 'examplesPath', 'masterPath', 'songsPath', 'albumsDictionary', 'defaultAlbumArt', 'pickerImage']) {
+        const releaseId = requestedReleaseId || artist.releaseId;
+        if (!releaseId) continue;
+        const appBase = `/releases/lyrics/${encodeURIComponent(releaseId)}/app/`;
+        for (const field of ['indexPath', 'examplesPath', 'masterPath', 'songsPath', 'spotifyPath', 'albumsDictionary', 'defaultAlbumArt', 'pickerImage']) {
             if (typeof artist[field] === 'string' && artist[field]) artist[field] = appBase + artist[field];
         }
         if (artist.albumImageMap) {
@@ -810,7 +811,10 @@ async function showLyricsPicker(language, anchorBtn = null) {
             artists = await fetch(artistCatalogUrl(), { cache: 'no-store' }).then(response => {
                 if (!response.ok) throw new Error(`Artist catalog HTTP ${response.status}`);
                 return response.json();
-            }).then(value => validateArtistCatalog(value, { source: 'config/artists.json' }));
+            }).then(value => bindArtistCatalogToRelease(
+                validateArtistCatalog(value, { source: 'config/artists.json' }),
+                requestedLyricsRelease()
+            ));
             allArtistsConfig = artists;
             window._allArtistsConfig = artists;
         }

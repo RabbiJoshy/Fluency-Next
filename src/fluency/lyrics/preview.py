@@ -110,6 +110,7 @@ def build_clean_lyrics_preview_release(
             "indexPath": f"Artists/{language}/{artist_slug}/index.json",
             "examplesPath": f"Artists/{language}/{artist_slug}/examples.json",
             "songsPath": f"Artists/{language}/{artist_slug}/songs.json",
+            "spotifyPath": "Artists/spotify_tracks.json",
             "colorTheme": parity_artist.get("colorTheme", {}), "maxLevel": len(clean_ids),
             "releaseId": release_id, "releaseManifestPath": "Artists/release-manifest.json",
             "releaseCompositionPath": "Artists/release-composition.json",

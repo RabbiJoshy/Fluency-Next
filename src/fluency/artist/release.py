@@ -287,6 +287,8 @@ def build_lyrics_catalog_release(
         spotify_source = source_root / "Artists/spotify_tracks.json"
         if spotify_source.is_file():
             _copy_file(spotify_source, app_root, "Artists/spotify_tracks.json", copied)
+            for artist in app_catalog.values():
+                artist["spotifyPath"] = "Artists/spotify_tracks.json"
 
         catalog_path = app_root / "config/artists.json"
         catalog_path.parent.mkdir(parents=True, exist_ok=True)
@@ -400,7 +402,7 @@ def validate_lyrics_release(release_directory: Path) -> tuple[dict[str, Any], di
                 raise LyricsReleaseError(f"Lyrics artist {slug} is missing {field}")
         if config["releaseId"] != release_id:
             raise LyricsReleaseError(f"Lyrics artist {slug} points at another release")
-        for field in ("indexPath", "examplesPath", "masterPath", "songsPath", "albumsDictionary", "defaultAlbumArt", "pickerImage"):
+        for field in ("indexPath", "examplesPath", "masterPath", "songsPath", "spotifyPath", "albumsDictionary", "defaultAlbumArt", "pickerImage"):
             value = config.get(field)
             if value and f"app/{value}" not in declared:
                 raise LyricsReleaseError(f"Lyrics artist {slug} references an undeclared {field}")

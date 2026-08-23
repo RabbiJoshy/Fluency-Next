@@ -1695,7 +1695,8 @@ async function loadVocabularyData(rangeString, opts = {}) {
 
         // Load Spotify track mapping (fire-and-forget, non-blocking)
         if (!window._spotifyTracks) {
-            fetch('Artists/spotify_tracks.json').then(r => r.ok ? r.json() : {}).then(d => {
+            const spotifyPath = activeArtist?.spotifyPath || 'Artists/spotify_tracks.json';
+            fetch(spotifyPath).then(r => r.ok ? r.json() : {}).then(d => {
                 window._spotifyTracks = d;
             }).catch(() => { window._spotifyTracks = {}; });
         }

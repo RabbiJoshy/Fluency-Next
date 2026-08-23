@@ -676,6 +676,15 @@ Before making Fluency-Next the live repository:
 - retain the old repository/deployment as rollback until the new release has
   survived real use, then deprecate it explicitly.
 
+Immutable-URL checkpoint (2026-08-23): both an explicitly requested preview
+and the ordinary active Artist catalog now bind every vocabulary, example,
+song, artwork, album and Spotify path to
+`/releases/lyrics/<release-id>/app/` before loading it. The stable active
+catalog remains a small network-only selector, while the selected release's
+large immutable assets can be cached safely without a later activation serving
+old data under the same URL. The final multi-artist lineage/learner audit is
+deliberately left until the downstream clean release exists.
+
 ### Immediate next action
 
 Keep actual WSD execution behind its explicit method boundary until the current

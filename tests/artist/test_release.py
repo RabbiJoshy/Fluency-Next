@@ -31,6 +31,7 @@ class LyricsReleaseTests(unittest.TestCase):
         (self.source / "Artists/spanish/vocabulary_master.json").write_text(
             json.dumps(master), encoding="utf-8"
         )
+        (self.source / "Artists/spotify_tracks.json").write_text("{}", encoding="utf-8")
         catalog = {
             "test-artist": {
                 "name": "Test Artist",
@@ -59,6 +60,7 @@ class LyricsReleaseTests(unittest.TestCase):
         self.assertEqual(composition["fallback_policy"], "none")
         catalog = json.loads((release / "app/config/artists.json").read_text())
         self.assertEqual(catalog["test-artist"]["indexPath"], "Artists/es/test-artist/index.json")
+        self.assertEqual(catalog["test-artist"]["spotifyPath"], "Artists/spotify_tracks.json")
         self.assertFalse(any("monolith" in item["path"] for item in manifest["files"]))
 
         activate_lyrics_release(self.workspace, "lyrics-test-1")
@@ -82,4 +84,3 @@ class LyricsReleaseTests(unittest.TestCase):
                 source_repository=self.source,
                 release_id="lyrics-test-bad",
             )
-
