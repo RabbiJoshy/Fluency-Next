@@ -138,7 +138,11 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("fitPosSectionSummaries(document.getElementById('backContent'))", flashcards)
         self.assertIn(".pos-collapsible .pos-section-summary", css)
         self.assertIn("font-size: 16px", css)
-        self.assertIn(".pos-collapsible .meaning-pos-rows .meaning-row-regular", css)
+        self.assertIn("citationShownInSenseRows", flashcards)
+        self.assertIn('class="pos-pill-pct sense-percentage"', flashcards)
+        self.assertIn('class="sense-percentage sense-percentage-tail"', flashcards)
+        self.assertIn(".sense-percentage", css)
+        self.assertIn("border-left: 1px solid rgba(var(--sense-match-rgb), 0.38)", css)
 
     def test_optional_conjugations_join_by_dictionary_headword_not_identity_lemma(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")

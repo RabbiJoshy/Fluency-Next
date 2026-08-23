@@ -2625,10 +2625,18 @@
            like a measurement; blank reads as no evidence yet, which is true. */
         .pos-collapsible .pos-pill-pct {
             flex-shrink: 0;
+        }
+
+        /* One percentage grammar at both levels: the group aggregate in the
+           header and the individual evidence values in its expanded rows. */
+        .sense-percentage {
             color: rgb(var(--sense-match-rgb));
-            font-size: 10px;
+            font-family: var(--font-data);
+            font-size: 12px;
             font-weight: 700;
-            font-family: var(--font-mono, monospace);
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            white-space: nowrap;
         }
 
         .pos-collapsible .pos-pill-unassigned {
@@ -2657,13 +2665,9 @@
         }
         .pos-collapsible.is-open .meaning-pos-rows {
             display: block;
-            margin-top: 4px;
-        }
-        /* Expanded subsenses are supporting detail beneath the stronger
-           (POS, headword) overview, rather than visually outranking it. */
-        .pos-collapsible .meaning-pos-rows .meaning-row-regular .row-adaptive-text,
-        .pos-collapsible .meaning-pos-rows .meaning-row-group .row-adaptive-text {
-            font-size: 15px;
+            margin: 5px 0 2px 10px;
+            padding-left: 8px;
+            border-left: 1px solid rgba(var(--sense-match-rgb), 0.38);
         }
 
         /* The legend owns the top-right corner of the card back and keeps it

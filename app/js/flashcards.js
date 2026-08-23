@@ -3924,11 +3924,18 @@ function updateCard({ announceHeadword = false } = {}) {
     let wordDisplay = backWordText;
     let backCitationHTML = '';
     let backDerivationHTML = '';
+    // Multi-meaning cards identify every analysis in their (POS, headword)
+    // section header. Do not repeat that same headword as a detached lemma
+    // below the card title; retain the fallback only for data without a
+    // matching headword in its sense rows.
+    const citationShownInSenseRows = card.isMultiMeaning
+        && cardHeadwords.some(headword =>
+            foldSurfaceForm(headword) === foldSurfaceForm(citationForm));
     if (card.isMultiMeaning
         && citationForm
         && foldSurfaceForm(citationForm) !== foldSurfaceForm(backWordText)
         && !isTrivialCanonicalRelation(backWordText, citationForm)) {
-        if (!isFlipped) {
+        if (!isFlipped && !citationShownInSenseRows) {
             backCitationHTML = `<span class="back-lemma">${escapeCardText(citationForm)}</span>
                 ${formNote ? `<span class="back-form-note">${escapeCardText(formNote)}</span>` : ''}`;
         } else if (foldSurfaceForm(citationForm) !== foldSurfaceForm(backWordText)) {
@@ -4185,7 +4192,7 @@ function updateCard({ announceHeadword = false } = {}) {
                 const extra = summarySenses.length > 1
                     ? `<span class="pos-pill-more" hidden>+${summarySenses.length - 1}</span>` : '';
                 const pct = g.pct > 0
-                    ? `<span class="pos-pill-pct">${Math.round(g.pct * 100)}%</span>` : '';
+                    ? `<span class="pos-pill-pct sense-percentage">${Math.round(g.pct * 100)}%</span>` : '';
                 const assignmentState = !g.hasAssignedEvidence
                     ? '<span class="pos-pill-unassigned">Unassigned</span>' : '';
                 // Whether this reading is known. Recorded per (POS, headword),
@@ -4627,7 +4634,7 @@ function updateCard({ announceHeadword = false } = {}) {
                         if (mm.unassigned || memberPct >= 100) {
                             return '<div style="min-height: 25px; padding: 2px 6px;"></div>';
                         }
-                        return `<div onclick="event.stopPropagation(); selectMeaning(${memberIdx})" style="min-height: 25px; padding: 2px 6px; display: flex; align-items: center; justify-content: flex-end; font-family: var(--font-data); font-size: 14px; color: #c9d2dd; white-space: nowrap; cursor: pointer;">${memberPct}%</div>`;
+                        return `<div class="sense-percentage sense-percentage-cell" onclick="event.stopPropagation(); selectMeaning(${memberIdx})" style="min-height: 25px; padding: 2px 6px; display: flex; align-items: center; justify-content: flex-end; cursor: pointer;">${memberPct}%</div>`;
                     }).join('');
                     const pctColumnHtml = `<div class="pct-column" style="display: flex; flex-direction: column; gap: 3px; padding-left: 4px;">${pctStackHtml}</div>`;
 
@@ -4675,7 +4682,7 @@ function updateCard({ announceHeadword = false } = {}) {
                     const pctTail = !m.unassigned && prominenceText
                         ? `<span class="sense-prominence-label ${String(m.prominenceLabel || '').toLowerCase()}">${prominenceText}</span>`
                         : (!m.unassigned && pctVal < 100
-                            ? `<span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-family: var(--font-data); font-size: 14px; color: #c9d2dd; white-space: nowrap; pointer-events: none;">${pctVal}%</span>`
+                            ? `<span class="sense-percentage sense-percentage-tail" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); pointer-events: none;">${pctVal}%</span>`
                             : '');
                     target.push(`
                     <div class="meaning-row meaning-row-regular ${singletonTextClass}${isSelected ? ' selected' : ''}${rowStateClasses}" style="position: relative; display: grid; grid-template-columns: 1fr; align-items: center; padding: 1px 2px; margin-bottom: 4px; background: ${bgColor}; ${borderStyle} border-radius: 8px; cursor: pointer; min-height: 39px;" onclick="selectMeaning(${idx})">
