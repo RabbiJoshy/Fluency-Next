@@ -181,6 +181,9 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn('class="sense-percentage sense-percentage-tail"', flashcards)
         self.assertIn(".sense-percentage", css)
         self.assertIn("border-left: 1px solid rgba(var(--sense-match-rgb), 0.38)", css)
+        self.assertIn('class="pos-pill-lemma"', flashcards)
+        self.assertNotIn("headword-group-label", flashcards)
+        self.assertNotIn("headword-group-label", css)
 
     def test_multi_pos_controls_peek_without_reordering_visible_senses(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")

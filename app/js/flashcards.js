@@ -4360,16 +4360,6 @@ function updateCard({ announceHeadword = false } = {}) {
         // deliberately opts out because it walks those sub-senses itself.
         selectInitialMeaningGroup(card, card._grouping);
 
-        // A surface-keyed card can hold senses belonging to several headwords
-        // (casa → casa "home", casar → "to marry"). Label the groups so the
-        // learner can see which word each meaning belongs to. Single-headword
-        // cards — about four in five — render exactly as before.
-        const cardHeadwords = [...new Set(
-            card.meanings.filter(m => !m.exampleOnly && m.headword).map(m => m.headword)
-        )];
-        const showHeadwordGroups = cardHeadwords.length > 1;
-        const headwordSeen = new Set();
-
         orderMeaningEntriesForDisplay(card.meanings).forEach(({ meaning: m, index: idx }) => {
             if (m.exampleOnly) return;
             const isSelected = idx === currentMeaningIndex;
@@ -4392,15 +4382,6 @@ function updateCard({ announceHeadword = false } = {}) {
                     : sectionPos + '\u0000' + (m.headword || '')
             );
 
-            // Emit the group label before the first row of each headword. Kept
-            // additive: it pushes its own row and leaves every meaning row, and
-            // the meaning-index state behind them, untouched.
-            if (showHeadwordGroups && m.headword && !headwordSeen.has(m.headword)) {
-                headwordSeen.add(m.headword);
-                target.push(`
-                <div class="headword-group-label">${escapeCardText(m.headword)}</div>
-                `);
-            }
             // For MWE pill, show the current expression/translation based on MWE index
             const mweIdx = (isMWE && isSelected) ? currentMWEIndex % (m.allMWEs ? m.allMWEs.length : 1) : 0;
             const mweExpr = isMWE && m.allMWEs ? m.allMWEs[mweIdx].expression : m.expression;
