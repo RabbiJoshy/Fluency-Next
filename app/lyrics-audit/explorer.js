@@ -251,7 +251,21 @@ function tokenMatches(token) {
   if (state.filter === "excluded" && token.current_route?.status !== "excluded") return false;
   if (state.filter === "unresolved" && token.current_route?.status !== "unresolved") return false;
   if (state.filter === "no-menu" && !resolvedLexical(token.clean_processing).some((item) => item.status === "no_menu")) return false;
-  return !state.query || token.surface.toLocaleLowerCase().includes(state.query);
+  const searchable = [
+    token.surface,
+    token.clean_processing?.surface,
+    token.clean_processing?.normalized_form,
+    ...Object.values(token.states || {}).map((snapshot) => snapshot.normalized_form),
+  ].filter(Boolean).join(" ").toLocaleLowerCase();
+  return !state.query || searchable.includes(state.query);
+}
+
+function tokenDisplayHtml(token) {
+  const runSnapshots = Object.values(token.states || {});
+  const sourceSurface = token.clean_processing?.surface || runSnapshots[0]?.normalized_form || token.surface;
+  const restoredSurface = token.clean_processing?.normalized_form || runSnapshots.at(-1)?.normalized_form || sourceSurface;
+  if (sourceSurface.toLocaleLowerCase() === restoredSurface.toLocaleLowerCase()) return `<span class="token-source">${escapeHtml(sourceSurface)}</span>`;
+  return `<span class="token-source">${escapeHtml(sourceSurface)}</span><span class="token-change-arrow">→</span><span class="token-restored">${escapeHtml(restoredSurface)}</span>`;
 }
 
 function lexicalHtml(clean) {
@@ -350,7 +364,7 @@ function renderSong() {
     const visibleTokens = line.occurrences.filter((token) => state.filter === "all" || tokenMatches(token));
     const tokens = visibleTokens.map((token) => `
       <button class="${tokenClasses(token)}" data-occurrence="${escapeHtml(token.occurrence_id)}" type="button">
-        ${escapeHtml(token.surface)}<span class="token-id">${escapeHtml(shortId(token.occurrence_id))}</span>
+        ${tokenDisplayHtml(token)}<span class="token-id">${escapeHtml(shortId(token.occurrence_id))}</span>
       </button>`).join(" ");
     const translationText = line.translation?.text || line.translation?.english;
     const translation = translationText ? `<p class="line-translation">${escapeHtml(translationText)}</p>` : "";
@@ -396,7 +410,16 @@ function renderTrace(token, line) {
   const source = line.source_ingest;
   const clean = token.clean_processing;
   const decisions = classificationDecisions(token, line);
-  const decisionPills = decisions.map((decision) => `<button class="classification-pill" data-decision="${escapeHtml(decision.id)}" type="button" aria-pressed="false"><span>${escapeHtml(decision.label)}</span><strong>${escapeHtml(decision.status)}</strong><small>${decision.history.length} preserved</small></button>`).join("");
+  const decisionPill = (decision) => `<button class="classification-pill" data-decision="${escapeHtml(decision.id)}" type="button" aria-pressed="false"><span>${escapeHtml(decision.label)}</span><strong>${escapeHtml(decision.status)}</strong><small>${decision.history.length} preserved</small></button>`;
+  const coreDecisions = decisions.filter((decision) => !decision.id.startsWith("route-policy-"));
+  const ruleDecisions = decisions.filter((decision) => decision.id.startsWith("route-policy-"));
+  const decisionPills = coreDecisions.map(decisionPill).join("");
+  const rulePills = ruleDecisions.map(decisionPill).join("");
+  const sourceSurface = clean?.surface || before.normalized_form || token.surface;
+  const restoredSurface = clean?.normalized_form || after.normalized_form || sourceSurface;
+  const traceTitle = sourceSurface.toLocaleLowerCase() === restoredSurface.toLocaleLowerCase()
+    ? escapeHtml(sourceSurface)
+    : `${escapeHtml(sourceSurface)} <span>→ ${escapeHtml(restoredSurface)}</span>`;
   const sourceStage = source ? `
           <div class="stage"><div class="stage-title"><strong>Acquire + extract line</strong><span class="evidence-kind">new direct lineage</span></div><div class="mono-block">${escapeHtml(source.line_id)} · span ${escapeHtml(source.source_span?.join(":"))}<br>${escapeHtml(source.section?.label || "No labelled section")}</div></div>
           <div class="stage ${source.alignment ? "current" : ""}"><div class="stage-title"><strong>Align translation</strong><span class="evidence-kind">${source.alignment ? "optional snapshot" : "graceful absence"}</span></div>${source.alignment ? `<div class="state-box"><small>${escapeHtml(source.alignment.source.provider || source.alignment.source.adapter)}</small><strong>${escapeHtml(source.alignment.target.text)}</strong></div>` : `<div class="no-evidence">No translation alignment exists for this line. The lyric remains valid and continues through the pipeline.</div>`}</div>` : "";
@@ -407,20 +430,22 @@ function renderTrace(token, line) {
   ].join("");
   $("traceContent").innerHTML = `
     <header class="trace-header">
-      <div class="trace-header-top"><div><p class="eyebrow">Token journey</p><h2 class="trace-surface">${escapeHtml(token.surface)}</h2></div><span class="line-number">line ${line.source_position + 1}</span></div>
+      <div class="trace-header-top"><div><p class="eyebrow">Token journey</p><h2 class="trace-surface">${traceTitle}</h2></div><span class="line-number">line ${line.source_position + 1}</span></div>
       <code class="trace-id">${escapeHtml(token.occurrence_id)}</code><div class="badges">${badges}</div>
     </header>
     <div class="trace-body">
       <section class="trace-section classification-section">
         <h3>Classification decisions <span>select any decision</span></h3>
-        <div class="classification-pills" role="group" aria-label="Classification decisions for ${escapeHtml(token.surface)}">${decisionPills}</div>
+        <div class="classification-pills" role="group" aria-label="Classification decisions for ${escapeHtml(sourceSurface)}">${decisionPills}</div>
+        ${ruleDecisions.length ? `<details class="decision-rule-group"><summary><span>Routing rule evaluations</span><small>${ruleDecisions.length} decisions</small></summary><div class="classification-pills rule-pills" role="group" aria-label="Routing rule decisions for ${escapeHtml(sourceSurface)}">${rulePills}</div></details>` : ""}
         <div class="decision-history" aria-live="polite">
           <div class="decision-history-heading"><span>Decision history</span><strong id="decisionHistoryTitle">—</strong></div>
           <div id="decisionHistoryContent"></div>
         </div>
       </section>
-      <section class="trace-section"><h3>Pipeline trace <span>${token.changed ? "first divergence: normalize" : "no divergence"}</span></h3>
-        <div class="stage-list">
+      <details class="audit-group pipeline-group">
+        <summary><span>Full pipeline evidence</span><small>${token.changed ? "first divergence: normalize" : "no divergence"}</small></summary>
+        <div class="audit-group-body"><div class="stage-list">
           ${sourceStage}
           <div class="stage"><div class="stage-title"><strong>Source occurrence</strong><span class="evidence-kind">direct ledger</span></div><div class="mono-block">${escapeHtml(line.segment_id)} · span ${escapeHtml(token.span?.join(":"))}<br>${escapeHtml(line.text)}</div></div>
           <div class="stage ${token.changed ? "diverged" : ""}"><div class="stage-title"><strong>Normalize</strong><span class="evidence-kind">direct comparison</span></div>
@@ -432,9 +457,12 @@ function renderTrace(token, line) {
           <div class="stage ${resolvedWsd(clean).length ? "current" : ""}"><div class="stage-title"><strong>Disambiguate sense</strong><span class="evidence-kind">${resolvedWsd(clean).length ? "direct immutable result" : "explicitly not run"}</span></div>${wsdHtml(clean)}</div>
           <div class="stage ${resolvedConsolidation(clean).length ? "current" : ""}"><div class="stage-title"><strong>Consolidate occurrence</strong><span class="evidence-kind">${resolvedConsolidation(clean).length ? "direct card candidate" : "not yet run"}</span></div>${consolidationHtml(clean)}</div>
           <div class="stage current"><div class="stage-title"><strong>Materialize in app</strong><span class="evidence-kind">current release</span></div>${assignmentHtml(line.app_assignments, token)}</div>
-        </div>
-      </section>
-      <section class="trace-section"><h3>Claim provenance</h3><div class="mono-block">baseline claim: ${escapeHtml(before.claim_id || "not preserved")}<br>candidate claim: ${escapeHtml(after.claim_id || "not preserved")}<br>candidate method: ${escapeHtml(after.method_id || "not preserved")}<br>input: ${escapeHtml(after.input_fingerprint || "not preserved")}${clean ? `<br>clean occurrence: ${escapeHtml(clean.occurrence_id)}<br>clean normalizer: ${escapeHtml(clean.normalizer_method)}<br>clean router: ${escapeHtml(clean.router_method)}` : ""}</div></section>
+        </div></div>
+      </details>
+      <details class="audit-group provenance-group">
+        <summary><span>Claim provenance</span><small>exact IDs and methods</small></summary>
+        <div class="audit-group-body"><div class="mono-block">baseline claim: ${escapeHtml(before.claim_id || "not preserved")}<br>candidate claim: ${escapeHtml(after.claim_id || "not preserved")}<br>candidate method: ${escapeHtml(after.method_id || "not preserved")}<br>input: ${escapeHtml(after.input_fingerprint || "not preserved")}${clean ? `<br>clean occurrence: ${escapeHtml(clean.occurrence_id)}<br>clean normalizer: ${escapeHtml(clean.normalizer_method)}<br>clean router: ${escapeHtml(clean.router_method)}` : ""}</div></div>
+      </details>
     </div>`;
   bindDecisionInspector(decisions);
 }
@@ -509,7 +537,7 @@ async function loadSong(songId) {
   picker.disabled = true;
   $("songTitle").textContent = `Loading ${entry.title}…`;
   try {
-    const response = await fetch(`data/${entry.bundle}?v=13`, { cache: "no-store" });
+    const response = await fetch(`data/${entry.bundle}?v=14`, { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const bundle = await response.json();
     if (requestId !== state.requestId) return;
@@ -536,13 +564,13 @@ async function loadSong(songId) {
 
 async function start() {
   if (window.location.protocol === "file:") {
-    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=13";
+    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=14";
     $("songTitle").textContent = "Local server required";
     $("artistName").innerHTML = `This explorer loads its audit bundle over HTTP. <a href="${servedUrl}">Open the working explorer</a>.`;
     return;
   }
   try {
-    const response = await fetch("data/catalog.json?v=13", { cache: "no-store" });
+    const response = await fetch("data/catalog.json?v=14", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     state.catalog = await response.json();
     const picker = $("songSelect");

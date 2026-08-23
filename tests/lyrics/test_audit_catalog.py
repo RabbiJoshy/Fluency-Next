@@ -18,7 +18,11 @@ class LyricsAuditCatalogTests(unittest.TestCase):
         self.assertIn("function decisionHistoryHtml(decision)", explorer)
         self.assertIn("No classification record preserved", explorer)
         self.assertIn("No earlier history is available", explorer)
-        self.assertIn('explorer.js?v=13', page)
+        self.assertIn("function tokenDisplayHtml(token)", explorer)
+        self.assertIn('class="token-change-arrow">→</span>', explorer)
+        self.assertIn('class="decision-rule-group"', explorer)
+        self.assertIn('class="audit-group pipeline-group"', explorer)
+        self.assertIn('explorer.js?v=14', page)
 
     def test_catalog_points_to_distinct_matching_song_bundles(self):
         catalog = json.loads((DATA_ROOT / "catalog.json").read_text(encoding="utf-8"))
