@@ -235,7 +235,12 @@ def _acceptance(stage: str, *, surfaces: int, examples: int) -> list[str]:
             "candidate pools remain larger than the final three-example selection",
         ],
         "wsd_assignments": [
-            "every retained card/sentence candidate explicitly assigned, rejected, abstained, or marked no-menu",
+            "every retained card/sentence candidate carries an explicit outcome: assigned, "
+            "rejected, abstained, no-menu, or not-evaluated because the per-surface "
+            "execution cap was reached",
+            "the occurrence sampling policy, cap and selected/not-evaluated counts are recorded, "
+            "and those counts reconstitute every occurrence considered",
+            "a single-option menu is reported as a deterministic default, never as a model decision",
             "external method implementation and model revisions pinned",
             "inventory, menu, candidate, and sentence-bank hashes match this run exactly",
             "scores, decision status, and rejection reason remain inspectable",

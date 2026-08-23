@@ -171,6 +171,14 @@ def main() -> None:
     parser.add_argument("--profile-id", default="es-v6-1")
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
     parser.add_argument(
+        "--embedding-cache", type=Path,
+        help="shared exact-text vector cache. Defaults to a per-LANGUAGE cache "
+             "in the workspace, not a per-run one: gloss vectors are a property "
+             "of the dictionary and sentence vectors of the corpus, so both "
+             "outlive any single run. A per-run cache silently re-embeds "
+             "everything each time and destroys the amortisation.",
+    )
+    parser.add_argument(
         "--execution-cap", type=int, default=DEFAULT_EXECUTION_CAP,
         help="max occurrences per surface card that reach WSD (default: the "
              "mature historical 10). Separate from the study-example cap.",
@@ -282,7 +290,13 @@ def main() -> None:
             api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
     if not api_key:
         raise SystemExit("GEMINI_API_KEY is required for the gloss scorer")
-    cache_path = args.out.parent / "embedding-cache.npz"
+    # run_dir is <workspace>/runs/<language>/<mode>/<run-id>, so the workspace
+    # root is four levels up. Getting this wrong is silent: the cache is simply
+    # written somewhere nothing will look for it and every run re-embeds.
+    workspace_root = args.run_dir.resolve().parents[3]
+    cache_path = args.embedding_cache or (
+        workspace_root / "embeddings" / "es" / "exact-text-gemini-embedding-001.npz"
+    )
     vectors: dict[str, Any] = {}
     if cache_path.exists():
         import numpy as np
@@ -290,7 +304,7 @@ def main() -> None:
         keys = list(blob["keys"])
         matrix = blob["vectors"]
         vectors = {str(k): matrix[i] for i, k in enumerate(keys)}
-        print(f"exact-text cache: reused {len(vectors):,} vectors")
+        print(f"exact-text cache: {len(vectors):,} vectors at {cache_path}")
     missing = sorted(text for text in needed if text not in vectors)
     if missing:
         print(f"embedding {len(missing):,} cache misses into a run-scoped delta...")
@@ -402,6 +416,11 @@ def main() -> None:
             "sense_menu": file_content_id(menu_path),
             "candidates": file_content_id(candidates_path),
             "sentence_bank": file_content_id(bank_path),
+            **(
+                {"multiword_inventory": multiword_content_id}
+                if multiword_content_id
+                else {}
+            ),
         },
         "assignments": assignments,
     }

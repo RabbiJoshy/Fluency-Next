@@ -56,11 +56,32 @@ def _validated_multiword_analysis(assignment: WSDAssignment, pair: Any):
             f"multiword analysis ID does not recompute from its expression: {pair}"
         )
     records = (assignment.evidence or {}).get("multiword_candidates")
-    if not isinstance(records, list) or not any(
-        isinstance(item, dict) and item.get("expression") == expression for item in records
-    ):
+    declared = next(
+        (
+            item
+            for item in (records if isinstance(records, list) else [])
+            if isinstance(item, dict) and item.get("expression") == expression
+        ),
+        None,
+    )
+    if declared is None:
         raise WSDAssignmentImportError(
             f"multiword selection is not backed by a declared candidate: {pair}"
+        )
+    # The leaf must be the inventory entry, not merely something named after it:
+    # the selected sense ID has to be the entry ID the candidate declared, and a
+    # renderable translation must be present or the card cannot show it.
+    if declared.get("expression_id") != assignment.selected_sense_id:
+        raise WSDAssignmentImportError(
+            f"multiword sense ID does not match its inventory entry: {pair}"
+        )
+    if not str(declared.get("translation") or "").strip():
+        raise WSDAssignmentImportError(
+            f"multiword selection carries no renderable translation: {pair}"
+        )
+    if not str(declared.get("inventory_content_id") or "").startswith("sha256:"):
+        raise WSDAssignmentImportError(
+            f"multiword selection does not name a pinned inventory: {pair}"
         )
     return (expression, "PHRASE", {assignment.selected_sense_id})
 
@@ -252,7 +273,19 @@ def import_wsd_assignments(
     method = _validate_method(bundle.get("method"))
 
     inputs, input_paths = _stage_inputs(run)
-    if bundle.get("inputs") != inputs:
+    declared_inputs = bundle.get("inputs")
+    if not isinstance(declared_inputs, dict):
+        raise WSDAssignmentImportError("WSD bundle inputs must be an object")
+    # Stage hashes must match exactly. The multiword inventory is not a stage
+    # output but a pinned external asset, so it is permitted as an ADDITIONAL
+    # input -- and required below whenever a multiword sense was selected, so it
+    # cannot be quietly left out.
+    extra = set(declared_inputs) - set(inputs)
+    if extra - {"multiword_inventory"}:
+        raise WSDAssignmentImportError(
+            f"WSD bundle declares unknown inputs: {sorted(extra - {'multiword_inventory'})}"
+        )
+    if {name: declared_inputs[name] for name in inputs if name in declared_inputs} != inputs:
         raise WSDAssignmentImportError(
             "WSD bundle input hashes do not exactly match this run"
         )
@@ -262,6 +295,7 @@ def import_wsd_assignments(
     expected_set = set(ordered_pairs)
     menus = _menu_index(menu_payload)
     menu_content_id = inputs["sense_menu"]
+    multiword_inventory_id = inputs.get("multiword_inventory")
 
     raw_assignments = bundle.get("assignments")
     if not isinstance(raw_assignments, list):
@@ -323,6 +357,14 @@ def import_wsd_assignments(
         assignments[pair] = assignment
         counts[assignment.status] += 1
 
+    used_multiword = any(
+        (row.evidence or {}).get("selected_multiword") for row in assignments.values()
+    )
+    if used_multiword and not str(declared_inputs.get("multiword_inventory") or "").startswith("sha256:"):
+        raise WSDAssignmentImportError(
+            "bundle selected multiword senses without pinning its inventory as an input"
+        )
+
     if set(assignments) != expected_set:
         missing = len(expected_set - set(assignments))
         extra = len(set(assignments) - expected_set)
@@ -343,11 +385,23 @@ def import_wsd_assignments(
             "pipeline": profile["profile_id"],
             "method": method["profile_id"],
         },
-        "input_content_ids": {**inputs, "assignment_bundle": file_content_id(bundle_path)},
+        "input_content_ids": {
+            **inputs,
+            **(
+                {"multiword_inventory": declared_inputs["multiword_inventory"]}
+                if "multiword_inventory" in declared_inputs
+                else {}
+            ),
+            "assignment_bundle": file_content_id(bundle_path),
+        },
+        # Every status, not a fixed subset. Omitting not_evaluated_example_cap
+        # made the report claim far fewer occurrences than the run considered,
+        # which reads as silent data loss rather than a deliberate cap.
         "assignment_counts": {
             status: counts.get(status, 0)
-            for status in ("assigned", "abstained", "rejected", "no_menu")
+            for status in sorted(set(counts) | {"assigned", "abstained", "rejected", "no_menu"})
         },
+        "occurrence_sampling": bundle["sampling"],
         "fallbacks": [],
     }
     method_payload = {

@@ -409,10 +409,21 @@ def build_inactive_run_candidate(
             {"inventory": inputs["inventory"], "sentences": inputs["sentence_bank"]},
         ),
     }
-    omitted_layers = [
-        {"layer": "wsd_assignments", "reason": "not_connected_examples_explicitly_unassigned"},
-        {"layer": "manual_overrides", "reason": "not_applied"},
-    ]
+    omitted_layers = [{"layer": "manual_overrides", "reason": "not_applied"}]
+    if assignments:
+        # A release whose examples carry senses must say the layer was used.
+        # Reporting it omitted while shipping its output is the kind of
+        # contradiction that makes every other provenance claim untrustworthy.
+        layers["wsd_assignments"] = layer(
+            "wsd_assignments",
+            sum(1 for row in assignments.values() if row.get("status") == "assigned"),
+            {"sense_menu": inputs["sense_menu"], "sentences": inputs["sentence_bank"]},
+        )
+    else:
+        omitted_layers.insert(
+            0,
+            {"layer": "wsd_assignments", "reason": "not_connected_examples_explicitly_unassigned"},
+        )
     if conjugations_artifact_id is None:
         omitted_layers.append({"layer": "conjugations", "reason": "not_selected"})
     else:

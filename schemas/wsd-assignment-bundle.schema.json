@@ -35,7 +35,8 @@
         "inventory": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "sense_menu": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "candidates": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-        "sentence_bank": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        "sentence_bank": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "multiword_inventory": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
       }
     },
     "assignments": {

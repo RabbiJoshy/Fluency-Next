@@ -262,7 +262,12 @@ class MultiwordImportAdmission(unittest.TestCase):
 
         evidence = {"selected_multiword": expression}
         if declared:
-            evidence["multiword_candidates"] = [{"expression": expression}]
+            evidence["multiword_candidates"] = [{
+                "expression": expression,
+                "expression_id": "mwe_bbb",
+                "translation": "again",
+                "inventory_content_id": "sha256:" + "a" * 64,
+            }]
         return WSDAssignment(
             card_id=CARD,
             surface_form="nuevo",
@@ -334,3 +339,51 @@ class MultiwordImportAdmission(unittest.TestCase):
             confidence=None, model_revisions={"gloss": "gemini-embedding-001"},
         )
         self.assertIsNone(_validated_multiword_analysis(ordinary, "pair"))
+
+    def test_a_sense_id_that_is_not_the_inventory_entry_is_refused(self):
+        from fluency.wsd.importer import WSDAssignmentImportError, _validated_multiword_analysis
+        from fluency.wsd.menus import build_analysis_id
+        from fluency.wsd.multiword import MULTIWORD_SOURCE_ADAPTER
+
+        assignment = self._assignment(
+            analysis_id=build_analysis_id(
+                card_id=CARD, source_adapter=MULTIWORD_SOURCE_ADAPTER,
+                source_analysis_key="de nuevo",
+            ),
+            expression="de nuevo",
+        )
+        assignment.evidence["multiword_candidates"][0]["expression_id"] = "mwe_other"
+        with self.assertRaises(WSDAssignmentImportError):
+            _validated_multiword_analysis(assignment, "pair")
+
+    def test_an_unpinned_inventory_is_refused(self):
+        from fluency.wsd.importer import WSDAssignmentImportError, _validated_multiword_analysis
+        from fluency.wsd.menus import build_analysis_id
+        from fluency.wsd.multiword import MULTIWORD_SOURCE_ADAPTER
+
+        assignment = self._assignment(
+            analysis_id=build_analysis_id(
+                card_id=CARD, source_adapter=MULTIWORD_SOURCE_ADAPTER,
+                source_analysis_key="de nuevo",
+            ),
+            expression="de nuevo",
+        )
+        del assignment.evidence["multiword_candidates"][0]["inventory_content_id"]
+        with self.assertRaises(WSDAssignmentImportError):
+            _validated_multiword_analysis(assignment, "pair")
+
+    def test_a_selection_with_no_renderable_translation_is_refused(self):
+        from fluency.wsd.importer import WSDAssignmentImportError, _validated_multiword_analysis
+        from fluency.wsd.menus import build_analysis_id
+        from fluency.wsd.multiword import MULTIWORD_SOURCE_ADAPTER
+
+        assignment = self._assignment(
+            analysis_id=build_analysis_id(
+                card_id=CARD, source_adapter=MULTIWORD_SOURCE_ADAPTER,
+                source_analysis_key="de nuevo",
+            ),
+            expression="de nuevo",
+        )
+        assignment.evidence["multiword_candidates"][0]["translation"] = "  "
+        with self.assertRaises(WSDAssignmentImportError):
+            _validated_multiword_analysis(assignment, "pair")

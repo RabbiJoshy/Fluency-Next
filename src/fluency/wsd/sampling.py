@@ -50,7 +50,11 @@ DEFAULT_EXECUTION_CAP = 10
 @dataclass(frozen=True, slots=True)
 class OccurrenceSamplingPolicy:
     cap_per_surface: int = DEFAULT_EXECUTION_CAP
-    ranking_signal: str = "harvest_score_desc_then_sentence_id"
+    # Ascending: a LOWER harvest score is an easier, better example. The label
+    # previously said "desc" while the code sorted ascending -- the behaviour was
+    # right and the provenance was wrong, which is the worse of the two failures
+    # because it cannot be detected from the output.
+    ranking_signal: str = "harvest_score_asc_easiest_first_then_sentence_id"
 
     def __post_init__(self) -> None:
         if self.cap_per_surface < 1:
