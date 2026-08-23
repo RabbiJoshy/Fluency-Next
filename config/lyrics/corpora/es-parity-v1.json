@@ -1,0 +1,48 @@
+{
+  "plan_version": "lyrics-corpus-plan/v1",
+  "language": "es",
+  "cross_source_duplicate_policy": "preserve_artist_scoped_song_sources",
+  "included_sources": [
+    {
+      "artist_slug": "bad-bunny",
+      "artist_name": "Bad Bunny",
+      "adapter": "legacy_genius_batch_directory/v1",
+      "file_pattern": "batch_*.json",
+      "relative_path": "Artists/spanish/Bad Bunny/data/input/batches",
+      "translation_relative_path": "Artists/spanish/Bad Bunny/data/input/translations/aligned_translations.json"
+    },
+    {
+      "artist_slug": "rosalia",
+      "artist_name": "Rosalía",
+      "adapter": "legacy_genius_batch_directory/v1",
+      "file_pattern": "batch_*.json",
+      "relative_path": "Artists/spanish/Rosalía/data/input/batches",
+      "translation_relative_path": "Artists/spanish/Rosalía/data/input/translations/aligned_translations.json"
+    },
+    {
+      "artist_slug": "young-miko",
+      "artist_name": "Young Miko",
+      "adapter": "legacy_genius_batch_directory/v1",
+      "file_pattern": "batch_*.json",
+      "relative_path": "Artists/spanish/Young Miko/data/input/batches",
+      "translation_relative_path": "Artists/spanish/Young Miko/data/input/translations/aligned_translations.json"
+    },
+    {
+      "artist_slug": "spanish-test-playlist",
+      "artist_name": "Joshua's Test Playlist",
+      "adapter": "legacy_genius_song_directory/v1",
+      "relative_path": "Artists/spanish/SpanishTestPlaylist/lyrics/spanish",
+      "translation_relative_path": "Artists/spanish/SpanishTestPlaylist/data/input/translations/aligned_translations.json"
+    }
+  ],
+  "excluded_sources": [
+    {
+      "artist_slug": "j-balvin",
+      "reason": "source exists but is not selected by the active parity release"
+    },
+    {
+      "artist_slug": "rels-b",
+      "reason": "source exists but is not selected by the active parity release"
+    }
+  ]
+}

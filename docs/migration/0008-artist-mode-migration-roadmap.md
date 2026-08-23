@@ -574,6 +574,30 @@ Do not activate merely because the run completed. Validate exact artifact
 counts, sample multiple artists/songs, review differences from the parity
 release and then explicitly choose the new release.
 
+Source-planning checkpoint (2026-08-23): immutable corpus plan
+`es-parity-source-plan-20260823-v2` now defines the full scale boundary before
+any bulk execution. It selects exactly the four Spanish sources present in the
+parity release: Bad Bunny (537 songs), Rosalía (241), Young Miko (105) and
+Joshua's test playlist (31), for 914 artist-scoped songs across 69 pinned JSON
+files. J Balvin and Rels B are recorded as explicit exclusions because their
+legacy sources exist but were not selected by the parity release. Seven source
+IDs legitimately occur in more than one artist/playlist source and remain
+scoped rather than deduplicated invisibly.
+
+The same plan pins each source's optional alignment snapshot: 190 Bad Bunny,
+92 Rosalía, zero Young Miko and 22 test-playlist songs currently have
+materialized translations. Missing coverage is valid and visible. The planner
+supports both multi-song Genius batch directories and one-file-per-song
+directories behind the same ledger contract, creates deterministic future run
+IDs, and executes no ingest, routing, WSD, deck or release stage.
+
+The next engineering action is a resumable corpus-ingest executor over this
+manifest. It must consume the pinned objects rather than reread mutable legacy
+paths, skip only exact already-complete song runs, report partial completion,
+and avoid reparsing shared batch/translation snapshots for every song. That
+executor should be in place before Joshua is given the first long local
+command.
+
 #### 9. Add further languages through adapters
 
 Implement French first, then Portuguese and Dutch, without forking the pipeline.

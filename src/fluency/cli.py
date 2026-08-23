@@ -24,6 +24,7 @@ from fluency.harvest.runner import harvest_run_stage
 from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
 from fluency.inventory.runner import build_inventory_stage
 from fluency.lyrics.ingest import ingest_legacy_genius_song
+from fluency.lyrics.corpus import build_lyrics_corpus_plan
 from fluency.lyrics.consolidate import consolidate_lyrics_run
 from fluency.lyrics.assemble import assemble_lyrics_app_stage
 from fluency.lyrics.preview import build_clean_lyrics_preview_release
@@ -233,6 +234,14 @@ def build_parser() -> argparse.ArgumentParser:
         "lyrics", help="ingest and process auditable, language-agnostic Lyrics runs"
     )
     lyrics_actions = lyrics.add_subparsers(dest="lyrics_command", required=True)
+    lyrics_plan_corpus = lyrics_actions.add_parser(
+        "plan-corpus",
+        help="pin and inventory an explicit multi-artist source corpus without executing it",
+    )
+    lyrics_plan_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_plan_corpus.add_argument("--config", type=Path, required=True)
+    lyrics_plan_corpus.add_argument("--source-repository", type=Path, required=True)
+    lyrics_plan_corpus.add_argument("--plan-id", required=True)
     lyrics_ingest = lyrics_actions.add_parser(
         "ingest-legacy-genius",
         help="pin and normalize one song from a legacy Genius batch",
@@ -717,6 +726,24 @@ def handle_artist(args: argparse.Namespace) -> int:
 
 def handle_lyrics(args: argparse.Namespace) -> int:
     workspace = Workspace.load(_workspace_path(args.workspace))
+    if args.lyrics_command == "plan-corpus":
+        output = build_lyrics_corpus_plan(
+            workspace, config_path=args.config,
+            source_repository=args.source_repository, plan_id=args.plan_id,
+        )
+        manifest = json.loads(output.read_text(encoding="utf-8"))
+        totals = manifest["totals"]
+        print(f"Pinned immutable Lyrics corpus plan: {output}")
+        print(
+            f"Selected {totals['songs']} songs from {totals['included_artist_sources']} "
+            f"artist sources across {totals['source_files']} exact files."
+        )
+        print(
+            f"Recorded {len(manifest['excluded_sources'])} explicit exclusions and "
+            f"{totals['cross_source_collisions']} artist-scoped source collisions."
+        )
+        print("No song run, routing, WSD, deck, release, or activation was executed.")
+        return 0
     if args.lyrics_command == "ingest-legacy-genius":
         output = ingest_legacy_genius_song(
             workspace,

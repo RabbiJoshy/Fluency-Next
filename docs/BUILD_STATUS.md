@@ -276,6 +276,16 @@
   preview release and source run without requiring a submission, empty Review
   degrades to Learn-only, and switching back to Spanish Speech preserves its
   independent 20-card set. Shell cache moved to `flashcards-v284`.
+- Gate 37 (full Spanish Lyrics source boundary): added an adapter-based,
+  no-execution corpus planner and pinned translation-aware plan
+  `es-parity-source-plan-20260823-v2`. It selects exactly 914 artist-scoped
+  songs from the four Spanish parity sources across 69 content-addressed files,
+  records J Balvin and Rels B as explicit exclusions, and preserves seven
+  cross-source song collisions. Optional translation coverage is explicit:
+  Bad Bunny 190/537, Rosalía 92/241, Young Miko 0/105 and test playlist 22/31.
+  No song ingest, routing, WSD, deck, release or activation ran. The next gate
+  is a resumable, pinned-object corpus-ingest executor before any long local
+  command is issued.
 
 ## Not started
 
