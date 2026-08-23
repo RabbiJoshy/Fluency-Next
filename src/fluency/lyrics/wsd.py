@@ -26,6 +26,13 @@ class LyricsWSDPreparationError(ValueError):
     """Raised when a WSD request cannot bind to exact upstream evidence."""
 
 
+def wsd_preparation_implementation_content_id(repository_root: Path) -> str:
+    return canonical_content_id({
+        "implementation": file_content_id(Path(__file__)),
+        "contract": file_content_id(repository_root / "schemas/wsd-request-v2.schema.json"),
+    })
+
+
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -269,10 +276,7 @@ def prepare_lyrics_wsd_stage(
             "started_at": started_at.isoformat().replace("+00:00", "Z"),
             "completed_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "method_id": STAGE_VERSION,
-            "implementation_content_id": canonical_content_id({
-                "implementation": file_content_id(Path(__file__)),
-                "contract": file_content_id(repository_root / "schemas/wsd-request-v2.schema.json"),
-            }),
+            "implementation_content_id": wsd_preparation_implementation_content_id(repository_root),
             "inputs": inputs,
             "outputs": outputs,
             "execution_status": "not_run",

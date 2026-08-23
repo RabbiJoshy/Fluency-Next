@@ -30,6 +30,7 @@ from fluency.lyrics.corpus_process import (
     process_lyrics_corpus_plan,
 )
 from fluency.lyrics.corpus_lexical import build_lyrics_corpus_lexical_menus
+from fluency.lyrics.corpus_wsd import prepare_lyrics_corpus_wsd
 from fluency.lyrics.consolidate import consolidate_lyrics_run
 from fluency.lyrics.assemble import assemble_lyrics_app_stage
 from fluency.lyrics.preview import build_clean_lyrics_preview_release
@@ -270,6 +271,13 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_menu_corpus.add_argument("--snapshot-id", required=True)
     lyrics_menu_corpus.add_argument("--language-policy", required=True)
     lyrics_menu_corpus.add_argument("--menu-id", required=True)
+    lyrics_wsd_prepare_corpus = lyrics_actions.add_parser(
+        "wsd-prepare-corpus",
+        help="prepare exact WSD request pools for every menu-complete song without executing a model",
+    )
+    lyrics_wsd_prepare_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_wsd_prepare_corpus.add_argument("--plan", type=Path, required=True)
+    lyrics_wsd_prepare_corpus.add_argument("--lexical-report", type=Path, required=True)
     lyrics_plan_processing = lyrics_actions.add_parser(
         "plan-processing-profile",
         help="pin shared and artist-specific inputs for one exact corpus processing run",
@@ -849,6 +857,30 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             f"resumed/skipped {result['skipped_this_invocation']}."
         )
         print("No sense was assigned; no deck, release, or activation was created.")
+        return 0
+    if args.lyrics_command == "wsd-prepare-corpus":
+        def show_wsd_prepare_progress(event: dict) -> None:
+            if event["completed"] == 1 or event["completed"] % 25 == 0 or event["completed"] == event["planned"]:
+                print(
+                    f"Lyrics WSD preparation {event['completed']}/{event['planned']}: "
+                    f"{event['artist_slug']} song {event['source_record_id']} ({event['action']})",
+                    flush=True,
+                )
+
+        result = prepare_lyrics_corpus_wsd(
+            project_root(), workspace,
+            plan_path=args.plan,
+            lexical_report_path=args.lexical_report,
+            progress=show_wsd_prepare_progress,
+        )
+        print(f"Completed exact corpus WSD preparation: {result['report_path']}")
+        print(
+            f"Verified {result['request_count']} requests across {result['song_run_count']} songs; "
+            f"{result['executable_request_count']} are executable. "
+            f"Created {result['created_this_invocation']}, "
+            f"resumed/skipped {result['skipped_this_invocation']}."
+        )
+        print("No WSD method ran; no assignment, deck, release, or activation was created.")
         return 0
     if args.lyrics_command == "plan-processing-profile":
         output = build_lyrics_corpus_processing_profile(

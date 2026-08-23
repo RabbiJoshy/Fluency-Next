@@ -637,8 +637,18 @@ resolve that reference and fail if it has drifted. The corpus executor loads
 SpanishDict once for the union of routed forms, creates compact song subsets,
 and safely resumes only after verifying the selected plan, completed processing
 report, dictionary snapshot, language policy, implementation and every song
-output hash. The complete suite remains 190/190. The real menu run has not yet
-executed and cannot assign a sense or activate a release.
+output hash. The complete suite remains 190/190. This boundary cannot assign a
+sense or activate a release.
+
+WSD-boundary checkpoint (2026-08-23): the real menu run completed all 914 song
+menus over one 14,938-form SpanishDict union. It covers all 361,713 analysis
+units as 277,335 ready requests, 34,621 explicit no-menu cases, 40,827
+ineligible cases and 8,930 review cases. The model-independent corpus WSD
+preparation then completed all 361,713 exact occurrence requests in 23 seconds;
+it recorded optional aligned translations for each applicable context and did
+not execute or select a WSD method. Actual model execution is now a clean,
+separate boundary and remains deferred while the current best method is being
+settled.
 
 #### 9. Add further languages through adapters
 
@@ -668,13 +678,12 @@ Before making Fluency-Next the live repository:
 
 ### Immediate next action
 
-Run the exact 914-song SpanishDict menu command locally, then inspect its
-completion record, status totals, shared lookup union and samples from all four
-sources. Next, extend safe bulk orchestration over the lightweight WSD-request
-preparation boundary. WSD execution remains a separate long boundary; do not
-change `active.json`. A deliberate flag submission, non-empty Review queue and
-completion/progress write remain production-backend checks, not reasons to hold
-the clean data architecture in a one-song state.
+Keep actual WSD execution behind its explicit method boundary until the current
+method is settled. In parallel, finish the remaining corpus consolidation,
+release-composition and app audit orchestration without changing `active.json`
+or pretending unassigned requests are assigned. A deliberate flag submission,
+non-empty Review queue and completion/progress write remain production-backend
+checks, not reasons to hold the clean data architecture in a one-song state.
 
 The key separation is now enforceable: shell and study behavior can evolve
 without rebuilding corpus data, while a new Artist data run can be activated
