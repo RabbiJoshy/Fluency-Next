@@ -58,6 +58,18 @@ def build_app_compatibility_assets(
                 record["easiness"] = example["easiness"]
             if "metadata" in example:
                 record["metadata"] = example["metadata"]
+                source = example["metadata"].get("source") or {}
+                document = source.get("document") or {}
+                if document:
+                    # The learner app historically reads a compact provenance
+                    # object. Keep the complete typed metadata as the source of
+                    # truth while exposing that compatibility view explicitly.
+                    record["provenance"] = {
+                        "corpus": source.get("name", record["source"]),
+                        **document,
+                    }
+                if example["metadata"].get("source_title"):
+                    record["source_title"] = example["metadata"]["source_title"]
             if example["assignment_status"] == "assigned":
                 grouped_examples[example["sense_id"]].append(record)
             else:

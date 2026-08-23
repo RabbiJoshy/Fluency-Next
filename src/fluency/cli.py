@@ -577,6 +577,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--conjugations-artifact",
         help="exact optional conjugation-layer/v1 artifact ID",
     )
+    pipeline_run_release.add_argument(
+        "--source-titles",
+        type=Path,
+        help="optional pinned source-title JSON snapshot inside workspace/raw",
+    )
 
     identity = subparsers.add_parser(
         "identity", help="audit and build explicit card/progress identity mappings"
@@ -1401,6 +1406,7 @@ def handle_pipeline(args: argparse.Namespace) -> int:
             language=args.language,
             mode=args.mode,
             conjugations_artifact_id=args.conjugations_artifact,
+            source_titles_path=args.source_titles,
         )
         manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
         deck = json.loads((output / "deck.json").read_text(encoding="utf-8"))
@@ -1421,6 +1427,8 @@ def handle_pipeline(args: argparse.Namespace) -> int:
             )
         if args.conjugations_artifact:
             print(f"Conjugations: {args.conjugations_artifact}")
+        if args.source_titles:
+            print(f"Source titles: {args.source_titles}")
         print("The release was not activated.")
         return 0
     raise AssertionError(f"Unhandled pipeline command: {args.pipeline_command}")

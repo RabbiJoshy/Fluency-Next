@@ -55,6 +55,35 @@ class AppCompatibilityTests(unittest.TestCase):
             "spanishdict-sense-menu/v1",
         )
 
+    def test_typed_source_document_restores_app_provenance_and_human_title(self) -> None:
+        seed = json.loads(default_seed_path().read_text(encoding="utf-8"))
+        deck = build_pilot_deck(seed)
+        example = deck["cards"][0]["examples"][0]
+        example["source"] = "opensubtitles"
+        example["provenance"] = "opensubtitles"
+        example["metadata"] = {
+            "source": {
+                "name": "opensubtitles",
+                "document": {
+                    "title_id": "1256443",
+                    "subtitle_id": "12345",
+                    "line": "77",
+                },
+            },
+            "source_title": {
+                "title": "Friends and Neighbors",
+                "series": "Without a Trace",
+                "year": "2009",
+                "type": "tvEpisode",
+            },
+        }
+
+        index, examples = build_app_compatibility_assets(deck)
+        record = examples[index[0]["id"]]["m"][0][0]
+        self.assertEqual(record["provenance"]["title_id"], "1256443")
+        self.assertEqual(record["provenance"]["line"], "77")
+        self.assertEqual(record["source_title"]["series"], "Without a Trace")
+
     def test_partially_assigned_card_keeps_unused_menu_out_of_learner_meanings(self) -> None:
         seed = json.loads(default_seed_path().read_text(encoding="utf-8"))
         deck = build_pilot_deck(seed)

@@ -2914,19 +2914,47 @@ function orderMeaningEntriesForDisplay(meanings) {
     return (meanings || []).map((meaning, index) => ({ meaning, index }));
 }
 
+// Normalize source evidence once. Fresh releases retain the complete typed
+// record under metadata.source.document; older decks put the same fields
+// directly in example.provenance. Supporting both here prevents presentation
+// code from silently losing IMDb evidence during a schema migration.
+function normalizedExampleProvenance(example) {
+    const legacy = example?.provenance && typeof example.provenance === 'object'
+        ? example.provenance : {};
+    const source = example?.metadata?.source || {};
+    const document = source.document || {};
+    return {
+        corpus: legacy.corpus || source.name || example?.source || '',
+        title_id: legacy.title_id || document.title_id || '',
+        subtitle_id: legacy.subtitle_id || document.subtitle_id || '',
+        line: legacy.line || document.line || '',
+        source_title: example?.source_title || example?.metadata?.source_title || null,
+    };
+}
+
+function sourceTitleLabel(provenance) {
+    const metadata = provenance?.source_title;
+    if (!metadata?.title) return '';
+    let label = metadata.series
+        ? `${metadata.series} — ${metadata.title}`
+        : metadata.title;
+    if (metadata.year) label += ` (${metadata.year})`;
+    return label;
+}
+
 // Where a corpus example actually came from. OpenSubtitles ships an .ids file
-// aligned line-for-line with the text; step_5a_build_examples_v2 carries the
-// title/subtitle/line through onto each example. The title_id is an IMDb id
-// (OPUS layout es/{year}/{imdb_id}/{subtitle_id}.xml.gz), so it links straight
-// out without needing a local title lookup.
+// aligned line-for-line with the text. Its title_id is an IMDb tconst without
+// the `tt` prefix. A pinned IMDb lookup adds a human title where available;
+// the exact IMDb link remains useful even when no title resolves.
 function exampleProvenanceHTML(example) {
-    const p = example && example.provenance;
+    const p = normalizedExampleProvenance(example);
     if (!p || p.corpus !== 'opensubtitles') return null;
     const bits = [];
     if (p.title_id) {
         const tt = 'tt' + String(p.title_id).padStart(7, '0');
+        const title = sourceTitleLabel(p);
         bits.push(`<a href="https://www.imdb.com/title/${tt}/" target="_blank" ` +
-                  `rel="noopener noreferrer">OpenSubtitles · ${tt}</a>`);
+                  `rel="noopener noreferrer">${title ? `${escapeCardText(title)} · ` : ''}${tt}</a>`);
     } else {
         bits.push('OpenSubtitles');
     }
@@ -6382,12 +6410,13 @@ function buildProvenancePanelHTML(card) {
             // the panel says a model made a decision but never shows the
             // evidence it decided on, which is the only thing worth auditing.
             const exs = pex.map((x, exampleIndex) => {
-                const pv = x.provenance;
+                const pv = normalizedExampleProvenance(x);
                 let src = '';
                 if (pv && pv.corpus === 'opensubtitles' && pv.title_id) {
                     const tt = 'tt' + String(pv.title_id).padStart(7, '0');
+                    const title = sourceTitleLabel(pv);
                     src = `<a class="prov-ex-src" href="https://www.imdb.com/title/${tt}/"
-                              target="_blank" rel="noopener noreferrer">${tt}</a>`
+                              target="_blank" rel="noopener noreferrer">${title ? `${esc(title)} · ` : ''}${tt}</a>`
                         + (pv.line ? ` <span class="prov-ex-line">line ${esc(pv.line)}</span>` : '');
                 } else if (x.source) {
                     src = `<span class="prov-ex-src">${esc(x.source)}</span>`;

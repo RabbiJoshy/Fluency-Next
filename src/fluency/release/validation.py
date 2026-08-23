@@ -207,7 +207,7 @@ def validate_composition(composition: dict[str, Any]) -> None:
         _require(isinstance(layer, str) and layer, "layer name is invalid")
         _require(isinstance(selection, dict), f"layer {layer} selection must be an object")
         _require(selection.get("selection_version") == LAYER_SELECTION_VERSION, f"layer {layer} has an unsupported selection version")
-        _require(selection.get("source_type") in {"run", "fixture", "manual"}, f"layer {layer} source type is invalid")
+        _require(selection.get("source_type") in {"run", "fixture", "manual", "snapshot"}, f"layer {layer} source type is invalid")
         _require(bool(selection.get("source_id")), f"layer {layer} source ID is required")
         artifact_id = selection.get("artifact_id")
         try:

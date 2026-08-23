@@ -108,6 +108,7 @@ def build_inactive_run_candidate(
     mode: str = "speech",
     created_at: datetime | None = None,
     conjugations_artifact_id: str | None = None,
+    source_titles_path: Path | None = None,
 ) -> Path:
     """Select harvested examples and compose a non-activated release."""
 
@@ -138,6 +139,19 @@ def build_inactive_run_candidate(
     menus = _object(paths["sense_menu"])
     candidates = _object(paths["candidates"])
     sentences = _sentence_bank(paths["sentence_bank"])
+    source_titles: dict[str, dict[str, Any]] = {}
+    source_titles_content_id: str | None = None
+    if source_titles_path is not None:
+        source_titles_path = source_titles_path.expanduser().resolve()
+        try:
+            source_titles_path.relative_to((workspace.root / "raw").resolve())
+        except ValueError as error:
+            raise RunCandidateError("source titles snapshot must be inside workspace/raw") from error
+        source_titles = _object(source_titles_path)
+        for title_id, metadata in source_titles.items():
+            if not isinstance(title_id, str) or not isinstance(metadata, dict) or not metadata.get("title"):
+                raise RunCandidateError("source titles snapshot contains an invalid record")
+        source_titles_content_id = file_content_id(source_titles_path)
     assignments = _load_assignments(run)
     if assignments:
         # Stage 04 becomes an input to the release, so a deck can be traced back
@@ -273,6 +287,17 @@ def build_inactive_run_candidate(
                 if row
                 else None
             )
+            example_metadata = {
+                "sentence_id": sentence_id,
+                "selection_policy": POLICY_VERSION,
+                "selection_metrics": item["metrics"],
+                "source": sentence["source"],
+                "target": sentence["target"],
+                "translation": sentence["translation"],
+            }
+            title_id = str((sentence["source"].get("document") or {}).get("title_id") or "")
+            if title_id and title_id in source_titles:
+                example_metadata["source_title"] = source_titles[title_id]
             examples.append(
                 {
                     "example_id": _example_id(card_id, sentence_id),
@@ -283,14 +308,7 @@ def build_inactive_run_candidate(
                     "provenance": sentence["source"]["name"],
                     "source": sentence["source"]["name"],
                     "easiness": item["metrics"]["score"],
-                    "metadata": {
-                        "sentence_id": sentence_id,
-                        "selection_policy": POLICY_VERSION,
-                        "selection_metrics": item["metrics"],
-                        "source": sentence["source"],
-                        "target": sentence["target"],
-                        "translation": sentence["translation"],
-                    },
+                    "metadata": example_metadata,
                 }
             )
         cards.append({**card, "meanings": meanings, "examples": examples})
@@ -409,6 +427,15 @@ def build_inactive_run_candidate(
             {"inventory": inputs["inventory"], "sentences": inputs["sentence_bank"]},
         ),
     }
+    if source_titles_path is not None:
+        layers["source_titles"] = {
+            "selection_version": "layer-selection/v1",
+            "source_type": "snapshot",
+            "source_id": source_titles_path.parent.name,
+            "artifact_id": source_titles_content_id,
+            "record_count": len(source_titles),
+            "requires": {"sentences": inputs["sentence_bank"]},
+        }
     omitted_layers = [{"layer": "manual_overrides", "reason": "not_applied"}]
     if assignments:
         # A release whose examples carry senses must say the layer was used.
