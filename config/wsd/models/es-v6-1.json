@@ -1,0 +1,63 @@
+{
+  "config_version": "wsd-model-profile/v1",
+  "profile_id": "es-v6-1",
+  "language": "es",
+  "execution_status": "ready",
+  "source_method_id": "spanishdict-v6",
+  "method_summary": "three roles: constrain, rank, commit. Multiword senses compete as ordinary candidates.",
+  "provider_prior": {
+    "enabled": true,
+    "source": "spanishdict_menu_order",
+    "weight": 0.02,
+    "decay": 0.5
+  },
+  "gloss": {
+    "enabled": true,
+    "model_revision": "gemini-embedding-001",
+    "task_type": "SEMANTIC_SIMILARITY",
+    "dimensions": 3072,
+    "cache_lookup": "exact_text",
+    "note": "worth about +11pp on hard words, not the ~2pp an easier panel implies"
+  },
+  "constrain": {
+    "pos_filter": "sense_compatible_bridged",
+    "pos_bridge_includes_aux": true,
+    "clitic_gate": "se_only",
+    "companion_note": "leaf_repair_only"
+  },
+  "multiword": {
+    "enabled": true,
+    "inventory": "mwe_merged/v1",
+    "minimum_corpus_frequency": 1,
+    "role": "competing_candidate",
+    "note": "never a veto: only 9% of hits map onto an existing leaf and about a quarter are compositional, where a veto would delete the correct answer"
+  },
+  "commit": {
+    "leaf_minimum": 0.0,
+    "glosskey_minimum": 0.0,
+    "tuple_minimum": 0.0,
+    "status": "thresholds_unmeasured_defaults_emit_leaf",
+    "note": "gloss backoff validated at 78%->85% on a hard panel; the tuple trigger is NOT validated -- the tuple margin proved non-monotonic against tuple correctness. Do not raise tuple_minimum on the margin alone."
+  },
+  "token_tuple_vote": {
+    "enabled": false,
+    "status": "dropped_in_v6",
+    "reason": "measured below baseline (75.4% vs 78.4%) and needs 13+ examples per sense against a deck median of 4"
+  },
+  "calibration": {
+    "enabled": false,
+    "status": "dropped_in_v6",
+    "reason": "trained on dictionary gold, applied to real speech; 58% of the old deck read low and the bands were meaningless"
+  },
+  "alignment": {"enabled": false, "status": "held_out"},
+  "domain_weight": {
+    "enabled": false,
+    "reason": "92.6% in isolation but flat then negative on top of the existing score; baseline is already 90.9% where domains compete"
+  },
+  "generative_escalation": false,
+  "asset_gate": {
+    "required_before_ready": ["gemini_exact_text_embedding_cache", "mwe_merged_inventory"],
+    "derived_per_run": ["gemini_exact_text_cache_delta"],
+    "assignment_outputs_are_inputs": false
+  }
+}

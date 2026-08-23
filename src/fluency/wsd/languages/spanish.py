@@ -15,6 +15,7 @@ from typing import Sequence
 
 from fluency.wsd.candidate_policy import CandidatePreparation
 from fluency.wsd.gloss_scoring import LeafScore
+from fluency.wsd.languages.base import TargetOccurrence
 from fluency.wsd.menus import MenuAnalysis, SenseLeaf, require_analysis
 
 
@@ -234,3 +235,37 @@ class SpanishV5CandidatePolicy:
             for score in ranked_scores
             if score.menu_analysis_id == analysis.menu_analysis_id and score.sense_id in eligible
         )
+
+
+class SpanishWSDAdapter:
+    """Locate every eligible occurrence of a surface inside one sentence.
+
+    Spanish has no tokenizer module here yet, so this walks word-shaped runs and
+    compares NORMALIZED forms rather than raw text: the harvested surface key and
+    the sentence must agree on accent and case handling or a legitimate
+    occurrence silently fails to locate and the assignment abstains for the wrong
+    reason.
+    """
+
+    language = "es"
+
+    _WORD = re.compile(r"[0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+")
+
+    def locate(self, sentence: str, surface_form: str) -> tuple[TargetOccurrence, ...]:
+        from fluency.languages.spanish.surfaces import normalize_surface
+
+        surface_key = normalize_surface(surface_form)
+        found: list[TargetOccurrence] = []
+        for match in self._WORD.finditer(sentence or ""):
+            observed = match.group(0)
+            if normalize_surface(observed) != surface_key:
+                continue
+            found.append(
+                TargetOccurrence(
+                    observed_text=observed,
+                    surface_key=surface_key,
+                    start=match.start(),
+                    end=match.end(),
+                )
+            )
+        return tuple(found)
