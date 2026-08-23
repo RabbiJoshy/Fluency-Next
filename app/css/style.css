@@ -13436,6 +13436,17 @@
 .prov-ex-meta { font-size: 10.5px; opacity: .6; display: flex; gap: 8px; margin-top: 2px; }
 .prov-ex-src { text-decoration: underline; }
 .prov-ex-align { font-variant-numeric: tabular-nums; }
+.prov-ex-record { border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 8px; overflow: hidden; }
+.prov-ex-record > summary { cursor: pointer; padding: 7px 9px; font-size: 11px; font-weight: 700; }
+.prov-ex-record > .prov-ex { margin: 0 9px 9px; }
+.prov-ex-fields { margin: 7px 0 0; display: grid; gap: 4px; }
+.prov-ex-field { display: grid; grid-template-columns: minmax(84px, .7fr) minmax(0, 2fr); gap: 7px; font-size: 10px; }
+.prov-ex-field dt { opacity: .58; }
+.prov-ex-field dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.prov-ex-field code { font-size: 9.5px; white-space: normal; }
+.prov-ex-raw { margin-top: 7px; font-size: 10px; }
+.prov-ex-raw summary { cursor: pointer; opacity: .72; }
+.prov-ex-raw pre { max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 9px; }
 @media (prefers-color-scheme: dark) {
   .prov-conf--high .prov-conf-band { background: rgba(95,211,154,.16); color: #5fd39a; }
   .prov-conf--medium .prov-conf-band { background: rgba(226,165,99,.16); color: #e2a563; }

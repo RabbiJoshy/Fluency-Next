@@ -6298,7 +6298,7 @@ function buildProvenancePanelHTML(card) {
             // The sentences this sense was actually assigned to. Without these
             // the panel says a model made a decision but never shows the
             // evidence it decided on, which is the only thing worth auditing.
-            const exs = pex.map(x => {
+            const exs = pex.map((x, exampleIndex) => {
                 const pv = x.provenance;
                 let src = '';
                 if (pv && pv.corpus === 'opensubtitles' && pv.title_id) {
@@ -6311,11 +6311,33 @@ function buildProvenancePanelHTML(card) {
                 }
                 const al = (x.alignment != null)
                     ? `<span class="prov-ex-align">align ${esc(Number(x.alignment).toFixed(3))}</span>` : '';
-                return `<div class="prov-ex">
+                const metadata = [
+                    ['Run', x.run_id], ['Example', x.example_id],
+                    ['Occurrence', x.occurrence_id], ['Analysis unit', x.analysis_unit_id],
+                    ['Route', x.route_id], ['Lexical candidate', x.lexical_candidate_id],
+                    ['Menu analysis', x.menu_analysis_id], ['Menu snapshot', x.menu_content_id],
+                    ['Sense', x.sense_id], ['WSD request', x.wsd_request_id],
+                    ['WSD result', x.wsd_result_id], ['Method', x.assignment_method],
+                    ['Decision path', Array.isArray(x.decision_path) ? x.decision_path.join(' → ') : x.decision_path],
+                    ['Source record', x.source_record_id], ['Source snapshot', x.source_snapshot_content_id],
+                    ['Alignment', x.alignment_id], ['Alignment snapshot', x.alignment_snapshot_content_id],
+                    ['Translation source', x.translation_source], ['Song ID', x.song],
+                    ['Vocalists', Array.isArray(x.vocalists) ? x.vocalists.join(', ') : x.vocalists],
+                ].filter(([, value]) => value != null && String(value).trim() !== '');
+                const metadataHTML = metadata.map(([label, value]) =>
+                    `<div class="prov-ex-field"><dt>${esc(label)}</dt><dd><code>${esc(value)}</code></dd></div>`
+                ).join('');
+                const rawRecord = esc(JSON.stringify(x, null, 2));
+                return `<details class="prov-ex-record"${exampleIndex === 0 ? ' open' : ''}>
+                    <summary>Example ${exampleIndex + 1} of ${pex.length}${x.song_name ? ` · ${esc(x.song_name)}` : ''}</summary>
+                    <div class="prov-ex">
                     <div class="prov-ex-target">${esc(x.target || x.spanish || '')}</div>
-                    <div class="prov-ex-english">${esc(x.english || '')}</div>
+                    <div class="prov-ex-english">${x.english ? esc(x.english) : '<em>Translation unavailable</em>'}</div>
                     <div class="prov-ex-meta">${src}${al}</div>
-                </div>`;
+                    <dl class="prov-ex-fields">${metadataHTML}</dl>
+                    <details class="prov-ex-raw"><summary>Raw example record</summary><pre>${rawRecord}</pre></details>
+                    </div>
+                </details>`;
             }).join('');
             const exBlock = exs
                 ? `<div class="prov-examples">${exs}</div>`

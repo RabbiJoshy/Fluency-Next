@@ -55,6 +55,9 @@ class ProductShellTests(unittest.TestCase):
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
         self.assertIn("label: 'Card data'", flashcards)
         self.assertNotIn("if (!isJstOwner()) return null", flashcards)
+        self.assertIn('class="prov-ex-record"', flashcards)
+        self.assertIn("['Occurrence', x.occurrence_id]", flashcards)
+        self.assertIn("Raw example record", flashcards)
 
     def test_only_languages_with_clean_releases_are_enabled(self) -> None:
         config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))

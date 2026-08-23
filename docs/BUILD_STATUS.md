@@ -269,9 +269,10 @@
   unfinished-set resume. Preview selection now uses release-versioned asset
   URLs; saved Lyrics sessions carry their release ID; release-mismatched legacy
   sessions cannot contaminate a preview. Resume also now tolerates the intended
-  lazy absence of examples before the first deck load. Shell cache moved to
-  `flashcards-v282`; the remaining bounded UI item is an example-first drilldown
-  of every occurrence's complete lineage in Card Data.
+  lazy absence of examples before the first deck load. Card Data now provides
+  an example-first expandable drilldown of every occurrence's complete typed
+  lineage plus its raw future-proof record; the clean multi-sense `que` card
+  was browser-verified end to end. Shell cache moved to `flashcards-v283`.
 
 ## Not started
 
@@ -282,7 +283,6 @@
 - Exercise Spanish Review once JSTA has real progress and deliberately submit
   one provenance-bearing test flag after confirming the backend deployment.
   Full corpus-frequency compilation and raw reharvest remain optional.
-- Full per-example lineage drill-down in the learner Card Data modal.
 - Scale the clean one-song Lyrics release path to the full Spanish Artist corpus;
   the active parity release still intentionally retains current materialized
   outputs until that comparison is reviewed.

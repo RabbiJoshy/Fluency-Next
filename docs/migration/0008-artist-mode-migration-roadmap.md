@@ -501,11 +501,13 @@ added and browser-verified back to the exact `arriba` card. That test also fixed
 an old lazy-data bug where restoring selected songs validated a not-yet-loaded
 examples payload and left the loading screen stuck.
 
-The remaining UI acceptance check is narrower: make the Card Data surface
-expose each example's complete occurrence/route/menu/WSD/source lineage as an
-example-first drill-down. It currently lists every selected example and the
-shared assignment evidence, but does not yet expose every example-specific
-field interactively.
+The example-first UI acceptance check is complete. Card Data groups records
+under their assigned senses, gives every example its own expandable row, and
+shows run, occurrence, analysis-unit, route, lexical-candidate, menu, sense,
+WSD request/result/method/path, source, alignment, translation, song and
+vocalist identities. A nested raw-record view guarantees newly added optional
+fields remain inspectable before a tailored presentation is written. The clean
+`que` card was browser-verified across six senses and all of their examples.
 
 #### 6. Compose and compare a clean immutable Artist release
 
@@ -595,12 +597,11 @@ Before making Fluency-Next the live repository:
 
 ### Immediate next action
 
-Complete the bounded example-first Card Data drill-down against the inactive
-one-song preview, then exercise Review/flagging/progress fallbacks that are
-possible with the current JSTA state. Do not change `active.json`. Once the
-preview UI is accepted, extend the same release composer and comparison report
-from one song to the full clean Spanish Artist corpus rather than inventing a
-second packaging path.
+Exercise Review/flagging/progress fallbacks that are possible with the current
+JSTA state and record any parity gaps without turning this into a redesign. Do
+not change `active.json`. Once the preview UI is accepted, extend the same
+release composer and comparison report from one song to the full clean Spanish
+Artist corpus rather than inventing a second packaging path.
 
 The key separation is now enforceable: shell and study behavior can evolve
 without rebuilding corpus data, while a new Artist data run can be activated
