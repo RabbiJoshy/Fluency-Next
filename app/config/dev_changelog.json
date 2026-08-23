@@ -3,7 +3,7 @@
   "entries": [
     {
       "date": "2026-08-23",
-      "commit": "d5aecbb",
+      "commit": "0a3a230",
       "summary": "Artist data now stays bound to one immutable release",
       "detail": [
         "The active Lyrics catalog rewrites vocabulary, examples, songs, artwork and Spotify data to release-versioned URLs before they are loaded.",
