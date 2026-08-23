@@ -127,6 +127,19 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("pos-pill-unassigned", flashcards)
         self.assertIn(".pos-collapsible .pos-pill-unassigned", css)
 
+    def test_collapsed_sense_group_uses_measured_overflow_and_clear_hierarchy(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
+        self.assertIn("function fitPosSectionSummaries(root)", flashcards)
+        self.assertIn("summary.scrollWidth <= summary.clientWidth + 1", flashcards)
+        self.assertIn('class="pos-summary-sense"', flashcards)
+        self.assertIn('class="pos-pill-more" hidden', flashcards)
+        self.assertIn("fitPosSectionSummaries(backEl)", flashcards)
+        self.assertIn("fitPosSectionSummaries(document.getElementById('backContent'))", flashcards)
+        self.assertIn(".pos-collapsible .pos-section-summary", css)
+        self.assertIn("font-size: 16px", css)
+        self.assertIn(".pos-collapsible .meaning-pos-rows .meaning-row-regular", css)
+
     def test_optional_conjugations_join_by_dictionary_headword_not_identity_lemma(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
         self.assertIn(

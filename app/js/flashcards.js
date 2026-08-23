@@ -606,6 +606,48 @@ function fitBackHeadword(root) {
     el.style.whiteSpace = prevWS;
 }
 
+// A collapsed (POS, headword) row is a useful sense overview, not merely an
+// expand control. Show every short sense that genuinely fits in the available
+// width and collapse only the measured overflow behind +N. This deliberately
+// uses rendered width rather than a fixed item/character limit, so compact
+// glosses such as "to go · to leave" are not reduced to "to go +1".
+function fitPosSectionSummaries(root) {
+    root?.querySelectorAll('.pos-section-summary').forEach(summary => {
+        const senses = Array.from(summary.querySelectorAll('.pos-summary-sense'));
+        const more = summary.querySelector('.pos-pill-more');
+        if (!more || senses.length < 2 || summary.clientWidth <= 0) return;
+
+        senses.forEach(sense => { sense.hidden = false; });
+        more.hidden = true;
+        summary.classList.add('is-measuring');
+
+        if (summary.scrollWidth <= summary.clientWidth + 1) {
+            summary.classList.remove('is-measuring');
+            return;
+        }
+
+        more.hidden = false;
+        let hiddenCount = 0;
+        for (let index = senses.length - 1;
+            index > 0 && summary.scrollWidth > summary.clientWidth + 1;
+            index--) {
+            senses[index].hidden = true;
+            hiddenCount++;
+            more.textContent = `+${hiddenCount}`;
+        }
+        more.textContent = `+${hiddenCount}`;
+        summary.classList.remove('is-measuring');
+    });
+}
+
+let posSummaryResizeFrame = 0;
+window.addEventListener('resize', () => {
+    cancelAnimationFrame(posSummaryResizeFrame);
+    posSummaryResizeFrame = requestAnimationFrame(() => {
+        fitPosSectionSummaries(document.getElementById('backContent'));
+    });
+});
+
 // Measure the vertical room that belongs to the meanings scroller after every
 // other in-flow child has taken its rendered space. Both auto-expansion and the
 // final overflow cap use this same live budget, so "open when it fits" cannot
@@ -4131,8 +4173,17 @@ function updateCard({ announceHeadword = false } = {}) {
                 const summarySense = key === activeLemmaPosKey && activeGroupSense
                     ? activeGroupSense
                     : (g.senses[0] || '');
-                const extra = g.senses.length > 1
-                    ? `<span class="pos-pill-more">+${g.senses.length - 1}</span>` : '';
+                // Keep the active sense first, then offer the rest in source
+                // order. A post-render measurement decides how many fit; +N
+                // is a genuine overflow indicator rather than a hard-coded
+                // substitute for every sense after the first.
+                const summarySenses = [summarySense, ...g.senses]
+                    .filter((sense, index, all) => sense && all.indexOf(sense) === index);
+                const summaryHTML = summarySenses
+                    .map(sense => `<span class="pos-summary-sense">${escapeCardText(sense)}</span>`)
+                    .join('');
+                const extra = summarySenses.length > 1
+                    ? `<span class="pos-pill-more" hidden>+${summarySenses.length - 1}</span>` : '';
                 const pct = g.pct > 0
                     ? `<span class="pos-pill-pct">${Math.round(g.pct * 100)}%</span>` : '';
                 const assignmentState = !g.hasAssignedEvidence
@@ -4149,10 +4200,11 @@ function updateCard({ announceHeadword = false } = {}) {
                 <section class="meaning-pos-section pos-collapsible${open ? ' is-open' : ''}"
                          data-pos="${pos}" data-group-key="${escapeCardText(key.replace(/\u0000/g, '~~'))}" style="${accent}">
                     <button type="button" class="pos-section-head"
+                            aria-label="${escapeCardText(`${pos} ${g.headword}: ${summarySenses.join('; ')}`)}"
                             onclick="selectLemmaPosGroup(event, '${key.replace(/\u0000/g, '~~')}', ${g.firstMeaningIndex})">
                         <span class="pos-section-label">${escapeCardText(pos)}</span>
                         ${hw}
-                        <span class="pos-section-summary">${escapeCardText(summarySense)}${extra}</span>
+                        <span class="pos-section-summary">${summaryHTML}${extra}</span>
                         ${assignmentState}${pct}${mark}
                         <span class="pos-section-chevron">${open ? '\u25BE' : '\u25B8'}</span>
                     </button>
@@ -5220,6 +5272,7 @@ function updateCard({ announceHeadword = false } = {}) {
             // Cap the headword against the POS pill first: it can change the
             // header's height, which the scroll-cap measurement below reads.
             fitBackHeadword(backEl);
+            fitPosSectionSummaries(backEl);
 
             const scroll = backEl.querySelector('.meanings-scroll');
             if (scroll) {
