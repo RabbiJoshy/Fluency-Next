@@ -218,8 +218,9 @@ This section is the authoritative continuation plan. A new agent should start
 here rather than infer the remaining work from chat history. The completed
 implementation checkpoints are commits `d4f2810` (source lineage), `a9c83e5`
 (clean processing lineage), `d75403d` (direct live routing and policy-trace
-auditing), `3f3c018` (provider-neutral lexical menus), and `984ab9a`
-(mode-neutral WSD preparation and auditor v9). The verified run is
+auditing), `3f3c018` (provider-neutral lexical menus), `984ab9a`
+(mode-neutral WSD preparation and auditor v9), and `88fff5c` (auditable
+Spanish v5 Lyrics execution and complete-result import). The verified run is
 `runs/es/lyrics/bad-bunny-estamos-arriba-source-v7` in the external workspace.
 
 Environment map:
@@ -406,10 +407,8 @@ and verify that activating nothing leaves the learner app on the parity release.
 Preparation checkpoint complete: the generic v2 request contract and Lyrics
 context adapter are implemented and exercised across the full song. Exact span
 validation fails closed, translations are nullable, and the source/menu
-artifacts are content-bound. No model has run. Remaining work in this package
-is to port the current Spanish embeddings implementation behind this request
-boundary, define and validate the complete result bundle, then give Joshua the
-single slow local command for the real truncated run.
+artifacts are content-bound. No model had run at that checkpoint; the execution
+boundary described below supersedes its former remaining-work note.
 
 Execution boundary checkpoint (2026-08-23): the exact v5 method commit and
 shipped defaults are pinned. Shared orchestration now exposes a language policy
@@ -428,6 +427,9 @@ options but disabled, matching the latest shipped base run. The real executor
 is ready and finds only 100 Gemini exact-text cache misses (55 new lyric lines
 plus 45 menu strings); the retained cache itself remains immutable and misses
 are written to a run-scoped delta.
+
+This checkpoint is committed as `88fff5c` (**Port auditable Spanish v5 lyrics
+WSD**). It changes no active learner release.
 
 #### 5. Consolidate occurrences into Artist cards and examples
 
