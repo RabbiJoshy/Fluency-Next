@@ -13,6 +13,7 @@ from fluency.lyrics.wsd_results import (
     _validate_result,
     import_lyrics_wsd_results,
 )
+from fluency.lyrics.wsd_execute import dotenv_value
 
 
 MENU_ID = "sha256:" + "a" * 64
@@ -52,6 +53,12 @@ def fixture():
 
 
 class LyricsWSDResultTests(unittest.TestCase):
+    def test_dotenv_is_parsed_as_data_with_spaces_around_equals(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / ".env"
+            path.write_text("# comment\nGEMINI_API_KEY = 'secret-value'\nOTHER = ignored\n")
+            self.assertEqual(dotenv_value(path, "GEMINI_API_KEY"), "secret-value")
+
     def test_exact_assigned_result_is_accepted(self):
         request, candidate, result = fixture()
         _validate_result(result, request, candidate, menu_content_id=MENU_ID)

@@ -304,6 +304,10 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_wsd_execute.add_argument(
         "--method", required=True, choices=("es-sd-beto-cal-v5-migration-v1",),
     )
+    lyrics_wsd_execute.add_argument(
+        "--env-file", type=Path,
+        help="optional dotenv file read as data for GEMINI_API_KEY; it is never executed",
+    )
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -801,7 +805,7 @@ def handle_lyrics(args: argparse.Namespace) -> int:
         return 0
     if args.lyrics_command == "wsd-execute":
         output = execute_spanish_v5_lyrics(
-            project_root(), workspace, run_id=args.run_id,
+            project_root(), workspace, run_id=args.run_id, env_file=args.env_file,
         )
         print(f"Created complete raw Lyrics WSD result bundle: {output}")
         print("The result is inactive; run lyrics wsd-import only after validation.")

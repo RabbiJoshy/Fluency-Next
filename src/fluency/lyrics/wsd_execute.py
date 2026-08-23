@@ -31,6 +31,27 @@ class LyricsWSDExecutionError(ValueError):
     pass
 
 
+def dotenv_value(path: Path, name: str) -> str | None:
+    """Read one dotenv assignment as data; never execute the file as shell code."""
+
+    try:
+        lines = path.expanduser().read_text(encoding="utf-8").splitlines()
+    except OSError as error:
+        raise LyricsWSDExecutionError(f"dotenv file is unavailable: {path}") from error
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        if key.strip() != name:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        return value or None
+    return None
+
+
 def _records(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
 
@@ -146,7 +167,8 @@ def _token_vectors(requests: list[dict[str, Any]]):
 
 
 def execute_spanish_v5_lyrics(
-    repository_root: Path, workspace: Workspace, *, run_id: str, api_key: str | None = None,
+    repository_root: Path, workspace: Workspace, *, run_id: str,
+    api_key: str | None = None, env_file: Path | None = None,
 ) -> Path:
     import joblib
     import numpy as np
@@ -173,7 +195,10 @@ def execute_spanish_v5_lyrics(
             for analysis in candidate["analyses"] for sense in analysis["senses"]
         )
     delta = workspace.root / "cache/derived/wsd/es" / run_id / "gemini-delta"
-    vector = _load_vectors(base_embeddings, delta, texts, api_key or os.environ.get("GEMINI_API_KEY"))
+    resolved_api_key = api_key or os.environ.get("GEMINI_API_KEY")
+    if resolved_api_key is None and env_file is not None:
+        resolved_api_key = dotenv_value(env_file, "GEMINI_API_KEY")
+    vector = _load_vectors(base_embeddings, delta, texts, resolved_api_key)
     observed_pos = _pos_tags(requests)
     token_vectors = _token_vectors(requests)
     prototype_matrix = np.load(prototypes / "proto.npy", mmap_mode="r")
