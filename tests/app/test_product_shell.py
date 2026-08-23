@@ -58,6 +58,8 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn('class="prov-ex-record"', flashcards)
         self.assertIn("['Occurrence', x.occurrence_id]", flashcards)
         self.assertIn("Raw example record", flashcards)
+        self.assertIn("Historical retained assignment", flashcards)
+        self.assertIn("Release ${esc(releaseId)}", flashcards)
 
     def test_only_languages_with_clean_releases_are_enabled(self) -> None:
         config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))

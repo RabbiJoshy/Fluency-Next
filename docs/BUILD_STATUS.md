@@ -389,3 +389,13 @@ uses the fresh Tatoeba run and makes no WSD or corpus-coverage claims.
   method before being skipped.
 - Completion emits the provider-neutral bundle catalog required by the
   method-branch importer; it still cannot import, compose, or activate a deck.
+## Gate 47 — Preserved Artist baseline audit labelling
+
+- The retained parity release is the initial migrated Artist dataset; a full
+  clean WSD rerun is optional research work rather than a migration blocker.
+- Card Data now identifies the exact release supplying historical examples and
+  labels prompt IDs missing from the new registry as historical retained
+  assignments instead of presenting them as broken/unregistered models.
+- Existing per-example method, song, translation and raw-record evidence stays
+  visible, while future clean records continue to expose their deeper run and
+  occurrence lineage automatically.

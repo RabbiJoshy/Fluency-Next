@@ -6201,6 +6201,16 @@ function buildProvenancePanelHTML(card) {
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => (
         {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
     const registry = (window._promptRegistry) || {};
+    const activeRelease = window._activeReleaseProvenance || {};
+    const releaseId = activeRelease.releaseId || activeRelease.release_id || '';
+    const assignmentStatus = activeRelease.wsd?.status || '';
+    const historicalRelease = /historical|retained|parity/i.test(assignmentStatus);
+    const readableAssignmentStatus = String(assignmentStatus || '')
+        .replace(/[_-]+/g, ' ').trim();
+    const releaseSummary = releaseId
+        ? `<div class="prov-notes"><strong>Release ${esc(releaseId)}</strong>${readableAssignmentStatus
+            ? ` · ${esc(readableAssignmentStatus)}` : ''}</div>`
+        : '<div class="prov-notes">Release identity unavailable · card-level evidence only</div>';
 
     function fmtTs(ts) {
         if (!ts) return '';
@@ -6247,7 +6257,11 @@ function buildProvenancePanelHTML(card) {
                     : 'single available dictionary sense';
             const model = isAutomatic
                 ? automaticLabel
-                : (hasPrompt ? (reg.model || 'Unregistered model') : 'Deterministic or retained evidence');
+                : (hasPrompt
+                    ? (reg.model || (historicalRelease
+                        ? 'Historical retained assignment'
+                        : 'Unregistered model'))
+                    : 'Deterministic or retained evidence');
             const family = reg.family || '';
             const tier = (reg.capability_tier != null) ? `tier ${reg.capability_tier}` : '';
             const ts = fmtTs(runTs);
@@ -6357,6 +6371,7 @@ function buildProvenancePanelHTML(card) {
     return `<div id="provenancePanel" class="provenance-panel" style="display:none;">
         <button class="prov-close" title="Close" aria-label="Close" onclick="event.stopPropagation(); toggleProvenancePanel();">&times;</button>
         <div class="prov-title">Card data</div>
+        ${releaseSummary}
         ${rows || '<div class="prov-empty">No sense assignments on this card.</div>'}
     </div>`;
 }
