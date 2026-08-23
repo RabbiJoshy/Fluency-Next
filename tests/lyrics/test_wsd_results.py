@@ -29,12 +29,15 @@ def fixture():
         "surface_form": "casa", "eligibility": "ready",
         "lexical_candidate_id": "lexical_" + "5" * 32,
     }
-    candidate = {
-        "analyses": [{
+    analyses = [{
             "menu_analysis_id": "analysis_" + "6" * 32,
             "headword": "casar", "part_of_speech": "VERB",
             "senses": [{"sense_id": "marry"}],
         }]
+    candidate = {
+        "menu_analysis_ids": [analyses[0]["menu_analysis_id"]],
+        "menu_analysis_count": 1,
+        "menu_sense_count": 1,
     }
     result = {
         "result_version": RESULT_VERSION, "request_id": request["request_id"],
@@ -42,14 +45,14 @@ def fixture():
         "target": request["target"], "occurrence_id": request["occurrence_id"],
         "surface_card_id": request["surface_card_id"], "surface_form": "casa",
         "status": "assigned", "menu_content_id": MENU_ID,
-        "menu_analysis_id": candidate["analyses"][0]["menu_analysis_id"],
+        "menu_analysis_id": analyses[0]["menu_analysis_id"],
         "selected_sense_id": "marry",
         "selected_tuple": {"headword": "casar", "part_of_speech": "VERB"},
         "decision_path": ["candidate_preparation", "gloss", "token_tuple_vote", "calibration"],
         "evidence": {}, "confidence": 0.8, "input_artifact_ids": [MENU_ID],
     }
     result["result_id"] = "wsd_result_" + canonical_content_id(result).removeprefix("sha256:")[:32]
-    return request, candidate, result
+    return request, candidate, analyses, result
 
 
 class LyricsWSDResultTests(unittest.TestCase):
@@ -60,23 +63,23 @@ class LyricsWSDResultTests(unittest.TestCase):
             self.assertEqual(dotenv_value(path, "GEMINI_API_KEY"), "secret-value")
 
     def test_exact_assigned_result_is_accepted(self):
-        request, candidate, result = fixture()
-        _validate_result(result, request, candidate, menu_content_id=MENU_ID)
+        request, candidate, analyses, result = fixture()
+        _validate_result(result, request, candidate, menu_content_id=MENU_ID, analyses=analyses)
 
     def test_stale_or_out_of_menu_selection_fails(self):
-        request, candidate, result = fixture()
+        request, candidate, analyses, result = fixture()
         changed = copy.deepcopy(result)
         changed["selected_sense_id"] = "invented"
         body = {key: value for key, value in changed.items() if key != "result_id"}
         changed["result_id"] = "wsd_result_" + canonical_content_id(body).removeprefix("sha256:")[:32]
         with self.assertRaises(LyricsWSDResultImportError):
-            _validate_result(changed, request, candidate, menu_content_id=MENU_ID)
+            _validate_result(changed, request, candidate, menu_content_id=MENU_ID, analyses=analyses)
 
     def test_non_executable_request_cannot_gain_an_assignment(self):
-        request, candidate, result = fixture()
+        request, candidate, analyses, result = fixture()
         request["eligibility"] = "review"
         with self.assertRaises(LyricsWSDResultImportError):
-            _validate_result(result, request, candidate, menu_content_id=MENU_ID)
+            _validate_result(result, request, candidate, menu_content_id=MENU_ID, analyses=analyses)
 
     def test_import_publishes_complete_pool_with_verified_asset(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -88,7 +91,7 @@ class LyricsWSDResultTests(unittest.TestCase):
             lexical = run / "stages/03_lexical_menu/output"
             prepare.mkdir(parents=True)
             lexical.mkdir(parents=True)
-            request, candidate, _assigned = fixture()
+            request, candidate, _analyses, _assigned = fixture()
             request.update({
                 "run_id": run_id, "eligibility": "review",
                 "input_artifact_ids": [MENU_ID],

@@ -14,6 +14,7 @@ from typing import Any
 from fluency.core.hashing import canonical_content_id, file_content_id, validate_content_id
 from fluency.core.workspace import Workspace
 from fluency.lyrics.lineage import build_lineage_event
+from fluency.lyrics.lexical import index_menu_analyses, resolve_candidate_analyses
 from fluency.release.io import atomic_write, json_bytes
 
 
@@ -97,6 +98,7 @@ def _validate_result(
     candidate: dict[str, Any],
     *,
     menu_content_id: str,
+    analyses: list[dict[str, Any]],
 ) -> None:
     required = {
         "result_version", "result_id", "request_id", "run_id", "language", "mode",
@@ -135,8 +137,8 @@ def _validate_result(
     ):
         raise LyricsWSDResultImportError("WSD confidence is invalid")
     if status == "assigned":
-        analyses = {analysis["menu_analysis_id"]: analysis for analysis in candidate["analyses"]}
-        analysis = analyses.get(result["menu_analysis_id"])
+        analyses_by_id = {analysis["menu_analysis_id"]: analysis for analysis in analyses}
+        analysis = analyses_by_id.get(result["menu_analysis_id"])
         if analysis is None:
             raise LyricsWSDResultImportError("assigned result selected an analysis outside its exact menu")
         senses = {sense["sense_id"] for sense in analysis["senses"]}
@@ -207,6 +209,7 @@ def import_lyrics_wsd_results(
             raise LyricsWSDResultImportError(f"WSD method asset content changed: {name}")
     requests = _jsonl(request_path)
     candidates = _jsonl(candidate_path)
+    analyses_by_card = index_menu_analyses(_object(menu_path))
     request_by_id = {request["request_id"]: request for request in requests}
     candidate_by_id = {candidate["lexical_candidate_id"]: candidate for candidate in candidates}
     if len(request_by_id) != len(requests) or len(candidate_by_id) != len(candidates):
@@ -226,7 +229,13 @@ def import_lyrics_wsd_results(
         candidate = candidate_by_id.get(request["lexical_candidate_id"])
         if candidate is None:
             raise LyricsWSDResultImportError("WSD request lost its lexical candidate")
-        _validate_result(result, request, candidate, menu_content_id=hashes["sense_menu"])
+        _validate_result(
+            result,
+            request,
+            candidate,
+            menu_content_id=hashes["sense_menu"],
+            analyses=resolve_candidate_analyses(candidate, analyses_by_card),
+        )
         results[request_id] = result
         counts[result["status"]] += 1
     if set(results) != set(request_by_id):

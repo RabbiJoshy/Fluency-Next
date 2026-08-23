@@ -82,8 +82,9 @@ class LyricsLexicalCandidateTests(unittest.TestCase):
                     process_input_ids=[INPUT_ID],
                 )
                 self.assertEqual(records[0]["status"], "ready")
-                self.assertEqual(records[0]["analyses"][0]["headword"], headword)
-                self.assertIsNone(records[0]["analyses"][0]["lemma"])
+                self.assertEqual(records[0]["menu_analysis_count"], 1)
+                self.assertEqual(records[0]["menu_sense_count"], 1)
+                self.assertNotIn("analyses", records[0])
                 self.assertEqual(events[0]["operation"], "lookup")
                 self.assertEqual(report["wsd_status"], "not_run")
 

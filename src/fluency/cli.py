@@ -29,6 +29,7 @@ from fluency.lyrics.corpus_process import (
     build_lyrics_corpus_processing_profile,
     process_lyrics_corpus_plan,
 )
+from fluency.lyrics.corpus_lexical import build_lyrics_corpus_lexical_menus
 from fluency.lyrics.consolidate import consolidate_lyrics_run
 from fluency.lyrics.assemble import assemble_lyrics_app_stage
 from fluency.lyrics.preview import build_clean_lyrics_preview_release
@@ -259,6 +260,16 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_process_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
     lyrics_process_corpus.add_argument("--plan", type=Path, required=True)
     lyrics_process_corpus.add_argument("--profile", type=Path, required=True)
+    lyrics_menu_corpus = lyrics_actions.add_parser(
+        "menu-corpus",
+        help="build one provider union and exact resumable lexical menus for every processed song",
+    )
+    lyrics_menu_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_menu_corpus.add_argument("--plan", type=Path, required=True)
+    lyrics_menu_corpus.add_argument("--dictionary-snapshot", type=Path, required=True)
+    lyrics_menu_corpus.add_argument("--snapshot-id", required=True)
+    lyrics_menu_corpus.add_argument("--language-policy", required=True)
+    lyrics_menu_corpus.add_argument("--menu-id", required=True)
     lyrics_plan_processing = lyrics_actions.add_parser(
         "plan-processing-profile",
         help="pin shared and artist-specific inputs for one exact corpus processing run",
@@ -810,6 +821,34 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             f"resumed/skipped {result['skipped_this_invocation']}."
         )
         print("No lexical menu, WSD, deck assembly, release build, or activation was run.")
+        return 0
+    if args.lyrics_command == "menu-corpus":
+        def show_menu_progress(event: dict) -> None:
+            if event["completed"] == 1 or event["completed"] % 25 == 0 or event["completed"] == event["planned"]:
+                print(
+                    f"Lyrics menu {event['completed']}/{event['planned']}: "
+                    f"{event['artist_slug']} song {event['source_record_id']} ({event['action']})",
+                    flush=True,
+                )
+
+        result = build_lyrics_corpus_lexical_menus(
+            project_root(),
+            workspace,
+            plan_path=args.plan,
+            dictionary_snapshot=args.dictionary_snapshot,
+            snapshot_id=args.snapshot_id,
+            language_policy_id=args.language_policy,
+            menu_id=args.menu_id,
+            progress=show_menu_progress,
+        )
+        print(f"Completed exact Lyrics corpus lexical menus: {result['report_path']}")
+        print(
+            f"Verified {result['song_run_count']} immutable song menus over "
+            f"{result['lookup_form_count']} shared lookup forms: "
+            f"created {result['created_this_invocation']}, "
+            f"resumed/skipped {result['skipped_this_invocation']}."
+        )
+        print("No sense was assigned; no deck, release, or activation was created.")
         return 0
     if args.lyrics_command == "plan-processing-profile":
         output = build_lyrics_corpus_processing_profile(

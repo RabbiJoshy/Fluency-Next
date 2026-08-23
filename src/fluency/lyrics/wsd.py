@@ -14,6 +14,7 @@ from typing import Any
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
 from fluency.lyrics.lineage import build_lineage_event
+from fluency.lyrics.lexical import index_menu_analyses, resolve_candidate_analyses
 from fluency.release.io import atomic_write, json_bytes
 
 
@@ -86,6 +87,7 @@ def build_wsd_request_records(
     occurrences: list[dict[str, Any]],
     units: list[dict[str, Any]],
     lexical_candidates: list[dict[str, Any]],
+    sense_menu: dict[str, Any],
     sense_menu_content_id: str,
     input_artifact_ids: list[str],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
@@ -104,6 +106,7 @@ def build_wsd_request_records(
     requests: list[dict[str, Any]] = []
     events: list[dict[str, Any]] = []
     counts: Counter[str] = Counter()
+    analyses_by_card = index_menu_analyses(sense_menu)
     for candidate in lexical_candidates:
         unit = units_by_id.get(candidate["analysis_unit_id"])
         if unit is None or unit["occurrence_id"] != candidate["occurrence_id"]:
@@ -124,14 +127,15 @@ def build_wsd_request_records(
         eligibility = candidate["status"]
         menu_reference = None
         if eligibility == "ready":
+            analyses = resolve_candidate_analyses(candidate, analyses_by_card)
             menu_reference = {
                 "content_id": sense_menu_content_id,
                 "lexical_candidate_id": candidate["lexical_candidate_id"],
                 "lookup_card_id": candidate["lookup_card_id"],
                 "lookup_form": candidate["lookup_form"],
-                "analysis_ids": [analysis["menu_analysis_id"] for analysis in candidate["analyses"]],
-                "analysis_count": len(candidate["analyses"]),
-                "sense_count": sum(len(analysis["senses"]) for analysis in candidate["analyses"]),
+                "analysis_ids": candidate["menu_analysis_ids"],
+                "analysis_count": len(analyses),
+                "sense_count": sum(len(analysis.get("senses", [])) for analysis in analyses),
             }
         body = {
             "request_version": REQUEST_VERSION,
@@ -244,6 +248,7 @@ def prepare_lyrics_wsd_stage(
         occurrences=_read_jsonl(paths["occurrences"]),
         units=_read_jsonl(paths["analysis_units"]),
         lexical_candidates=_read_jsonl(paths["lexical_candidates"]),
+        sense_menu=_read_json(paths["sense_menu"]),
         sense_menu_content_id=inputs["sense_menu"],
         input_artifact_ids=list(inputs.values()),
     )

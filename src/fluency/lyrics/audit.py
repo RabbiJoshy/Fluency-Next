@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from fluency.core.hashing import canonical_content_id
+from fluency.lyrics.lexical import index_menu_analyses, resolve_candidate_analyses
 
 
 def _read_json(path: Path) -> Any:
@@ -231,6 +232,7 @@ def build_bundle(
             raise ValueError("lexical output requires its matching process output")
         lexical_output = lexical_output.expanduser().resolve()
         lexical_report = _read_json(lexical_output / "report.json")
+        analyses_by_card = index_menu_analyses(_read_json(lexical_output / "sense-menu.json"))
         lexical_by_unit = {
             candidate["analysis_unit_id"]: candidate
             for candidate in _read_jsonl(lexical_output / "lexical-candidates.jsonl")
@@ -239,9 +241,11 @@ def build_bundle(
             profile = {
                 key: candidate[key]
                 for key in (
-                    "status", "lookup_form", "lookup_card_id", "provider", "analyses", "reason_codes"
+                    "status", "lookup_form", "lookup_card_id", "provider",
+                    "menu_analysis_ids", "menu_analysis_count", "menu_sense_count", "reason_codes"
                 )
             }
+            profile["analyses"] = resolve_candidate_analyses(candidate, analyses_by_card)
             profile_id = "lexical_profile_" + canonical_content_id(profile).removeprefix("sha256:")[:32]
             lexical_profile_ids[analysis_unit_id] = profile_id
             lexical_profiles[profile_id] = profile

@@ -14,6 +14,7 @@ from typing import Any
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
 from fluency.lyrics.lineage import build_lineage_event
+from fluency.lyrics.lexical import index_menu_analyses, resolve_candidate_analyses
 from fluency.release.io import atomic_write, json_bytes
 
 
@@ -70,10 +71,10 @@ def _verify_output(manifest: dict[str, Any], path: Path, name: str) -> str:
 
 
 def _selected_menu_leaf(
-    result: dict[str, Any], candidate: dict[str, Any]
+    result: dict[str, Any], analyses: list[dict[str, Any]]
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     analysis = next(
-        (item for item in candidate.get("analyses", []) if item.get("menu_analysis_id") == result["menu_analysis_id"]),
+        (item for item in analyses if item.get("menu_analysis_id") == result["menu_analysis_id"]),
         None,
     )
     if analysis is None:
@@ -164,6 +165,7 @@ def consolidate_lyrics_run(
     units = _unique(_jsonl(paths["analysis_units"]), "analysis_unit_id", "analysis units")
     routes = _unique(_jsonl(paths["routes"]), "analysis_unit_id", "routes")
     candidates = _unique(_jsonl(paths["lexical_candidates"]), "lexical_candidate_id", "lexical candidates")
+    analyses_by_card = index_menu_analyses(_object(paths["sense_menu"]))
     requests = _unique(_jsonl(paths["requests"]), "request_id", "WSD requests")
     results = _unique(_jsonl(paths["results"]), "request_id", "WSD results")
     method = _object(paths["wsd_method"])
@@ -241,7 +243,9 @@ def consolidate_lyrics_run(
 
         output_refs: list[dict[str, str]] = [{"kind": "consolidation_disposition", "id": disposition_id}]
         if status == "assigned":
-            analysis, sense = _selected_menu_leaf(result, candidate)
+            analysis, sense = _selected_menu_leaf(
+                result, resolve_candidate_analyses(candidate, analyses_by_card)
+            )
             sense_key = _stable_id("sense_assignment", {
                 "menu_content_id": result["menu_content_id"],
                 "menu_analysis_id": result["menu_analysis_id"],

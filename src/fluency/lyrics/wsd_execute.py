@@ -14,6 +14,7 @@ from typing import Any
 
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
+from fluency.lyrics.lexical import index_menu_analyses, resolve_candidate_analyses
 from fluency.lyrics.wsd_results import BUNDLE_VERSION, RESULT_VERSION
 from fluency.release.io import atomic_write
 from fluency.wsd.spanish_v5_features import build_features, companion_features, structural_features
@@ -178,6 +179,12 @@ def execute_spanish_v5_lyrics(
     menu_path = run / "stages/03_lexical_menu/output/sense-menu.json"
     requests = _records(request_path)
     candidates = {item["lexical_candidate_id"]: item for item in _records(candidate_path)}
+    menu = json.loads(menu_path.read_text(encoding="utf-8"))
+    analyses_by_card = index_menu_analyses(menu)
+    candidate_analyses = {
+        candidate_id: resolve_candidate_analyses(candidate, analyses_by_card)
+        for candidate_id, candidate in candidates.items()
+    }
     base_embeddings = workspace.root / "raw/embeddings/google-gemini/gemini-embedding-001/recovered-2026-08-20-v1"
     prototypes = workspace.root / "raw/wsd/assets/es/beto/prototypes-sd-beto-cal-v5-v1"
     calibrator_root = workspace.root / "raw/wsd/assets/es/calibration/sd-beto-cal-v5-legacy-v1"
@@ -189,10 +196,11 @@ def execute_spanish_v5_lyrics(
         if request["eligibility"] != "ready":
             continue
         candidate = candidates[request["lexical_candidate_id"]]
+        analyses = candidate_analyses[request["lexical_candidate_id"]]
         texts.append(request["context"]["text"])
         texts.extend(
             _gloss(candidate["lookup_form"], analysis, sense)
-            for analysis in candidate["analyses"] for sense in analysis["senses"]
+            for analysis in analyses for sense in analysis["senses"]
         )
     delta = workspace.root / "cache/derived/wsd/es" / run_id / "gemini-delta"
     resolved_api_key = api_key or os.environ.get("GEMINI_API_KEY")
@@ -211,6 +219,7 @@ def execute_spanish_v5_lyrics(
     results = []
     for request in requests:
         candidate = candidates[request["lexical_candidate_id"]]
+        analyses = candidate_analyses[request["lexical_candidate_id"]]
         common = {
             "result_version": RESULT_VERSION, "request_id": request["request_id"],
             "run_id": run_id, "language": "es", "mode": "lyrics", "target": request["target"],
@@ -227,7 +236,7 @@ def execute_spanish_v5_lyrics(
         sentence = request["context"]["text"]
         query = vector(sentence)
         leaf_rows = []
-        for analysis in candidate["analyses"]:
+        for analysis in analyses:
             for sense in analysis["senses"]:
                 raw = float(query @ vector(_gloss(candidate["lookup_form"], analysis, sense)))
                 leaf_rows.append({"analysis": analysis, "sense": sense, "raw": raw})
@@ -235,7 +244,7 @@ def execute_spanish_v5_lyrics(
         for rank, row in enumerate(leaf_rows):
             row["adjusted"] = row["raw"] + 0.02 * (0.5 ** rank)
         pos = observed_pos.get(request["request_id"])
-        allowed_analyses = candidate["analyses"]
+        allowed_analyses = analyses
         # Reuse the clean policy's measured filtering via lightweight menu records is unnecessary here:
         # its public bridge and se gate are applied by analysis identity below.
         from fluency.wsd.languages.spanish import sense_compatible_bridged, se_reflexive_evidence
@@ -243,7 +252,7 @@ def execute_spanish_v5_lyrics(
         if compatible:
             allowed_analyses = compatible
         se_evidence = se_reflexive_evidence(request["surface_form"], sentence)
-        headwords = {a["headword"].lower() for a in candidate["analyses"]}
+        headwords = {a["headword"].lower() for a in analyses}
         ambiguous = any(not word.endswith("se") and word + "se" in headwords for word in headwords)
         if ambiguous and se_evidence is not None:
             compatible = [a for a in allowed_analyses if a["headword"].lower().endswith("se") is se_evidence]

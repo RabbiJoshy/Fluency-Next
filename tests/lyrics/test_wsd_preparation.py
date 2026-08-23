@@ -18,7 +18,9 @@ def candidate(index: int, status: str, analyses: list[dict] | None = None) -> di
         "lexical_candidate_id": f"lexical_{index:032x}",
         "lookup_card_id": "card_es_" + f"{index + 10:032x}" if status == "ready" else None,
         "lookup_form": "arriba" if status == "ready" else None,
-        "analyses": analyses,
+        "menu_analysis_ids": [analysis["menu_analysis_id"] for analysis in analyses],
+        "menu_analysis_count": len(analyses),
+        "menu_sense_count": sum(len(analysis["senses"]) for analysis in analyses),
         "input_artifact_ids": [CONTENT_ID],
     }
 
@@ -46,10 +48,14 @@ class LyricsWSDPreparationTests(unittest.TestCase):
         }]
         analyses = [{"menu_analysis_id": "analysis_" + "c" * 32, "senses": [{"sense_id": "1"}]}]
         candidates = [candidate(1, "ready", analyses), candidate(2, "ineligible")]
-        return [line], alignments, occurrences, units, candidates
+        sense_menu = {"cards": [{
+            "card_id": candidates[0]["lookup_card_id"],
+            "analyses": analyses,
+        }]}
+        return [line], alignments, occurrences, units, candidates, sense_menu
 
     def test_preparation_covers_executable_and_non_executable_targets(self):
-        lines, alignments, occurrences, units, candidates = self.inputs()
+        lines, alignments, occurrences, units, candidates, sense_menu = self.inputs()
         requests, events, report = build_wsd_request_records(
             run_id="fixture-run",
             language="es",
@@ -58,6 +64,7 @@ class LyricsWSDPreparationTests(unittest.TestCase):
             occurrences=occurrences,
             units=units,
             lexical_candidates=candidates,
+            sense_menu=sense_menu,
             sense_menu_content_id=MENU_ID,
             input_artifact_ids=[CONTENT_ID],
         )
@@ -71,7 +78,7 @@ class LyricsWSDPreparationTests(unittest.TestCase):
         self.assertEqual(report["executable_request_count"], 1)
 
     def test_missing_translation_is_valid_but_span_drift_fails(self):
-        lines, _alignments, occurrences, units, candidates = self.inputs()
+        lines, _alignments, occurrences, units, candidates, sense_menu = self.inputs()
         requests, _events, report = build_wsd_request_records(
             run_id="fixture-run",
             language="es",
@@ -80,6 +87,7 @@ class LyricsWSDPreparationTests(unittest.TestCase):
             occurrences=occurrences,
             units=units,
             lexical_candidates=candidates,
+            sense_menu=sense_menu,
             sense_menu_content_id=MENU_ID,
             input_artifact_ids=[CONTENT_ID],
         )
@@ -90,6 +98,7 @@ class LyricsWSDPreparationTests(unittest.TestCase):
             build_wsd_request_records(
                 run_id="fixture-run", language="es", lines=lines, alignments=[],
                 occurrences=occurrences, units=units, lexical_candidates=candidates,
+                sense_menu=sense_menu,
                 sense_menu_content_id=MENU_ID, input_artifact_ids=[CONTENT_ID],
             )
 

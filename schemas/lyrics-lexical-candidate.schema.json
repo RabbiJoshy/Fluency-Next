@@ -4,9 +4,9 @@
   "title": "Provider-neutral lexical menu candidate for one Lyrics analysis unit",
   "type": "object",
   "additionalProperties": false,
-  "required": ["record_version", "lexical_candidate_id", "analysis_unit_id", "occurrence_id", "language", "surface_form", "normalized_form", "surface_card_id", "route_id", "route_bucket", "status", "lookup_form", "lookup_card_id", "provider", "analyses", "reason_codes", "input_artifact_ids"],
+  "required": ["record_version", "lexical_candidate_id", "analysis_unit_id", "occurrence_id", "language", "surface_form", "normalized_form", "surface_card_id", "route_id", "route_bucket", "status", "lookup_form", "lookup_card_id", "provider", "menu_analysis_ids", "menu_analysis_count", "menu_sense_count", "reason_codes", "input_artifact_ids"],
   "properties": {
-    "record_version": {"const": "lyrics-lexical-candidate/v1"},
+    "record_version": {"const": "lyrics-lexical-candidate/v2"},
     "lexical_candidate_id": {"type": "string", "pattern": "^lexical_[0-9a-f]{32}$"},
     "analysis_unit_id": {"type": "string", "pattern": "^unit_[0-9a-f]{32}$"},
     "occurrence_id": {"type": "string", "pattern": "^occurrence_[0-9a-f]{32}$"},
@@ -31,37 +31,13 @@
         "gloss_language": {"type": "string", "pattern": "^[a-z]{2,3}$"}
       }
     },
-    "analyses": {
+    "menu_analysis_ids": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["menu_analysis_id", "headword", "lemma", "part_of_speech", "source_analysis_key", "senses", "provider_metadata"],
-        "properties": {
-          "menu_analysis_id": {"type": "string", "minLength": 1},
-          "headword": {"type": ["string", "null"]},
-          "lemma": {"type": ["string", "null"]},
-          "part_of_speech": {"type": ["string", "null"]},
-          "source_analysis_key": {"type": ["string", "null"]},
-          "senses": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["sense_id", "translation", "definition", "source_reference", "provider_metadata"],
-              "properties": {
-                "sense_id": {"type": "string", "minLength": 1},
-                "translation": {"type": ["string", "null"]},
-                "definition": {"type": ["string", "null"]},
-                "source_reference": {"type": ["string", "null"]},
-                "provider_metadata": {"type": "object"}
-              }
-            }
-          },
-          "provider_metadata": {"type": "object"}
-        }
-      }
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
     },
+    "menu_analysis_count": {"type": "integer", "minimum": 0},
+    "menu_sense_count": {"type": "integer", "minimum": 0},
     "reason_codes": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
     "input_artifact_ids": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
   },
@@ -71,7 +47,9 @@
       "then": {"properties": {
         "lookup_form": {"type": "string", "minLength": 1},
         "lookup_card_id": {"type": "string"},
-        "analyses": {"minItems": 1}
+        "menu_analysis_ids": {"minItems": 1},
+        "menu_analysis_count": {"minimum": 1},
+        "menu_sense_count": {"minimum": 1}
       }}
     },
     {
@@ -79,7 +57,9 @@
       "then": {"properties": {
         "lookup_form": {"type": "string", "minLength": 1},
         "lookup_card_id": {"type": "string"},
-        "analyses": {"maxItems": 0}
+        "menu_analysis_ids": {"maxItems": 0},
+        "menu_analysis_count": {"const": 0},
+        "menu_sense_count": {"const": 0}
       }}
     },
     {
@@ -87,7 +67,9 @@
       "then": {"properties": {
         "lookup_form": {"type": "null"},
         "lookup_card_id": {"type": "null"},
-        "analyses": {"maxItems": 0}
+        "menu_analysis_ids": {"maxItems": 0},
+        "menu_analysis_count": {"const": 0},
+        "menu_sense_count": {"const": 0}
       }}
     }
   ]

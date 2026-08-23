@@ -63,20 +63,28 @@ class LyricsConsolidationTests(unittest.TestCase):
                     "lexical_candidate_id": "lexical_a", "analysis_unit_id": "unit_a",
                     "occurrence_id": "occurrence_a", "surface_card_id": card_a,
                     "provider": {"source_adapter": "fixture/v1"},
-                    "analyses": [{
-                        "menu_analysis_id": "analysis_a", "headword": "casa", "lemma": None,
-                        "part_of_speech": "NOUN", "senses": [{
-                            "sense_id": "sense_a", "translation": "house", "definition": "a home",
-                            "source_reference": "fixture:casa:a",
-                        }],
-                    }],
+                    "status": "ready", "lookup_card_id": "lookup_casa",
+                    "menu_analysis_ids": ["analysis_a"],
+                    "menu_analysis_count": 1, "menu_sense_count": 1,
                 },
                 {
                     "lexical_candidate_id": "lexical_b", "analysis_unit_id": "unit_b",
                     "occurrence_id": "occurrence_b", "surface_card_id": card_b,
-                    "provider": {"source_adapter": "fixture/v1"}, "analyses": [],
+                    "provider": {"source_adapter": "fixture/v1"}, "status": "ineligible",
+                    "lookup_card_id": None, "menu_analysis_ids": [],
+                    "menu_analysis_count": 0, "menu_sense_count": 0,
                 },
             ]
+            sense_menu = {"cards": [{
+                "card_id": "lookup_casa",
+                "analyses": [{
+                    "menu_analysis_id": "analysis_a", "headword": "casa", "lemma": None,
+                    "part_of_speech": "NOUN", "senses": [{
+                        "sense_id": "sense_a", "translation": "house", "definition": "a home",
+                        "source_reference": "fixture:casa:a",
+                    }],
+                }],
+            }]}
             requests = [
                 {
                     "request_id": "request_a", "target": {"kind": "analysis_unit", "id": "unit_a"},
@@ -106,7 +114,7 @@ class LyricsConsolidationTests(unittest.TestCase):
             files = {
                 "source": {"song.json": song, "lines.jsonl": lines, "alignments.jsonl": []},
                 "process": {"occurrences.jsonl": occurrences, "analysis-units.jsonl": units, "routes.jsonl": routes},
-                "lexical": {"lexical-candidates.jsonl": candidates, "sense-menu.json": {"cards": []}},
+                "lexical": {"lexical-candidates.jsonl": candidates, "sense-menu.json": sense_menu},
                 "prepare": {"requests.jsonl": requests},
                 "wsd": {"results.jsonl": results, "method.json": {"profile_id": "fixture", "source_method_id": "fixture/v1"}},
             }

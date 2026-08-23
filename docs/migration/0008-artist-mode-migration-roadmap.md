@@ -623,9 +623,22 @@ output hash, and keeps processing implementation identity sensitive to the
 language adapter, router, override registry and lineage code. The immutable
 profile is `es-live-routing-v1-20260823`. Fixture coverage verifies both the
 old one-song interface and the bulk interface, exact resume and corruption
-rejection; the complete suite is 190/190. The real 914-song processing run has
-not started and will not build menus, run WSD, assemble a deck or activate a
-release.
+rejection. The full 914-song processing run completed from scratch: it produced
+361,713 routed analysis units across the four artist-scoped sources, with no
+lexical menu, WSD, deck, release or activation. Its exact completion record is
+`runs/es/lyrics-corpora/es-parity-source-plan-20260823-v2/process-report.json`.
+
+Resumable-menu checkpoint (2026-08-23): the lexical boundary now normalizes
+provider data instead of repeating every SpanishDict analysis and sense on
+every lyric occurrence. Each compact candidate carries stable menu IDs and
+counts; the authoritative analyses live once in its exact song menu. WSD
+preparation, execution, result validation, consolidation and the auditor all
+resolve that reference and fail if it has drifted. The corpus executor loads
+SpanishDict once for the union of routed forms, creates compact song subsets,
+and safely resumes only after verifying the selected plan, completed processing
+report, dictionary snapshot, language policy, implementation and every song
+output hash. The complete suite remains 190/190. The real menu run has not yet
+executed and cannot assign a sense or activate a release.
 
 #### 9. Add further languages through adapters
 
@@ -655,10 +668,10 @@ Before making Fluency-Next the live repository:
 
 ### Immediate next action
 
-Run the exact 914-song processing profile locally, then inspect its completion
-record, aggregate routing counts and samples from all four sources. After that,
-extend the same resumable runner over the existing lexical-menu and WSD
-preparation functions. WSD execution remains a separate long boundary; do not
+Run the exact 914-song SpanishDict menu command locally, then inspect its
+completion record, status totals, shared lookup union and samples from all four
+sources. Next, extend safe bulk orchestration over the lightweight WSD-request
+preparation boundary. WSD execution remains a separate long boundary; do not
 change `active.json`. A deliberate flag submission, non-empty Review queue and
 completion/progress write remain production-backend checks, not reasons to hold
 the clean data architecture in a one-song state.
