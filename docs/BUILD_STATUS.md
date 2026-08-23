@@ -344,9 +344,7 @@
   through the immutable Stage 04 boundary.
 - Pinned French embedding/reranker models, WSD, calibration, and selection.
 - Production release generation and full French inventory integration.
-- Exercise Spanish Review once JSTA has real progress and deliberately submit
-  one provenance-bearing test flag after confirming the backend deployment.
-  Full corpus-frequency compilation and raw reharvest remain optional.
+- Full corpus-frequency compilation and raw reharvest remain optional.
 - Scale the clean one-song Lyrics release path to the full Spanish Artist corpus;
   the active parity release still intentionally retains current materialized
   outputs until that comparison is reviewed.
@@ -399,3 +397,24 @@ uses the fresh Tatoeba run and makes no WSD or corpus-coverage claims.
 - Existing per-example method, song, translation and raw-record evidence stays
   visible, while future clean records continue to expose their deeper run and
   occurrence lineage automatically.
+## Gate 48 — Bounded learner-app and offline acceptance
+
+- Bad Bunny, Rosalía, Young Miko and French Artist releases, whole-artist and
+  custom-song sources, Learn, Review, resume, completion and Card Data were
+  exercised against the real local app.
+- JSTA saved a three-song cross-artist selection and the deployed SongSets v2
+  endpoint returned its exact song IDs and contributing artist slugs. A fresh
+  login restored the same selection after the post-login reconciliation fix.
+- French Lyrics is reachable from the language-first chooser without an
+  unnecessary Speech load.
+- The explicit immutable Lyrics download now supports an offline active-alias
+  fallback without caching or silently substituting the mutable alias itself.
+  Bad Bunny rendered with the static server stopped.
+- Preview-to-active Lyrics release switching passed without changing an active
+  manifest.
+- The deliberate JSTA flag is confirmed in FlaggedWords with its exact release,
+  run, client build and non-empty provenance JSON.
+- Final inactive candidate `fluency-next-acceptance-candidate-20260823-v4`
+  contains 91 hashed files and 75,660,754 bytes. It is not deployed.
+- Production cutover remains blocked only by the explicit per-deck
+  clean-versus-retained data decision and subsequent deployment approval.

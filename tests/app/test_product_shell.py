@@ -97,7 +97,7 @@ class ProductShellTests(unittest.TestCase):
         self.assertFalse((APP_ROOT / "Data").exists())
         self.assertFalse((APP_ROOT / "Artists").exists())
 
-    def test_surface_only_release_hides_legacy_lemma_control(self) -> None:
+    def test_merge_lemma_control_is_capability_gated(self) -> None:
         ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
         self.assertGreaterEqual(
             ui.count("lemmaFieldAvailable ? 'block' : 'none'"),
@@ -118,7 +118,7 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("if (isResumeNavigation && !activeArtist && selectedLanguage === 'spanish')", main)
         self.assertTrue(config["languages"]["spanish"]["capabilities"]["speech"])
         self.assertTrue(config["languages"]["spanish"]["capabilities"]["lyrics"])
-        self.assertFalse(config["languages"]["french"]["capabilities"]["lyrics"])
+        self.assertTrue(config["languages"]["french"]["capabilities"]["lyrics"])
 
     def test_merge_lemmas_remains_a_declared_learner_feature(self) -> None:
         ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
@@ -216,6 +216,8 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("pathname === '/config/artists.json'", worker)
         self.assertIn("pathname.startsWith('/Artists/')", worker)
         self.assertIn("cache: 'no-store'", worker)
+        self.assertIn("matchInstalledLyricsCatalog", worker)
+        self.assertIn("exact immutable catalog", worker)
 
     def test_artist_catalog_is_validated_and_loads_release_provenance(self) -> None:
         main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
@@ -260,9 +262,13 @@ class ProductShellTests(unittest.TestCase):
 
     def test_song_sets_retain_contributing_artist_slugs(self) -> None:
         song_sets = (APP_ROOT / "js" / "song-sets.js").read_text(encoding="utf-8")
+        auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
         self.assertIn("function artistSlugsForSongs", song_sets)
         self.assertIn("artistSlugs,", song_sets)
         self.assertIn("remote.artistSlugs", song_sets)
+        self.assertIn("window.reconcileRemoteSongSet = reconcileRemoteSongSet", song_sets)
+        self.assertIn("setTimeout(() => controller.abort(), 12000)", song_sets)
+        self.assertIn("window.reconcileRemoteSongSet?.()", auth)
 
     def test_language_switch_clears_source_scoped_runtime_data(self) -> None:
         ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")

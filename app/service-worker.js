@@ -5,7 +5,7 @@
 // Bump CACHE_NAME alongside any change to ASSET_VERSION below — old caches
 // are deleted in the activate handler, so a bump forces the new pre-cache
 // list to be rebuilt on next install.
-const CACHE_NAME = 'flashcards-v290';
+const CACHE_NAME = 'flashcards-v293';
 const SHELL_CACHE_PREFIX = 'flashcards-v';
 const CONTENT_CACHE_PREFIX = 'fluency-content-';
 const CONTENT_STAGING_PREFIX = `${CONTENT_CACHE_PREFIX}staging-`;
@@ -24,12 +24,12 @@ const ASSET_VERSION = '20260822p';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/css/style.css?v=20260823ac',
+  '/css/style.css?v=20260823ad',
   `/css/light-theme.css?v=${ASSET_VERSION}`,
   '/config/config.json',
   '/config/cefr_levels.json',
   '/config/offline-content-manifest.json',
-  '/js/main.js?v=20260823ac',
+  '/js/main.js?v=20260823ae',
   `/js/theme.js?v=${ASSET_VERSION}`,
   `/js/state.js?v=${ASSET_VERSION}`,
   `/js/data-contracts.js?v=${ASSET_VERSION}`,
@@ -38,22 +38,22 @@ const urlsToCache = [
   `/js/offline-content.js?v=${ASSET_VERSION}`,
   `/js/speech.js?v=${ASSET_VERSION}`,
   `/js/artist-ui.js?v=${ASSET_VERSION}`,
-  `/js/auth.js?v=${ASSET_VERSION}`,
+  '/js/auth.js?v=20260823ae',
   `/js/about-example.js?v=${ASSET_VERSION}`,
   `/js/spotify.js?v=${ASSET_VERSION}`,
   `/js/estimation.js?v=${ASSET_VERSION}`,
-  '/js/config.js?v=20260823ac',
+  '/js/config.js?v=20260823ad',
   `/js/progress.js?v=${ASSET_VERSION}`,
   `/js/knowledge.js?v=${ASSET_VERSION}`,
-  '/js/ui.js?v=20260823ac',
+  '/js/ui.js?v=20260823ad',
   '/js/vocab.js?v=20260823x',
   `/js/song-sets-core.js?v=${ASSET_VERSION}`,
-  `/js/song-sets.js?v=${ASSET_VERSION}`,
+  '/js/song-sets.js?v=20260823ae',
   `/js/vocabulary-import-core.js?v=${ASSET_VERSION}`,
   `/js/vocabulary-import.js?v=${ASSET_VERSION}`,
   `/js/spanishdict-usage.js?v=${ASSET_VERSION}`,
   `/js/reverse-cues.js?v=${ASSET_VERSION}`,
-  '/js/flashcards.js?v=20260823ac',
+  '/js/flashcards.js?v=20260823ad',
   `/js/example-personalisation.js?v=${ASSET_VERSION}`,
   `/js/flashcards-modals.js?v=${ASSET_VERSION}`,
   `/js/flashcards-conj.js?v=${ASSET_VERSION}`
@@ -121,6 +121,20 @@ async function matchRetainedContent(request) {
   return (await caches.open(cacheName)).match(request);
 }
 
+async function matchInstalledLyricsCatalog() {
+  retainedContentIndexPromise ||= buildRetainedContentIndex().catch(error => {
+    console.warn('Retained content index unavailable:', error);
+    return new Map();
+  });
+  const index = await retainedContentIndexPromise;
+  for (const [pathname, cacheName] of index.entries()) {
+    if (!/^\/releases\/lyrics\/[^/]+\/app\/config\/artists\.json$/u.test(pathname)) continue;
+    const response = await (await caches.open(cacheName)).match(pathname);
+    if (response) return response;
+  }
+  return null;
+}
+
 self.addEventListener('fetch', event => {
   const request = event.request;
 
@@ -140,7 +154,21 @@ self.addEventListener('fetch', event => {
   // vocabulary or examples. Offline releases can later use release-versioned
   // URLs rather than this mutable compatibility boundary.
   const pathname = new URL(request.url).pathname;
-  if (pathname === '/config/artists.json' || pathname.startsWith('/Artists/')) {
+  if (pathname === '/config/artists.json') {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' }).catch(async error => {
+        // The active alias remains network-authoritative and is never cached.
+        // Offline use may fall back only to the exact immutable catalog that
+        // the learner explicitly installed through the offline-content
+        // manifest. This cannot silently revive an arbitrary previous run.
+        const installed = await matchInstalledLyricsCatalog();
+        if (installed) return installed;
+        throw error;
+      })
+    );
+    return;
+  }
+  if (pathname.startsWith('/Artists/')) {
     event.respondWith(fetch(request, { cache: 'no-store' }));
     return;
   }

@@ -197,6 +197,12 @@ async function submitLogin() {
 
     // Load user progress from Google Sheets
     await loadUserProgressFromSheet();
+    // Artist/song metadata may have initialized while the login modal was
+    // still open, when there was no named user to reconcile. Complete the
+    // per-user playlist restore now that identity is known.
+    await window.reconcileRemoteSongSet?.().catch(error => {
+        console.warn('Song-set sync deferred after login:', error);
+    });
 }
 
 // Logout handler. Guests skip the confirm (nothing to lose); named users get

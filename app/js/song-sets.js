@@ -11,6 +11,7 @@ import {
 const STORAGE_PREFIX = 'fluency_song_set_v1:';
 let draftSongIds = new Set();
 let remoteLoaded = false;
+let remoteLoading = false;
 
 function sourceSlug() {
     return String(window._urlArtistSlug || activeArtist?.slug || 'lyrics');
@@ -103,10 +104,10 @@ export async function initArtistSongSelection() {
 }
 
 async function reconcileRemoteSongSet() {
-    if (remoteLoaded || !currentUser || currentUser.isGuest || !GOOGLE_SCRIPT_URL || !artistSongCatalog) return;
-    remoteLoaded = true;
+    if (remoteLoaded || remoteLoading || !currentUser || currentUser.isGuest || !GOOGLE_SCRIPT_URL || !artistSongCatalog) return;
+    remoteLoading = true;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 12000);
     try {
         const response = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
@@ -115,6 +116,7 @@ async function reconcileRemoteSongSet() {
         });
         const result = await response.json();
         if (!result?.success || !Array.isArray(result.data?.songSets)) return;
+        remoteLoaded = true;
         const remote = result.data.songSets.find(row =>
             row.source === sourceSlug() && row.setId === 'active');
         if (!remote || !Array.isArray(remote.songIds)) return;
@@ -136,6 +138,7 @@ async function reconcileRemoteSongSet() {
             detail: { source: sourceSlug(), remote: true }
         }));
     } finally {
+        remoteLoading = false;
         clearTimeout(timeout);
     }
 }
@@ -324,3 +327,4 @@ window.setActiveExamplesData = setActiveExamplesData;
 window.clearActiveExamplesData = clearActiveExamplesData;
 window.showSongSetPicker = showSongSetPicker;
 window.songSelectionSummary = songSelectionSummary;
+window.reconcileRemoteSongSet = reconcileRemoteSongSet;

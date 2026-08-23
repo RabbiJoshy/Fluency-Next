@@ -769,14 +769,33 @@ manifests and representative Spanish, French and Bad Bunny assets successfully;
 the special workspace-mounting development server was not involved. This is
 still an inactive local artifact: nothing was uploaded, activated or deprecated.
 
+Bounded acceptance checkpoint (2026-08-23): the four retained Artist sources,
+whole-artist and cross-artist selection, Learn, non-empty Review, exact resume,
+completion, progress persistence, Card Data and JSTA flag submission were
+exercised. The deployed backend advertises Progress/Flag/SongSets schemas
+4/4/2, and the exact three-song JSTA playlist round-tripped from its SongSets
+row with contributing-artist provenance. French Lyrics is now reachable from
+the language-first chooser. Explicit offline installation now permits the
+network-only active Artist alias to fall back only to the currently installed
+immutable catalogue; a server-stopped Bad Bunny launch passed. Explicit preview
+and active release switching also passed. Fresh JSTA login restores its remote
+playlist, and the deliberate provenance flag is confirmed in FlaggedWords.
+Final inactive candidate `fluency-next-acceptance-candidate-20260823-v4`
+contains 91 hashed files and 75,660,754 bytes. See
+`0009-learner-app-acceptance-audit.md`.
+
+Production cutover remains deferred. Josh will first decide whether each final
+deck must come from a fresh clean run or may retain reviewed historical work;
+French and Bad Bunny are intentionally allowed to reach different decisions.
+
 ### Immediate next action
 
 Keep actual WSD execution behind its explicit method boundary until the current
 method is settled. Finish clean release/media composition and release-comparison
 orchestration without changing `active.json` or pretending unassigned requests
-are assigned. A deliberate flag submission,
-non-empty Review queue and completion/progress write remain production-backend
-checks, not reasons to hold the clean data architecture in a one-song state.
+are assigned. The deliberate flag submission, non-empty Review queue and
+completion/progress write have now been exercised; they are not reasons to hold
+the clean data architecture in a one-song state.
 
 The key separation is now enforceable: shell and study behavior can evolve
 without rebuilding corpus data, while a new Artist data run can be activated

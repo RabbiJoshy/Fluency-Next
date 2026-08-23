@@ -249,7 +249,7 @@
       "hasData": true,
       "capabilities": {
         "speech": true,
-        "lyrics": false
+        "lyrics": true
       },
       "colorTheme": {
         "primary": "#4A7FFF",

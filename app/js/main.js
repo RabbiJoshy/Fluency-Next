@@ -5,17 +5,17 @@ import './sync-queue.js?v=20260822p';
 import { initOfflineContent } from './offline-content.js?v=20260822p';
 import './speech.js?v=20260822p';
 import './artist-ui.js?v=20260822p';
-import './auth.js?v=20260822p';
+import './auth.js?v=20260823ae';
 import './about-example.js?v=20260822p';
 import './estimation.js?v=20260822p';
-import './config.js?v=20260823ac';
+import './config.js?v=20260823ad';
 import './progress.js?v=20260822p';
 import './knowledge.js?v=20260822p';
-import './ui.js?v=20260823ac';
+import './ui.js?v=20260823ad';
 import './vocab.js?v=20260823x';
-import './song-sets.js?v=20260822p';
+import './song-sets.js?v=20260823ae';
 import './vocabulary-import.js?v=20260822p';
-import './flashcards.js?v=20260823ac';
+import './flashcards.js?v=20260823ad';
 import { validateArtistCatalog } from './data-contracts.js?v=20260822p';
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import
