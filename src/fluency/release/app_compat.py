@@ -101,7 +101,7 @@ def build_app_compatibility_assets(
             "surface_card_id": card["card_id"],
         }
         split_examples: dict[str, Any] = {"m": buckets}
-        if unassigned_senses or unassigned_examples:
+        if not meanings and (unassigned_senses or unassigned_examples):
             # Normal-mode setup intentionally rejects cards with no primary
             # meaning. Represent the app's existing unassigned cycle as that
             # primary meaning, not as the secondary artist-only `sense_cycles`
@@ -122,6 +122,16 @@ def build_app_compatibility_assets(
                 }
             )
             buckets.append(unassigned_examples)
+        else:
+            # A partially assigned card is already teachable. Keep unused menu
+            # leaves and any unassigned examples as audit evidence without
+            # manufacturing a learner-facing remainder sense. Giving that
+            # remainder frequency 1.0 made the app renormalize valid assigned
+            # senses to a misleading combined 50%.
+            if unassigned_senses:
+                old_card["unused_menu_senses"] = unassigned_senses
+            if unassigned_examples:
+                split_examples["u"] = unassigned_examples
         frequency = card.get("frequency")
         if isinstance(frequency, dict) and isinstance(frequency.get("primary_count"), int):
             old_card["corpus_count"] = frequency["primary_count"]

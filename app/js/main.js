@@ -12,10 +12,10 @@ import './config.js?v=20260823ad';
 import './progress.js?v=20260822p';
 import './knowledge.js?v=20260822p';
 import './ui.js?v=20260823af';
-import './vocab.js?v=20260823x';
+import './vocab.js?v=20260823ah';
 import './song-sets.js?v=20260823ae';
 import './vocabulary-import.js?v=20260822p';
-import './flashcards.js?v=20260823ag';
+import './flashcards.js?v=20260823ah';
 import { validateArtistCatalog } from './data-contracts.js?v=20260822p';
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import

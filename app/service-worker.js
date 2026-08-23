@@ -5,7 +5,7 @@
 // Bump CACHE_NAME alongside any change to ASSET_VERSION below — old caches
 // are deleted in the activate handler, so a bump forces the new pre-cache
 // list to be rebuilt on next install.
-const CACHE_NAME = 'flashcards-v295';
+const CACHE_NAME = 'flashcards-v296';
 const SHELL_CACHE_PREFIX = 'flashcards-v';
 const CONTENT_CACHE_PREFIX = 'fluency-content-';
 const CONTENT_STAGING_PREFIX = `${CONTENT_CACHE_PREFIX}staging-`;
@@ -46,14 +46,14 @@ const urlsToCache = [
   `/js/progress.js?v=${ASSET_VERSION}`,
   `/js/knowledge.js?v=${ASSET_VERSION}`,
   '/js/ui.js?v=20260823af',
-  '/js/vocab.js?v=20260823x',
+  '/js/vocab.js?v=20260823ah',
   `/js/song-sets-core.js?v=${ASSET_VERSION}`,
   '/js/song-sets.js?v=20260823ae',
   `/js/vocabulary-import-core.js?v=${ASSET_VERSION}`,
   `/js/vocabulary-import.js?v=${ASSET_VERSION}`,
   `/js/spanishdict-usage.js?v=${ASSET_VERSION}`,
   `/js/reverse-cues.js?v=${ASSET_VERSION}`,
-  '/js/flashcards.js?v=20260823ag',
+  '/js/flashcards.js?v=20260823ah',
   `/js/example-personalisation.js?v=${ASSET_VERSION}`,
   `/js/flashcards-modals.js?v=${ASSET_VERSION}`,
   `/js/flashcards-conj.js?v=${ASSET_VERSION}`

@@ -6173,7 +6173,7 @@ function modelProposalMarkerHTML(meaning) {
 }
 
 function spanishDictMeaningsForCard(card) {
-    return (card?.meanings || []).filter(meaning => (
+    return [...(card?.meanings || []), ...(card?.unusedMenuSenses || [])].filter(meaning => (
         String(meaning?.source || '').toLocaleLowerCase('en') === 'spanishdict'
     ));
 }

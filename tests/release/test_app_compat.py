@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from pathlib import Path
 import unittest
 
@@ -52,6 +53,25 @@ class AppCompatibilityTests(unittest.TestCase):
         self.assertEqual(
             index[0]["meanings"][0]["metadata"]["source_adapter"],
             "spanishdict-sense-menu/v1",
+        )
+
+    def test_partially_assigned_card_keeps_unused_menu_out_of_learner_meanings(self) -> None:
+        seed = json.loads(default_seed_path().read_text(encoding="utf-8"))
+        deck = build_pilot_deck(seed)
+        card = deck["cards"][0]
+        unused = deepcopy(card["meanings"][0])
+        unused["sense_id"] = "sense_unused_menu_leaf"
+        unused["translation"] = "unused alternative"
+        unused["assignment_status"] = "unassigned"
+        card["meanings"].append(unused)
+
+        index, _ = build_app_compatibility_assets(deck)
+        app_card = index[0]
+        self.assertEqual(len(app_card["meanings"]), 1)
+        self.assertEqual(app_card["meanings"][0]["frequency"], "1.000000")
+        self.assertEqual(
+            app_card["unused_menu_senses"][0]["sense_id"],
+            "sense_unused_menu_leaf",
         )
 
     def test_typed_conjugations_map_to_the_existing_optional_app_shape(self) -> None:
