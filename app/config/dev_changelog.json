@@ -2,6 +2,16 @@
   "_readme": "User-visible changes in the replacement app, newest first.",
   "entries": [
     {
+      "date": "2026-08-24",
+      "commit": "73578b4",
+      "summary": "Example credits now favour readable titles over source codes",
+      "detail": [
+        "Resolved film and television names remain clickable without appending their raw IMDb identifier.",
+        "Subtitle line numbers remain in raw Card Data for auditing but no longer clutter learner-facing source credits.",
+        "An IMDb identifier is shown only when no human title can be resolved."
+      ]
+    },
+    {
       "date": "2026-08-23",
       "commit": "7f17dec",
       "summary": "Speech examples once again identify their film or television source",
