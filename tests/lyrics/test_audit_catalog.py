@@ -8,6 +8,18 @@ DATA_ROOT = REPOSITORY_ROOT / "app" / "lyrics-audit" / "data"
 
 
 class LyricsAuditCatalogTests(unittest.TestCase):
+    def test_each_token_classification_exposes_clickable_preserved_history(self):
+        audit_root = REPOSITORY_ROOT / "app" / "lyrics-audit"
+        explorer = (audit_root / "explorer.js").read_text(encoding="utf-8")
+        page = (audit_root / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn('data-decision="${escapeHtml(decision.id)}"', explorer)
+        self.assertIn("function classificationDecisions(token, line)", explorer)
+        self.assertIn("function decisionHistoryHtml(decision)", explorer)
+        self.assertIn("No classification record preserved", explorer)
+        self.assertIn("No earlier history is available", explorer)
+        self.assertIn('explorer.js?v=13', page)
+
     def test_catalog_points_to_distinct_matching_song_bundles(self):
         catalog = json.loads((DATA_ROOT / "catalog.json").read_text(encoding="utf-8"))
         self.assertEqual(catalog["schema"], "fluency.lyrics-audit-catalog/v1")

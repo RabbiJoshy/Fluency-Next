@@ -1,4 +1,4 @@
-const state = { catalog: null, data: null, filter: "all", query: "", selected: null, showIds: false, requestId: 0 };
+const state = { catalog: null, data: null, filter: "all", query: "", selected: null, selectedDecision: null, showIds: false, requestId: 0 };
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
@@ -36,6 +36,198 @@ function resolvedConsolidation(clean) {
     example: reference.example_id ? state.data.consolidated_examples?.[reference.example_id] : null,
     card: reference.card_id ? state.data.consolidated_cards?.[reference.card_id] : null,
   }));
+}
+
+function likelyAssignments(assignments, token) {
+  const normalized = (token.clean_processing?.normalized_form || Object.values(token.states || {}).at(-1)?.normalized_form)?.toLocaleLowerCase();
+  return assignments.filter((item) => [item.word, item.lemma].filter(Boolean).some((value) => value.toLocaleLowerCase() === normalized));
+}
+
+function classificationDecisions(token, line) {
+  const clean = token.clean_processing;
+  const routes = resolvedRoutes(clean);
+  const comparisons = resolvedComparisons(clean);
+  const lexical = resolvedLexical(clean);
+  const wsd = resolvedWsd(clean);
+  const consolidations = resolvedConsolidation(clean);
+  const assignments = likelyAssignments(line.app_assignments, token);
+  const currentRun = clean ? { label: "Clean recomputation", run_id: clean.occurrence_id } : null;
+  const decisions = [];
+  const push = (decision) => decisions.push({ status: decision.history.at(-1)?.value || "No record", ...decision });
+
+  const normalizationHistory = state.data.runs.map((run) => {
+    const snapshot = token.states[run.run_id] || {};
+    return {
+      run: run.label,
+      run_id: run.run_id,
+      value: snapshot.normalized_form || "not preserved",
+      detail: snapshot.method_id || "Method was not preserved in this snapshot.",
+      provenance: snapshot.claim_id || snapshot.input_fingerprint,
+    };
+  });
+  if (clean) normalizationHistory.push({
+    run: currentRun.label,
+    run_id: currentRun.run_id,
+    value: clean.normalized_form,
+    detail: clean.normalizer_method,
+    provenance: clean.occurrence_id,
+  });
+  push({ id: "normalization", label: "Normalization", history: normalizationHistory });
+
+  if (clean?.units?.length) clean.units.forEach((unit, index) => {
+    const isElision = unit.operation === "restore" || String(unit.reason_code || "").includes("elision");
+    push({
+      id: `transform-${index}`,
+      label: isElision ? "Elision restoration" : "Token transform",
+      history: [{
+        run: currentRun.label,
+        run_id: currentRun.run_id,
+        value: `${unit.operation}: ${unit.normalized_form}`,
+        detail: unit.reason_code,
+        provenance: unit.analysis_unit_id,
+      }],
+    });
+  });
+  else push({ id: "transform", label: "Token transform", history: [] });
+
+  const routeHistory = [];
+  if (comparisons[0]?.baseline) routeHistory.push({
+    run: "Legacy routing snapshot",
+    run_id: comparisons[0].baseline.run_id || "legacy snapshot",
+    value: comparisons[0].baseline.bucket,
+    detail: "Only the resulting bucket was preserved; its earlier rule trace is unavailable.",
+  });
+  if (routes[0]) routeHistory.push({
+    run: currentRun?.label || "Current snapshot",
+    run_id: currentRun?.run_id || routes[0].route_id,
+    value: `${routes[0].status}: ${routes[0].bucket}`,
+    detail: (routes[0].reason_codes || []).join(" + ") || "No reason code recorded.",
+    provenance: routes[0].route_id,
+  });
+  if (!routeHistory.length && token.current_route) routeHistory.push({
+    run: "Current audit snapshot",
+    run_id: token.occurrence_id,
+    value: `${token.current_route.status}: ${token.current_route.label}`,
+    detail: token.current_route.evidence_kind || "No evidence kind recorded.",
+  });
+  push({ id: "routing", label: "Word routing", history: routeHistory });
+
+  (routes[0]?.policy_trace || []).forEach((policy, index) => push({
+    id: `route-policy-${index}`,
+    label: `Rule · ${policy.policy_id}`,
+    history: [{
+      run: currentRun?.label || "Current snapshot",
+      run_id: currentRun?.run_id || routes[0].route_id,
+      value: policy.outcome,
+      detail: `${policy.inputs?.join(" + ") || "no external input"} · ${JSON.stringify(policy.evidence || {})}`,
+      provenance: routes[0].route_id,
+    }],
+  }));
+
+  if (lexical.length) lexical.forEach((candidate, index) => push({
+    id: `lexical-${index}`,
+    label: "Lexical menu",
+    history: [{
+      run: currentRun?.label || "Current snapshot",
+      run_id: currentRun?.run_id || candidate.lexical_candidate_id,
+      value: candidate.status === "ready" ? `${candidate.lookup_form}: ${(candidate.analyses || []).length} analyses` : candidate.status,
+      detail: (candidate.reason_codes || []).join(" + ") || `${candidate.provider?.source_adapter || "unknown provider"} lookup`,
+      provenance: candidate.lexical_candidate_id,
+    }],
+  }));
+  else push({ id: "lexical", label: "Lexical menu", history: [] });
+
+  if (wsd.length) wsd.forEach((result, index) => push({
+    id: `wsd-${index}`,
+    label: "Sense assignment",
+    history: [{
+      run: currentRun?.label || "Current snapshot",
+      run_id: currentRun?.run_id || result.result_id,
+      value: result.status === "assigned" ? `${result.selected_tuple?.headword || "headword unavailable"} → ${result.selected_sense_id}` : result.status,
+      detail: result.status === "assigned" ? `confidence ${Number(result.confidence).toFixed(4)} · ${(result.decision_path || []).join(" → ")}` : (result.evidence?.reason_codes || []).join(" + ") || "No sense assigned.",
+      provenance: result.result_id,
+    }],
+  }));
+  else if (clean?.wsd_requests?.length) clean.wsd_requests.forEach((request, index) => push({
+    id: `wsd-request-${index}`,
+    label: "WSD eligibility",
+    history: [{
+      run: currentRun?.label || "Current snapshot",
+      run_id: currentRun?.run_id || request.request_id,
+      value: `${request.eligibility}: ${request.execution_status}`,
+      detail: request.translation_available ? "Aligned translation available." : "Source context only.",
+      provenance: request.request_id,
+    }],
+  }));
+  else push({ id: "wsd", label: "Sense assignment", history: [] });
+
+  if (consolidations.length) consolidations.forEach(({ disposition, example, card }, index) => push({
+    id: `consolidation-${index}`,
+    label: "Card inclusion",
+    history: disposition ? [{
+      run: currentRun?.label || "Current snapshot",
+      run_id: currentRun?.run_id || disposition.disposition_id,
+      value: disposition.study_status,
+      detail: `${disposition.route_bucket}${example?.selection_reason ? ` · ${example.selection_reason}` : ""}${card?.display_form ? ` · card ${card.display_form}` : ""}`,
+      provenance: disposition.disposition_id,
+    }] : [],
+  }));
+  else push({ id: "consolidation", label: "Card inclusion", history: [] });
+
+  push({
+    id: "release",
+    label: "App assignment",
+    history: assignments.map((assignment) => ({
+      run: "Retained Artist release",
+      run_id: assignment.prompt_id || "release snapshot",
+      value: `${assignment.word} → ${assignment.sense?.translation || `sense ${Number(assignment.sense_index) + 1}`}`,
+      detail: assignment.assignment_method || "Assignment method not recorded.",
+      provenance: assignment.prompt_id,
+    })),
+  });
+  return decisions;
+}
+
+function decisionHistoryHtml(decision) {
+  if (!decision) return "";
+  if (!decision.history.length) return `<div class="decision-history-empty"><strong>No classification record preserved</strong><p>This stage is visible so absence cannot be mistaken for a successful decision. A future run can add history here without changing the auditor.</p></div>`;
+  const entries = decision.history.map((entry, index) => {
+    const previous = decision.history[index - 1];
+    const changed = previous && previous.value !== entry.value;
+    return `<article class="history-entry ${changed ? "changed" : ""}">
+      <div class="history-marker"></div>
+      <div class="history-entry-body">
+        <div class="history-run"><strong>${escapeHtml(entry.run)}</strong><span>${changed ? "changed" : index ? "unchanged" : "first preserved"}</span></div>
+        <div class="history-value">${escapeHtml(entry.value)}</div>
+        <p>${escapeHtml(entry.detail || "No additional decision evidence was preserved.")}</p>
+        <code>${escapeHtml(entry.provenance || entry.run_id || "provenance not preserved")}</code>
+      </div>
+    </article>`;
+  }).join("");
+  const boundary = decision.history.length === 1
+    ? `<p class="history-boundary">This is the only preserved observation for this classification. No earlier history is available.</p>`
+    : `<p class="history-boundary">Showing all ${decision.history.length} preserved observations. Changes are highlighted.</p>`;
+  return `${boundary}<div class="history-timeline">${entries}</div>`;
+}
+
+function renderDecisionInspector(decisions) {
+  const selected = decisions.find((decision) => decision.id === state.selectedDecision) || decisions[0];
+  if (!selected) return;
+  state.selectedDecision = selected.id;
+  document.querySelectorAll("[data-decision]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.decision === selected.id);
+    button.setAttribute("aria-pressed", button.dataset.decision === selected.id ? "true" : "false");
+  });
+  $("decisionHistoryTitle").textContent = selected.label;
+  $("decisionHistoryContent").innerHTML = decisionHistoryHtml(selected);
+}
+
+function bindDecisionInspector(decisions) {
+  document.querySelectorAll("[data-decision]").forEach((button) => button.addEventListener("click", () => {
+    state.selectedDecision = button.dataset.decision;
+    renderDecisionInspector(decisions);
+  }));
+  renderDecisionInspector(decisions);
 }
 
 function tokenClasses(token) {
@@ -187,8 +379,7 @@ function findToken(occurrenceId) {
 }
 
 function assignmentHtml(assignments, token) {
-  const normalized = (token.clean_processing?.normalized_form || Object.values(token.states).at(-1)?.normalized_form)?.toLocaleLowerCase();
-  const likely = assignments.filter((item) => [item.word, item.lemma].filter(Boolean).some((value) => value.toLocaleLowerCase() === normalized));
+  const likely = likelyAssignments(assignments, token);
   if (!assignments.length) return `<div class="no-evidence">This line is not materialized as an example in the selected Artist release. That absence is visible rather than inferred as a failed WSD decision.</div>`;
   if (!likely.length) return `<div class="no-evidence">This line has ${assignments.length} deck assignment${assignments.length === 1 ? "" : "s"}, but the legacy output does not preserve a safe link from this token occurrence to one of them. Nothing is guessed here.</div>`;
   return likely.slice(0, 6).map((item) => `<div class="assignment">
@@ -204,6 +395,8 @@ function renderTrace(token, line) {
   const after = token.states[candidate.run_id] || {};
   const source = line.source_ingest;
   const clean = token.clean_processing;
+  const decisions = classificationDecisions(token, line);
+  const decisionPills = decisions.map((decision) => `<button class="classification-pill" data-decision="${escapeHtml(decision.id)}" type="button" aria-pressed="false"><span>${escapeHtml(decision.label)}</span><strong>${escapeHtml(decision.status)}</strong><small>${decision.history.length} preserved</small></button>`).join("");
   const sourceStage = source ? `
           <div class="stage"><div class="stage-title"><strong>Acquire + extract line</strong><span class="evidence-kind">new direct lineage</span></div><div class="mono-block">${escapeHtml(source.line_id)} · span ${escapeHtml(source.source_span?.join(":"))}<br>${escapeHtml(source.section?.label || "No labelled section")}</div></div>
           <div class="stage ${source.alignment ? "current" : ""}"><div class="stage-title"><strong>Align translation</strong><span class="evidence-kind">${source.alignment ? "optional snapshot" : "graceful absence"}</span></div>${source.alignment ? `<div class="state-box"><small>${escapeHtml(source.alignment.source.provider || source.alignment.source.adapter)}</small><strong>${escapeHtml(source.alignment.target.text)}</strong></div>` : `<div class="no-evidence">No translation alignment exists for this line. The lyric remains valid and continues through the pipeline.</div>`}</div>` : "";
@@ -218,6 +411,14 @@ function renderTrace(token, line) {
       <code class="trace-id">${escapeHtml(token.occurrence_id)}</code><div class="badges">${badges}</div>
     </header>
     <div class="trace-body">
+      <section class="trace-section classification-section">
+        <h3>Classification decisions <span>select any decision</span></h3>
+        <div class="classification-pills" role="group" aria-label="Classification decisions for ${escapeHtml(token.surface)}">${decisionPills}</div>
+        <div class="decision-history" aria-live="polite">
+          <div class="decision-history-heading"><span>Decision history</span><strong id="decisionHistoryTitle">—</strong></div>
+          <div id="decisionHistoryContent"></div>
+        </div>
+      </section>
       <section class="trace-section"><h3>Pipeline trace <span>${token.changed ? "first divergence: normalize" : "no divergence"}</span></h3>
         <div class="stage-list">
           ${sourceStage}
@@ -235,9 +436,11 @@ function renderTrace(token, line) {
       </section>
       <section class="trace-section"><h3>Claim provenance</h3><div class="mono-block">baseline claim: ${escapeHtml(before.claim_id || "not preserved")}<br>candidate claim: ${escapeHtml(after.claim_id || "not preserved")}<br>candidate method: ${escapeHtml(after.method_id || "not preserved")}<br>input: ${escapeHtml(after.input_fingerprint || "not preserved")}${clean ? `<br>clean occurrence: ${escapeHtml(clean.occurrence_id)}<br>clean normalizer: ${escapeHtml(clean.normalizer_method)}<br>clean router: ${escapeHtml(clean.router_method)}` : ""}</div></section>
     </div>`;
+  bindDecisionInspector(decisions);
 }
 
 function selectToken(occurrenceId) {
+  if (state.selected !== occurrenceId) state.selectedDecision = null;
   state.selected = occurrenceId;
   const found = findToken(occurrenceId);
   if (!found) return;
@@ -289,6 +492,7 @@ function bindControls() {
 
 function resetSongView() {
   state.selected = null;
+  state.selectedDecision = null;
   state.query = "";
   state.filter = "all";
   $("searchInput").value = "";
@@ -305,7 +509,7 @@ async function loadSong(songId) {
   picker.disabled = true;
   $("songTitle").textContent = `Loading ${entry.title}…`;
   try {
-    const response = await fetch(`data/${entry.bundle}?v=11`, { cache: "no-store" });
+    const response = await fetch(`data/${entry.bundle}?v=13`, { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const bundle = await response.json();
     if (requestId !== state.requestId) return;
@@ -332,13 +536,13 @@ async function loadSong(songId) {
 
 async function start() {
   if (window.location.protocol === "file:") {
-    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=11";
+    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=13";
     $("songTitle").textContent = "Local server required";
     $("artistName").innerHTML = `This explorer loads its audit bundle over HTTP. <a href="${servedUrl}">Open the working explorer</a>.`;
     return;
   }
   try {
-    const response = await fetch("data/catalog.json?v=11", { cache: "no-store" });
+    const response = await fetch("data/catalog.json?v=13", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     state.catalog = await response.json();
     const picker = $("songSelect");
