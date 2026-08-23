@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/lyrics-consolidated-card.schema.json",
+  "title": "Consolidated Lyrics surface card",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_version", "card_id", "identity_version", "language", "unit_type", "surface_key", "display_form", "artist_id", "run_id", "rank", "sense_groups", "occurrence_ids"],
+  "properties": {
+    "record_version": {"const": "lyrics-consolidated-card/v1"},
+    "card_id": {"type": "string", "pattern": "^card_[a-z]{2,3}_[0-9a-f]{32}$"},
+    "identity_version": {"const": "surface-card/v1"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "unit_type": {"const": "surface"},
+    "surface_key": {"type": "string", "minLength": 1},
+    "display_form": {"type": "string", "minLength": 1},
+    "artist_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "rank": {"type": "integer", "minimum": 1},
+    "sense_groups": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["sense_assignment_id", "menu_content_id", "menu_analysis_id", "source_sense_id", "headword", "lemma", "part_of_speech", "translation", "definition", "source_reference", "provider", "example_ids", "occurrence_ids"],
+        "properties": {
+          "sense_assignment_id": {"type": "string", "pattern": "^sense_assignment_[0-9a-f]{32}$"},
+          "menu_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "menu_analysis_id": {"type": "string", "minLength": 1},
+          "source_sense_id": {"type": "string", "minLength": 1},
+          "headword": {"type": ["string", "null"]},
+          "lemma": {"type": ["string", "null"]},
+          "part_of_speech": {"type": "string", "minLength": 1},
+          "translation": {"type": ["string", "null"]},
+          "definition": {"type": ["string", "null"]},
+          "source_reference": {"type": ["string", "null"]},
+          "provider": {"type": "object"},
+          "example_ids": {"type": "array", "items": {"type": "string", "pattern": "^lyrics_example_[0-9a-f]{32}$"}},
+          "occurrence_ids": {"type": "array", "items": {"type": "string", "pattern": "^occurrence_[0-9a-f]{32}$"}}
+        }
+      }
+    },
+    "occurrence_ids": {"type": "array", "items": {"type": "string", "pattern": "^occurrence_[0-9a-f]{32}$"}}
+  }
+}

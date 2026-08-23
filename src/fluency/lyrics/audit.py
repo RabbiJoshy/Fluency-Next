@@ -117,6 +117,7 @@ def build_bundle(
     lexical_output: Path | None = None,
     wsd_prepare_output: Path | None = None,
     wsd_results_output: Path | None = None,
+    consolidation_output: Path | None = None,
 ) -> dict[str, Any]:
     evidence = legacy_artist_root / "data" / "evidence"
     candidate_ledger = evidence / "ledger" / "runs" / candidate_run
@@ -174,6 +175,11 @@ def build_bundle(
     wsd_result_profiles: dict[str, dict[str, Any]] = {}
     wsd_results_report: dict[str, Any] | None = None
     wsd_method: dict[str, Any] | None = None
+    consolidation_refs_by_unit: dict[str, dict[str, Any]] = {}
+    consolidation_dispositions: dict[str, dict[str, Any]] = {}
+    consolidated_examples: dict[str, dict[str, Any]] = {}
+    consolidated_cards: dict[str, dict[str, Any]] = {}
+    consolidation_report: dict[str, Any] | None = None
     if source_ingest is not None:
         source_ingest = source_ingest.expanduser().resolve()
         ingested_song = _read_json(source_ingest / "song.json")
@@ -274,6 +280,31 @@ def build_bundle(
                 for key, value in result.items()
                 if key not in {"result_id", "target", "occurrence_id", "surface_card_id", "surface_form"}
             }
+    if consolidation_output is not None:
+        if wsd_results_output is None:
+            raise ValueError("consolidation output requires its matching WSD results")
+        consolidation_output = consolidation_output.expanduser().resolve()
+        consolidation_report = _read_json(consolidation_output / "report.json")
+        consolidated_cards = {
+            card["card_id"]: card
+            for card in _read_jsonl(consolidation_output / "cards.jsonl")
+        }
+        consolidated_examples = {
+            example["example_id"]: example
+            for example in _read_jsonl(consolidation_output / "examples.jsonl")
+        }
+        for disposition in _read_jsonl(consolidation_output / "dispositions.jsonl"):
+            analysis_unit_id = disposition["analysis_unit_id"]
+            disposition_id = disposition["disposition_id"]
+            if analysis_unit_id in consolidation_refs_by_unit or disposition_id in consolidation_dispositions:
+                raise ValueError("consolidation audit records contain duplicate identities")
+            consolidation_refs_by_unit[analysis_unit_id] = {
+                "analysis_unit_id": analysis_unit_id,
+                "disposition_id": disposition_id,
+                "card_id": disposition["surface_card_id"] if disposition["study_status"] == "included" else None,
+                "example_id": disposition["example_id"],
+            }
+            consolidation_dispositions[disposition_id] = disposition
 
     changed_count = 0
     restored_count = 0
@@ -374,6 +405,11 @@ def build_bundle(
                                 for unit in clean_units
                                 if unit["analysis_unit_id"] in wsd_result_refs_by_unit
                             ],
+                            "consolidations": [
+                                consolidation_refs_by_unit[unit["analysis_unit_id"]]
+                                for unit in clean_units
+                                if unit["analysis_unit_id"] in consolidation_refs_by_unit
+                            ],
                             "tokenizer_method": (process_manifest or {}).get("methods", {}).get("tokenize"),
                             "normalizer_method": (process_manifest or {}).get("methods", {}).get("normalize"),
                             "router_method": (process_manifest or {}).get("methods", {}).get("route"),
@@ -450,6 +486,9 @@ def build_bundle(
         "routing_profiles": routing_profiles,
         "lexical_profiles": lexical_profiles,
         "wsd_result_profiles": wsd_result_profiles,
+        "consolidation_dispositions": consolidation_dispositions,
+        "consolidated_examples": consolidated_examples,
+        "consolidated_cards": consolidated_cards,
         "comparison": {
             "baseline_run_id": baseline_run,
             "candidate_run_id": candidate_run,
@@ -467,6 +506,10 @@ def build_bundle(
             "wsd_executable_request_count": (wsd_prepare_report or {}).get("executable_request_count", 0),
             "wsd_result_counts": (wsd_results_report or {}).get("result_counts", {}),
             "wsd_method_id": (wsd_method or {}).get("source_method_id"),
+            "consolidation_card_count": (consolidation_report or {}).get("study_card_count", 0),
+            "consolidation_example_count": (consolidation_report or {}).get("assigned_example_count", 0),
+            "consolidation_selected_example_count": (consolidation_report or {}).get("selected_example_count", 0),
+            "consolidation_non_study_count": (consolidation_report or {}).get("non_study_disposition_count", 0),
         },
         "evidence": {
             "source_ingest": (
@@ -499,6 +542,11 @@ def build_bundle(
                 if wsd_prepare_output
                 else "not included in this audit bundle"
             ),
+            "consolidation": (
+                "direct lossless surface-card grouping with explicit study selection and non-study dispositions"
+                if consolidation_output
+                else "not included in this audit bundle"
+            ),
             "app_assignments": "current materialized immutable Artist release",
         },
         "limitations": limitations,
@@ -518,6 +566,7 @@ def main() -> None:
     parser.add_argument("--lexical-output", type=Path)
     parser.add_argument("--wsd-prepare-output", type=Path)
     parser.add_argument("--wsd-results-output", type=Path)
+    parser.add_argument("--consolidation-output", type=Path)
     args = parser.parse_args()
     bundle = build_bundle(
         legacy_artist_root=args.legacy_artist_root,
@@ -530,6 +579,7 @@ def main() -> None:
         lexical_output=args.lexical_output,
         wsd_prepare_output=args.wsd_prepare_output,
         wsd_results_output=args.wsd_results_output,
+        consolidation_output=args.consolidation_output,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(

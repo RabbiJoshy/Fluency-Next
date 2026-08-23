@@ -29,6 +29,15 @@ function resolvedWsd(clean) {
   });
 }
 
+function resolvedConsolidation(clean) {
+  return (clean?.consolidations || []).map((reference) => ({
+    ...reference,
+    disposition: state.data.consolidation_dispositions?.[reference.disposition_id],
+    example: reference.example_id ? state.data.consolidated_examples?.[reference.example_id] : null,
+    card: reference.card_id ? state.data.consolidated_cards?.[reference.card_id] : null,
+  }));
+}
+
 function tokenClasses(token) {
   const classes = ["token"];
   if (token.changed) classes.push("changed");
@@ -93,6 +102,22 @@ function wsdHtml(clean) {
   const requests = clean?.wsd_requests || [];
   if (!requests.length) return `<div class="no-evidence">No WSD request exists for this token in the selected run.</div>`;
   return requests.map((request) => `<div class="wsd-request"><div class="state-box"><small>${escapeHtml(request.eligibility)} · ${request.translation_available ? "aligned translation available" : "source context only"}</small><strong>Prepared — model not run</strong></div><code>${escapeHtml(request.request_id)}</code></div>`).join("");
+}
+
+function consolidationHtml(clean) {
+  const records = resolvedConsolidation(clean);
+  if (!records.length) return `<div class="no-evidence">No clean consolidation record exists for this token. The current app release remains separate.</div>`;
+  return records.map(({ disposition, example, card }) => {
+    if (!disposition) return `<div class="no-evidence">The consolidation reference is unresolved and must be repaired before release assembly.</div>`;
+    if (disposition.study_status !== "included") {
+      return `<div class="consolidation-result"><div class="state-box"><small>${escapeHtml(disposition.wsd_status)} · retained disposition</small><strong>Not included as a study card</strong></div><div class="route-reason">${escapeHtml(disposition.route_bucket)}${disposition.reason_codes?.length ? ` · ${escapeHtml(disposition.reason_codes.join(" + "))}` : ""}</div><code>${escapeHtml(disposition.disposition_id)}</code></div>`;
+    }
+    return `<div class="consolidation-result included">
+      <div class="state-box"><small>surface card · rank ${escapeHtml(card?.rank || "pending")}</small><strong>${escapeHtml(card?.display_form || disposition.normalized_form)}</strong></div>
+      <div class="wsd-facts"><span>${example?.selected_for_study ? "selected for study" : "retained outside selected cap"}</span><span>${escapeHtml(example?.selection_reason || "selection unavailable")}</span></div>
+      <div class="mono-block">card: ${escapeHtml(card?.card_id)}<br>example: ${escapeHtml(example?.example_id)}<br>disposition: ${escapeHtml(disposition.disposition_id)}</div>
+    </div>`;
+  }).join("");
 }
 
 function routingHtml(clean, token) {
@@ -204,6 +229,7 @@ function renderTrace(token, line) {
           <div class="stage current"><div class="stage-title"><strong>Route</strong><span class="evidence-kind">${resolvedRoutes(clean)[0]?.evidence_kind === "direct" ? "direct policy trace" : resolvedRoutes(clean)[0]?.evidence_kind === "human_review" ? "attributed human override" : "current snapshot"}</span></div>${routingHtml(clean, token)}</div>
           <div class="stage current"><div class="stage-title"><strong>Build lexical menu</strong><span class="evidence-kind">direct · pre-WSD</span></div>${lexicalHtml(clean)}</div>
           <div class="stage ${resolvedWsd(clean).length ? "current" : ""}"><div class="stage-title"><strong>Disambiguate sense</strong><span class="evidence-kind">${resolvedWsd(clean).length ? "direct immutable result" : "explicitly not run"}</span></div>${wsdHtml(clean)}</div>
+          <div class="stage ${resolvedConsolidation(clean).length ? "current" : ""}"><div class="stage-title"><strong>Consolidate occurrence</strong><span class="evidence-kind">${resolvedConsolidation(clean).length ? "direct card candidate" : "not yet run"}</span></div>${consolidationHtml(clean)}</div>
           <div class="stage current"><div class="stage-title"><strong>Materialize in app</strong><span class="evidence-kind">current release</span></div>${assignmentHtml(line.app_assignments, token)}</div>
         </div>
       </section>
@@ -238,6 +264,7 @@ function renderHeader() {
   $("restoreCount").textContent = data.comparison.restored_occurrence_count.toLocaleString();
   $("alignmentCount").textContent = data.comparison.aligned_line_count.toLocaleString();
   $("wsdCount").textContent = (data.comparison.wsd_result_counts?.assigned || 0).toLocaleString();
+  $("cleanCardCount").textContent = (data.comparison.consolidation_card_count || 0).toLocaleString();
   const hasCleanProcessing = data.comparison.process_lineage_event_count > 0;
   $("evidenceSummary").innerHTML = hasCleanProcessing
     ? `<strong>Evidence boundary:</strong> historical normalization is compared from two preserved runs. ${escapeHtml(data.evidence.routing)}, while app assignments remain current release records.`
@@ -278,7 +305,7 @@ async function loadSong(songId) {
   picker.disabled = true;
   $("songTitle").textContent = `Loading ${entry.title}…`;
   try {
-    const response = await fetch(`data/${entry.bundle}?v=10`, { cache: "no-store" });
+    const response = await fetch(`data/${entry.bundle}?v=11`, { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const bundle = await response.json();
     if (requestId !== state.requestId) return;
@@ -305,13 +332,13 @@ async function loadSong(songId) {
 
 async function start() {
   if (window.location.protocol === "file:") {
-    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=9";
+    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=11";
     $("songTitle").textContent = "Local server required";
     $("artistName").innerHTML = `This explorer loads its audit bundle over HTTP. <a href="${servedUrl}">Open the working explorer</a>.`;
     return;
   }
   try {
-    const response = await fetch("data/catalog.json?v=9", { cache: "no-store" });
+    const response = await fetch("data/catalog.json?v=11", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     state.catalog = await response.json();
     const picker = $("songSelect");

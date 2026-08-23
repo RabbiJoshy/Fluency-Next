@@ -464,6 +464,24 @@ Rules:
 Acceptance gate: the clean sample validates against the same app-facing schema
 as the parity release and Card Data can scrub all metadata for every example.
 
+Core consolidation checkpoint (2026-08-23): the shared, language-neutral
+consolidator now consumes the exact source, occurrence, route, menu, WSD and
+method artifacts and fails if any cross-stage identity or content binding has
+drifted. For `Estamos Arriba` it emits 162 surface cards, all 463 assigned
+occurrences as lossless examples, and one typed disposition for every one of
+the 585 analysis units. The explicit selection policy retains 349 unique-line
+examples for study (maximum 12 per exact sense) without deleting the remaining
+occurrence history; all 122 non-assigned outcomes remain auditable. English is
+the configured display translation, missing translations are valid, and all
+available language alignments remain attached. Auditor v11 exposes both an
+included card candidate and the explicit non-study state for any selected
+token. The browser reports 162 clean cards and no console errors.
+
+The provider-neutral consolidation half of this section is complete. The
+remaining half is the app assembler: render these typed cards/examples into a
+one-song split `index.json`, `examples.json` and `vocabulary_master.json`, then
+validate that exact payload against the learner app without activation.
+
 #### 6. Compose and compare a clean immutable Artist release
 
 Create a new release; never alter `lyrics-legacy-parity-20260822`. Its
@@ -552,12 +570,11 @@ Before making Fluency-Next the live repository:
 
 ### Immediate next action
 
-Build the shared occurrence-consolidation layer described above. It must consume
-the exact stage outputs already present in
-`bad-bunny-estamos-arriba-source-v7`, preserve surface-card identity and every
-occurrence's lineage, and emit explicit study-card and non-study dispositions.
-The first output remains an inactive one-song audit artifact; release assembly
-and activation are separate later decisions.
+Build the thin app-assembly adapter for the clean one-song consolidation. It
+must preserve the learner app's existing split Artist contract, include all
+example metadata needed by Card Data, and emit a validation report comparing
+the clean payload with the active parity release. It remains inactive; release
+composition and activation are later, explicit decisions.
 
 The key separation is now enforceable: shell and study behavior can evolve
 without rebuilding corpus data, while a new Artist data run can be activated

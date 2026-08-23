@@ -101,6 +101,33 @@ class LyricsAuditCatalogTests(unittest.TestCase):
             )
             self.assertIn(result["selected_sense_id"], {sense["sense_id"] for sense in analysis["senses"]})
 
+    def test_clean_consolidation_preserves_every_outcome_and_exact_example_links(self):
+        bundle = json.loads((DATA_ROOT / "estamos-arriba.json").read_text(encoding="utf-8"))
+        comparison = bundle["comparison"]
+        self.assertEqual(comparison["consolidation_card_count"], 162)
+        self.assertEqual(comparison["consolidation_example_count"], 463)
+        self.assertEqual(comparison["consolidation_selected_example_count"], 349)
+        self.assertEqual(comparison["consolidation_non_study_count"], 122)
+        references = [
+            reference
+            for line in bundle["song"]["lines"]
+            for occurrence in line["occurrences"]
+            if occurrence.get("clean_processing")
+            for reference in occurrence["clean_processing"]["consolidations"]
+        ]
+        self.assertEqual(len(references), comparison["occurrence_count"])
+        self.assertEqual(len(bundle["consolidation_dispositions"]), len(references))
+        for reference in references:
+            disposition = bundle["consolidation_dispositions"][reference["disposition_id"]]
+            if disposition["study_status"] == "included":
+                self.assertIn(reference["card_id"], bundle["consolidated_cards"])
+                example = bundle["consolidated_examples"][reference["example_id"]]
+                self.assertEqual(example["occurrence"]["occurrence_id"], disposition["occurrence_id"])
+                self.assertEqual(example["wsd"]["result_id"], disposition["wsd_result_id"])
+            else:
+                self.assertIsNone(reference["card_id"])
+                self.assertIsNone(reference["example_id"])
+
 
 if __name__ == "__main__":
     unittest.main()

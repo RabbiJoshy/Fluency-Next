@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/lyrics-consolidation-disposition.schema.json",
+  "title": "Lyrics analysis-unit consolidation disposition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_version", "disposition_id", "run_id", "language", "artist_id", "song_id", "line_id", "occurrence_id", "analysis_unit_id", "surface_card_id", "normalized_form", "route_id", "route_bucket", "lexical_candidate_id", "wsd_request_id", "wsd_result_id", "wsd_status", "study_status", "reason_codes", "example_id"],
+  "properties": {
+    "record_version": {"const": "lyrics-consolidation-disposition/v1"},
+    "disposition_id": {"type": "string", "pattern": "^disposition_[0-9a-f]{32}$"},
+    "run_id": {"type": "string", "minLength": 1},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "artist_id": {"type": "string", "minLength": 1},
+    "song_id": {"type": "string", "minLength": 1},
+    "line_id": {"type": "string", "minLength": 1},
+    "occurrence_id": {"type": "string", "minLength": 1},
+    "analysis_unit_id": {"type": "string", "minLength": 1},
+    "surface_card_id": {"type": "string", "pattern": "^card_[a-z]{2,3}_[0-9a-f]{32}$"},
+    "normalized_form": {"type": "string", "minLength": 1},
+    "route_id": {"type": "string", "minLength": 1},
+    "route_bucket": {"type": "string", "minLength": 1},
+    "lexical_candidate_id": {"type": "string", "minLength": 1},
+    "wsd_request_id": {"type": "string", "minLength": 1},
+    "wsd_result_id": {"type": "string", "minLength": 1},
+    "wsd_status": {"enum": ["assigned", "abstained", "rejected", "no_menu", "ineligible", "review"]},
+    "study_status": {"enum": ["included", "not_included"]},
+    "reason_codes": {"type": "array", "items": {"type": "string"}},
+    "example_id": {"type": ["string", "null"], "pattern": "^lyrics_example_[0-9a-f]{32}$"}
+  }
+}

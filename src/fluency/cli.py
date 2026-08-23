@@ -24,6 +24,7 @@ from fluency.harvest.runner import harvest_run_stage
 from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
 from fluency.inventory.runner import build_inventory_stage
 from fluency.lyrics.ingest import ingest_legacy_genius_song
+from fluency.lyrics.consolidate import consolidate_lyrics_run
 from fluency.lyrics.lexical import build_lyrics_lexical_menu_stage
 from fluency.lyrics.process import process_lyrics_run
 from fluency.lyrics.wsd import prepare_lyrics_wsd_stage
@@ -308,6 +309,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--env-file", type=Path,
         help="optional dotenv file read as data for GEMINI_API_KEY; it is never executed",
     )
+    lyrics_consolidate = lyrics_actions.add_parser(
+        "consolidate",
+        help="group exact WSD results into auditable surface cards, examples, and dispositions",
+    )
+    lyrics_consolidate.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_consolidate.add_argument("--run-id", required=True)
+    lyrics_consolidate.add_argument("--language", required=True)
+    lyrics_consolidate.add_argument("--example-cap-per-sense", type=int, default=12)
+    lyrics_consolidate.add_argument("--translation-language", default="en")
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -809,6 +819,24 @@ def handle_lyrics(args: argparse.Namespace) -> int:
         )
         print(f"Created complete raw Lyrics WSD result bundle: {output}")
         print("The result is inactive; run lyrics wsd-import only after validation.")
+        return 0
+    if args.lyrics_command == "consolidate":
+        output = consolidate_lyrics_run(
+            project_root(), workspace, run_id=args.run_id, language=args.language,
+            example_cap_per_sense=args.example_cap_per_sense,
+            translation_language=args.translation_language,
+        )
+        report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+        print(f"Completed immutable Lyrics occurrence consolidation: {output}")
+        print(
+            f"Built {report['study_card_count']} surface cards from "
+            f"{report['assigned_example_count']} assigned occurrences; "
+            f"selected {report['selected_example_count']} examples under the explicit cap policy."
+        )
+        print(
+            f"Retained {report['non_study_disposition_count']} non-study outcomes as auditable dispositions."
+        )
+        print("No app assets, release, or activation were created.")
         return 0
     raise AssertionError(f"Unhandled lyrics command: {args.lyrics_command}")
 

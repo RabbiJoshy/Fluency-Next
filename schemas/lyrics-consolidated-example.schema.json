@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/lyrics-consolidated-example.schema.json",
+  "title": "Occurrence-bound consolidated Lyrics example",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_version", "example_id", "run_id", "language", "artist", "song", "line", "translation", "translations", "occurrence", "analysis_unit", "card_id", "sense_assignment_id", "route", "menu", "wsd", "source", "selected_for_study", "selection_reason"],
+  "properties": {
+    "record_version": {"const": "lyrics-consolidated-example/v2"},
+    "example_id": {"type": "string", "pattern": "^lyrics_example_[0-9a-f]{32}$"},
+    "run_id": {"type": "string", "minLength": 1},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "artist": {"type": "object"},
+    "song": {"type": "object"},
+    "line": {"type": "object"},
+    "translation": {"type": ["object", "null"]},
+    "translations": {"type": "array", "items": {"type": "object"}},
+    "occurrence": {"type": "object"},
+    "analysis_unit": {"type": "object"},
+    "card_id": {"type": "string", "pattern": "^card_[a-z]{2,3}_[0-9a-f]{32}$"},
+    "sense_assignment_id": {"type": "string", "pattern": "^sense_assignment_[0-9a-f]{32}$"},
+    "route": {"type": "object"},
+    "menu": {"type": "object"},
+    "wsd": {"type": "object"},
+    "source": {"type": "object"},
+    "selected_for_study": {"type": "boolean"},
+    "selection_reason": {"enum": ["source_order_unique_line", "duplicate_line_for_card_sense", "example_cap_reached"]}
+  }
+}

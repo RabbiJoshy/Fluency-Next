@@ -39,6 +39,9 @@
     "routing_profiles": {"type": "object", "additionalProperties": {"type": "object"}},
     "lexical_profiles": {"type": "object", "additionalProperties": {"type": "object"}},
     "wsd_result_profiles": {"type": "object", "additionalProperties": {"type": "object"}},
+    "consolidation_dispositions": {"type": "object", "additionalProperties": {"type": "object"}},
+    "consolidated_examples": {"type": "object", "additionalProperties": {"type": "object"}},
+    "consolidated_cards": {"type": "object", "additionalProperties": {"type": "object"}},
     "comparison": {"type": "object"},
     "evidence": {"type": "object", "additionalProperties": {"type": "string"}},
     "limitations": {"type": "array", "items": {"type": "string"}}

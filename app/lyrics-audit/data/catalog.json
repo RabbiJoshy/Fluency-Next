@@ -8,7 +8,7 @@
       "artist": "Bad Bunny",
       "language": "es",
       "bundle": "estamos-arriba.json",
-      "coverage": "live routing + lexical menus + Spanish v5 WSD"
+      "coverage": "live routing + Spanish v5 WSD + clean consolidation"
     },
     {
       "song_id": "9614104",
