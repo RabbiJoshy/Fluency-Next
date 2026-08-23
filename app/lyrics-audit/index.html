@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Lyrics Lineage Explorer</title>
     <meta name="color-scheme" content="dark">
-    <link rel="stylesheet" href="explorer.css?v=15">
+    <link rel="stylesheet" href="explorer.css?v=16">
   </head>
   <body>
     <div class="app-shell">
@@ -22,27 +22,27 @@
 
       <main>
         <section class="hero">
-          <div>
+          <div class="hero-identity">
             <p class="eyebrow">Song audit / <span id="languageLabel">—</span></p>
-            <h1 id="songTitle">Loading lineage…</h1>
-            <p class="artist" id="artistName">—</p>
+            <div class="title-line"><h1 id="songTitle">Loading lineage…</h1><p class="artist" id="artistName">—</p></div>
+          </div>
+          <div class="hero-controls">
             <label class="song-picker" for="songSelect">
               <span>Audit another song</span>
               <select id="songSelect" disabled><option>Loading songs…</option></select>
             </label>
+            <button class="comparison-launch" id="comparisonButton" type="button">
+              <span>Comparison view</span>
+              <strong id="comparisonSummary">Loading preserved runs…</strong>
+              <small id="comparisonSummaryDetail">Choose runs and comparison dimension</small>
+            </button>
           </div>
-          <button class="comparison-launch" id="comparisonButton" type="button">
-            <span>Comparison view</span>
-            <strong id="comparisonSummary">Loading preserved runs…</strong>
-            <small id="comparisonSummaryDetail">Choose runs and comparison dimension</small>
-          </button>
         </section>
 
-        <section class="evidence-banner">
-          <span class="banner-icon">◎</span>
-          <p id="evidenceSummary"><strong>Evidence boundary:</strong> loading this song’s available evidence…</p>
-          <button id="limitationsButton" type="button">View limitations</button>
-        </section>
+        <details class="evidence-banner">
+          <summary><span class="banner-icon">◎</span><span id="evidenceHeadline">Loading evidence coverage…</span><small>Details</small></summary>
+          <div class="evidence-detail"><p id="evidenceSummary"><strong>Evidence boundary:</strong> loading this song’s available evidence…</p><button id="limitationsButton" type="button">Full limitations</button></div>
+        </details>
 
         <section class="metrics" aria-label="Audit summary">
           <article><span>Source lines</span><strong id="lineCount">—</strong><small>whole song</small></article>
@@ -114,6 +114,6 @@
       <div id="comparisonRunDetails" class="comparison-run-details"></div>
       <button class="comparison-done" id="comparisonDone" type="button">Done</button>
     </dialog>
-    <script src="explorer.js?v=15" defer></script>
+    <script src="explorer.js?v=16" defer></script>
   </body>
 </html>

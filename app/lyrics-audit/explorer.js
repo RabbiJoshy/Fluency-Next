@@ -576,6 +576,9 @@ function renderHeader() {
   $("wsdCount").textContent = (data.comparison.wsd_result_counts?.assigned || 0).toLocaleString();
   $("cleanCardCount").textContent = (data.comparison.consolidation_card_count || 0).toLocaleString();
   const hasCleanProcessing = data.comparison.process_lineage_event_count > 0;
+  $("evidenceHeadline").textContent = hasCleanProcessing
+    ? "Clean processing, routing, WSD and release evidence available"
+    : "Legacy normalization and release evidence only";
   $("evidenceSummary").innerHTML = hasCleanProcessing
     ? `<strong>Evidence boundary:</strong> historical normalization is compared from two preserved runs. ${escapeHtml(data.evidence.routing)}, while app assignments remain current release records.`
     : "<strong>Evidence boundary:</strong> this song currently has the preserved legacy normalization comparison and current release records. Clean source and processing lineage have not been generated for it yet.";
@@ -639,7 +642,7 @@ async function loadSong(songId) {
   picker.disabled = true;
   $("songTitle").textContent = `Loading ${entry.title}…`;
   try {
-    const response = await fetch(`data/${entry.bundle}?v=15`, { cache: "no-store" });
+    const response = await fetch(`data/${entry.bundle}?v=16`, { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const bundle = await response.json();
     if (requestId !== state.requestId) return;
@@ -666,13 +669,13 @@ async function loadSong(songId) {
 
 async function start() {
   if (window.location.protocol === "file:") {
-    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=15";
+    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=16";
     $("songTitle").textContent = "Local server required";
     $("artistName").innerHTML = `This explorer loads its audit bundle over HTTP. <a href="${servedUrl}">Open the working explorer</a>.`;
     return;
   }
   try {
-    const response = await fetch("data/catalog.json?v=15", { cache: "no-store" });
+    const response = await fetch("data/catalog.json?v=16", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     state.catalog = await response.json();
     const picker = $("songSelect");

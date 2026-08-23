@@ -26,7 +26,8 @@ class LyricsAuditCatalogTests(unittest.TestCase):
         self.assertIn("function runsForDimension", explorer)
         self.assertIn("function tokenWsdBadgeHtml", explorer)
         self.assertIn('data-filter="wsd-assigned"', page)
-        self.assertIn('explorer.js?v=15', page)
+        self.assertIn('id="evidenceHeadline"', page)
+        self.assertIn('explorer.js?v=16', page)
 
     def test_catalog_points_to_distinct_matching_song_bundles(self):
         catalog = json.loads((DATA_ROOT / "catalog.json").read_text(encoding="utf-8"))
