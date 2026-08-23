@@ -19,6 +19,7 @@ from fluency.artist.release import (
     validate_lyrics_release,
 )
 from fluency.core.workspace import Workspace
+from fluency.deployment.static import build_static_deployment
 from fluency.enrichments.conjugations import build_conjugation_layer, pin_jehle_snapshot
 from fluency.harvest.runner import harvest_run_stage
 from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
@@ -215,6 +216,20 @@ def build_parser() -> argparse.ArgumentParser:
     conjugations.add_argument("--sense-menu", type=Path, required=True)
     conjugations.add_argument("--source-snapshot", type=Path, required=True)
     conjugations.add_argument("--locale", default="es-ES")
+
+    deployment = subparsers.add_parser(
+        "deployment", help="compose an inactive self-contained static app candidate"
+    )
+    deployment_actions = deployment.add_subparsers(dest="deployment_command", required=True)
+    deployment_build = deployment_actions.add_parser(
+        "build-static", help="copy exact Speech and Lyrics releases into a deployable static site"
+    )
+    deployment_build.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    deployment_build.add_argument("--deployment-id", required=True)
+    deployment_build.add_argument(
+        "--speech", action="append", required=True, metavar="LANGUAGE=RELEASE_ID"
+    )
+    deployment_build.add_argument("--lyrics-release", required=True)
 
     artist = subparsers.add_parser(
         "artist", help="build, validate, and activate immutable Lyrics catalogs"
@@ -735,6 +750,33 @@ def handle_enrichment(args: argparse.Namespace) -> int:
         print("No release was composed or activated.")
         return 0
     raise AssertionError(f"Unhandled enrichment command: {args.enrichment_command}")
+
+
+def handle_deployment(args: argparse.Namespace) -> int:
+    workspace = Workspace.load(_workspace_path(args.workspace))
+    if args.deployment_command == "build-static":
+        speech: dict[str, str] = {}
+        for value in args.speech:
+            language, separator, release_id = value.partition("=")
+            if not separator or not language or not release_id or language in speech:
+                raise SystemExit("Each --speech must be one unique LANGUAGE=RELEASE_ID selection")
+            speech[language] = release_id
+        output = build_static_deployment(
+            project_root(), workspace,
+            deployment_id=args.deployment_id,
+            speech_releases=speech,
+            lyrics_release_id=args.lyrics_release,
+        )
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        print(f"Built inactive static deployment candidate: {output}")
+        print(
+            f"Packaged {manifest['file_count']} hashed files "
+            f"({manifest['total_bytes']} bytes) from exact Speech and Lyrics releases."
+        )
+        print("Backend secrets, development docs and the lineage explorer were excluded.")
+        print("Nothing was deployed and no active release changed.")
+        return 0
+    raise AssertionError(f"Unhandled deployment command: {args.deployment_command}")
 
 
 def handle_artist(args: argparse.Namespace) -> int:
@@ -1311,6 +1353,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handle_migration(args)
     if args.command == "enrichment":
         return handle_enrichment(args)
+    if args.command == "deployment":
+        return handle_deployment(args)
     if args.command == "artist":
         return handle_artist(args)
     if args.command == "lyrics":

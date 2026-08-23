@@ -685,6 +685,18 @@ large immutable assets can be cached safely without a later activation serving
 old data under the same URL. The final multi-artist lineage/learner audit is
 deliberately left until the downstream clean release exists.
 
+Static-candidate checkpoint (2026-08-23): deployment candidate
+`fluency-next-local-candidate-20260823` is a self-contained 91-file site
+(75,642,859 bytes) composed from the exact active Spanish Speech, French
+Speech and Lyrics parity releases. Its Speech config and Artist catalog resolve
+only immutable release URLs, and its generated offline catalogue offers the two
+Speech decks plus the selected Lyrics release as three integrity-checked
+downloads. Backend secrets, development docs and the lineage explorer are
+excluded. An ordinary `python -m http.server` served the shell, configs,
+manifests and representative Spanish, French and Bad Bunny assets successfully;
+the special workspace-mounting development server was not involved. This is
+still an inactive local artifact: nothing was uploaded, activated or deprecated.
+
 ### Immediate next action
 
 Keep actual WSD execution behind its explicit method boundary until the current

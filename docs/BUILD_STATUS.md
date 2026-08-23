@@ -306,7 +306,29 @@
   Exact input, implementation, stage-reference and output-hash validation gates
   resume and final completion. Both one-song and corpus interfaces, safe resume
   and corruption rejection pass in the 190/190 suite. The real 914-song
-  processing run has not started; no menu, WSD, deck, release or activation ran.
+  processing run completed all 361,713 analysis units from scratch; no menu,
+  WSD, deck, release or activation ran.
+- Gate 40 (normalized corpus lexical menus): loaded the pinned SpanishDict
+  snapshot once over the exact 14,938-form routing union and built verified
+  compact menus for all 914 songs. Occurrence candidates now retain stable
+  analysis IDs and counts rather than duplicating complete sense trees; WSD,
+  validation, consolidation and audit consumers resolve the authoritative menu
+  and fail on drift. The real corpus contains 277,335 ready, 34,621 no-menu,
+  40,827 ineligible and 8,930 review requests. No sense was assigned.
+- Gate 41 (corpus WSD boundary): prepared all 361,713 occurrence-level WSD
+  requests through one safe resumable command in 23 seconds. Exactly 277,335
+  are executable and 82,687 carry optional aligned translations. The current
+  WSD method remains deliberately external and unsettled; no model ran and the
+  active Lyrics parity release did not move.
+- Gate 42 (immutable static deployment candidate): active and preview Artist
+  catalogs now bind every data/media path to their exact release URL. Built
+  inactive candidate `fluency-next-local-candidate-20260823` from the selected
+  Spanish Speech, French Speech and Lyrics parity releases: 91 hashed files,
+  75,642,859 bytes and three integrity-checked offline-download scopes. Backend
+  secrets, docs and the development lineage explorer are excluded. An ordinary
+  static HTTP server returned the shell, configs, manifests and representative
+  Spanish, French and Bad Bunny assets without workspace routing. Nothing was
+  deployed or activated. Shell cache moved to `flashcards-v285`.
 
 ## Not started
 
