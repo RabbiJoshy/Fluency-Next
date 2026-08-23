@@ -3,6 +3,15 @@
   "entries": [
     {
       "date": "2026-08-23",
+      "commit": "f3ecb4c",
+      "summary": "POS pills now preserve complete grammatical labels",
+      "detail": [
+        "The fixed front-and-back grammar bay is wide enough for two full labels per row, including Adjective and other longer names.",
+        "POS text no longer wraps inside a pill."
+      ]
+    },
+    {
+      "date": "2026-08-23",
       "commit": "79a69f3",
       "summary": "The POS grid now occupies the same header position on both card faces",
       "detail": [
