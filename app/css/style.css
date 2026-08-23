@@ -2684,7 +2684,46 @@
             flex: 0 1 auto;
         }
         .back-pos-legend.has-tabs {
-            gap: 5px;
+            gap: 0;
+        }
+
+        /* Multi-POS cards use a compact deck of real pills. The selected POS
+           remains fully legible; every inactive analysis keeps a coloured,
+           abbreviated tab peeking beside it. This communicates two or three
+           possibilities without replacing them with an opaque +N count. */
+        .pos-peek-stack {
+            flex-wrap: nowrap;
+            gap: 0;
+            isolation: isolate;
+            overflow: visible;
+        }
+        .pos-peek-stack .pos-stack-item + .pos-stack-item,
+        .pos-peek-stack .front-pos-unit + .front-pos-unit {
+            margin-left: -8px;
+        }
+        .pos-peek-stack .is-active {
+            position: relative;
+            z-index: 3;
+        }
+        .pos-peek-stack .is-inactive {
+            position: relative;
+            z-index: 1;
+        }
+        .pos-peek-stack .pos-stack-pill.is-inactive,
+        .pos-peek-stack .is-inactive > .pos-stack-pill {
+            width: 48px;
+            padding-inline: 10px;
+            overflow: hidden;
+            justify-content: flex-start;
+        }
+        .pos-short-label {
+            display: none;
+        }
+        .pos-peek-stack .is-inactive .pos-full-label {
+            display: none;
+        }
+        .pos-peek-stack .is-inactive .pos-short-label {
+            display: inline;
         }
 
         /* Word + its single POS pill share the top line (.back-headword-row,

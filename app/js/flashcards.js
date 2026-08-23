@@ -2906,16 +2906,12 @@ function selectLemmaPosGroup(event, key, meaningIndex) {
 }
 window.selectLemmaPosGroup = selectLemmaPosGroup;
 
-// Visual order only: card.meanings remains stable for IDs, knowledge state,
-// and click indices. Rerender the active sense first so the freshly selected
-// row and its lemma–POS section land at scrollTop 0 even when its corpus share
-// is lower than the rows that originally preceded it.
-function orderMeaningEntriesForDisplay(meanings, activeIndex) {
-    const entries = (meanings || []).map((meaning, index) => ({ meaning, index }));
-    if (!Number.isInteger(activeIndex) || activeIndex < 0 || activeIndex >= entries.length) {
-        return entries;
-    }
-    return [entries[activeIndex], ...entries.filter(entry => entry.index !== activeIndex)];
+// Rendering order is stable. Selecting a lower-frequency sense changes only
+// its highlight; when the meaning region genuinely overflows, the layout pass
+// scrolls that stable row into view. Reordering on every selection made short,
+// fully visible menus jump even though no navigation assistance was needed.
+function orderMeaningEntriesForDisplay(meanings) {
+    return (meanings || []).map((meaning, index) => ({ meaning, index }));
 }
 
 // Where a corpus example actually came from. OpenSubtitles ships an .ids file
@@ -3689,6 +3685,18 @@ function updateCard({ announceHeadword = false } = {}) {
         return labels[String(pos || '').toUpperCase()]
             || String(pos || '').toLowerCase().replace(/^./, char => char.toUpperCase());
     };
+    const posShortName = pos => {
+        const labels = {
+            NOUN: 'N', VERB: 'V', AUX: 'Aux', ADJ: 'Adj', ADV: 'Adv',
+            PREP: 'Prep', ADP: 'Prep', CONJ: 'Conj', CCONJ: 'Conj',
+            SCONJ: 'Conj', PRON: 'Pro', DET: 'Det', INTJ: 'Int',
+            NUM: 'Num', PROPN: 'PN'
+        };
+        const normalized = String(pos || '').toUpperCase();
+        return labels[normalized] || normalized.slice(0, 3);
+    };
+    const posLabelHTML = pos => `<span class="pos-full-label">${posDisplayName(pos)}</span>`
+        + `<span class="pos-short-label" aria-hidden="true">${posShortName(pos)}</span>`;
     // The verb POS pill retains the complete popover on every face. In the
     // production direction its coupled subject + tense/mood rows are also
     // repeated as a compact, always-visible cue beneath the English senses;
@@ -3746,13 +3754,18 @@ function updateCard({ announceHeadword = false } = {}) {
     // The pill remains a press-to-reveal control for the complete explanation.
     // English-first cards additionally receive the compact persistent rendering
     // below; Spanish-first recognition keeps the quieter popover-only treatment.
-    const renderFrontPosUnit = (pos, includeMorph = false, pillClass = 'card-pos') => {
+    const renderFrontPosUnit = (
+        pos,
+        includeMorph = false,
+        pillClass = 'card-pos',
+        stackState = ''
+    ) => {
         const hasMorph = includeMorph && isVerbPos(pos) && morphLabels.length > 0;
         const colour = getPosColorClass(pos);
         const pill = hasMorph
-            ? `<button type="button" class="${pillClass} ${colour} has-morph-toggle" aria-expanded="false" aria-label="${posDisplayName(pos)}. Show verb morphology" onclick="toggleMorphPopover(event)">${posDisplayName(pos)}</button>`
-            : `<span class="${pillClass} ${colour}">${posDisplayName(pos)}</span>`;
-        return `<span class="front-pos-unit">${pill}${hasMorph ? renderMorphPopover() : ''}</span>`;
+            ? `<button type="button" class="${pillClass} ${colour} has-morph-toggle" aria-expanded="false" aria-label="${posDisplayName(pos)}. Show verb morphology" onclick="toggleMorphPopover(event)">${posLabelHTML(pos)}</button>`
+            : `<span class="${pillClass} ${colour}" aria-label="${posDisplayName(pos)}">${posLabelHTML(pos)}</span>`;
+        return `<span class="front-pos-unit${stackState ? ` ${stackState}` : ''}">${pill}${hasMorph ? renderMorphPopover() : ''}</span>`;
     };
 
     if (flippedFrontMeanings) {
@@ -3823,8 +3836,15 @@ function updateCard({ announceHeadword = false } = {}) {
                 return ((right?.weight || 0) - (left?.weight || 0))
                     || ((left?.index || 0) - (right?.index || 0));
             });
+        const stacked = allPOS.length > 1;
+        frontPOSEl.classList.toggle('pos-peek-stack', stacked);
         frontPOSEl.innerHTML = allPOS.map(pos =>
-            renderFrontPosUnit(pos, isVerbPos(pos))
+            renderFrontPosUnit(
+                pos,
+                isVerbPos(pos),
+                `card-pos${stacked ? ' pos-stack-pill' : ''}`,
+                stacked ? (pos === activeDisplayPos ? 'is-active' : 'is-inactive') : ''
+            )
         ).join('');
         frontPOSEl.style.display = allPOS.length > 0 ? 'flex' : 'none';
     } else if (card.partOfSpeech) {
@@ -4022,7 +4042,8 @@ function updateCard({ announceHeadword = false } = {}) {
             card._activePosTab = activeBackPos;
             const posPills = posItems.map(({ pos, meaningIndex }) => {
                 if (hasBackPosTabs) {
-                    return `<button type="button" class="card-pos back-pos-tab ${getPosColorClass(pos)}${pos === activeBackPos ? ' selected' : ''}" role="tab" aria-selected="${pos === activeBackPos}" onclick="selectPartOfSpeech(event, ${meaningIndex}, '${pos}')"><span class="back-pos-dot" aria-hidden="true"></span>${posDisplayName(pos)}</button>`;
+                    const stackState = pos === activeBackPos ? 'is-active' : 'is-inactive';
+                    return `<button type="button" class="card-pos back-pos-tab pos-stack-item pos-stack-pill ${stackState} ${getPosColorClass(pos)}${pos === activeBackPos ? ' selected' : ''}" role="tab" aria-selected="${pos === activeBackPos}" aria-label="${posDisplayName(pos)}" onclick="selectPartOfSpeech(event, ${meaningIndex}, '${pos}')"><span class="back-pos-dot" aria-hidden="true"></span>${posLabelHTML(pos)}</button>`;
                 }
                 // Verb morphology is hidden until the pill is pressed, rather
                 // than showing permanently; a non-verb pill (nothing to
@@ -4038,7 +4059,7 @@ function updateCard({ announceHeadword = false } = {}) {
                     ${renderMorphPopover()}
                 </span>`;
             });
-            backPosLegendHTML = `<div class="back-pos-legend${hasBackPosTabs ? ' has-tabs' : ''}"${hasBackPosTabs ? ' role="tablist"' : ''} aria-label="Filter senses by part of speech">${posPills.join('')}</div>`;
+            backPosLegendHTML = `<div class="back-pos-legend${hasBackPosTabs ? ' has-tabs pos-peek-stack' : ''}"${hasBackPosTabs ? ' role="tablist"' : ''} aria-label="Filter senses by part of speech">${posPills.join('')}</div>`;
         }
     }
 
@@ -4338,7 +4359,7 @@ function updateCard({ announceHeadword = false } = {}) {
         const showHeadwordGroups = cardHeadwords.length > 1;
         const headwordSeen = new Set();
 
-        orderMeaningEntriesForDisplay(card.meanings, currentMeaningIndex).forEach(({ meaning: m, index: idx }) => {
+        orderMeaningEntriesForDisplay(card.meanings).forEach(({ meaning: m, index: idx }) => {
             if (m.exampleOnly) return;
             const isSelected = idx === currentMeaningIndex;
             const rowStateClasses = isSelected ? ' is-current-sense' : '';
@@ -4557,9 +4578,9 @@ function updateCard({ announceHeadword = false } = {}) {
                 }
                 if (isGrouped) {
                     const members = groupMembers.get(compKey);
-                    const orderedMembers = members.includes(currentMeaningIndex)
-                        ? [currentMeaningIndex, ...members.filter(memberIdx => memberIdx !== currentMeaningIndex)]
-                        : members;
+                    // Sub-senses keep their source order too. Selection is a
+                    // highlight, not a request to reshuffle a visible family.
+                    const orderedMembers = members;
                     const pctSumRaw = groupPctSum.get(compKey);
                     const sumPct = Math.round((pctSumRaw || 0) * 100);
                     const isTransAxis = axis === 'translation';
@@ -5333,6 +5354,13 @@ function updateCard({ announceHeadword = false } = {}) {
                 // tight, instead of silently disabling the cap.
                 if (scroll.scrollHeight > availableForScroll) {
                     scroll.style.maxHeight = Math.max(60, availableForScroll) + 'px';
+                    // Keep the stable menu order and move only the viewport.
+                    // `nearest` avoids a jump when the selected row is already
+                    // visible while still exposing a selection below the fold.
+                    const activeSense = scroll.querySelector('.meaning-row.is-current-sense');
+                    if (activeSense) requestAnimationFrame(() => activeSense.scrollIntoView({
+                        behavior: 'auto', block: 'nearest', inline: 'nearest'
+                    }));
                 }
             }
         }

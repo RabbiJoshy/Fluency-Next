@@ -144,6 +144,18 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn(".sense-percentage", css)
         self.assertIn("border-left: 1px solid rgba(var(--sense-match-rgb), 0.38)", css)
 
+    def test_multi_pos_controls_peek_without_reordering_visible_senses(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
+        self.assertIn("const posShortName = pos =>", flashcards)
+        self.assertIn("has-tabs pos-peek-stack", flashcards)
+        self.assertIn("pos === activeDisplayPos ? 'is-active' : 'is-inactive'", flashcards)
+        self.assertIn("function orderMeaningEntriesForDisplay(meanings)", flashcards)
+        self.assertNotIn("[entries[activeIndex]", flashcards)
+        self.assertIn("const orderedMembers = members;", flashcards)
+        self.assertIn("activeSense.scrollIntoView", flashcards)
+        self.assertIn(".pos-peek-stack .is-inactive .pos-short-label", css)
+
     def test_optional_conjugations_join_by_dictionary_headword_not_identity_lemma(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
         self.assertIn(
