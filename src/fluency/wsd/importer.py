@@ -18,6 +18,8 @@ from fluency.core.workspace import Workspace
 from fluency.pipeline.planning import load_pipeline_profile
 from fluency.release.io import atomic_write, json_bytes
 from fluency.wsd.contracts import WSDAssignment
+from fluency.wsd.menus import build_analysis_id
+from fluency.wsd.multiword import MULTIWORD_SOURCE_ADAPTER
 
 
 BUNDLE_VERSION = "wsd-assignment-bundle/v1"
@@ -32,6 +34,35 @@ class WSDAssignmentImportError(ValueError):
 
 def _timestamp(value: datetime) -> str:
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _validated_multiword_analysis(assignment: WSDAssignment, pair: Any):
+    """Admit a multiword selection only if its identity is self-verifying.
+
+    Returns the (headword, part_of_speech, sense_ids) triple the provider-menu
+    path returns, or None when this is not a declared multiword selection.
+    """
+
+    expression = (assignment.evidence or {}).get("selected_multiword")
+    if not isinstance(expression, str) or not expression:
+        return None
+    expected = build_analysis_id(
+        card_id=assignment.card_id,
+        source_adapter=MULTIWORD_SOURCE_ADAPTER,
+        source_analysis_key=expression,
+    )
+    if assignment.menu_analysis_id != expected:
+        raise WSDAssignmentImportError(
+            f"multiword analysis ID does not recompute from its expression: {pair}"
+        )
+    records = (assignment.evidence or {}).get("multiword_candidates")
+    if not isinstance(records, list) or not any(
+        isinstance(item, dict) and item.get("expression") == expression for item in records
+    ):
+        raise WSDAssignmentImportError(
+            f"multiword selection is not backed by a declared candidate: {pair}"
+        )
+    return (expression, "PHRASE", {assignment.selected_sense_id})
 
 
 def _load_object(path: Path) -> dict[str, Any]:
@@ -258,6 +289,14 @@ def import_wsd_assignments(
                 raise WSDAssignmentImportError(f"assignment uses a stale sense menu: {pair}")
         if assignment.status == "assigned":
             selected = card_menu.get(assignment.menu_analysis_id)
+            if selected is None:
+                # A multiword sense is a TYPED inventory extension, not a
+                # provider menu analysis, so it is legitimately absent from the
+                # card menu. It is admitted only if the assignment declares it
+                # and the analysis ID recomputes from the declared expression --
+                # so an arbitrary ID cannot be passed off as one, and the
+                # closed-menu guarantee still holds for every provider sense.
+                selected = _validated_multiword_analysis(assignment, pair)
             if selected is None:
                 raise WSDAssignmentImportError(f"selected analysis is not in the card menu: {pair}")
             headword, part_of_speech, sense_ids = selected

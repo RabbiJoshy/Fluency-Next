@@ -246,3 +246,91 @@ class DecisionOrder(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MultiwordImportAdmission(unittest.TestCase):
+    """A multiword selection is admitted only if its identity self-verifies.
+
+    The importer's closed-menu rule is that a selected analysis must be in the
+    card's provider menu. A multiword sense is a typed inventory extension and is
+    legitimately absent from it, so the importer needs a second door -- and that
+    door must not be openable with an arbitrary analysis ID.
+    """
+
+    def _assignment(self, *, analysis_id, expression, declared=True):
+        from fluency.wsd.contracts import SelectedTuple, WSDAssignment
+
+        evidence = {"selected_multiword": expression}
+        if declared:
+            evidence["multiword_candidates"] = [{"expression": expression}]
+        return WSDAssignment(
+            card_id=CARD,
+            surface_form="nuevo",
+            sentence_id="sentence_" + "d" * 32,
+            status="assigned",
+            sense_menu_content_id="sha256:" + "e" * 64,
+            menu_analysis_id=analysis_id,
+            selected_sense_id="mwe_bbb",
+            selected_tuple=SelectedTuple(headword=expression, part_of_speech="PHRASE"),
+            decision_path=("multiword", "gloss"),
+            evidence=evidence,
+            confidence=None,
+            model_revisions={"gloss": "gemini-embedding-001"},
+        )
+
+    def test_a_genuine_multiword_selection_is_admitted(self):
+        from fluency.wsd.importer import _validated_multiword_analysis
+        from fluency.wsd.menus import build_analysis_id
+        from fluency.wsd.multiword import MULTIWORD_SOURCE_ADAPTER
+
+        analysis_id = build_analysis_id(
+            card_id=CARD,
+            source_adapter=MULTIWORD_SOURCE_ADAPTER,
+            source_analysis_key="de nuevo",
+        )
+        result = _validated_multiword_analysis(
+            self._assignment(analysis_id=analysis_id, expression="de nuevo"), "pair"
+        )
+        self.assertEqual(result[0], "de nuevo")
+        self.assertEqual(result[1], "PHRASE")
+
+    def test_a_forged_analysis_id_is_refused(self):
+        from fluency.wsd.importer import WSDAssignmentImportError, _validated_multiword_analysis
+
+        forged = "analysis_" + "f" * 32
+        with self.assertRaises(WSDAssignmentImportError):
+            _validated_multiword_analysis(
+                self._assignment(analysis_id=forged, expression="de nuevo"), "pair"
+            )
+
+    def test_an_undeclared_expression_is_refused(self):
+        from fluency.wsd.importer import WSDAssignmentImportError, _validated_multiword_analysis
+        from fluency.wsd.menus import build_analysis_id
+        from fluency.wsd.multiword import MULTIWORD_SOURCE_ADAPTER
+
+        analysis_id = build_analysis_id(
+            card_id=CARD,
+            source_adapter=MULTIWORD_SOURCE_ADAPTER,
+            source_analysis_key="de nuevo",
+        )
+        with self.assertRaises(WSDAssignmentImportError):
+            _validated_multiword_analysis(
+                self._assignment(
+                    analysis_id=analysis_id, expression="de nuevo", declared=False
+                ),
+                "pair",
+            )
+
+    def test_an_ordinary_assignment_is_not_treated_as_multiword(self):
+        from fluency.wsd.contracts import SelectedTuple, WSDAssignment
+        from fluency.wsd.importer import _validated_multiword_analysis
+
+        ordinary = WSDAssignment(
+            card_id=CARD, surface_form="nuevo", sentence_id="sentence_" + "d" * 32,
+            status="assigned", sense_menu_content_id="sha256:" + "e" * 64,
+            menu_analysis_id=NUEVO[0].menu_analysis_id, selected_sense_id="n1",
+            selected_tuple=SelectedTuple(headword="nuevo", part_of_speech="ADJ"),
+            decision_path=("gloss",), evidence={"selected_multiword": None},
+            confidence=None, model_revisions={"gloss": "gemini-embedding-001"},
+        )
+        self.assertIsNone(_validated_multiword_analysis(ordinary, "pair"))
