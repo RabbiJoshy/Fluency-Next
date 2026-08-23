@@ -11,6 +11,8 @@ from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
+import re
+import time
 from typing import Any
 
 from fluency.core.hashing import canonical_content_id, file_content_id
@@ -99,6 +101,14 @@ def _load_vectors(base: Path, delta: Path, required: list[str], api_key: str | N
     if (delta / "index.json").exists() and (delta / "vec.npy").exists():
         delta_index = json.loads((delta / "index.json").read_text(encoding="utf-8"))
         delta_matrix = np.load(delta / "vec.npy")
+        positions = sorted(delta_index.values())
+        if positions != list(range(len(delta_index))) or len(delta_matrix) < len(delta_index):
+            raise LyricsWSDExecutionError("run-scoped Gemini delta index/vector pair is corrupt")
+        # The vector is replaced before the index at checkpoints. If a process
+        # dies between those two atomic replacements, discard only the
+        # uncommitted tail and resume from the last complete index.
+        if len(delta_matrix) > len(delta_index):
+            delta_matrix = delta_matrix[:len(delta_index)]
     missing = [text for text in dict.fromkeys(required) if text not in index and text not in delta_index]
     if missing:
         if not api_key:
@@ -108,29 +118,70 @@ def _load_vectors(base: Path, delta: Path, required: list[str], api_key: str | N
         from google import genai
         from google.genai import types
         client = genai.Client(api_key=api_key)
-        chunks = []
         print(f"Embedding {len(missing)} exact cache misses into a run-scoped delta...", flush=True)
+
+        def checkpoint() -> None:
+            delta.mkdir(parents=True, exist_ok=True)
+            vector_temporary = delta / "vec.npy.partial"
+            index_temporary = delta / "index.json.partial"
+            with vector_temporary.open("wb") as handle:
+                np.save(handle, delta_matrix)
+            index_temporary.write_text(
+                json.dumps(delta_index, ensure_ascii=False), encoding="utf-8"
+            )
+            os.replace(vector_temporary, delta / "vec.npy")
+            os.replace(index_temporary, delta / "index.json")
+
+        since_checkpoint = 0
         for offset in range(0, len(missing), 100):
             batch = missing[offset:offset + 100]
-            response = client.models.embed_content(
-                model="gemini-embedding-001", contents=batch,
-                config=types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY"),
-            )
+            attempts = 0
+            while True:
+                started = time.monotonic()
+                try:
+                    response = client.models.embed_content(
+                        model="gemini-embedding-001", contents=batch,
+                        config=types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY"),
+                    )
+                    break
+                except Exception as error:
+                    status = getattr(error, "status_code", None) or getattr(error, "code", None)
+                    if status != 429 and "429" not in str(error):
+                        checkpoint()
+                        raise
+                    attempts += 1
+                    checkpoint()
+                    if attempts > 12:
+                        raise LyricsWSDExecutionError(
+                            "Gemini embedding quota remained unavailable after 12 resumable retries"
+                        ) from error
+                    match = re.search(r"retry in ([0-9.]+)s", str(error), flags=re.IGNORECASE)
+                    delay = min(60.0, (float(match.group(1)) + 2.0) if match else 20.0)
+                    print(
+                        f"  Gemini quota pause; checkpointed {len(delta_index)} delta vectors "
+                        f"and retrying this batch in {delay:.1f}s...",
+                        flush=True,
+                    )
+                    time.sleep(delay)
             values = np.asarray([item.values for item in response.embeddings], dtype=np.float32)
+            if len(values) != len(batch):
+                checkpoint()
+                raise LyricsWSDExecutionError("Gemini returned an incomplete embedding batch")
             values /= np.linalg.norm(values, axis=1, keepdims=True) + 1e-9
-            chunks.append(values.astype(np.float16))
+            new = values.astype(np.float16)
+            start = len(delta_matrix)
+            delta_matrix = np.vstack([delta_matrix, new]) if len(delta_matrix) else new
+            for position, text_value in enumerate(batch, start=start):
+                delta_index[text_value] = position
+            since_checkpoint += len(batch)
+            if since_checkpoint >= 1000 or offset + len(batch) == len(missing):
+                checkpoint()
+                since_checkpoint = 0
             print(f"  embedded {min(offset + len(batch), len(missing))}/{len(missing)}", flush=True)
-        new = np.vstack(chunks)
-        start = len(delta_index)
-        if len(delta_matrix):
-            delta_matrix = np.vstack([delta_matrix, new])
-        else:
-            delta_matrix = new
-        for position, text in enumerate(missing, start=start):
-            delta_index[text] = position
-        delta.mkdir(parents=True, exist_ok=True)
-        np.save(delta / "vec.npy", delta_matrix)
-        (delta / "index.json").write_text(json.dumps(delta_index, ensure_ascii=False), encoding="utf-8")
+            # Stay below the paid-tier 3,000 embedded-content/minute ceiling.
+            elapsed = time.monotonic() - started
+            if offset + len(batch) < len(missing) and elapsed < 2.2:
+                time.sleep(2.2 - elapsed)
     def vector(text: str):
         value = matrix[index[text]] if text in index else delta_matrix[delta_index[text]]
         return value.astype(np.float32)

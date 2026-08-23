@@ -3,6 +3,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import Mock, patch
+
+import numpy as np
 
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
@@ -13,7 +16,7 @@ from fluency.lyrics.wsd_results import (
     _validate_result,
     import_lyrics_wsd_results,
 )
-from fluency.lyrics.wsd_execute import dotenv_value
+from fluency.lyrics.wsd_execute import _load_vectors, dotenv_value
 
 
 MENU_ID = "sha256:" + "a" * 64
@@ -56,6 +59,29 @@ def fixture():
 
 
 class LyricsWSDResultTests(unittest.TestCase):
+    def test_embedding_delta_checkpoints_and_retries_quota_pause(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = root / "base"
+            delta = root / "delta"
+            base.mkdir()
+            np.save(base / "vec.npy", np.asarray([[1.0, 0.0]], dtype=np.float16))
+            (base / "vec_index.json").write_text(json.dumps({"cached": 0}))
+
+            quota = RuntimeError("429 retry in 0.01s")
+            quota.status_code = 429
+            response = Mock(embeddings=[Mock(values=[0.0, 2.0])])
+            client = Mock()
+            client.models.embed_content.side_effect = [quota, response]
+            with patch("google.genai.Client", return_value=client), patch(
+                "fluency.lyrics.wsd_execute.time.sleep"
+            ):
+                vector = _load_vectors(base, delta, ["missing"], "api-key")
+
+            self.assertEqual(json.loads((delta / "index.json").read_text()), {"missing": 0})
+            self.assertTrue(np.allclose(vector("missing"), [0.0, 1.0], atol=0.001))
+            self.assertEqual(client.models.embed_content.call_count, 2)
+
     def test_dotenv_is_parsed_as_data_with_spaces_around_equals(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / ".env"
