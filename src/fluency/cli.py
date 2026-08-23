@@ -35,6 +35,7 @@ from fluency.lyrics.corpus_wsd import prepare_lyrics_corpus_wsd
 from fluency.lyrics.corpus_results import import_lyrics_corpus_results
 from fluency.lyrics.corpus_consolidate import consolidate_lyrics_corpus
 from fluency.lyrics.corpus_assemble import assemble_lyrics_corpus
+from fluency.lyrics.corpus_release import build_clean_lyrics_corpus_release
 from fluency.lyrics.consolidate import consolidate_lyrics_run
 from fluency.lyrics.assemble import assemble_lyrics_app_stage
 from fluency.lyrics.preview import build_clean_lyrics_preview_release
@@ -320,6 +321,14 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_assemble_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
     lyrics_assemble_corpus.add_argument("--plan", type=Path, required=True)
     lyrics_assemble_corpus.add_argument("--consolidation-report", type=Path, required=True)
+    lyrics_release_corpus = lyrics_actions.add_parser(
+        "build-corpus-release",
+        help="compose clean corpus assignments with retained optional media as an inactive release",
+    )
+    lyrics_release_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_release_corpus.add_argument("--assembly", type=Path, required=True)
+    lyrics_release_corpus.add_argument("--parity-release", type=Path, required=True)
+    lyrics_release_corpus.add_argument("--release-id", required=True)
     lyrics_plan_processing = lyrics_actions.add_parser(
         "plan-processing-profile",
         help="pin shared and artist-specific inputs for one exact corpus processing run",
@@ -1025,6 +1034,21 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             f"resumed/skipped {result['skipped_this_invocation']} song assemblies."
         )
         print("No release, deployment, or activation was created.")
+        return 0
+    if args.lyrics_command == "build-corpus-release":
+        output = build_clean_lyrics_corpus_release(
+            workspace, assembly_path=args.assembly,
+            parity_release=args.parity_release, release_id=args.release_id,
+        )
+        manifest, _composition = validate_lyrics_release(output)
+        comparison = json.loads((output / "comparison.json").read_text(encoding="utf-8"))
+        print(f"Built validated inactive clean Lyrics release: {output}")
+        print(
+            f"Packaged {manifest['artist_count']} artists and {manifest['card_count']} artist-card rows; "
+            f"comparison found {comparison['totals']['cards_added']} added and "
+            f"{comparison['totals']['cards_removed']} removed cards."
+        )
+        print("The active Lyrics release was not changed.")
         return 0
     if args.lyrics_command == "plan-processing-profile":
         output = build_lyrics_corpus_processing_profile(

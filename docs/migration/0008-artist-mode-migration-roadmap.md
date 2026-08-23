@@ -680,6 +680,23 @@ Every selected example retains its song-run and occurrence-level provenance.
 Changing WSD therefore selects a different method branch and rebuilds only
 consolidation, app assembly and release outputs.
 
+Clean-release orchestration checkpoint (2026-08-23): a corpus assembly can now
+be combined with the exact retained parity media layer to create a new
+validated, inactive release. Clean index, examples, shared master and per-song
+card membership always come from one named WSD method branch. Song/album
+metadata, artwork, colour themes and available Spotify mappings are copied from
+the explicitly named parity release, with track data filtered to songs actually
+selected by the clean corpus. The release composition binds both layers by
+content identity and never updates `active.json`.
+
+Every candidate release receives a comparison report with added, removed and
+shared cards, changed sense/frequency payloads, added/removed examples,
+translation absences, songs with no study cards, retained optional-media status
+and payload-size delta. Release validation rejects duplicate card IDs,
+index/example disagreement, missing declared assets and changed hashes before
+review. This orchestration is ready but cannot be executed until a WSD method
+branch and its dependent consolidation/assembly exist.
+
 #### 9. Add further languages through adapters
 
 Implement French first, then Portuguese and Dutch, without forking the pipeline.

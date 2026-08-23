@@ -367,3 +367,14 @@ uses the fresh Tatoeba run and makes no WSD or corpus-coverage claims.
 - Two-artist fixture coverage proves that the shared master cannot shift one
   artist's example buckets onto another artist's sense.
 - The operation is inactive: it cannot compose or activate a Lyrics release.
+## Gate 45 — Inactive clean corpus release composition
+
+- Clean assignment assets are composed only from one exact method branch.
+- Optional songs, albums, artwork, themes and Spotify metadata are retained
+  from one explicitly named parity release and content-bound in composition.
+- Song `cardIds` are replaced by the clean assembly's membership; historical
+  assignments cannot leak through the retained media catalog.
+- A candidate comparison reports card, sense/frequency, example, translation,
+  song-coverage, optional-media and payload changes before activation.
+- Release validation runs before publication and the builder never writes
+  `active.json`.
