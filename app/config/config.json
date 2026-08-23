@@ -63,6 +63,13 @@
         "reverso": "https://context.reverso.net/translation/spanish-english/{word}",
         "conjugation": "https://www.spanishdict.com/conjugate/{word}"
       },
+      "capabilities": {
+        "speech": true,
+        "lyrics": true,
+        "mergeLemmas": true,
+        "cognateFilter": true,
+        "morphology": true
+      },
       "hasData": true
     },
     "swedish": {
@@ -240,6 +247,10 @@
       "exampleTargetField": "example_french",
       "exampleEnglishField": "example_english",
       "hasData": true,
+      "capabilities": {
+        "speech": true,
+        "lyrics": false
+      },
       "colorTheme": {
         "primary": "#4A7FFF",
         "secondary": "#ED2939"

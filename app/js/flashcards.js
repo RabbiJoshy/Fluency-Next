@@ -4040,6 +4040,15 @@ function updateCard({ announceHeadword = false } = {}) {
                 ? currentPos
                 : (rememberedPos || posItems[0].pos);
             card._activePosTab = activeBackPos;
+            const onlyPos = posItems.length === 1 ? posItems[0].pos : '';
+            const onlyPosHasAction = isVerbPos(onlyPos) && morphLabels.length > 0;
+            // A multi-meaning back already starts with a (POS, headword)
+            // section. Repeating one inert POS in the top-right corner adds no
+            // information; retain the corner control for multiple POS choices
+            // and for the single verb button that opens morphology.
+            const hideRedundantSingleBackPos = card.isMultiMeaning
+                && posItems.length === 1
+                && !onlyPosHasAction;
             const posPills = posItems.map(({ pos, meaningIndex }) => {
                 if (hasBackPosTabs) {
                     const stackState = pos === activeBackPos ? 'is-active' : 'is-inactive';
@@ -4059,7 +4068,9 @@ function updateCard({ announceHeadword = false } = {}) {
                     ${renderMorphPopover()}
                 </span>`;
             });
-            backPosLegendHTML = `<div class="back-pos-legend${hasBackPosTabs ? ' has-tabs pos-peek-stack' : ''}"${hasBackPosTabs ? ' role="tablist"' : ''} aria-label="Filter senses by part of speech">${posPills.join('')}</div>`;
+            if (!hideRedundantSingleBackPos) {
+                backPosLegendHTML = `<div class="back-pos-legend${hasBackPosTabs ? ' has-tabs pos-peek-stack' : ''}"${hasBackPosTabs ? ' role="tablist"' : ''} aria-label="Filter senses by part of speech">${posPills.join('')}</div>`;
+            }
         }
     }
 

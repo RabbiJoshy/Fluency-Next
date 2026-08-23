@@ -3,7 +3,7 @@ import './state.js?v=20260822p';
 async function loadConfig() {
     try {
         const [configResponse, cefrResponse] = await Promise.all([
-            fetch('config/config.json?v=20260822p', { cache: 'no-store' }),
+            fetch('config/config.json?v=20260823ac', { cache: 'no-store' }),
             fetch('config/cefr_levels.json')
         ]);
         config = await configResponse.json();
@@ -73,6 +73,7 @@ async function loadReleaseStudyStructure(language) {
 async function loadReleaseProvenance(language) {
     window._activeReleaseProvenance = {};
     const languageConfig = config.languages[language] || {};
+    window._activeReleaseCapabilities = { ...(languageConfig.capabilities || {}) };
     const releaseConfig = activeArtist || languageConfig;
     const manifestPath = releaseConfig.releaseManifestPath;
     const compositionPath = releaseConfig.releaseCompositionPath;
@@ -89,6 +90,10 @@ async function loadReleaseProvenance(language) {
             manifestResponse.json(),
             compositionResponse.json()
         ]);
+        window._activeReleaseCapabilities = {
+            ...(languageConfig.capabilities || {}),
+            ...(manifest.capabilities || {})
+        };
         if (!manifest?.release_id || manifest.release_id !== composition?.release_id) {
             throw new Error('release manifest/composition mismatch');
         }

@@ -358,6 +358,7 @@ function setupLanguageTabs() {
     const sourcePill = document.getElementById('selectedSourceInline');
     const sourceLabel = document.getElementById('selectedSourceInlineLabel');
     const languageCardButton = document.getElementById('standardSourceLanguageBtn');
+    const speechSourceButton = document.getElementById('standardSourceSpeechBtn');
     const sourceCardButton = document.getElementById('standardSourcePickerBtn');
 
     // The compact language summary reopens the radial picker directly.
@@ -365,6 +366,9 @@ function setupLanguageTabs() {
         event.stopPropagation();
         window.closeRadialPicker?.('artistRadialPicker');
         unmergeStandardProgressFromLanguageStep();
+        document.getElementById('step1')?.classList.remove('source-speech-active');
+        speechSourceButton?.classList.remove('is-selected');
+        sourceCardButton?.classList.remove('is-selected');
         inlinePill.style.display = 'none';
         document.getElementById('languageTabs').style.display = 'flex';
         // Hide subsequent steps
@@ -408,16 +412,6 @@ function setupLanguageTabs() {
             _setupLevelSelectionWasManual = false;
             applyGlobalStudyDefaults();
 
-            // Mirror the boot-time Spanish-only fetches in main.js so users
-            // who land on a non-Spanish first language and switch to Spanish
-            // still get rank + conjugated-English data. Full paradigms remain
-            // lazy until the conjugation panel opens. Idempotent — no-ops if
-            // already loaded.
-            if (newLanguage === 'spanish') {
-                if (window.loadSpanishRanks) window.loadSpanishRanks();
-                if (window.loadConjugatedEnglishData) window.loadConjugatedEnglishData();
-            }
-
             applyLanguageColorTheme();
 
             // Show inline pill in the header, hide the tabs
@@ -425,9 +419,25 @@ function setupLanguageTabs() {
             inlinePill.textContent = langConfig ? langConfig.name : selectedLanguage;
             document.getElementById('languageTabs').style.display = 'none';
             inlinePill.style.display = 'inline-flex';
-            sourceLabel.textContent = 'Speech';
-            sourcePill.classList.remove('source-pill-inline--pending');
+            sourceLabel.textContent = 'Choose source';
+            sourcePill.classList.add('source-pill-inline--pending');
             mergeStandardProgressIntoLanguageStep();
+            document.getElementById('step1')?.classList.remove('source-speech-active');
+            speechSourceButton?.classList.remove('is-selected');
+            sourceCardButton?.classList.remove('is-selected');
+
+            const languageCapabilities = langConfig?.capabilities || {};
+            const lyricsAvailable = languageCapabilities.lyrics !== false;
+            if (sourceCardButton) {
+                sourceCardButton.disabled = !lyricsAvailable;
+                sourceCardButton.title = lyricsAvailable
+                    ? 'Choose an artist, playlist or collection of songs'
+                    : `Lyrics are not available for ${langConfig?.name || newLanguage} yet`;
+                const detail = sourceCardButton.querySelector('small');
+                if (detail) detail.textContent = lyricsAvailable
+                    ? 'Artists, playlists and songs'
+                    : 'Not available for this language yet';
+            }
 
             // Hide all subsequent steps while loading
             document.getElementById('step2').style.display = 'none';
@@ -438,6 +448,9 @@ function setupLanguageTabs() {
 
             const continueToSpeech = async () => {
                 if (selectedLanguage !== newLanguage) return;
+                document.getElementById('step1')?.classList.add('source-speech-active');
+                speechSourceButton?.classList.add('is-selected');
+                sourceCardButton?.classList.remove('is-selected');
                 window.showAppLoading?.('Preparing Speech', 'Loading levels and your progress…');
                 try {
                     sourceLabel.textContent = 'Speech';
@@ -449,6 +462,14 @@ function setupLanguageTabs() {
                     let progressRefresh = Promise.resolve(false);
                     if (currentUser && !currentUser.isGuest) {
                         progressRefresh = loadUserProgressFromSheet();
+                    }
+
+                    // Spanish rank and conjugated-English assets belong to
+                    // Speech setup. Do not start them merely because Spanish
+                    // was chosen when the learner may be heading to Lyrics.
+                    if (newLanguage === 'spanish') {
+                        if (window.loadSpanishRanks) window.loadSpanishRanks();
+                        if (window.loadConjugatedEnglishData) window.loadConjugatedEnglishData();
                     }
 
                     // Always load PPM data if available (needed for coverage bar even in CEFR mode).
@@ -484,16 +505,27 @@ function setupLanguageTabs() {
                 }
             };
 
-            // Speech is the stable default for a language. Lyrics remains one
-            // direct action away and opens the source picker immediately.
-            sourcePill.onclick = event => {
+            // Language selection is deliberately lightweight. The learner now
+            // chooses the source before either vocabulary release is fetched.
+            const openLyrics = event => {
                 event.stopPropagation();
+                if (sourceCardButton?.disabled) return;
+                speechSourceButton?.classList.remove('is-selected');
+                sourceCardButton?.classList.add('is-selected');
                 window.showLyricsPicker?.(newLanguage, sourceCardButton);
             };
-            sourceCardButton.onclick = sourcePill.onclick;
+            sourcePill.onclick = openLyrics;
+            sourceCardButton.onclick = openLyrics;
+            speechSourceButton.onclick = event => {
+                event.stopPropagation();
+                continueToSpeech();
+            };
 
-            sessionStorage.removeItem('fluencyPendingSpeechLanguage');
-            await continueToSpeech();
+            const pendingSpeechLanguage = sessionStorage.getItem('fluencyPendingSpeechLanguage');
+            if (pendingSpeechLanguage === newLanguage) {
+                sessionStorage.removeItem('fluencyPendingSpeechLanguage');
+                await continueToSpeech();
+            }
         });
     });
 }
@@ -543,13 +575,13 @@ function updateStep5Tooltip() {
         tooltip.innerHTML = `
             <p>Each level is divided into stable sets of about 20 frequency positions in ${name}'s lyrics. The first set with unseen cards is selected automatically.</p>
             <p>Settings may shorten a set, but they never move a card into a different level or set.</p>
-            <p><strong>Example sentences</strong> favour nearby-frequency words, helping the cards in a set reinforce one another.</p>
+            <p><strong>Examples</strong> come from the active Lyrics release and retain song/source evidence whenever it is available.</p>
         `;
     } else {
         tooltip.innerHTML = `
             <p>Each level is divided into stable sets of about 20 frequency positions. The first set with unseen cards is selected automatically.</p>
             <p>Settings may shorten a set, but they never move a card into a different level or set.</p>
-            <p><strong>Subtitle examples</strong> already favour nearby-frequency words, so each small set forms a useful learning neighbourhood.</p>
+            <p><strong>Examples</strong> retain their source, translation and provenance whenever the active Speech release provides them.</p>
         `;
     }
 }
@@ -793,9 +825,9 @@ async function renderLevelSelector(language, { preferActionable = false } = {}) 
             // Show coverage info line with word count and frequency threshold
             updateLevelInfoLine(this);
 
-            // Surface-form releases deliberately omit the legacy lemma field.
-            // Keep that retired control out of the setup flow unless a future
-            // release explicitly supplies the old capability.
+            // Surface identity and learner grouping are separate. Offer Merge
+            // Lemmas whenever the release can reliably map surfaces back to a
+            // shared headword; otherwise keep the unavailable option hidden.
             document.getElementById('lemmaToggleContainer').style.display =
                 lemmaFieldAvailable ? 'block' : 'none';
 
@@ -1635,9 +1667,12 @@ async function updateLemmaToggleVisibility() {
     const lemmaSelector = document.getElementById('lemmaToggleSelector');
     const rangeStepNumber = document.getElementById('rangeStepNumber');
 
-    // Check if vocabulary has most_frequent_lemma_instance field
-    lemmaFieldAvailable = false;
-    if (langConfig) {
+    // Prefer the release/config contract. Older releases without an explicit
+    // declaration retain the data inspection fallback during migration.
+    const declaredCapability = window._activeReleaseCapabilities?.mergeLemmas
+        ?? langConfig?.capabilities?.mergeLemmas;
+    lemmaFieldAvailable = declaredCapability === true;
+    if (langConfig && typeof declaredCapability !== 'boolean') {
         try {
             const vocabData = await fetchActiveVocabularyData(langConfig);
             lemmaFieldAvailable = vocabData.some(item =>
@@ -1648,7 +1683,9 @@ async function updateLemmaToggleVisibility() {
         }
     }
 
-    // No lemma field means no lemma-indexing decision should leak into setup.
+    // Merge Lemmas is a learner-facing grouping operation over stable surface
+    // cards. Hide it only when the active release cannot provide a reliable
+    // form-to-headword grouping.
     lemmaContainer.style.display = lemmaFieldAvailable ? 'block' : 'none';
     rangeStepNumber.textContent = activeArtist ? '2' : '3';
 
@@ -1656,7 +1693,7 @@ async function updateLemmaToggleVisibility() {
         // Enable both options
         lemmaSelector.classList.remove('lemma-toggle-unavailable');
     } else {
-        // Disable the "1" option, force "1+" mode
+        // Disable merging while retaining surface-card study.
         lemmaSelector.classList.add('lemma-toggle-unavailable');
         useLemmaMode = false;
         document.querySelectorAll('.lemma-toggle-btn').forEach(b => b.classList.remove('selected'));
@@ -1669,9 +1706,10 @@ async function updateCognateToggleVisibility() {
     const cognateContainer = document.getElementById('cognateToggleContainer');
     const cognateSelector = document.getElementById('cognateToggleSelector');
 
-    // Check if vocabulary has cognate_score field
-    cognateFieldAvailable = false;
-    if (langConfig) {
+    const declaredCapability = window._activeReleaseCapabilities?.cognateFilter
+        ?? langConfig?.capabilities?.cognateFilter;
+    cognateFieldAvailable = declaredCapability === true;
+    if (langConfig && typeof declaredCapability !== 'boolean') {
         try {
             const vocabData = await fetchActiveVocabularyData(langConfig);
             cognateFieldAvailable = vocabData.some(item =>
@@ -2704,7 +2742,7 @@ function getNormalHelpContent() {
         <p><strong>Why frequency order?</strong></p>
         <p>Language follows a power law: a small number of words make up the vast majority of everyday speech. In Spanish, the top 1,000 words cover roughly 81% of spoken language, and the top 3,000 cover around 91%. By learning frequent words first, you build practical comprehension faster.</p>
         <p><strong>How does it work?</strong></p>
-        <p>Choose a language to start in Speech. Browse Lyrics from the language card to select an artist, a playlist, or your own mix of songs. The app selects a level's first small set containing unseen cards, while incorrect and partly learned cards collect in that level's separate review. When Spaced repetition is enabled in Study settings, due cards join that review and correct recalls graduate through 1, 3, 7, 14, 30, 60, and 120-day intervals; mistakes reset the schedule. Merge Lemmas and Cognate exclusions can shorten sets without moving cards between them. Subtitle examples favour nearby-frequency vocabulary. If you leave an unfinished set, a Welcome back prompt offers to restore the exact card and settings next time you enter; finishing the set clears it.</p>
+        <p>Choose a language, then choose whether to learn from Speech or Lyrics. Speech opens the frequency-ranked language release; Lyrics lets you select an artist, playlist, or your own mix before any large vocabulary file is loaded. The app selects a level's first small set containing unseen cards, while incorrect and partly learned cards collect in that level's separate review. When Spaced repetition is enabled in Study settings, due cards join that review and correct recalls graduate through 1, 3, 7, 14, 30, 60, and 120-day intervals; mistakes reset the schedule. Merge Lemmas and Cognate exclusions can shorten sets without moving cards between them. Examples retain source and translation evidence when the active release provides it. If you leave an unfinished set, a Welcome back prompt offers to restore the exact card and settings next time you enter; finishing the set clears it.</p>
         <p>The progress bar tracks your coverage based on the frequency of words you've learned — learning a common word contributes more to your coverage than a rare one.</p>
     `;
 }

@@ -104,6 +104,42 @@ class ProductShellTests(unittest.TestCase):
             2,
         )
 
+    def test_language_choice_defers_loading_until_source_choice(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))
+
+        self.assertIn('id="standardSourceSpeechBtn"', html)
+        self.assertIn('id="standardSourcePickerBtn"', html)
+        self.assertIn("speechSourceButton.onclick", ui)
+        self.assertIn("sourceCardButton.onclick = openLyrics", ui)
+        self.assertNotIn("sessionStorage.removeItem('fluencyPendingSpeechLanguage');\n            await continueToSpeech();", ui)
+        self.assertIn("if (isResumeNavigation && !activeArtist && selectedLanguage === 'spanish')", main)
+        self.assertTrue(config["languages"]["spanish"]["capabilities"]["speech"])
+        self.assertTrue(config["languages"]["spanish"]["capabilities"]["lyrics"])
+        self.assertFalse(config["languages"]["french"]["capabilities"]["lyrics"])
+
+    def test_merge_lemmas_remains_a_declared_learner_feature(self) -> None:
+        ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))
+        self.assertTrue(config["languages"]["spanish"]["capabilities"]["mergeLemmas"])
+        self.assertIn("window._activeReleaseCapabilities?.mergeLemmas", ui)
+        self.assertIn("learner-facing grouping operation over stable surface", ui)
+
+    def test_card_back_omits_only_redundant_single_pos_legend(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        self.assertIn("const hideRedundantSingleBackPos", flashcards)
+        self.assertIn("posItems.length === 1", flashcards)
+        self.assertIn("!onlyPosHasAction", flashcards)
+        self.assertIn("if (!hideRedundantSingleBackPos)", flashcards)
+
+    def test_cognate_setting_uses_positive_inclusion_copy(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<span class="settings-row-label">Cognates', html)
+        self.assertIn('data-setting="excludeCognates" data-value="off" aria-pressed="true">Include</button>', html)
+        self.assertIn('data-setting="excludeCognates" data-value="on" aria-pressed="false">Exclude</button>', html)
+
     def test_active_set_keeps_existing_interaction_model(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
         vocab = (APP_ROOT / "js" / "vocab.js").read_text(encoding="utf-8")

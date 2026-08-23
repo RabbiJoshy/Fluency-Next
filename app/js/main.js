@@ -8,14 +8,14 @@ import './artist-ui.js?v=20260822p';
 import './auth.js?v=20260822p';
 import './about-example.js?v=20260822p';
 import './estimation.js?v=20260822p';
-import './config.js?v=20260822p';
+import './config.js?v=20260823ac';
 import './progress.js?v=20260822p';
 import './knowledge.js?v=20260822p';
-import './ui.js?v=20260822p';
+import './ui.js?v=20260823ac';
 import './vocab.js?v=20260823x';
 import './song-sets.js?v=20260822p';
 import './vocabulary-import.js?v=20260822p';
-import './flashcards.js?v=20260823ab';
+import './flashcards.js?v=20260823ac';
 import { validateArtistCatalog } from './data-contracts.js?v=20260822p';
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import
@@ -295,12 +295,11 @@ loadConfig().then(async () => {
     // Set first language with data as default (but don't auto-select it)
     const firstLang = Object.keys(config.languages).find(lang => config.languages[lang].hasData !== false) || Object.keys(config.languages)[0];
     selectedLanguage = firstLang;
-    // Spanish-only boot fetches: rank lookup (personal easiness) and
-    // conjugated-English translations. Full conjugation paradigms are loaded
-    // only when their already-lazy panel is opened. Skip when the first language
-    // isn't Spanish — the ui.js language-tab handler refires them on
-    // switch-to-Spanish, and the load helpers themselves are idempotent.
-    if (selectedLanguage === 'spanish') {
+    // Exact Speech resumes bypass the language/source chooser, so restore the
+    // small Spanish-only helpers here for that route. Ordinary language choice
+    // deliberately fetches neither: ui.js starts them only after Speech is
+    // selected, allowing Lyrics learners to avoid the Speech loading phase.
+    if (isResumeNavigation && !activeArtist && selectedLanguage === 'spanish') {
         if (window.loadSpanishRanks) window.loadSpanishRanks();
         if (window.loadConjugatedEnglishData) window.loadConjugatedEnglishData();
     }
@@ -801,9 +800,9 @@ function showArtistPicker(anchorBtn, artists) {
     });
 }
 
-// Speech is the default after a language choice. This direct Lyrics route
-// keeps changing modes to one explicit action instead of opening another
-// Speech-versus-Lyrics decision wheel.
+// Language is chosen first; this lightweight picker is the Lyrics branch of
+// the subsequent source choice. It loads only catalogue metadata until the
+// learner selects an exact artist or custom collection.
 async function showLyricsPicker(language, anchorBtn = null) {
     let artists = allArtistsConfig;
     try {

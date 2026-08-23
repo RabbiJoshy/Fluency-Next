@@ -40,14 +40,14 @@
             document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#eef2f5' : '#0a0e14';
         })();
     </script>
-    <link rel="stylesheet" href="css/style.css?v=20260823ab">
+    <link rel="stylesheet" href="css/style.css?v=20260823ac">
     <link rel="stylesheet" href="css/light-theme.css?v=20260822p">
     <!-- Module preloads. Without these the browser waits to discover the
          imports inside main.js before kicking off the per-module fetches,
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260823ab">
+    <link rel="modulepreload" href="js/main.js?v=20260823ac">
     <link rel="modulepreload" href="js/theme.js?v=20260822p">
     <link rel="modulepreload" href="js/state.js?v=20260822p">
     <link rel="modulepreload" href="js/data-contracts.js?v=20260822p">
@@ -59,10 +59,10 @@
     <link rel="modulepreload" href="js/auth.js?v=20260822p">
     <link rel="modulepreload" href="js/about-example.js?v=20260822p">
     <link rel="modulepreload" href="js/estimation.js?v=20260822p">
-    <link rel="modulepreload" href="js/config.js?v=20260822p">
+    <link rel="modulepreload" href="js/config.js?v=20260823ac">
     <link rel="modulepreload" href="js/progress.js?v=20260822p">
     <link rel="modulepreload" href="js/knowledge.js?v=20260822p">
-    <link rel="modulepreload" href="js/ui.js?v=20260822p">
+    <link rel="modulepreload" href="js/ui.js?v=20260823ac">
     <link rel="modulepreload" href="js/vocab.js?v=20260823x">
     <link rel="modulepreload" href="js/song-sets-core.js?v=20260822p">
     <link rel="modulepreload" href="js/song-sets.js?v=20260822p">
@@ -70,7 +70,7 @@
     <link rel="modulepreload" href="js/vocabulary-import.js?v=20260822p">
     <link rel="modulepreload" href="js/spanishdict-usage.js?v=20260822p">
     <link rel="modulepreload" href="js/reverse-cues.js?v=20260822p">
-    <link rel="modulepreload" href="js/flashcards.js?v=20260823ab">
+    <link rel="modulepreload" href="js/flashcards.js?v=20260823ac">
     <link rel="modulepreload" href="js/example-personalisation.js?v=20260822p">
     <script>
         // Fail open if a boot-time script error prevents main.js from taking
@@ -359,9 +359,19 @@
                         </span>
                         <span class="language-picker-btn-arrow" aria-hidden="true">›</span>
                     </button>
-                    <button type="button" id="standardSourcePickerBtn" class="artist-source-speech-btn">
-                        Browse Lyrics
-                    </button>
+                    <div class="standard-source-choice" aria-labelledby="standardSourceChoiceTitle">
+                        <span class="standard-source-choice-title" id="standardSourceChoiceTitle">Learn from</span>
+                        <div class="standard-source-choice-buttons">
+                            <button type="button" id="standardSourceSpeechBtn" class="standard-source-choice-btn" data-source="speech">
+                                <span class="standard-source-choice-icon" aria-hidden="true">◖</span>
+                                <span><strong>Speech</strong><small>Frequency-ordered language</small></span>
+                            </button>
+                            <button type="button" id="standardSourcePickerBtn" class="standard-source-choice-btn" data-source="lyrics">
+                                <span class="standard-source-choice-icon" aria-hidden="true">♫</span>
+                                <span><strong>Lyrics</strong><small>Artists, playlists and songs</small></span>
+                            </button>
+                        </div>
+                    </div>
                     <div id="standardSourceProgress" class="standard-source-progress"></div>
                 </div>
             </div>
@@ -521,7 +531,7 @@
                         <p>Each level is divided into small, stable sets of about 20 frequency positions. The first set containing unseen cards is selected automatically.</p>
                         <p>Merge Lemmas and Cognate exclusions can shorten a set, but cards never move into a different level or set.</p>
                         <p><strong>Learn new</strong> shows only unseen cards. Mistakes move to a separate review for this level, so they do not hold back the next set.</p>
-                        <p><strong>Example sentences</strong> prefer nearby-frequency vocabulary, so words within a set reinforce one another.</p>
+                        <p><strong>Example sentences</strong> retain their source, translation and provenance whenever the active release provides them.</p>
                     </div></div>
                 </div>
                 <div id="rangeSelector" class="range-selector"></div>
@@ -1168,14 +1178,14 @@
                     </div>
                     <div class="settings-default-row">
                         <span class="settings-row-label-block">
-                            <span class="settings-row-label">Exclude Cognates
-                                <button type="button" class="settings-info-btn" aria-label="Explain Exclude Cognates" aria-expanded="false">?</button>
+                            <span class="settings-row-label">Cognates
+                                <button type="button" class="settings-info-btn" aria-label="Explain cognate inclusion" aria-expanded="false">?</button>
                             </span>
-                            <small class="settings-row-explanation" hidden>Drops words that look close enough to their English equivalent to be guessable, so they never reach the deck.</small>
+                            <small class="settings-row-explanation" hidden>Include every word, or exclude words close enough to English to be immediately guessable.</small>
                         </span>
-                        <div class="group-size-selector settings-toggle" role="group" aria-label="Default Exclude Cognates setting">
-                            <button type="button" class="group-size-btn global-study-default-btn selected" data-setting="excludeCognates" data-value="off" aria-pressed="true">Off</button>
-                            <button type="button" class="group-size-btn global-study-default-btn" data-setting="excludeCognates" data-value="on" aria-pressed="false">On</button>
+                        <div class="group-size-selector settings-toggle" role="group" aria-label="Default cognate inclusion setting">
+                            <button type="button" class="group-size-btn global-study-default-btn selected" data-setting="excludeCognates" data-value="off" aria-pressed="true">Include</button>
+                            <button type="button" class="group-size-btn global-study-default-btn" data-setting="excludeCognates" data-value="on" aria-pressed="false">Exclude</button>
                         </div>
                     </div>
                     <!-- Cognate exclusion sensitivity. Higher threshold = only
@@ -1470,6 +1480,6 @@
             }
         })();
     </script>
-    <script type="module" src="js/main.js?v=20260823ab"></script>
+    <script type="module" src="js/main.js?v=20260823ac"></script>
 </body>
 </html>
