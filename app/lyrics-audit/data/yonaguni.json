@@ -13814,15 +13814,27 @@
   "runs": [
     {
       "run_id": "run_1b1b2c53fdea8d865e3dd2d8",
-      "label": "Tokenizer v1",
+      "label": "Literal-source normalization",
       "role": "baseline",
-      "artifact_sha256": "167797b5d9619c9ff3469f41a7ebd81bb270849bd0664ebe291e3ee377449b64"
+      "artifact_sha256": "167797b5d9619c9ff3469f41a7ebd81bb270849bd0664ebe291e3ee377449b64",
+      "short_label": "Legacy literal",
+      "description": "Preserves the observed apostrophe spelling, such as estamo' or e', without restoring the omitted letters.",
+      "method_id": "artist-count-tokenizer-v1",
+      "dimensions": [
+        "normalization"
+      ]
     },
     {
       "run_id": "run_9b10a162edde17313dc83ff5",
-      "label": "Tokenizer v3",
+      "label": "Elision-restoring normalization",
       "role": "candidate",
-      "artifact_sha256": "3ad2a91856d3c2da217f1a04638ffe553393d43b3bf72e12fd5f708e465d3911"
+      "artifact_sha256": "3ad2a91856d3c2da217f1a04638ffe553393d43b3bf72e12fd5f708e465d3911",
+      "short_label": "Legacy restored",
+      "description": "Applies the curated Spanish elision restoration used by the later legacy run, such as estamo' to estamos.",
+      "method_id": "artist-count-tokenizer-v3",
+      "dimensions": [
+        "normalization"
+      ]
     }
   ],
   "comparison": {

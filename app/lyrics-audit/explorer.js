@@ -1,4 +1,11 @@
-const state = { catalog: null, data: null, filter: "all", query: "", selected: null, selectedDecision: null, showIds: false, requestId: 0 };
+const state = { catalog: null, data: null, filter: "all", query: "", selected: null, selectedDecision: null, comparisonDimension: "normalization", baselineRunId: null, candidateRunId: null, showIds: false, requestId: 0 };
+
+const COMPARISON_DIMENSIONS = [
+  { id: "normalization", label: "Normalization & elision", description: "Compare the observed or normalized form produced for the same token occurrence." },
+  { id: "routing", label: "Word routing", description: "Compare proper-name, noise, vocabulary, foreign-word, and review routing decisions." },
+  { id: "wsd", label: "Sense assignment", description: "Compare the selected dictionary analysis and sense for the same occurrence." },
+  { id: "consolidation", label: "Card inclusion", description: "Compare whether the occurrence became a study example and card." },
+];
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
@@ -36,6 +43,61 @@ function resolvedConsolidation(clean) {
     example: reference.example_id ? state.data.consolidated_examples?.[reference.example_id] : null,
     card: reference.card_id ? state.data.consolidated_cards?.[reference.card_id] : null,
   }));
+}
+
+function runsForDimension(dimensionId = state.comparisonDimension) {
+  return (state.data?.runs || []).filter((run) => (run.dimensions || ["normalization"]).includes(dimensionId));
+}
+
+function selectedComparisonRuns() {
+  const available = runsForDimension("normalization");
+  const baseline = available.find((run) => run.run_id === state.baselineRunId) || available.find((run) => run.role === "baseline") || available[0] || {};
+  const candidate = available.find((run) => run.run_id === state.candidateRunId) || available.find((run) => run.role === "candidate") || available[1] || baseline;
+  return [baseline, candidate];
+}
+
+function runOptionLabel(run) {
+  return run.short_label || run.label || run.method_id || run.run_id;
+}
+
+function renderComparisonControls() {
+  const dimension = COMPARISON_DIMENSIONS.find((item) => item.id === state.comparisonDimension) || COMPARISON_DIMENSIONS[0];
+  const available = runsForDimension(dimension.id);
+  const baselineSelect = $("comparisonBaseline");
+  const candidateSelect = $("comparisonCandidate");
+  $("comparisonDimension").innerHTML = COMPARISON_DIMENSIONS.map((item) => {
+    const count = runsForDimension(item.id).length;
+    return `<option value="${escapeHtml(item.id)}">${escapeHtml(item.label)} · ${count} run${count === 1 ? "" : "s"}</option>`;
+  }).join("");
+  $("comparisonDimension").value = dimension.id;
+  const options = available.map((run) => `<option value="${escapeHtml(run.run_id)}">${escapeHtml(runOptionLabel(run))}</option>`).join("");
+  baselineSelect.innerHTML = options || `<option>No preserved run</option>`;
+  candidateSelect.innerHTML = options || `<option>No preserved run</option>`;
+  baselineSelect.disabled = available.length < 2;
+  candidateSelect.disabled = available.length < 2;
+  if (available.length >= 2) {
+    if (!available.some((run) => run.run_id === state.baselineRunId)) state.baselineRunId = available.find((run) => run.role === "baseline")?.run_id || available[0].run_id;
+    if (!available.some((run) => run.run_id === state.candidateRunId)) state.candidateRunId = available.find((run) => run.role === "candidate")?.run_id || available[1].run_id;
+    baselineSelect.value = state.baselineRunId;
+    candidateSelect.value = state.candidateRunId;
+  }
+  const baseline = available.find((run) => run.run_id === state.baselineRunId);
+  const candidate = available.find((run) => run.run_id === state.candidateRunId);
+  $("comparisonSummary").textContent = available.length >= 2
+    ? `${dimension.label}: ${runOptionLabel(baseline)} → ${runOptionLabel(candidate)}`
+    : `${dimension.label}: history only`;
+  $("comparisonSummaryDetail").textContent = "Choose runs and comparison dimension";
+  $("comparisonDescription").textContent = dimension.description;
+  $("comparisonAvailability").innerHTML = available.length >= 2
+    ? `<strong>${available.length} comparable runs preserved.</strong> Choose the older and newer snapshots below.`
+    : `<strong>No run pair is preserved for this dimension.</strong> Individual word histories still show the ${available.length || "current"} observation available; nothing is inferred.`;
+  $("comparisonRunDetails").innerHTML = available.length ? available.map((run) => `<article class="comparison-run-detail">
+    <span>${escapeHtml(run.role || "preserved run")}</span>
+    <strong>${escapeHtml(run.label)}</strong>
+    <p>${escapeHtml(run.description || "No human-readable description was preserved for this run.")}</p>
+    <code>${escapeHtml(run.method_id || run.run_id)}</code>
+    <small>${escapeHtml(run.run_id)}</small>
+  </article>`).join("") : `<div class="no-evidence">Future runs that declare <code>${escapeHtml(dimension.id)}</code> support will appear here automatically.</div>`;
 }
 
 function likelyAssignments(assignments, token) {
@@ -236,8 +298,28 @@ function tokenClasses(token) {
   if (token.restored) classes.push("restored");
   if (token.current_route?.status === "excluded") classes.push("excluded");
   if (routeChanged(token)) classes.push("route-changed");
+  if (tokenWsdState(token).status === "assigned") classes.push("wsd-assigned");
   if (state.selected === token.occurrence_id) classes.push("selected");
   return classes.join(" ");
+}
+
+function tokenWsdState(token) {
+  const results = resolvedWsd(token.clean_processing);
+  const assigned = results.find((result) => result.status === "assigned");
+  if (assigned) return {
+    status: "assigned",
+    label: `WSD assigned${assigned.selected_tuple?.headword ? `: ${assigned.selected_tuple.headword}` : ""}`,
+  };
+  if (results.length) return { status: results[0].status || "unassigned", label: `WSD ${results[0].status || "unassigned"}` };
+  const request = token.clean_processing?.wsd_requests?.[0];
+  if (request) return { status: request.execution_status || "not_run", label: `WSD ${request.execution_status || "not run"}` };
+  return { status: "unavailable", label: "No WSD evidence" };
+}
+
+function tokenWsdBadgeHtml(token) {
+  const wsd = tokenWsdState(token);
+  if (wsd.status !== "assigned") return "";
+  return `<span class="token-wsd" title="${escapeHtml(wsd.label)}" aria-label="${escapeHtml(wsd.label)}">W</span>`;
 }
 
 function routeChanged(token) {
@@ -251,6 +333,7 @@ function tokenMatches(token) {
   if (state.filter === "excluded" && token.current_route?.status !== "excluded") return false;
   if (state.filter === "unresolved" && token.current_route?.status !== "unresolved") return false;
   if (state.filter === "no-menu" && !resolvedLexical(token.clean_processing).some((item) => item.status === "no_menu")) return false;
+  if (state.filter === "wsd-assigned" && tokenWsdState(token).status !== "assigned") return false;
   const searchable = [
     token.surface,
     token.clean_processing?.surface,
@@ -364,7 +447,7 @@ function renderSong() {
     const visibleTokens = line.occurrences.filter((token) => state.filter === "all" || tokenMatches(token));
     const tokens = visibleTokens.map((token) => `
       <button class="${tokenClasses(token)}" data-occurrence="${escapeHtml(token.occurrence_id)}" type="button">
-        ${tokenDisplayHtml(token)}<span class="token-id">${escapeHtml(shortId(token.occurrence_id))}</span>
+        ${tokenDisplayHtml(token)}${tokenWsdBadgeHtml(token)}<span class="token-id">${escapeHtml(shortId(token.occurrence_id))}</span>
       </button>`).join(" ");
     const translationText = line.translation?.text || line.translation?.english;
     const translation = translationText ? `<p class="line-translation">${escapeHtml(translationText)}</p>` : "";
@@ -404,7 +487,7 @@ function assignmentHtml(assignments, token) {
 }
 
 function renderTrace(token, line) {
-  const [baseline, candidate] = state.data.runs;
+  const [baseline, candidate] = selectedComparisonRuns();
   const before = token.states[baseline.run_id] || {};
   const after = token.states[candidate.run_id] || {};
   const source = line.source_ingest;
@@ -481,14 +564,10 @@ function selectToken(occurrenceId) {
 
 function renderHeader() {
   const { data } = state;
-  const [baseline, candidate] = data.runs;
   $("songTitle").textContent = data.song.title;
   $("artistName").textContent = data.artist.name;
   $("languageLabel").textContent = data.language.toUpperCase();
-  $("baselineLabel").textContent = baseline.label;
-  $("baselineId").textContent = baseline.run_id;
-  $("candidateLabel").textContent = candidate.label;
-  $("candidateId").textContent = candidate.run_id;
+  renderComparisonControls();
   $("lineCount").textContent = data.comparison.line_count.toLocaleString();
   $("tokenCount").textContent = data.comparison.occurrence_count.toLocaleString();
   $("changeCount").textContent = data.comparison.changed_occurrence_count.toLocaleString();
@@ -516,11 +595,34 @@ function bindControls() {
   $("dialogClose").addEventListener("click", () => $("limitationsDialog").close());
   $("themeButton").addEventListener("click", () => document.documentElement.classList.toggle("high-contrast"));
   $("songSelect").addEventListener("change", (event) => loadSong(event.target.value));
+  $("comparisonButton").addEventListener("click", () => $("comparisonDialog").showModal());
+  $("comparisonClose").addEventListener("click", () => $("comparisonDialog").close());
+  $("comparisonDone").addEventListener("click", () => $("comparisonDialog").close());
+  $("comparisonDimension").addEventListener("change", (event) => {
+    state.comparisonDimension = event.target.value;
+    state.baselineRunId = null;
+    state.candidateRunId = null;
+    renderComparisonControls();
+    renderSong();
+  });
+  $("comparisonBaseline").addEventListener("change", (event) => {
+    state.baselineRunId = event.target.value;
+    renderComparisonControls();
+    if (state.selected) selectToken(state.selected);
+  });
+  $("comparisonCandidate").addEventListener("change", (event) => {
+    state.candidateRunId = event.target.value;
+    renderComparisonControls();
+    if (state.selected) selectToken(state.selected);
+  });
 }
 
 function resetSongView() {
   state.selected = null;
   state.selectedDecision = null;
+  state.comparisonDimension = "normalization";
+  state.baselineRunId = null;
+  state.candidateRunId = null;
   state.query = "";
   state.filter = "all";
   $("searchInput").value = "";
@@ -537,7 +639,7 @@ async function loadSong(songId) {
   picker.disabled = true;
   $("songTitle").textContent = `Loading ${entry.title}…`;
   try {
-    const response = await fetch(`data/${entry.bundle}?v=14`, { cache: "no-store" });
+    const response = await fetch(`data/${entry.bundle}?v=15`, { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const bundle = await response.json();
     if (requestId !== state.requestId) return;
@@ -564,13 +666,13 @@ async function loadSong(songId) {
 
 async function start() {
   if (window.location.protocol === "file:") {
-    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=14";
+    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=15";
     $("songTitle").textContent = "Local server required";
     $("artistName").innerHTML = `This explorer loads its audit bundle over HTTP. <a href="${servedUrl}">Open the working explorer</a>.`;
     return;
   }
   try {
-    const response = await fetch("data/catalog.json?v=14", { cache: "no-store" });
+    const response = await fetch("data/catalog.json?v=15", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     state.catalog = await response.json();
     const picker = $("songSelect");

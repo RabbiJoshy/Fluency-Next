@@ -62,6 +62,42 @@ def _normalized_form(claim: dict[str, Any] | None, fallback: str) -> str:
     return " + ".join(str(unit.get("normalized_form", "")) for unit in units) or fallback.casefold()
 
 
+def _normalization_run_metadata(
+    *, run_id: str, role: str, manifest: dict[str, Any], claims: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    method_ids = {
+        claim.get("method", {}).get("method_id")
+        for claim in claims.values()
+        if claim.get("method", {}).get("method_id")
+    }
+    method_id = next(iter(method_ids)) if len(method_ids) == 1 else None
+    known = {
+        "artist-count-tokenizer-v1": {
+            "label": "Literal-source normalization",
+            "short_label": "Legacy literal",
+            "description": "Preserves the observed apostrophe spelling, such as estamo' or e', without restoring the omitted letters.",
+        },
+        "artist-count-tokenizer-v3": {
+            "label": "Elision-restoring normalization",
+            "short_label": "Legacy restored",
+            "description": "Applies the curated Spanish elision restoration used by the later legacy run, such as estamo' to estamos.",
+        },
+    }
+    display = known.get(method_id, {
+        "label": method_id or "Preserved normalization run",
+        "short_label": method_id or role,
+        "description": "A preserved normalization run without a registered human-readable method gloss.",
+    })
+    return {
+        "run_id": run_id,
+        **display,
+        "method_id": method_id,
+        "dimensions": ["normalization"],
+        "role": role,
+        "artifact_sha256": manifest.get("artifact", {}).get("sha256"),
+    }
+
+
 def _song_examples(
     examples_path: Path,
     vocabulary_path: Path,
@@ -474,18 +510,12 @@ def build_bundle(
         "artist": {"id": "bad-bunny", "name": "Bad Bunny"},
         "song": {"id": song_id, "title": title, "source": "genius", "lines": lines},
         "runs": [
-            {
-                "run_id": baseline_run,
-                "label": "Tokenizer v1",
-                "role": "baseline",
-                "artifact_sha256": baseline_manifest.get("artifact", {}).get("sha256"),
-            },
-            {
-                "run_id": candidate_run,
-                "label": "Tokenizer v3",
-                "role": "candidate",
-                "artifact_sha256": candidate_manifest.get("artifact", {}).get("sha256"),
-            },
+            _normalization_run_metadata(
+                run_id=baseline_run, role="baseline", manifest=baseline_manifest, claims=baseline_claims
+            ),
+            _normalization_run_metadata(
+                run_id=candidate_run, role="candidate", manifest=candidate_manifest, claims=candidate_claims
+            ),
         ],
         "routing_profiles": routing_profiles,
         "lexical_profiles": lexical_profiles,

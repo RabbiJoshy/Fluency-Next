@@ -22,7 +22,11 @@ class LyricsAuditCatalogTests(unittest.TestCase):
         self.assertIn('class="token-change-arrow">→</span>', explorer)
         self.assertIn('class="decision-rule-group"', explorer)
         self.assertIn('class="audit-group pipeline-group"', explorer)
-        self.assertIn('explorer.js?v=14', page)
+        self.assertIn("const COMPARISON_DIMENSIONS", explorer)
+        self.assertIn("function runsForDimension", explorer)
+        self.assertIn("function tokenWsdBadgeHtml", explorer)
+        self.assertIn('data-filter="wsd-assigned"', page)
+        self.assertIn('explorer.js?v=15', page)
 
     def test_catalog_points_to_distinct_matching_song_bundles(self):
         catalog = json.loads((DATA_ROOT / "catalog.json").read_text(encoding="utf-8"))
@@ -38,6 +42,12 @@ class LyricsAuditCatalogTests(unittest.TestCase):
             self.assertEqual(bundle["song"]["title"], song["title"])
             self.assertEqual(bundle["artist"]["name"], song["artist"])
             self.assertEqual(bundle["language"], song["language"])
+            for run in bundle["runs"]:
+                self.assertTrue(run["label"])
+                self.assertTrue(run["short_label"])
+                self.assertTrue(run["description"])
+                self.assertTrue(run["method_id"])
+                self.assertEqual(run["dimensions"], ["normalization"])
 
     def test_clean_route_references_resolve_to_deduplicated_profiles(self):
         bundle = json.loads((DATA_ROOT / "estamos-arriba.json").read_text(encoding="utf-8"))
