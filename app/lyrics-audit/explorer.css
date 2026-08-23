@@ -98,6 +98,7 @@ h1 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; 
 .legend span::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 2px; }
 .legend .changed::before { background: var(--amber); }
 .legend .restored::before { background: var(--cyan); }
+.legend .automatic::before { background: var(--cyan); border-radius: 50%; }
 .legend .wsd::before { background: var(--violet); border-radius: 50%; }
 .legend .excluded::before { background: var(--red); }
 .song-lines { padding: 0 12px 18px; }
@@ -113,7 +114,9 @@ h1 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; 
 .token-change-arrow { color: var(--faint); font-size: 8px; }
 .token-restored { color: var(--cyan); font-weight: 750; }
 .token-wsd { display: inline-grid; width: 13px; height: 13px; place-items: center; margin-left: 2px; border: 1px solid rgba(184,165,255,.45); border-radius: 50%; color: var(--violet); background: rgba(184,165,255,.1); font: 700 7px/1 "SFMono-Regular", monospace; text-decoration: none; }
+.token-wsd.automatic { color: var(--cyan); border-color: rgba(118,228,212,.45); background: rgba(118,228,212,.1); }
 .token.wsd-assigned:not(.changed):not(.restored) { border-bottom-color: rgba(184,165,255,.42); }
+.token.wsd-automatic:not(.changed):not(.restored) { border-bottom-color: rgba(118,228,212,.42); }
 .token.excluded { color: var(--red); text-decoration: line-through; text-decoration-color: rgba(255,143,145,.5); }
 .token.route-changed:not(.excluded) { border-bottom-color: rgba(184,165,255,.55); }
 .token.selected { outline: 1px solid var(--cyan); outline-offset: 2px; }

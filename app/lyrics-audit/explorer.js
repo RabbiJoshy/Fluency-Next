@@ -36,6 +36,21 @@ function resolvedWsd(clean) {
   });
 }
 
+function wsdAssignmentEvidence(clean, result) {
+  if (!result || result.status !== "assigned") return { kind: "unassigned", optionCount: 0 };
+  const lexical = resolvedLexical(clean).find((candidate) =>
+    (candidate.analyses || []).some((analysis) => analysis.menu_analysis_id === result.menu_analysis_id)
+  );
+  const optionCount = (lexical?.analyses || []).reduce(
+    (count, analysis) => count + (analysis.senses || []).length,
+    0,
+  );
+  return {
+    kind: optionCount === 1 ? "automatic" : "disambiguated",
+    optionCount,
+  };
+}
+
 function resolvedConsolidation(clean) {
   return (clean?.consolidations || []).map((reference) => ({
     ...reference,
@@ -199,17 +214,25 @@ function classificationDecisions(token, line) {
   }));
   else push({ id: "lexical", label: "Lexical menu", history: [] });
 
-  if (wsd.length) wsd.forEach((result, index) => push({
-    id: `wsd-${index}`,
-    label: "Sense assignment",
-    history: [{
-      run: currentRun?.label || "Current snapshot",
-      run_id: currentRun?.run_id || result.result_id,
-      value: result.status === "assigned" ? `${result.selected_tuple?.headword || "headword unavailable"} → ${result.selected_sense_id}` : result.status,
-      detail: result.status === "assigned" ? `confidence ${Number(result.confidence).toFixed(4)} · ${(result.decision_path || []).join(" → ")}` : (result.evidence?.reason_codes || []).join(" + ") || "No sense assigned.",
-      provenance: result.result_id,
-    }],
-  }));
+  if (wsd.length) wsd.forEach((result, index) => {
+    const assignment = wsdAssignmentEvidence(clean, result);
+    const label = assignment.kind === "automatic" ? "Automatic sense assignment" : "WSD sense assignment";
+    push({
+      id: `wsd-${index}`,
+      label: result.status === "assigned" ? label : "Sense assignment",
+      history: [{
+        run: currentRun?.label || "Current snapshot",
+        run_id: currentRun?.run_id || result.result_id,
+        value: result.status === "assigned" ? `${result.selected_tuple?.headword || "headword unavailable"} → ${result.selected_sense_id}` : result.status,
+        detail: result.status === "assigned"
+          ? assignment.kind === "automatic"
+            ? "Automatic assignment: the exact lexical menu contained one sense, so no ambiguity had to be resolved."
+            : `WSD chose among ${assignment.optionCount || "multiple"} menu senses · confidence ${Number(result.confidence).toFixed(4)} · ${(result.decision_path || []).join(" → ")}`
+          : (result.evidence?.reason_codes || []).join(" + ") || "No sense assigned.",
+        provenance: result.result_id,
+      }],
+    });
+  });
   else if (clean?.wsd_requests?.length) clean.wsd_requests.forEach((request, index) => push({
     id: `wsd-request-${index}`,
     label: "WSD eligibility",
@@ -298,7 +321,8 @@ function tokenClasses(token) {
   if (token.restored) classes.push("restored");
   if (token.current_route?.status === "excluded") classes.push("excluded");
   if (routeChanged(token)) classes.push("route-changed");
-  if (tokenWsdState(token).status === "assigned") classes.push("wsd-assigned");
+  const wsd = tokenWsdState(token);
+  if (wsd.status === "assigned") classes.push("wsd-assigned", `wsd-${wsd.kind}`);
   if (state.selected === token.occurrence_id) classes.push("selected");
   return classes.join(" ");
 }
@@ -306,10 +330,17 @@ function tokenClasses(token) {
 function tokenWsdState(token) {
   const results = resolvedWsd(token.clean_processing);
   const assigned = results.find((result) => result.status === "assigned");
-  if (assigned) return {
-    status: "assigned",
-    label: `WSD assigned${assigned.selected_tuple?.headword ? `: ${assigned.selected_tuple.headword}` : ""}`,
-  };
+  if (assigned) {
+    const assignment = wsdAssignmentEvidence(token.clean_processing, assigned);
+    return {
+      status: "assigned",
+      kind: assignment.kind,
+      optionCount: assignment.optionCount,
+      label: assignment.kind === "automatic"
+        ? `Automatic assignment: only one menu sense${assigned.selected_tuple?.headword ? ` (${assigned.selected_tuple.headword})` : ""}`
+        : `WSD chose among ${assignment.optionCount || "multiple"} senses${assigned.selected_tuple?.headword ? ` (${assigned.selected_tuple.headword})` : ""}`,
+    };
+  }
   if (results.length) return { status: results[0].status || "unassigned", label: `WSD ${results[0].status || "unassigned"}` };
   const request = token.clean_processing?.wsd_requests?.[0];
   if (request) return { status: request.execution_status || "not_run", label: `WSD ${request.execution_status || "not run"}` };
@@ -319,7 +350,8 @@ function tokenWsdState(token) {
 function tokenWsdBadgeHtml(token) {
   const wsd = tokenWsdState(token);
   if (wsd.status !== "assigned") return "";
-  return `<span class="token-wsd" title="${escapeHtml(wsd.label)}" aria-label="${escapeHtml(wsd.label)}">W</span>`;
+  const badge = wsd.kind === "automatic" ? "1" : "W";
+  return `<span class="token-wsd ${escapeHtml(wsd.kind)}" title="${escapeHtml(wsd.label)}" aria-label="${escapeHtml(wsd.label)}">${badge}</span>`;
 }
 
 function routeChanged(token) {
@@ -334,6 +366,8 @@ function tokenMatches(token) {
   if (state.filter === "unresolved" && token.current_route?.status !== "unresolved") return false;
   if (state.filter === "no-menu" && !resolvedLexical(token.clean_processing).some((item) => item.status === "no_menu")) return false;
   if (state.filter === "wsd-assigned" && tokenWsdState(token).status !== "assigned") return false;
+  if (state.filter === "wsd-automatic" && tokenWsdState(token).kind !== "automatic") return false;
+  if (state.filter === "wsd-disambiguated" && tokenWsdState(token).kind !== "disambiguated") return false;
   const searchable = [
     token.surface,
     token.clean_processing?.surface,
@@ -380,11 +414,15 @@ function wsdHtml(clean) {
     const vote = result.evidence?.token_tuple_vote || {};
     const top = (result.evidence?.gloss_top || []).map((candidate) => `<li><strong>${escapeHtml(candidate.sense_id)}</strong><span>raw ${Number(candidate.raw).toFixed(4)} · with prior ${Number(candidate.adjusted).toFixed(4)}</span><code>${escapeHtml(candidate.analysis_id)}</code></li>`).join("");
     const decisions = (result.decision_path || []).map((step) => `<span class="decision-pill">${escapeHtml(step.replaceAll("_", " "))}</span>`).join("");
+    const assignment = wsdAssignmentEvidence(clean, result);
+    const assignmentLabel = assignment.kind === "automatic"
+      ? "Automatic · one menu sense"
+      : `WSD decision · ${assignment.optionCount || "multiple"} menu senses`;
     return `<div class="wsd-result assigned">
-      <div class="state-box"><small>${escapeHtml(result.selected_tuple?.part_of_speech || "POS unavailable")} · ${escapeHtml(calibration.legacy_band || "unbanded")} legacy confidence band</small><strong>${escapeHtml(result.selected_tuple?.headword || "No headword")} → ${escapeHtml(sense?.translation || result.selected_sense_id)}</strong></div>
+      <div class="state-box"><small>${escapeHtml(assignmentLabel)} · ${escapeHtml(result.selected_tuple?.part_of_speech || "POS unavailable")}</small><strong>${escapeHtml(result.selected_tuple?.headword || "No headword")} → ${escapeHtml(sense?.translation || result.selected_sense_id)}</strong></div>
       ${sense?.definition ? `<p class="wsd-definition">${escapeHtml(sense.definition)}</p>` : ""}
-      <div class="decision-path">${decisions}</div>
-      <div class="wsd-facts"><span>confidence ${Number(result.confidence).toFixed(4)}</span><span>BETO ${escapeHtml(vote.status || "not recorded")}${Number.isFinite(vote.gap) ? ` · gap ${Number(vote.gap).toFixed(4)}` : ""}</span></div>
+      ${assignment.kind === "automatic" ? `<p class="wsd-definition">No ambiguity was resolved: this exact menu offered only one sense.</p>` : `<div class="decision-path">${decisions}</div>`}
+      <div class="wsd-facts"><span>${assignment.kind === "automatic" ? "deterministic default" : `confidence ${Number(result.confidence).toFixed(4)}`}</span><span>${assignment.kind === "automatic" ? "model choice not required" : `BETO ${escapeHtml(vote.status || "not recorded")}${Number.isFinite(vote.gap) ? ` · gap ${Number(vote.gap).toFixed(4)}` : ""}`}</span></div>
       <details class="policy-trace"><summary>Inspect top gloss evidence and exact IDs</summary><ol>${top}</ol><div class="mono-block">result: ${escapeHtml(result.result_id)}<br>analysis: ${escapeHtml(result.menu_analysis_id)}<br>sense: ${escapeHtml(result.selected_sense_id)}</div></details>
     </div>`;
   }).join("");
@@ -573,7 +611,9 @@ function renderHeader() {
   $("changeCount").textContent = data.comparison.changed_occurrence_count.toLocaleString();
   $("restoreCount").textContent = data.comparison.restored_occurrence_count.toLocaleString();
   $("alignmentCount").textContent = data.comparison.aligned_line_count.toLocaleString();
-  $("wsdCount").textContent = (data.comparison.wsd_result_counts?.assigned || 0).toLocaleString();
+  const assignedTokens = data.song.lines.flatMap((line) => line.occurrences).map(tokenWsdState).filter((wsd) => wsd.status === "assigned");
+  $("automaticCount").textContent = assignedTokens.filter((wsd) => wsd.kind === "automatic").length.toLocaleString();
+  $("wsdCount").textContent = assignedTokens.filter((wsd) => wsd.kind === "disambiguated").length.toLocaleString();
   $("cleanCardCount").textContent = (data.comparison.consolidation_card_count || 0).toLocaleString();
   const hasCleanProcessing = data.comparison.process_lineage_event_count > 0;
   $("evidenceHeadline").textContent = hasCleanProcessing
@@ -642,7 +682,7 @@ async function loadSong(songId) {
   picker.disabled = true;
   $("songTitle").textContent = `Loading ${entry.title}…`;
   try {
-    const response = await fetch(`data/${entry.bundle}?v=16`, { cache: "no-store" });
+    const response = await fetch(`data/${entry.bundle}?v=17`, { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const bundle = await response.json();
     if (requestId !== state.requestId) return;
@@ -669,13 +709,13 @@ async function loadSong(songId) {
 
 async function start() {
   if (window.location.protocol === "file:") {
-    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=16";
+    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=17";
     $("songTitle").textContent = "Local server required";
     $("artistName").innerHTML = `This explorer loads its audit bundle over HTTP. <a href="${servedUrl}">Open the working explorer</a>.`;
     return;
   }
   try {
-    const response = await fetch("data/catalog.json?v=16", { cache: "no-store" });
+    const response = await fetch("data/catalog.json?v=17", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     state.catalog = await response.json();
     const picker = $("songSelect");

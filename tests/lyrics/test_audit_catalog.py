@@ -25,9 +25,13 @@ class LyricsAuditCatalogTests(unittest.TestCase):
         self.assertIn("const COMPARISON_DIMENSIONS", explorer)
         self.assertIn("function runsForDimension", explorer)
         self.assertIn("function tokenWsdBadgeHtml", explorer)
-        self.assertIn('data-filter="wsd-assigned"', page)
+        self.assertIn('data-filter="wsd-automatic"', page)
+        self.assertIn('data-filter="wsd-disambiguated"', page)
+        self.assertIn("function wsdAssignmentEvidence", explorer)
+        self.assertIn('badge = wsd.kind === "automatic" ? "1" : "W"', explorer)
+        self.assertIn("Automatic assignment: the exact lexical menu contained one sense", explorer)
         self.assertIn('id="evidenceHeadline"', page)
-        self.assertIn('explorer.js?v=16', page)
+        self.assertIn('explorer.js?v=17', page)
 
     def test_catalog_points_to_distinct_matching_song_bundles(self):
         catalog = json.loads((DATA_ROOT / "catalog.json").read_text(encoding="utf-8"))

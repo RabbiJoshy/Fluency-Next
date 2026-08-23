@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Lyrics Lineage Explorer</title>
     <meta name="color-scheme" content="dark">
-    <link rel="stylesheet" href="explorer.css?v=16">
+    <link rel="stylesheet" href="explorer.css?v=17">
   </head>
   <body>
     <div class="app-shell">
@@ -50,7 +50,8 @@
           <article class="accent"><span>Direct changes</span><strong id="changeCount">—</strong><small>first diverge at normalize</small></article>
           <article><span>Elisions restored</span><strong id="restoreCount">—</strong><small>candidate run</small></article>
           <article><span>Aligned lines</span><strong id="alignmentCount">—</strong><small>optional translations</small></article>
-          <article><span>WSD assigned</span><strong id="wsdCount">—</strong><small>exact occurrence results</small></article>
+          <article><span>Automatic sense</span><strong id="automaticCount">—</strong><small>only one menu option</small></article>
+          <article><span>WSD decisions</span><strong id="wsdCount">—</strong><small>choice among multiple senses</small></article>
           <article><span>Clean cards</span><strong id="cleanCardCount">—</strong><small>surface-based candidates</small></article>
         </section>
 
@@ -66,13 +67,14 @@
                 <button class="filter" data-filter="excluded" type="button">Excluded</button>
                 <button class="filter" data-filter="unresolved" type="button">Unresolved</button>
                 <button class="filter" data-filter="no-menu" type="button">No menu</button>
-                <button class="filter" data-filter="wsd-assigned" type="button">WSD assigned</button>
+                <button class="filter" data-filter="wsd-automatic" type="button">Automatic · 1 sense</button>
+                <button class="filter" data-filter="wsd-disambiguated" type="button">WSD · multiple senses</button>
               </div>
               <label class="switch"><input id="idsToggle" type="checkbox"><span></span> IDs</label>
             </div>
             <div class="song-heading">
               <div><h2>Song map</h2><p>Every token is an occurrence. Select one to inspect its journey.</p></div>
-              <div class="legend"><span class="changed">Changed</span><span class="restored">Restored</span><span class="wsd">WSD assigned</span><span class="excluded">Excluded</span></div>
+              <div class="legend"><span class="changed">Changed</span><span class="restored">Restored</span><span class="automatic">1 = automatic</span><span class="wsd">W = WSD choice</span><span class="excluded">Excluded</span></div>
             </div>
             <div id="songLines" class="song-lines" aria-live="polite"></div>
             <div id="emptyState" class="empty-state" hidden>No lines match this view.</div>
@@ -114,6 +116,6 @@
       <div id="comparisonRunDetails" class="comparison-run-details"></div>
       <button class="comparison-done" id="comparisonDone" type="button">Done</button>
     </dialog>
-    <script src="explorer.js?v=16" defer></script>
+    <script src="explorer.js?v=17" defer></script>
   </body>
 </html>
