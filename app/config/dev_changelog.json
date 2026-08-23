@@ -3,6 +3,16 @@
   "entries": [
     {
       "date": "2026-08-23",
+      "commit": "7f17dec",
+      "summary": "Speech examples once again identify their film or television source",
+      "detail": [
+        "Fresh release metadata is normalized into the app's provenance view, restoring IMDb links and subtitle line numbers.",
+        "A pinned IMDb title layer adds human movie names and resolves television episodes to their parent series.",
+        "The active 2,000-card Spanish release has IMDb links for all 5,997 examples and human titles for 5,967 of them."
+      ]
+    },
+    {
+      "date": "2026-08-23",
       "commit": "f3ecb4c",
       "summary": "POS pills now preserve complete grammatical labels",
       "detail": [
