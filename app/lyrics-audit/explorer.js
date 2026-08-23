@@ -155,6 +155,12 @@ function bindControls() {
 }
 
 async function start() {
+  if (window.location.protocol === "file:") {
+    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=5";
+    $("songTitle").textContent = "Local server required";
+    $("artistName").innerHTML = `This explorer loads its audit bundle over HTTP. <a href="${servedUrl}">Open the working explorer</a>.`;
+    return;
+  }
   try {
     const response = await fetch("data/estamos-arriba.json?v=4", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
