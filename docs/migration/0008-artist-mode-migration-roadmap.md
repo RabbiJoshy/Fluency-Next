@@ -195,9 +195,10 @@ active entries fail loudly.
 ## Continuation handoff: remainder of the migration
 
 This section is the authoritative continuation plan. A new agent should start
-here rather than infer the remaining work from chat history. The two completed
-implementation checkpoints are commits `d4f2810` (source lineage) and `a9c83e5`
-(clean processing lineage). The verified run is
+here rather than infer the remaining work from chat history. The completed
+implementation checkpoints are commits `d4f2810` (source lineage), `a9c83e5`
+(clean processing lineage), and `d75403d` (direct live routing and policy-trace
+auditing). The verified run is
 `runs/es/lyrics/bad-bunny-estamos-arriba-source-v7` in the external workspace.
 
 Environment map:
@@ -211,7 +212,7 @@ Environment map:
   `Fluency-Workspace/releases/lyrics/lyrics-legacy-parity-20260822`.
 
 Before editing, run `git status --short`, read this file, inspect commits
-`d4f2810` and `a9c83e5`, and run
+`d4f2810`, `a9c83e5`, and `d75403d`, and run
 `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3.12 -m unittest discover -s tests -p 'test_*.py'`.
 The checkpoint has 163 passing tests. Treat the legacy repository as a source
 of behavior and retained artifacts, not as the destination for new code.
