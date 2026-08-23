@@ -3,6 +3,16 @@
   "entries": [
     {
       "date": "2026-08-23",
+      "commit": "6e7319a",
+      "summary": "Part-of-speech labels now use a stable one- or two-row card layout",
+      "detail": [
+        "One or two labels remain together on one centred row, while three or four labels use a compact two-row grid.",
+        "The same bounded grammar area is used on both card faces and remains vertically aligned with the headword.",
+        "Every label stays readable, the active part of speech remains highlighted, and changing senses does not reorder the labels."
+      ]
+    },
+    {
+      "date": "2026-08-23",
       "commit": "59f3e2a",
       "summary": "Assigned cards now show only learner-supported senses and honest percentages",
       "detail": [
