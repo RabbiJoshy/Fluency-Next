@@ -65,6 +65,8 @@ class LyricsAuditCatalogTests(unittest.TestCase):
             len(references),
         )
         self.assertIn("WSD has not run", bundle["evidence"]["lexical_menu"])
+        self.assertEqual(bundle["comparison"]["wsd_request_count"], len(references))
+        self.assertIn("not_run", bundle["evidence"]["wsd"])
         for reference in references:
             self.assertIn(reference["profile_id"], profiles)
 

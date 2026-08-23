@@ -26,6 +26,7 @@ from fluency.inventory.runner import build_inventory_stage
 from fluency.lyrics.ingest import ingest_legacy_genius_song
 from fluency.lyrics.lexical import build_lyrics_lexical_menu_stage
 from fluency.lyrics.process import process_lyrics_run
+from fluency.lyrics.wsd import prepare_lyrics_wsd_stage
 from fluency.migration.legacy_identity import write_legacy_crosswalk
 from fluency.migration.spanish_assets import migrate_spanish_retained_assets
 from fluency.migration.spanish_dictionary import migrate_spanish_dictionary_snapshot
@@ -271,6 +272,13 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_menu.add_argument("--dictionary-snapshot", type=Path, required=True)
     lyrics_menu.add_argument("--snapshot-id", required=True)
     lyrics_menu.add_argument("--language-policy", required=True)
+    lyrics_wsd_prepare = lyrics_actions.add_parser(
+        "wsd-prepare",
+        help="materialize exact WSD contexts and eligibility without executing a model",
+    )
+    lyrics_wsd_prepare.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_wsd_prepare.add_argument("--run-id", required=True)
+    lyrics_wsd_prepare.add_argument("--language", required=True)
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -729,6 +737,22 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             f"{report['ready_sense_count']} sense leaves."
         )
         print("No sense was assigned; no deck, release, or activation was created.")
+        return 0
+    if args.lyrics_command == "wsd-prepare":
+        output = prepare_lyrics_wsd_stage(
+            project_root(),
+            workspace,
+            run_id=args.run_id,
+            language=args.language,
+        )
+        report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+        print(f"Completed immutable Lyrics WSD preparation: {output}")
+        print(
+            f"Prepared {report['request_count']} complete target records; "
+            f"{report['executable_request_count']} are executable and "
+            f"{report['translation_available_count']} have optional aligned translations."
+        )
+        print("No WSD model ran; no assignment, deck, release, or activation was created.")
         return 0
     raise AssertionError(f"Unhandled lyrics command: {args.lyrics_command}")
 

@@ -115,6 +115,7 @@ def build_bundle(
     source_ingest: Path | None = None,
     process_output: Path | None = None,
     lexical_output: Path | None = None,
+    wsd_prepare_output: Path | None = None,
 ) -> dict[str, Any]:
     evidence = legacy_artist_root / "data" / "evidence"
     candidate_ledger = evidence / "ledger" / "runs" / candidate_run
@@ -166,6 +167,8 @@ def build_bundle(
     lexical_profiles: dict[str, dict[str, Any]] = {}
     lexical_report: dict[str, Any] | None = None
     lexical_lineage_event_count = 0
+    wsd_requests_by_unit: dict[str, dict[str, Any]] = {}
+    wsd_prepare_report: dict[str, Any] | None = None
     if source_ingest is not None:
         source_ingest = source_ingest.expanduser().resolve()
         ingested_song = _read_json(source_ingest / "song.json")
@@ -232,6 +235,20 @@ def build_bundle(
             lexical_profile_ids[analysis_unit_id] = profile_id
             lexical_profiles[profile_id] = profile
         lexical_lineage_event_count = sum(1 for _ in _read_jsonl(lexical_output / "lineage.jsonl"))
+    if wsd_prepare_output is not None:
+        if lexical_output is None:
+            raise ValueError("WSD preparation output requires its matching lexical output")
+        wsd_prepare_output = wsd_prepare_output.expanduser().resolve()
+        wsd_prepare_report = _read_json(wsd_prepare_output / "report.json")
+        wsd_requests_by_unit = {
+            request["target"]["id"]: {
+                "request_id": request["request_id"],
+                "eligibility": request["eligibility"],
+                "translation_available": request["context"]["translation"] is not None,
+                "execution_status": "not_run",
+            }
+            for request in _read_jsonl(wsd_prepare_output / "requests.jsonl")
+        }
 
     changed_count = 0
     restored_count = 0
@@ -322,6 +339,11 @@ def build_bundle(
                             "units": clean_units,
                             "routes": clean_route_refs,
                             "lexical_candidates": clean_lexical_refs,
+                            "wsd_requests": [
+                                wsd_requests_by_unit[unit["analysis_unit_id"]]
+                                for unit in clean_units
+                                if unit["analysis_unit_id"] in wsd_requests_by_unit
+                            ],
                             "tokenizer_method": (process_manifest or {}).get("methods", {}).get("tokenize"),
                             "normalizer_method": (process_manifest or {}).get("methods", {}).get("normalize"),
                             "router_method": (process_manifest or {}).get("methods", {}).get("route"),
@@ -406,6 +428,8 @@ def build_bundle(
             "process_lineage_event_count": process_lineage_event_count,
             "lexical_lineage_event_count": lexical_lineage_event_count,
             "lexical_status_counts": (lexical_report or {}).get("status_counts", {}),
+            "wsd_request_count": (wsd_prepare_report or {}).get("request_count", 0),
+            "wsd_executable_request_count": (wsd_prepare_report or {}).get("executable_request_count", 0),
         },
         "evidence": {
             "source_ingest": (
@@ -431,6 +455,11 @@ def build_bundle(
                 if lexical_output
                 else "not included in this audit bundle"
             ),
+            "wsd": (
+                "complete immutable request coverage; execution status is not_run and no sense assignments exist"
+                if wsd_prepare_output
+                else "not included in this audit bundle"
+            ),
             "app_assignments": "current materialized immutable Artist release",
         },
         "limitations": limitations,
@@ -448,6 +477,7 @@ def main() -> None:
     parser.add_argument("--source-ingest", type=Path)
     parser.add_argument("--process-output", type=Path)
     parser.add_argument("--lexical-output", type=Path)
+    parser.add_argument("--wsd-prepare-output", type=Path)
     args = parser.parse_args()
     bundle = build_bundle(
         legacy_artist_root=args.legacy_artist_root,
@@ -458,6 +488,7 @@ def main() -> None:
         source_ingest=args.source_ingest,
         process_output=args.process_output,
         lexical_output=args.lexical_output,
+        wsd_prepare_output=args.wsd_prepare_output,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(

@@ -62,6 +62,12 @@ function lexicalHtml(clean) {
   }).join("");
 }
 
+function wsdHtml(clean) {
+  const requests = clean?.wsd_requests || [];
+  if (!requests.length) return `<div class="no-evidence">No WSD request exists for this token in the selected run.</div>`;
+  return requests.map((request) => `<div class="wsd-request"><div class="state-box"><small>${escapeHtml(request.eligibility)} · ${request.translation_available ? "aligned translation available" : "source context only"}</small><strong>Prepared — model not run</strong></div><code>${escapeHtml(request.request_id)}</code></div>`).join("");
+}
+
 function routingHtml(clean, token) {
   const routes = resolvedRoutes(clean);
   if (!routes.length) {
@@ -170,6 +176,7 @@ function renderTrace(token, line) {
           ${clean ? `<div class="stage current"><div class="stage-title"><strong>Clean recomputation</strong><span class="evidence-kind">new direct lineage</span></div><div class="comparison"><div class="state-box"><small>${escapeHtml(clean.surface)} · ${escapeHtml(clean.tokenizer_method)}</small><strong>${escapeHtml(clean.normalized_form)}</strong></div><span>→</span><div class="state-box"><small>${escapeHtml(clean.units.map((unit) => unit.reason_code).join(" + "))}</small><strong>${escapeHtml(clean.units.map((unit) => unit.operation).join(" + "))}</strong></div></div></div>` : ""}
           <div class="stage current"><div class="stage-title"><strong>Route</strong><span class="evidence-kind">${resolvedRoutes(clean)[0]?.evidence_kind === "direct" ? "direct policy trace" : resolvedRoutes(clean)[0]?.evidence_kind === "human_review" ? "attributed human override" : "current snapshot"}</span></div>${routingHtml(clean, token)}</div>
           <div class="stage current"><div class="stage-title"><strong>Build lexical menu</strong><span class="evidence-kind">direct · pre-WSD</span></div>${lexicalHtml(clean)}</div>
+          <div class="stage"><div class="stage-title"><strong>Disambiguate sense</strong><span class="evidence-kind">explicitly not run</span></div>${wsdHtml(clean)}</div>
           <div class="stage current"><div class="stage-title"><strong>Materialize in app</strong><span class="evidence-kind">current release</span></div>${assignmentHtml(line.app_assignments, token)}</div>
         </div>
       </section>
@@ -243,7 +250,7 @@ async function loadSong(songId) {
   picker.disabled = true;
   $("songTitle").textContent = `Loading ${entry.title}…`;
   try {
-    const response = await fetch(`data/${entry.bundle}?v=8`, { cache: "no-store" });
+    const response = await fetch(`data/${entry.bundle}?v=9`, { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const bundle = await response.json();
     if (requestId !== state.requestId) return;
@@ -270,13 +277,13 @@ async function loadSong(songId) {
 
 async function start() {
   if (window.location.protocol === "file:") {
-    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=8";
+    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=9";
     $("songTitle").textContent = "Local server required";
     $("artistName").innerHTML = `This explorer loads its audit bundle over HTTP. <a href="${servedUrl}">Open the working explorer</a>.`;
     return;
   }
   try {
-    const response = await fetch("data/catalog.json?v=8", { cache: "no-store" });
+    const response = await fetch("data/catalog.json?v=9", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     state.catalog = await response.json();
     const picker = $("songSelect");

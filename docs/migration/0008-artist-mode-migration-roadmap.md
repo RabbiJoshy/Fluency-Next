@@ -190,8 +190,18 @@ held for proper-name review. The 203 attempted lookup forms are resolved from
 the pinned SpanishDict snapshot through the shared Speech adapter. Surface card
 identity remains separate from lookup identity (for example, `líbrame` may
 look up `librar` without becoming the `librar` card). No WSD, deck assembly,
-release or activation occurred. Auditor v8 exposes every analysis and sense
+release or activation occurred. Auditor v9 exposes every analysis and sense
 leaf, plus an exact 59-token no-menu filter.
+
+The next immutable output, `stages/04_wsd_prepare`, now binds all 585 units to
+their exact lyric line, token span, lexical candidate and optional aligned
+translation. It produces 463 executable requests, while retaining the 59
+no-menu, 45 ineligible and 18 review requests as non-executable records. The
+request contract is mode-neutral: Lyrics targets an `analysis_unit`; Speech can
+target a `sentence_candidate` without inventing one mode's identity in the
+other. The explorer shows a separate **Disambiguate sense** stage with
+`Prepared — model not run`, so menu availability cannot be mistaken for a WSD
+assignment.
 
 The clean router deliberately does not import the legacy scattered noise,
 proper-name, English or cognate override lists as truth. Unknown forms remain
@@ -216,7 +226,7 @@ Environment map:
 - new code repository: `/Users/joshuathomasamar/PycharmProjects/Fluency-Next`;
 - legacy reference repository: `/Users/joshuathomasamar/PycharmProjects/Fluency`;
 - generated-data workspace: `/Users/joshuathomasamar/PycharmProjects/Fluency-Workspace`;
-- current auditor: `http://127.0.0.1:4173/lyrics-audit/?v=8` when serving
+- current auditor: `http://127.0.0.1:4173/lyrics-audit/?v=9` when serving
   `Fluency-Next/app` on port 4173;
 - active parity release:
   `Fluency-Workspace/releases/lyrics/lyrics-legacy-parity-20260822`.
@@ -224,7 +234,7 @@ Environment map:
 Before editing, run `git status --short`, read this file, inspect commits
 `d4f2810`, `a9c83e5`, and `d75403d`, and run
 `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3.12 -m unittest discover -s tests -p 'test_*.py'`.
-The checkpoint has 171 passing tests. Treat the legacy repository as a source
+The checkpoint has 173 passing tests. Treat the legacy repository as a source
 of behavior and retained artifacts, not as the destination for new code.
 
 ### Non-negotiable constraints
@@ -392,6 +402,14 @@ Required safeguards:
 Acceptance gate: run a small real-song sample, inspect changes in the auditor,
 and verify that activating nothing leaves the learner app on the parity release.
 
+Preparation checkpoint complete: the generic v2 request contract and Lyrics
+context adapter are implemented and exercised across the full song. Exact span
+validation fails closed, translations are nullable, and the source/menu
+artifacts are content-bound. No model has run. Remaining work in this package
+is to port the current Spanish embeddings implementation behind this request
+boundary, define and validate the complete result bundle, then give Joshua the
+single slow local command for the real truncated run.
+
 #### 5. Consolidate occurrences into Artist cards and examples
 
 Build the clean equivalent of the old Artist assignment/consolidation layers.
@@ -503,16 +521,13 @@ Before making Fluency-Next the live repository:
 
 ### Immediate next action
 
-Start with **Port the live word-routing engine**. Inspect the mature Spanish
-routing code in the legacy repository, list its true inputs and decisions, and
-separate shared routing mechanics from Spanish policy before editing. Keep
-`RoutingSnapshot` as the comparator. The first deliverable is a route-parity
-report for `bad-bunny-estamos-arriba-source-v4`, not a WSD run and not a new
-learner release.
-
-After that, add multi-song support to the lineage explorer before starting the
-menu/WSD stages. This gives the remaining migration a scalable audit surface
-rather than forcing progress to be inspected inside the learner app.
+Finish **Add WSD as a replaceable stage**. Audit the exact current Spanish
+embedding/alignment/clitic implementation, port it behind the prepared v2
+request boundary without changing its quality decisions, and implement a
+fail-closed result importer that requires one decision or explicit abstention
+for every request. Do not run the slow model inside an agent turn; once the
+command is ready, Joshua runs it locally and the agent validates its manifests
+and auditor output.
 
 The key separation is now enforceable: shell and study behavior can evolve
 without rebuilding corpus data, while a new Artist data run can be activated
