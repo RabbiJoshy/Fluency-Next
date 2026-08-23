@@ -103,6 +103,36 @@ def _copy_file(source: Path, app_root: Path, relative: str, copied: dict[str, Pa
     return normalized
 
 
+def _copy_filtered_master(
+    source: Path,
+    app_root: Path,
+    relative: str,
+    copied: dict[str, Path],
+    allowed_card_ids: set[str],
+) -> tuple[str, Path]:
+    """Package only master rows reachable from the selected artist indexes."""
+
+    pure = PurePosixPath(relative)
+    if pure.is_absolute() or any(part in {"", ".", ".."} for part in pure.parts):
+        raise LyricsReleaseError(f"unsafe release asset path: {relative}")
+    normalized = pure.as_posix()
+    existing = copied.get(normalized)
+    if existing is not None:
+        return normalized, existing
+    master = _load_json(source, dict)
+    missing = allowed_card_ids - set(master)
+    if missing:
+        raise LyricsReleaseError(
+            f"selected artist indexes reference {len(missing)} absent master cards: {source}"
+        )
+    filtered = {card_id: value for card_id, value in master.items() if card_id in allowed_card_ids}
+    target = app_root.joinpath(*pure.parts)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(json_bytes(filtered))
+    copied[normalized] = target
+    return normalized, target
+
+
 def _sidecar_provenance(path: Path) -> dict[str, Any]:
     sidecar = Path(str(path) + ".meta.json")
     metadata = _load_json(sidecar, dict) if sidecar.is_file() else {}
@@ -145,6 +175,7 @@ def _artist_config(
     slug: str,
     source: dict[str, Any],
     release_id: str,
+    master_card_ids: dict[Path, set[str]],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     if SAFE_SLUG.fullmatch(slug) is None:
         raise LyricsReleaseError(f"unsafe artist slug: {slug}")
@@ -160,7 +191,13 @@ def _artist_config(
 
     master_value = source.get("masterPath") or f"Artists/{language_name}/vocabulary_master.json"
     master_source = _source_path(source_root, master_value)
-    master_path = _copy_file(master_source, app_root, f"Artists/{language}/vocabulary_master.json", copied)
+    master_path, packaged_master = _copy_filtered_master(
+        master_source,
+        app_root,
+        f"Artists/{language}/vocabulary_master.json",
+        copied,
+        master_card_ids[master_source.resolve()],
+    )
 
     output: dict[str, Any] = {
         "name": source.get("name") or slug,
@@ -226,7 +263,8 @@ def _artist_config(
         "song_count": songs_count,
         "index_content_id": file_content_id(index_source),
         "examples_content_id": file_content_id(examples_source),
-        "master_content_id": file_content_id(master_source),
+        "master_content_id": file_content_id(packaged_master),
+        "source_master_content_id": file_content_id(master_source),
         "source_id": layer_source_id,
         "provenance": provenance,
         "migration_status": "retained_materialized_output_for_product_parity",
@@ -250,6 +288,7 @@ def build_lyrics_catalog_release(
     *,
     source_repository: Path,
     release_id: str,
+    include_artists: set[str] | None = None,
 ) -> Path:
     """Freeze every configured Artist app asset into one exact catalog release."""
 
@@ -260,6 +299,17 @@ def build_lyrics_catalog_release(
     source_config = _load_json(source_config_path, dict)
     if not source_config:
         raise LyricsReleaseError("source artist catalog is empty")
+    if include_artists is not None:
+        unknown = include_artists - set(source_config)
+        if unknown:
+            raise LyricsReleaseError(
+                "unknown requested artist sources: " + ", ".join(sorted(unknown))
+            )
+        source_config = {
+            slug: source for slug, source in source_config.items() if slug in include_artists
+        }
+        if not source_config:
+            raise LyricsReleaseError("selected artist catalog is empty")
     release_root = workspace.root / "releases/lyrics"
     release_directory = release_root / release_id
     if release_directory.exists():
@@ -274,12 +324,27 @@ def build_lyrics_catalog_release(
         copied: dict[str, Path] = {}
         app_catalog: dict[str, Any] = {}
         artist_records: list[dict[str, Any]] = []
+        master_card_ids: dict[Path, set[str]] = {}
+        for slug, source in sorted(source_config.items()):
+            if not isinstance(source, dict):
+                raise LyricsReleaseError(f"artist config is not an object: {slug}")
+            index_source, _ = _split_paths(source_root, source)
+            index = _load_json(index_source, list)
+            card_ids = {
+                card.get("id") for card in index
+                if isinstance(card, dict) and isinstance(card.get("id"), str)
+            }
+            language_name = str(source.get("language", "spanish"))
+            master_value = source.get("masterPath") or f"Artists/{language_name}/vocabulary_master.json"
+            master_source = _source_path(source_root, master_value).resolve()
+            master_card_ids.setdefault(master_source, set()).update(card_ids)
         for slug, source in sorted(source_config.items()):
             if not isinstance(source, dict):
                 raise LyricsReleaseError(f"artist config is not an object: {slug}")
             app_config, record = _artist_config(
                 source_root, app_root, copied,
                 slug=slug, source=source, release_id=release_id,
+                master_card_ids=master_card_ids,
             )
             app_catalog[slug] = app_config
             artist_records.append(record)

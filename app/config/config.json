@@ -64,7 +64,7 @@
         "conjugation": "https://www.spanishdict.com/conjugate/{word}"
       },
       "capabilities": {
-        "speech": true,
+        "speech": false,
         "lyrics": true,
         "mergeLemmas": true,
         "cognateFilter": true,
@@ -249,7 +249,7 @@
       "hasData": true,
       "capabilities": {
         "speech": true,
-        "lyrics": true
+        "lyrics": false
       },
       "colorTheme": {
         "primary": "#4A7FFF",

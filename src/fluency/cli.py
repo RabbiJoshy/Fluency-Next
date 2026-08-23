@@ -249,6 +249,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     artist_build.add_argument("--source-repository", type=Path, required=True)
     artist_build.add_argument("--release-id", required=True)
+    artist_build.add_argument(
+        "--artist",
+        action="append",
+        dest="artists",
+        help="include only this artist slug; repeat for more than one source",
+    )
     for action in ("validate", "activate"):
         action_parser = artist_actions.add_parser(action)
         action_parser.add_argument(
@@ -834,6 +840,7 @@ def handle_artist(args: argparse.Namespace) -> int:
             workspace,
             source_repository=args.source_repository,
             release_id=args.release_id,
+            include_artists=set(args.artists) if args.artists else None,
         )
         manifest, _ = validate_lyrics_release(output)
         print(f"Built immutable Lyrics catalog release: {output}")

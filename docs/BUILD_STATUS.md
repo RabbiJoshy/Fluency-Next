@@ -418,3 +418,23 @@ uses the fresh Tatoeba run and makes no WSD or corpus-coverage claims.
   contains 91 hashed files and 75,661,383 bytes. It is not deployed.
 - Production cutover remains blocked only by the explicit per-deck
   clean-versus-retained data decision and subsequent deployment approval.
+
+## Gate 49 — Explicit two-demonstrator evidence reset
+
+- The active workspace contains only fresh French Speech run
+  `20260822T172017Z-651bcd8e` / release
+  `fr-speech-real-tatoeba-unassigned-0003` and retained Bad Bunny Lyrics release
+  `lyrics-bad-bunny-retained-demo-20260823`.
+- The Bad Bunny release was rebuilt as a true one-source package. Its shared
+  Spanish master is filtered to the same 10,687 reachable card IDs rather than
+  silently carrying the other four parity sources.
+- Spanish Speech and French Lyrics are capability-disabled until fresh releases
+  exist. The source chooser explains that state instead of attempting a missing
+  release.
+- All other workspace evidence was moved—not deleted—to
+  `/Users/joshuathomasamar/PycharmProjects/Fluency-Evidence-Archive-20260823`.
+  The archive includes the 914-song lineage corpus, Spanish migration inputs,
+  method branches, mixed parity release, previews, pilots and deployment
+  candidates, plus an exact move plan and restoration boundary.
+- The old Fluency repository and every cloud-backed user/progress/audit store
+  were left unchanged.

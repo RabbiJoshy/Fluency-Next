@@ -116,9 +116,11 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("sourceCardButton.onclick = openLyrics", ui)
         self.assertNotIn("sessionStorage.removeItem('fluencyPendingSpeechLanguage');\n            await continueToSpeech();", ui)
         self.assertIn("if (isResumeNavigation && !activeArtist && selectedLanguage === 'spanish')", main)
-        self.assertTrue(config["languages"]["spanish"]["capabilities"]["speech"])
+        self.assertFalse(config["languages"]["spanish"]["capabilities"]["speech"])
         self.assertTrue(config["languages"]["spanish"]["capabilities"]["lyrics"])
-        self.assertTrue(config["languages"]["french"]["capabilities"]["lyrics"])
+        self.assertTrue(config["languages"]["french"]["capabilities"]["speech"])
+        self.assertFalse(config["languages"]["french"]["capabilities"]["lyrics"])
+        self.assertIn("if (speechSourceButton.disabled) return", ui)
 
     def test_merge_lemmas_remains_a_declared_learner_feature(self) -> None:
         ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")

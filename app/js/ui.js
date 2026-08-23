@@ -427,7 +427,18 @@ function setupLanguageTabs() {
             sourceCardButton?.classList.remove('is-selected');
 
             const languageCapabilities = langConfig?.capabilities || {};
+            const speechAvailable = languageCapabilities.speech !== false;
             const lyricsAvailable = languageCapabilities.lyrics !== false;
+            if (speechSourceButton) {
+                speechSourceButton.disabled = !speechAvailable;
+                speechSourceButton.title = speechAvailable
+                    ? 'Learn from a frequency-ordered Speech deck'
+                    : `Speech is awaiting a fresh run for ${langConfig?.name || newLanguage}`;
+                const detail = speechSourceButton.querySelector('small');
+                if (detail) detail.textContent = speechAvailable
+                    ? 'Frequency-ordered language'
+                    : 'Awaiting a fresh run';
+            }
             if (sourceCardButton) {
                 sourceCardButton.disabled = !lyricsAvailable;
                 sourceCardButton.title = lyricsAvailable
@@ -518,6 +529,7 @@ function setupLanguageTabs() {
             sourceCardButton.onclick = openLyrics;
             speechSourceButton.onclick = event => {
                 event.stopPropagation();
+                if (speechSourceButton.disabled) return;
                 continueToSpeech();
             };
 

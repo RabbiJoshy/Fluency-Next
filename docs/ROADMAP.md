@@ -127,11 +127,11 @@ until explicitly approved.
 
 ## Step 5 — Migrate Spanish into the clean architecture
 
-**Status: clean Spanish inputs, run-owned candidates, SpanishDict menu, typed
-conjugations and a locally active 200-card unassigned release are complete.
-The focused pre-Artist Speech audit passed for Spanish/French switching, exact
-resume, examples, release isolation and JSTA audit controls. No raw corpus scan,
-WSD, full build or deferred enrichment blocks Artist migration.** See
+**Status: the cross-language contracts and bounded Spanish migration audit are
+complete, but their generated evidence has now been deliberately quarantined.
+Spanish Speech has no active release and its source snapshots, runs, menus,
+assignments, caches and prior candidates are outside the live workspace pending
+a genuinely fresh run. The code remains ready for the replacement WSD layer.** See
 `docs/migration/0003-spanish-speech-migration-roadmap.md` for the approval-gated
 sequence. WSD remains a replaceable external assignment layer and does not
 block the inventory, menu, harvest, unassigned release or app-compatibility
@@ -147,13 +147,13 @@ and debugging machinery while retaining explicit language adapters.
 
 ## Step 6 — Migrate Artist mode and shell mechanics
 
-**Status: product-parity Artist migration is complete and locally ready for
-audit. Immutable release `lyrics-legacy-parity-20260822` selects five real
-Spanish/French sources, 21,678 source-card rows and exactly 36 app assets. Bad
-Bunny study, complete example metadata, custom one-song deck construction,
-French optional-field degradation and Speech switching are browser-verified.
-The clean raw-lyrics/assignment rebuild is deliberately a later R&D release,
-not hidden inside this migration.** See
+**Status: product-parity Artist architecture and app migration are complete.
+The live workspace now retains only the self-contained Bad Bunny demonstration
+`lyrics-bad-bunny-retained-demo-20260823`: one source, 10,687 cards, and a
+master containing exactly those 10,687 reachable rows. The former five-source
+parity release, clean 914-song lineage experiment, preview, and all method runs
+are quarantined outside the workspace. Every other Artist deck therefore starts
+from a fresh empty evidence boundary.** See
 `docs/migration/0008-artist-mode-migration-roadmap.md` for the exact retention,
 deletion, routing and future-pipeline boundaries.
 

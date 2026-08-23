@@ -24,6 +24,7 @@ class LyricsReleaseTests(unittest.TestCase):
         index = [{"id": "abc123", "word": "hola", "meanings": [], "sense_frequencies": []}]
         examples = {"abc123": {"m": []}}
         master = {"abc123": {"word": "hola", "lemma": "hola", "senses": []}}
+        master["unreachable"] = {"word": "adiós", "lemma": "adiós", "senses": []}
         songs = {"schemaVersion": 1, "source": "test", "songs": []}
         (artist / "index.json").write_text(json.dumps(index), encoding="utf-8")
         (artist / "examples.json").write_text(json.dumps(examples), encoding="utf-8")
@@ -54,6 +55,7 @@ class LyricsReleaseTests(unittest.TestCase):
             self.workspace,
             source_repository=self.source,
             release_id="lyrics-test-1",
+            include_artists={"test-artist"},
         )
         manifest, composition = validate_lyrics_release(release)
         self.assertEqual(manifest["artist_count"], 1)
@@ -62,6 +64,10 @@ class LyricsReleaseTests(unittest.TestCase):
         self.assertEqual(catalog["test-artist"]["indexPath"], "Artists/es/test-artist/index.json")
         self.assertEqual(catalog["test-artist"]["spotifyPath"], "Artists/spotify_tracks.json")
         self.assertFalse(any("monolith" in item["path"] for item in manifest["files"]))
+        packaged_master = json.loads(
+            (release / "app/Artists/es/vocabulary_master.json").read_text()
+        )
+        self.assertEqual(set(packaged_master), {"abc123"})
 
         activate_lyrics_release(self.workspace, "lyrics-test-1")
         resolved = resolve_active_lyrics_asset(
@@ -83,4 +89,13 @@ class LyricsReleaseTests(unittest.TestCase):
                 self.workspace,
                 source_repository=self.source,
                 release_id="lyrics-test-bad",
+            )
+
+    def test_rejects_unknown_selected_artist(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unknown requested artist sources"):
+            build_lyrics_catalog_release(
+                self.workspace,
+                source_repository=self.source,
+                release_id="lyrics-test-selected",
+                include_artists={"not-in-catalog"},
             )
