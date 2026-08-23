@@ -650,6 +650,17 @@ not execute or select a WSD method. Actual model execution is now a clean,
 separate boundary and remains deferred while the current best method is being
 settled.
 
+Deferred-WSD downstream checkpoint (2026-08-23): WSD is no longer an
+implementation-order blocker. A provider-neutral corpus catalog contract maps
+every planned song run to one exact result bundle and method profile; the bulk
+importer rejects partial coverage, changed bytes, menu/request drift, mixed
+methods or an unknown run before publishing results. The following corpus
+consolidator is also implemented with exact safe resume and a separately hashed
+example-selection policy. Consequently a future algorithm change replaces only
+the result catalog and its dependent consolidation/release outputs. Source
+ingest, routing, dictionary menus and prepared requests remain reusable. No
+full-corpus WSD result catalog exists yet, so neither command was executed.
+
 #### 9. Add further languages through adapters
 
 Implement French first, then Portuguese and Dutch, without forking the pipeline.
@@ -700,9 +711,9 @@ still an inactive local artifact: nothing was uploaded, activated or deprecated.
 ### Immediate next action
 
 Keep actual WSD execution behind its explicit method boundary until the current
-method is settled. In parallel, finish the remaining corpus consolidation,
-release-composition and app audit orchestration without changing `active.json`
-or pretending unassigned requests are assigned. A deliberate flag submission,
+method is settled. Finish multi-song/artist assembly and release-comparison
+orchestration without changing `active.json` or pretending unassigned requests
+are assigned. A deliberate flag submission,
 non-empty Review queue and completion/progress write remain production-backend
 checks, not reasons to hold the clean data architecture in a one-song state.
 

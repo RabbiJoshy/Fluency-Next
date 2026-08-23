@@ -29,6 +29,37 @@ class LyricsConsolidationError(ValueError):
     """Raised when exact upstream lineage cannot be consolidated safely."""
 
 
+def consolidation_policy(
+    *, example_cap_per_sense: int, translation_language: str
+) -> dict[str, Any]:
+    return {
+        "policy_version": POLICY_VERSION,
+        "card_identity": "surface_card_id",
+        "sense_identity": "exact_menu_analysis_and_sense",
+        "example_order": "source_position_then_token_span_then_analysis_slot",
+        "duplicate_policy": "retain_all_lineage_select_first_occurrence_per_line",
+        "example_cap_per_sense": example_cap_per_sense,
+        "translation_language": translation_language,
+        "translation_selection": "exact_target_language_or_null; duplicate_target_language_fails",
+        "missing_translation": "nullable",
+        "non_assigned_policy": "emit_disposition_without_study_card",
+    }
+
+
+def consolidation_implementation_content_id(repository_root: Path) -> str:
+    return canonical_content_id({
+        "implementation": file_content_id(Path(__file__)),
+        "schemas": {
+            name: file_content_id(repository_root / "schemas" / name)
+            for name in (
+                "lyrics-consolidated-card.schema.json",
+                "lyrics-consolidated-example.schema.json",
+                "lyrics-consolidation-disposition.schema.json",
+            )
+        },
+    })
+
+
 def _object(path: Path) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -172,18 +203,10 @@ def consolidate_lyrics_run(
     if set(requests) != set(results) or len(units) != len(requests):
         raise LyricsConsolidationError("consolidation requires one complete WSD result per analysis unit")
 
-    policy = {
-        "policy_version": POLICY_VERSION,
-        "card_identity": "surface_card_id",
-        "sense_identity": "exact_menu_analysis_and_sense",
-        "example_order": "source_position_then_token_span_then_analysis_slot",
-        "duplicate_policy": "retain_all_lineage_select_first_occurrence_per_line",
-        "example_cap_per_sense": example_cap_per_sense,
-        "translation_language": translation_language,
-        "translation_selection": "exact_target_language_or_null; duplicate_target_language_fails",
-        "missing_translation": "nullable",
-        "non_assigned_policy": "emit_disposition_without_study_card",
-    }
+    policy = consolidation_policy(
+        example_cap_per_sense=example_cap_per_sense,
+        translation_language=translation_language,
+    )
     card_groups: dict[str, dict[str, Any]] = {}
     card_first_positions: dict[str, tuple[int, int, int]] = {}
     example_groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
@@ -430,17 +453,7 @@ def consolidate_lyrics_run(
             "status": "complete", "started_at": started_at.isoformat().replace("+00:00", "Z"),
             "completed_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "method_id": POLICY_VERSION,
-            "implementation_content_id": canonical_content_id({
-                "implementation": file_content_id(Path(__file__)),
-                "schemas": {
-                    name: file_content_id(repository_root / "schemas" / name)
-                    for name in (
-                        "lyrics-consolidated-card.schema.json",
-                        "lyrics-consolidated-example.schema.json",
-                        "lyrics-consolidation-disposition.schema.json",
-                    )
-                },
-            }),
+            "implementation_content_id": consolidation_implementation_content_id(repository_root),
             "inputs": inputs, "policy": policy, "outputs": outputs,
         }
         (temporary / "manifest.json").write_bytes(json_bytes(manifest))

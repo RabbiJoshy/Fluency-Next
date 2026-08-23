@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/lyrics-wsd-corpus-bundle-catalog.schema.json",
+  "title": "Complete per-song WSD bundle catalog for one Lyrics corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["catalog_version", "plan_id", "plan_content_id", "language", "coverage", "method_profile_id", "bundles"],
+  "properties": {
+    "catalog_version": {"const": "lyrics-wsd-corpus-bundle-catalog/v1"},
+    "plan_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "plan_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "coverage": {"const": "complete_song_runs"},
+    "method_profile_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "bundles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "content_id"],
+        "properties": {
+          "path": {"type": "string", "pattern": "^raw/wsd/"},
+          "content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      }
+    }
+  }
+}

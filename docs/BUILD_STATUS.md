@@ -329,6 +329,14 @@
   static HTTP server returned the shell, configs, manifests and representative
   Spanish, French and Bad Bunny assets without workspace routing. Nothing was
   deployed or activated. Shell cache moved to `flashcards-v285`.
+- Gate 43 (WSD-last downstream contracts): added an algorithm-neutral complete
+  corpus result catalog and resumable bulk import. It requires one exact bundle
+  for every planned song, one method profile, matching plan/menu/request hashes
+  and complete per-song outcomes. Added the following resumable corpus
+  consolidation command with an independently hashed example-selection policy
+  and exact upstream/output verification. Neither command needs to know how the
+  assignments were produced. They are implemented and tested but deliberately
+  unexecuted until a full WSD catalog exists.
 
 ## Not started
 

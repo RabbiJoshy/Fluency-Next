@@ -32,6 +32,8 @@ from fluency.lyrics.corpus_process import (
 )
 from fluency.lyrics.corpus_lexical import build_lyrics_corpus_lexical_menus
 from fluency.lyrics.corpus_wsd import prepare_lyrics_corpus_wsd
+from fluency.lyrics.corpus_results import import_lyrics_corpus_results
+from fluency.lyrics.corpus_consolidate import consolidate_lyrics_corpus
 from fluency.lyrics.consolidate import consolidate_lyrics_run
 from fluency.lyrics.assemble import assemble_lyrics_app_stage
 from fluency.lyrics.preview import build_clean_lyrics_preview_release
@@ -293,6 +295,23 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_wsd_prepare_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
     lyrics_wsd_prepare_corpus.add_argument("--plan", type=Path, required=True)
     lyrics_wsd_prepare_corpus.add_argument("--lexical-report", type=Path, required=True)
+    lyrics_wsd_import_corpus = lyrics_actions.add_parser(
+        "wsd-import-corpus",
+        help="import an exact complete catalog of per-song WSD bundles from any compliant method",
+    )
+    lyrics_wsd_import_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_wsd_import_corpus.add_argument("--plan", type=Path, required=True)
+    lyrics_wsd_import_corpus.add_argument("--preparation-report", type=Path, required=True)
+    lyrics_wsd_import_corpus.add_argument("--catalog", type=Path, required=True)
+    lyrics_consolidate_corpus = lyrics_actions.add_parser(
+        "consolidate-corpus",
+        help="consolidate every song after one complete exact corpus WSD import",
+    )
+    lyrics_consolidate_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_consolidate_corpus.add_argument("--plan", type=Path, required=True)
+    lyrics_consolidate_corpus.add_argument("--wsd-import-report", type=Path, required=True)
+    lyrics_consolidate_corpus.add_argument("--example-cap-per-sense", type=int, default=12)
+    lyrics_consolidate_corpus.add_argument("--translation-language", default="en")
     lyrics_plan_processing = lyrics_actions.add_parser(
         "plan-processing-profile",
         help="pin shared and artist-specific inputs for one exact corpus processing run",
@@ -923,6 +942,58 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             f"resumed/skipped {result['skipped_this_invocation']}."
         )
         print("No WSD method ran; no assignment, deck, release, or activation was created.")
+        return 0
+    if args.lyrics_command == "wsd-import-corpus":
+        def show_wsd_import_progress(event: dict) -> None:
+            if event["completed"] == 1 or event["completed"] % 25 == 0 or event["completed"] == event["planned"]:
+                print(
+                    f"Lyrics WSD import {event['completed']}/{event['planned']}: "
+                    f"{event['artist_slug']} song {event['source_record_id']} ({event['action']})",
+                    flush=True,
+                )
+
+        result = import_lyrics_corpus_results(
+            project_root(), workspace,
+            plan_path=args.plan,
+            preparation_report_path=args.preparation_report,
+            catalog_path=args.catalog,
+            progress=show_wsd_import_progress,
+        )
+        print(f"Completed exact corpus WSD result import: {result['report_path']}")
+        print(
+            f"Verified {result['result_count']} results across {result['song_run_count']} songs "
+            f"from method {result['method_profile_id']}: "
+            f"created {result['created_this_invocation']}, "
+            f"resumed/skipped {result['skipped_this_invocation']}."
+        )
+        print("No consolidation, app assembly, release, or activation was created.")
+        return 0
+    if args.lyrics_command == "consolidate-corpus":
+        def show_consolidation_progress(event: dict) -> None:
+            if event["completed"] == 1 or event["completed"] % 25 == 0 or event["completed"] == event["planned"]:
+                print(
+                    f"Lyrics consolidation {event['completed']}/{event['planned']}: "
+                    f"{event['artist_slug']} song {event['source_record_id']} ({event['action']})",
+                    flush=True,
+                )
+
+        result = consolidate_lyrics_corpus(
+            project_root(), workspace,
+            plan_path=args.plan,
+            wsd_import_report_path=args.wsd_import_report,
+            example_cap_per_sense=args.example_cap_per_sense,
+            translation_language=args.translation_language,
+            progress=show_consolidation_progress,
+        )
+        print(f"Completed exact corpus consolidation: {result['report_path']}")
+        print(
+            f"Verified {result['song_run_count']} song consolidations with "
+            f"{result['assigned_example_count']} assigned occurrence examples and "
+            f"{result['selected_example_count']} selected examples: "
+            f"created {result['created_this_invocation']}, "
+            f"resumed/skipped {result['skipped_this_invocation']}."
+        )
+        print("No app assembly, release, deployment, or activation was created.")
         return 0
     if args.lyrics_command == "plan-processing-profile":
         output = build_lyrics_corpus_processing_profile(
