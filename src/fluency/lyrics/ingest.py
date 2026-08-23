@@ -12,7 +12,7 @@ import shutil
 import tempfile
 from typing import Any
 
-from fluency.core.artifacts import store_artifact_bytes
+from fluency.core.artifacts import ArtifactMetadata, store_artifact_bytes
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
 from fluency.lyrics.lineage import build_lineage_event
@@ -205,6 +205,10 @@ def ingest_legacy_genius_song(
     translations_path: Path | None = None,
     translation_language: str = "en",
     started_at: datetime | None = None,
+    _source_artifact: ArtifactMetadata | None = None,
+    _source_records: list[Any] | None = None,
+    _translation_artifact: ArtifactMetadata | None = None,
+    _translation_records: dict[str, Any] | None = None,
 ) -> Path:
     """Ingest one legacy source song without carrying forward downstream decisions."""
 
@@ -214,16 +218,20 @@ def ingest_legacy_genius_song(
         raise LyricsIngestError("snapshot, language, and artist identities must be explicit")
     started_at = datetime.now(UTC) if started_at is None else started_at.astimezone(UTC)
     source_batch = source_batch.expanduser().resolve()
-    source_bytes = source_batch.read_bytes()
-    raw_artifact = store_artifact_bytes(
-        workspace,
-        source_bytes,
-        filename="legacy-genius-batch.json",
-        media_type="application/json",
-        schema="legacy-genius-batch/v1",
-        created_by_stage=STAGE_VERSION,
-    )
-    batch = json.loads(source_bytes)
+    if _source_artifact is None:
+        source_bytes = source_batch.read_bytes()
+        raw_artifact = store_artifact_bytes(
+            workspace,
+            source_bytes,
+            filename="legacy-genius-batch.json",
+            media_type="application/json",
+            schema="legacy-genius-batch/v1",
+            created_by_stage=STAGE_VERSION,
+        )
+        batch = json.loads(source_bytes)
+    else:
+        raw_artifact = _source_artifact
+        batch = _source_records
     if not isinstance(batch, list):
         raise LyricsIngestError("legacy Genius batch must contain a list")
     legacy = _find_song(batch, source_record_id)
@@ -258,7 +266,19 @@ def ingest_legacy_genius_song(
 
     translation_artifact = None
     alignments: list[dict[str, Any]] = []
-    if translations_path is not None:
+    if _translation_artifact is not None:
+        translation_artifact = _translation_artifact
+        translations = _translation_records
+        if not isinstance(translations, dict):
+            raise LyricsIngestError("prepared legacy translations must contain an object")
+        alignments = _legacy_translations(
+            translations=translations,
+            source_record_id=source_record_id,
+            lines=lines,
+            target_language=translation_language,
+            snapshot_content_id=translation_artifact.artifact_id,
+        )
+    elif translations_path is not None:
         translation_bytes = translations_path.expanduser().resolve().read_bytes()
         translation_artifact = store_artifact_bytes(
             workspace,

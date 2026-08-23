@@ -24,7 +24,7 @@ from fluency.harvest.runner import harvest_run_stage
 from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
 from fluency.inventory.runner import build_inventory_stage
 from fluency.lyrics.ingest import ingest_legacy_genius_song
-from fluency.lyrics.corpus import build_lyrics_corpus_plan
+from fluency.lyrics.corpus import build_lyrics_corpus_plan, ingest_lyrics_corpus_plan
 from fluency.lyrics.consolidate import consolidate_lyrics_run
 from fluency.lyrics.assemble import assemble_lyrics_app_stage
 from fluency.lyrics.preview import build_clean_lyrics_preview_release
@@ -242,6 +242,12 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_plan_corpus.add_argument("--config", type=Path, required=True)
     lyrics_plan_corpus.add_argument("--source-repository", type=Path, required=True)
     lyrics_plan_corpus.add_argument("--plan-id", required=True)
+    lyrics_ingest_corpus = lyrics_actions.add_parser(
+        "ingest-corpus",
+        help="materialize every pinned song as an immutable source-ingest run with safe resume",
+    )
+    lyrics_ingest_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_ingest_corpus.add_argument("--plan", type=Path, required=True)
     lyrics_ingest = lyrics_actions.add_parser(
         "ingest-legacy-genius",
         help="pin and normalize one song from a legacy Genius batch",
@@ -743,6 +749,24 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             f"{totals['cross_source_collisions']} artist-scoped source collisions."
         )
         print("No song run, routing, WSD, deck, release, or activation was executed.")
+        return 0
+    if args.lyrics_command == "ingest-corpus":
+        def show_progress(event: dict) -> None:
+            if event["completed"] == 1 or event["completed"] % 25 == 0 or event["completed"] == event["planned"]:
+                print(
+                    f"Source ingest {event['completed']}/{event['planned']}: "
+                    f"{event['artist_slug']} song {event['source_record_id']} ({event['action']})",
+                    flush=True,
+                )
+
+        result = ingest_lyrics_corpus_plan(workspace, plan_path=args.plan, progress=show_progress)
+        print(f"Completed exact Lyrics corpus source ingest: {result['report_path']}")
+        print(
+            f"Verified {result['song_run_count']} immutable song runs: "
+            f"created {result['created_this_invocation']}, "
+            f"resumed/skipped {result['skipped_this_invocation']}."
+        )
+        print("No token routing, WSD, deck assembly, release build, or activation was run.")
         return 0
     if args.lyrics_command == "ingest-legacy-genius":
         output = ingest_legacy_genius_song(

@@ -283,9 +283,17 @@
   records J Balvin and Rels B as explicit exclusions, and preserves seven
   cross-source song collisions. Optional translation coverage is explicit:
   Bad Bunny 190/537, Rosalía 92/241, Young Miko 0/105 and test playlist 22/31.
-  No song ingest, routing, WSD, deck, release or activation ran. The next gate
-  is a resumable, pinned-object corpus-ingest executor before any long local
-  command is issued.
+  No song ingest, routing, WSD, deck, release or activation ran.
+- Gate 38 (resumable Lyrics corpus ingest): added a bulk executor that consumes
+  only the verified objects named by a corpus plan and parses shared batch and
+  translation snapshots once. It creates the normal immutable source-ingest
+  run for every artist-scoped song, reports progress, and safely resumes only
+  after verifying exact artist/song/source/translation identities, stage
+  references, completion state and all output hashes. A deterministic corpus
+  completion record is emitted only when the whole plan verifies. Fixture
+  coverage proves optional translation materialization, an all-skip rerun and
+  conflict detection; the full suite is 189/189. The real 914-song command has
+  not run, and no routing, WSD, deck, release or activation was performed.
 
 ## Not started
 

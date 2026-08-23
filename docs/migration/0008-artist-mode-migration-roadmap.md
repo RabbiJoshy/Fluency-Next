@@ -591,12 +591,20 @@ supports both multi-song Genius batch directories and one-file-per-song
 directories behind the same ledger contract, creates deterministic future run
 IDs, and executes no ingest, routing, WSD, deck or release stage.
 
-The next engineering action is a resumable corpus-ingest executor over this
-manifest. It must consume the pinned objects rather than reread mutable legacy
-paths, skip only exact already-complete song runs, report partial completion,
-and avoid reparsing shared batch/translation snapshots for every song. That
-executor should be in place before Joshua is given the first long local
-command.
+Resumable-ingest checkpoint (2026-08-23): the bulk executor is now in place.
+It consumes only the plan's verified content-addressed source and translation
+objects, parses each shared snapshot once, and emits the ordinary immutable
+source-ingest contract once per artist-scoped song. A rerun skips a song only
+after checking its artist, source record, source and translation snapshots,
+stage reference, completion status and every output hash. Missing, partial,
+corrupt or conflicting runs fail visibly instead of being mistaken for
+completed work. Progress is reported every 25 songs, and the deterministic
+corpus completion record is written only after all 914 song runs verify.
+
+The executor passed the complete 189-test migration suite on fixtures,
+including optional translation materialization, exact resume and deliberate
+corruption detection. The real 914-song ingest remains the next long local
+command; it will not route tokens, run WSD, build a deck or activate a release.
 
 #### 9. Add further languages through adapters
 
@@ -626,11 +634,13 @@ Before making Fluency-Next the live repository:
 
 ### Immediate next action
 
-Extend the same release composer and comparison report from one song to the
-full clean Spanish Artist corpus rather than inventing a second packaging path.
-Do not change `active.json`. A deliberate flag submission, non-empty Review
-queue and completion/progress write remain production-backend checks, not
-reasons to hold the clean data architecture in a one-song state.
+Run the pinned 914-song source ingest locally, then inspect its exact completion
+record and sampled song outputs. After that, add a corpus runner over the
+existing processing, lexical-menu, WSD preparation/import, consolidation and
+assembly functions rather than inventing parallel implementations. Do not
+change `active.json`. A deliberate flag submission, non-empty Review queue and
+completion/progress write remain production-backend checks, not reasons to hold
+the clean data architecture in a one-song state.
 
 The key separation is now enforceable: shell and study behavior can evolve
 without rebuilding corpus data, while a new Artist data run can be activated
