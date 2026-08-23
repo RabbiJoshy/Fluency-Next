@@ -16,7 +16,7 @@
     "occurrence_id": {"type": "string", "minLength": 1},
     "surface_card_id": {"type": "string", "minLength": 1},
     "surface_form": {"type": "string", "minLength": 1},
-    "status": {"enum": ["assigned", "abstained", "rejected", "no_menu", "ineligible", "review"]},
+    "status": {"enum": ["assigned", "abstained", "rejected", "no_menu", "ineligible", "review", "not_evaluated_example_cap"]},
     "menu_content_id": {"type": ["string", "null"]},
     "menu_analysis_id": {"type": ["string", "null"]},
     "selected_sense_id": {"type": ["string", "null"]},

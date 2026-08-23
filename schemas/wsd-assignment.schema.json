@@ -10,7 +10,7 @@
     "card_id": {"type": "string", "pattern": "^card_[a-z]{2,3}_[0-9a-f]{32}$"},
     "surface_form": {"type": "string", "minLength": 1},
     "sentence_id": {"type": "string", "pattern": "^sentence_[0-9a-f]{32}$"},
-    "status": {"enum": ["assigned", "abstained", "rejected", "no_menu"]},
+    "status": {"enum": ["assigned", "abstained", "rejected", "no_menu", "not_evaluated_example_cap"]},
     "sense_menu_content_id": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
     "menu_analysis_id": {"type": ["string", "null"], "pattern": "^analysis_[0-9a-f]{32}$"},
     "selected_sense_id": {"type": ["string", "null"]},

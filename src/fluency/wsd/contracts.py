@@ -10,7 +10,14 @@ from fluency.core.hashing import validate_content_id
 
 
 WSD_ASSIGNMENT_VERSION = "wsd-assignment/v1"
-WSD_STATUSES = frozenset({"assigned", "abstained", "rejected", "no_menu"})
+# `not_evaluated_example_cap` means no model looked at this occurrence, because
+# its surface card had already reached the per-surface WSD execution cap. It is
+# categorically different from `abstained`, which means a model looked and could
+# not decide -- they say opposite things about the sense inventory, so an auditor
+# must never see them merged.
+WSD_STATUSES = frozenset(
+    {"assigned", "abstained", "rejected", "no_menu", "not_evaluated_example_cap"}
+)
 # v6 reorganises the stages into three roles. `constrain` and `multiword` run
 # before scoring, `commit` after it. The v5 names are retained so existing
 # French and lyrics records keep validating -- this is additive.
@@ -37,7 +44,9 @@ DECISION_ORDER = (
     "commit",
 )
 
-AssignmentStatus = Literal["assigned", "abstained", "rejected", "no_menu"]
+AssignmentStatus = Literal[
+    "assigned", "abstained", "rejected", "no_menu", "not_evaluated_example_cap"
+]
 
 # How much of the selected sense the card may publish. The selection is the same
 # either way; a lower level is a narrower claim, not a different answer.

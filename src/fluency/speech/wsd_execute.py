@@ -31,6 +31,13 @@ from fluency.wsd.gloss_scoring import LeafScore
 from fluency.wsd.languages.spanish import SpanishV5CandidatePolicy, SpanishWSDAdapter
 from fluency.wsd.menus import MenuAnalysis, SenseLeaf
 from fluency.wsd.multiword import index_multiword_senses
+from fluency.wsd.sampling import (
+    DEFAULT_EXECUTION_CAP,
+    OccurrenceSamplingPolicy,
+    sampling_report,
+    select_occurrences,
+    sole_leaf,
+)
 from fluency.wsd.runner import (
     ClosedMenuWSDRunner,
     WSDComponents,
@@ -99,14 +106,23 @@ class ExactTextGlossScorer:
         for analysis in analyses:
             for leaf in analysis.senses:
                 gloss = leaf.gloss_text
-                vector = self.vectors.get(gloss)
-                if query is None or vector is None:
-                    raise KeyError(f"missing exact-text embedding: {gloss if vector is None else sentence!r}")
+                if query is None:
+                    raise KeyError(f"missing exact-text embedding for sentence: {sentence!r}")
+                if not gloss.strip():
+                    # An empty-gloss leaf cannot be rendered on a card, so it
+                    # loses by construction rather than being silently dropped
+                    # from the candidate pool.
+                    value = -1.0
+                else:
+                    vector = self.vectors.get(gloss)
+                    if vector is None:
+                        raise KeyError(f"missing exact-text embedding for gloss: {gloss!r}")
+                    value = float(np.dot(query, vector))
                 scores.append(
                     LeafScore(
                         menu_analysis_id=analysis.menu_analysis_id,
                         sense_id=leaf.sense_id,
-                        score=float(np.dot(query, vector)),
+                        score=value,
                     )
                 )
         return scores
@@ -154,6 +170,11 @@ def main() -> None:
     parser.add_argument("--multiword-inventory", type=Path)
     parser.add_argument("--profile-id", default="es-v6-1")
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
+    parser.add_argument(
+        "--execution-cap", type=int, default=DEFAULT_EXECUTION_CAP,
+        help="max occurrences per surface card that reach WSD (default: the "
+             "mature historical 10). Separate from the study-example cap.",
+    )
     args = parser.parse_args()
 
     stages = args.run_dir / "stages"
@@ -191,19 +212,44 @@ def main() -> None:
     )
 
     # --- gather every exact text the run needs, then embed the misses ---
+    policy = OccurrenceSamplingPolicy(cap_per_surface=args.execution_cap)
     needed: set[str] = set()
-    work: list[tuple[dict[str, Any], dict[str, Any], str, str]] = []
+    work: list[tuple[dict[str, Any], dict[str, Any], str, str, str]] = []
+    capped: list[tuple[dict[str, Any], dict[str, Any], str]] = []
+    deterministic: list[tuple[dict[str, Any], dict[str, Any], str]] = []
+    selections = []
     for card in candidates["cards"]:
         card_id = card["card_id"]
         menu_card = menu_by_card.get(card_id)
-        for item in card["candidates"]:
-            row = sentences.get(item["sentence_id"])
+        selection = select_occurrences(card["candidates"], policy, card_id=card_id)
+        selections.append(selection)
+        for sentence_id in selection.overflow:
+            capped.append((card, menu_card, sentence_id))
+        analyses = build_analyses(menu_card) if menu_card and menu_card["analyses"] else ()
+        only = sole_leaf(analyses) if analyses else None
+        for sentence_id in selection.selected:
+            row = sentences.get(sentence_id)
             if row is None:
+                continue
+            if only is not None:
+                # A one-sense menu is not disambiguation. Assign it without any
+                # contextual model and mark it as a default, so the auditor can
+                # tell it apart from a genuine multi-option decision.
+                deterministic.append((card, menu_card, sentence_id))
                 continue
             text = row["target"]["text"]
             translation = (row.get("translation") or {}).get("text") or ""
-            work.append((card, menu_card, item["sentence_id"], text, translation))
+            work.append((card, menu_card, sentence_id, text, translation))
             needed.add(text)
+    report = sampling_report(selections, policy)
+    print(
+        f"sampling: cap {policy.cap_per_surface}/surface -> "
+        f"{report['occurrences_selected']:,} selected, "
+        f"{report['occurrences_not_evaluated']:,} not evaluated, "
+        f"{report['surface_cards_reaching_cap']:,} cards reached the cap"
+    )
+    print(f"  deterministic single-option (no model): {len(deterministic):,}")
+    print(f"  genuine multi-option WSD:               {len(work):,}")
     if multiword_index is not None:
         from fluency.wsd.multiword import multiword_analyses
         for card, menu_card, _sentence_id, text, _translation in work:
@@ -212,21 +258,51 @@ def main() -> None:
                 sentence=text, index=multiword_index,
             ):
                 needed.add(analysis.senses[0].gloss_text)
+    scored_cards = {card["card_id"] for card, _menu, _sid, _t, _tr in work}
     for card in menu["cards"]:
+        if card["card_id"] not in scored_cards:
+            continue
         for analysis in card["analyses"]:
             for leaf in analysis["senses"]:
                 translation = leaf.get("translation") or ""
                 definition = leaf.get("definition") or ""
                 needed.add(" — ".join(value for value in (translation, definition) if value))
 
-    print(f"candidate assignments: {len(work):,}   exact texts to embed: {len(needed):,}")
+    # SpanishDict publishes leaves with no translation, so gloss_text can be the
+    # empty string. Embedding "" fails and retries forever; an empty gloss is a
+    # candidate that cannot be scored, not a transport error.
+    empty = sum(1 for text in needed if not text.strip())
+    needed = {text for text in needed if text.strip()}
+    print(f"candidate assignments: {len(work):,}   exact texts to embed: {len(needed):,}"
+          f"   (skipped {empty} empty gloss texts)")
     api_key = ""
     for line in args.env_file.read_text(encoding="utf-8").splitlines():
         if line.startswith("GEMINI_API_KEY"):
             api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
     if not api_key:
         raise SystemExit("GEMINI_API_KEY is required for the gloss scorer")
-    vectors = embed_texts(sorted(needed), api_key=api_key)
+    cache_path = args.out.parent / "embedding-cache.npz"
+    vectors: dict[str, Any] = {}
+    if cache_path.exists():
+        import numpy as np
+        blob = np.load(cache_path, allow_pickle=True)
+        keys = list(blob["keys"])
+        matrix = blob["vectors"]
+        vectors = {str(k): matrix[i] for i, k in enumerate(keys)}
+        print(f"exact-text cache: reused {len(vectors):,} vectors")
+    missing = sorted(text for text in needed if text not in vectors)
+    if missing:
+        print(f"embedding {len(missing):,} cache misses into a run-scoped delta...")
+        vectors.update(embed_texts(missing, api_key=api_key))
+        import numpy as np
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        ordered = sorted(vectors)
+        np.savez_compressed(
+            cache_path,
+            keys=np.array(ordered, dtype=object),
+            vectors=np.stack([vectors[k] for k in ordered]),
+        )
+    print(f"reused {len(needed) - len(missing):,}, newly embedded {len(missing):,}")
 
     components = WSDComponents(
         language=SpanishWSDAdapter(),
@@ -254,8 +330,61 @@ def main() -> None:
         counts[assignment.status] = counts.get(assignment.status, 0) + 1
         assignments.append(assignment.to_dict())
 
+    # Occurrences above the cap: no model looked at them. They are reported,
+    # never dropped, and never described as sense-assigned.
+    for card, menu_card, sentence_id in capped:
+        has_menu = bool(menu_card and menu_card["analyses"])
+        assignments.append(
+            WSDAssignment(
+                card_id=card["card_id"],
+                surface_form=card["display_form"],
+                sentence_id=sentence_id,
+                status="not_evaluated_example_cap" if has_menu else "no_menu",
+                sense_menu_content_id=menu["snapshot_content_id"] if has_menu else None,
+                menu_analysis_id=None,
+                selected_sense_id=None,
+                selected_tuple=None,
+                decision_path=(),
+                evidence={"reason": "per_surface_wsd_execution_cap",
+                          "cap_per_surface": policy.cap_per_surface} if has_menu
+                         else {"reason": "no_candidate_analysis"},
+                confidence=None,
+                model_revisions={"gloss": EMBED_MODEL} if has_menu else {},
+            ).to_dict()
+        )
+        counts["not_evaluated_example_cap" if has_menu else "no_menu"] = counts.get(
+            "not_evaluated_example_cap" if has_menu else "no_menu", 0) + 1
+
+    # One-sense menus: assigned without any contextual model, and marked so.
+    from fluency.wsd.contracts import SelectedTuple
+    for card, menu_card, sentence_id in deterministic:
+        analyses = build_analyses(menu_card)
+        analysis, leaf = sole_leaf(analyses)
+        assignments.append(
+            WSDAssignment(
+                card_id=card["card_id"],
+                surface_form=card["display_form"],
+                sentence_id=sentence_id,
+                status="assigned",
+                sense_menu_content_id=menu["snapshot_content_id"],
+                menu_analysis_id=analysis.menu_analysis_id,
+                selected_sense_id=leaf.sense_id,
+                selected_tuple=SelectedTuple(
+                    headword=analysis.headword, part_of_speech=analysis.part_of_speech
+                ),
+                decision_path=("constrain",),
+                evidence={"reason": "sole_menu_sense", "candidate_leaf_count": 1},
+                confidence=None,
+                model_revisions={"gloss": EMBED_MODEL},
+                emitted_level="leaf",
+                decision_kind="deterministic_default",
+            ).to_dict()
+        )
+        counts["assigned"] = counts.get("assigned", 0) + 1
+
     bundle = {
         "bundle_version": BUNDLE_VERSION,
+        "sampling": report,
         "run_id": run_id,
         "language": "es",
         "mode": "speech",

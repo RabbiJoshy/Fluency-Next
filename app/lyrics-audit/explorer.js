@@ -682,7 +682,8 @@ async function loadSong(songId) {
   picker.disabled = true;
   $("songTitle").textContent = `Loading ${entry.title}…`;
   try {
-    const response = await fetch(`data/${entry.bundle}?v=17`, { cache: "no-store" });
+    const bundleUrl = entry.bundle.startsWith("/") ? entry.bundle : `data/${entry.bundle}`;
+    const response = await fetch(`${bundleUrl}?v=18`, { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const bundle = await response.json();
     if (requestId !== state.requestId) return;
@@ -715,7 +716,7 @@ async function start() {
     return;
   }
   try {
-    const response = await fetch("data/catalog.json?v=17", { cache: "no-store" });
+    const response = await fetch("data/catalog.json?v=18", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     state.catalog = await response.json();
     const picker = $("songSelect");

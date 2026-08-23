@@ -32,6 +32,7 @@ from fluency.lyrics.corpus_process import (
 )
 from fluency.lyrics.corpus_lexical import build_lyrics_corpus_lexical_menus
 from fluency.lyrics.corpus_wsd import prepare_lyrics_corpus_wsd
+from fluency.lyrics.audit_server import LyricsAuditResolver, LyricsAuditServerError
 from fluency.lyrics.corpus_results import import_lyrics_corpus_results
 from fluency.lyrics.corpus_consolidate import consolidate_lyrics_corpus
 from fluency.lyrics.corpus_assemble import assemble_lyrics_corpus
@@ -1446,10 +1447,37 @@ class FluencyRequestHandler(SimpleHTTPRequestHandler):
         *args: object,
         directory: str,
         releases_directory: Path,
+        audit_resolver: LyricsAuditResolver,
         **kwargs: object,
     ) -> None:
         self.releases_directory = releases_directory.resolve()
+        self.audit_resolver = audit_resolver
         super().__init__(*args, directory=directory, **kwargs)
+
+    def _send_json(self, payload: bytes, status: int = 200) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def do_GET(self) -> None:
+        request_path = unquote(urlsplit(self.path).path)
+        try:
+            if request_path == "/lyrics-audit/data/catalog.json":
+                self._send_json(self.audit_resolver.catalog_bytes())
+                return
+            if self.audit_resolver.matches_song_path(request_path):
+                self._send_json(self.audit_resolver.song_bytes(request_path))
+                return
+        except (LyricsAuditServerError, OSError, ValueError, json.JSONDecodeError) as error:
+            self._send_json(
+                json.dumps({"error": str(error)}, separators=(",", ":")).encode(),
+                status=404,
+            )
+            return
+        super().do_GET()
 
     def translate_path(self, path: str) -> str:
         request_path = unquote(urlsplit(path).path)
@@ -1487,11 +1515,15 @@ def serve_app(host: str, port: int, raw_workspace: str | None) -> None:
         raise SystemExit(f"App directory does not exist: {app_directory}")
     workspace = Workspace.load(_workspace_path(raw_workspace))
     releases_directory = workspace.root / "releases"
+    audit_resolver = LyricsAuditResolver(
+        project_root=project_root(), workspace_root=workspace.root,
+    )
 
     handler = partial(
         FluencyRequestHandler,
         directory=str(app_directory),
         releases_directory=releases_directory,
+        audit_resolver=audit_resolver,
     )
     server = ThreadingHTTPServer((host, port), handler)
     print(f"Serving Fluency Next from {app_directory}")
