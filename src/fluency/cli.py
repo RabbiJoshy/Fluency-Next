@@ -34,6 +34,7 @@ from fluency.lyrics.corpus_lexical import build_lyrics_corpus_lexical_menus
 from fluency.lyrics.corpus_wsd import prepare_lyrics_corpus_wsd
 from fluency.lyrics.corpus_results import import_lyrics_corpus_results
 from fluency.lyrics.corpus_consolidate import consolidate_lyrics_corpus
+from fluency.lyrics.corpus_assemble import assemble_lyrics_corpus
 from fluency.lyrics.consolidate import consolidate_lyrics_run
 from fluency.lyrics.assemble import assemble_lyrics_app_stage
 from fluency.lyrics.preview import build_clean_lyrics_preview_release
@@ -312,6 +313,13 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_consolidate_corpus.add_argument("--wsd-import-report", type=Path, required=True)
     lyrics_consolidate_corpus.add_argument("--example-cap-per-sense", type=int, default=12)
     lyrics_consolidate_corpus.add_argument("--translation-language", default="en")
+    lyrics_assemble_corpus = lyrics_actions.add_parser(
+        "assemble-corpus",
+        help="merge one exact WSD-method branch into clean multi-artist app data",
+    )
+    lyrics_assemble_corpus.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_assemble_corpus.add_argument("--plan", type=Path, required=True)
+    lyrics_assemble_corpus.add_argument("--consolidation-report", type=Path, required=True)
     lyrics_plan_processing = lyrics_actions.add_parser(
         "plan-processing-profile",
         help="pin shared and artist-specific inputs for one exact corpus processing run",
@@ -994,6 +1002,29 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             f"resumed/skipped {result['skipped_this_invocation']}."
         )
         print("No app assembly, release, deployment, or activation was created.")
+        return 0
+    if args.lyrics_command == "assemble-corpus":
+        def show_assembly_progress(event: dict) -> None:
+            if event["completed"] == 1 or event["completed"] % 25 == 0 or event["completed"] == event["planned"]:
+                print(
+                    f"Lyrics app assembly {event['completed']}/{event['planned']}: "
+                    f"{event['artist_slug']} song {event['source_record_id']} ({event['action']})",
+                    flush=True,
+                )
+
+        result = assemble_lyrics_corpus(
+            project_root(), workspace, plan_path=args.plan,
+            consolidation_report_path=args.consolidation_report,
+            progress=show_assembly_progress,
+        )
+        print(f"Completed clean multi-artist app assembly: {result['assembly_path']}")
+        print(
+            f"Built {result['artist_count']} artists, {result['language_card_count']} shared "
+            f"surface cards and {result['selected_example_count']} selected examples: "
+            f"created {result['created_this_invocation']}, "
+            f"resumed/skipped {result['skipped_this_invocation']} song assemblies."
+        )
+        print("No release, deployment, or activation was created.")
         return 0
     if args.lyrics_command == "plan-processing-profile":
         output = build_lyrics_corpus_processing_profile(

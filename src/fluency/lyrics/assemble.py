@@ -136,6 +136,10 @@ def assemble_lyrics_app_stage(
     language: str,
     artist_slug: str,
     comparison_release: Path | None = None,
+    consolidation_output_path: Path | None = None,
+    wsd_output_path: Path | None = None,
+    output_path: Path | None = None,
+    publish_run_stage: bool = True,
     started_at: datetime | None = None,
 ) -> Path:
     """Build inactive split app files without composing or activating a release."""
@@ -145,11 +149,31 @@ def assemble_lyrics_app_stage(
     run_manifest = _object(run_manifest_path)
     if run_manifest.get("run_id") != run_id or run_manifest.get("language") != language:
         raise LyricsAppAssemblyError("Lyrics run identity does not match app assembly")
-    consolidation = run / run_manifest.get("stages", {}).get("consolidation", {}).get("path", "")
-    wsd = run / run_manifest.get("stages", {}).get("wsd_results", {}).get("path", "")
+    consolidation = (
+        run / run_manifest.get("stages", {}).get("consolidation", {}).get("path", "")
+        if consolidation_output_path is None else consolidation_output_path.resolve()
+    )
+    wsd = (
+        run / run_manifest.get("stages", {}).get("wsd_results", {}).get("path", "")
+        if wsd_output_path is None else wsd_output_path.resolve()
+    )
     if not consolidation.is_dir() or not wsd.is_dir():
         raise LyricsAppAssemblyError("app assembly requires exact consolidation and WSD stages")
-    output = run / "stages/07_app_assembly/output"
+    output = run / "stages/07_app_assembly/output" if output_path is None else output_path.resolve()
+    runs_root = (workspace.root / "runs").resolve()
+    for branch_path, label in (
+        (consolidation, "consolidation"), (wsd, "WSD"), (output, "assembly")
+    ):
+        try:
+            branch_path.relative_to(runs_root)
+        except ValueError as error:
+            raise LyricsAppAssemblyError(
+                f"external {label} path must be inside workspace/runs"
+            ) from error
+    if output_path is not None and publish_run_stage:
+        raise LyricsAppAssemblyError(
+            "an external assembly branch cannot replace the source run's canonical stage reference"
+        )
     if output.exists():
         raise LyricsAppAssemblyError("app assembly output already exists; create a new run")
     consolidation_manifest = _object(consolidation / "manifest.json")
@@ -241,6 +265,7 @@ def assemble_lyrics_app_stage(
                     "menu_content_id": example["menu"]["menu_content_id"],
                     "menu_analysis_id": example["menu"]["menu_analysis_id"],
                     "sense_id": example["menu"]["sense_id"],
+                    "sense_assignment_id": example["sense_assignment_id"],
                     "wsd_request_id": example["wsd"]["request_id"],
                     "wsd_result_id": example["wsd"]["result_id"],
                     "decision_path": example["wsd"]["decision_path"],
@@ -317,11 +342,12 @@ def assemble_lyrics_app_stage(
     finally:
         if temporary.exists():
             shutil.rmtree(temporary)
-    stages = dict(run_manifest.get("stages", {}))
-    stages["app_assembly"] = {
-        "path": "stages/07_app_assembly/output",
-        "manifest_content_id": file_content_id(output / "manifest.json"),
-    }
-    run_manifest["stages"] = stages
-    atomic_write(run_manifest_path, run_manifest, temporary_root)
+    if publish_run_stage:
+        stages = dict(run_manifest.get("stages", {}))
+        stages["app_assembly"] = {
+            "path": "stages/07_app_assembly/output",
+            "manifest_content_id": file_content_id(output / "manifest.json"),
+        }
+        run_manifest["stages"] = stages
+        atomic_write(run_manifest_path, run_manifest, temporary_root)
     return output

@@ -44,14 +44,11 @@ def _verify_outputs(output: Path, manifest: dict[str, Any], run_id: str) -> None
 
 
 def _completed_import(
-    workspace: Workspace,
+    output: Path,
     *,
-    language: str,
     run_id: str,
     bundle_content_id: str,
 ) -> bool:
-    run = workspace.root / "runs" / language / "lyrics" / run_id
-    output = run / "stages/05_wsd_results/output"
     if not output.exists():
         return False
     manifest_path = output / "manifest.json"
@@ -66,12 +63,6 @@ def _completed_import(
             f"existing WSD result conflicts with the selected bundle: {run_id}"
         )
     _verify_outputs(output, manifest, run_id)
-    reference = _object(run / "manifest.json", "Lyrics run manifest").get("stages", {}).get("wsd_results", {})
-    if (
-        reference.get("path") != "stages/05_wsd_results/output"
-        or reference.get("manifest_content_id") != file_content_id(manifest_path)
-    ):
-        raise LyricsCorpusResultImportError(f"WSD result stage reference is invalid: {run_id}")
     return True
 
 
@@ -163,13 +154,18 @@ def import_lyrics_corpus_results(
             raise LyricsCorpusResultImportError(f"WSD method profile drift: {run_id}")
         bundles[run_id] = (path, expected)
 
+    branch_root = (
+        workspace.root / "runs" / language / "lyrics-corpora" / plan_id
+        / "methods" / catalog["method_profile_id"] / "songs"
+    )
     created = skipped = result_count = 0
     statuses: Counter[str] = Counter()
     for index, (source, song) in enumerate(songs, start=1):
         run_id = song["planned_run_id"]
         bundle_path, bundle_id = bundles[run_id]
+        output = branch_root / run_id / "wsd_results"
         if _completed_import(
-            workspace, language=language, run_id=run_id, bundle_content_id=bundle_id
+            output, run_id=run_id, bundle_content_id=bundle_id
         ):
             skipped += 1
             action = "skipped"
@@ -177,12 +173,12 @@ def import_lyrics_corpus_results(
             import_lyrics_wsd_results(
                 repository_root, workspace, run_id=run_id,
                 language=language, bundle_path=bundle_path,
+                output_path=output, publish_run_stage=False,
             )
             created += 1
             action = "created"
         report = _object(
-            workspace.root / "runs" / language / "lyrics" / run_id
-            / "stages/05_wsd_results/output/report.json",
+            output / "report.json",
             "song WSD-result report",
         )
         result_count += report["request_count"]
@@ -204,6 +200,7 @@ def import_lyrics_corpus_results(
         "bundle_catalog_content_id": file_content_id(catalog_path),
         "language": language,
         "method_profile_id": catalog["method_profile_id"],
+        "method_branch": branch_root.relative_to(workspace.root).as_posix(),
         "song_run_count": len(songs),
         "result_count": result_count,
         "result_counts": dict(sorted(statuses.items())),

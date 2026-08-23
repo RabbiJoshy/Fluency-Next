@@ -661,6 +661,25 @@ the result catalog and its dependent consolidation/release outputs. Source
 ingest, routing, dictionary menus and prepared requests remain reusable. No
 full-corpus WSD result catalog exists yet, so neither command was executed.
 
+Method-branch correction and corpus-assembly checkpoint (2026-08-23): bulk WSD
+outputs no longer occupy the source song run's single canonical WSD slot. Each
+method profile has an immutable branch below
+`runs/<language>/lyrics-corpora/<plan>/methods/<method>/songs/<run>/`, with its
+own WSD results, consolidation and app assembly. The original ingest,
+processing, menu and request stages remain shared read-only inputs. This makes
+side-by-side methods structurally possible and prevents a second algorithm
+from overwriting or silently mixing with the first.
+
+The downstream corpus assembler is also implemented but deliberately not run.
+It merges every named method branch into per-artist index/example/song files
+and one language-level surface vocabulary master. Exact sense-assignment IDs
+align the shared master; artist-absent senses become explicit zero-frequency,
+empty-example buckets rather than shifting array positions. Artist ordering,
+sense ordering, example ordering and song membership are recorded policies.
+Every selected example retains its song-run and occurrence-level provenance.
+Changing WSD therefore selects a different method branch and rebuilds only
+consolidation, app assembly and release outputs.
+
 #### 9. Add further languages through adapters
 
 Implement French first, then Portuguese and Dutch, without forking the pipeline.
@@ -711,7 +730,7 @@ still an inactive local artifact: nothing was uploaded, activated or deprecated.
 ### Immediate next action
 
 Keep actual WSD execution behind its explicit method boundary until the current
-method is settled. Finish multi-song/artist assembly and release-comparison
+method is settled. Finish clean release/media composition and release-comparison
 orchestration without changing `active.json` or pretending unassigned requests
 are assigned. A deliberate flag submission,
 non-empty Review queue and completion/progress write remain production-backend

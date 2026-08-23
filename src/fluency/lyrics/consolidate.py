@@ -127,6 +127,9 @@ def consolidate_lyrics_run(
     language: str,
     example_cap_per_sense: int = 12,
     translation_language: str = "en",
+    wsd_output_path: Path | None = None,
+    output_path: Path | None = None,
+    publish_run_stage: bool = True,
     started_at: datetime | None = None,
 ) -> Path:
     """Create an inactive, lossless consolidation layer from one exact WSD run."""
@@ -149,8 +152,20 @@ def consolidate_lyrics_run(
     process = run / "stages/02_process/output"
     lexical = run / "stages/03_lexical_menu/output"
     prepare = run / "stages/04_wsd_prepare/output"
-    wsd = run / "stages/05_wsd_results/output"
-    output = run / "stages/06_consolidation_v2/output"
+    wsd = run / "stages/05_wsd_results/output" if wsd_output_path is None else wsd_output_path.resolve()
+    output = run / "stages/06_consolidation_v2/output" if output_path is None else output_path.resolve()
+    runs_root = (workspace.root / "runs").resolve()
+    for branch_path, label in ((wsd, "WSD"), (output, "consolidation")):
+        try:
+            branch_path.relative_to(runs_root)
+        except ValueError as error:
+            raise LyricsConsolidationError(
+                f"external {label} path must be inside workspace/runs"
+            ) from error
+    if output_path is not None and publish_run_stage:
+        raise LyricsConsolidationError(
+            "an external consolidation branch cannot replace the source run's canonical stage reference"
+        )
     if output.exists():
         raise LyricsConsolidationError("consolidation output already exists; create a new run")
 
@@ -463,11 +478,12 @@ def consolidate_lyrics_run(
         if temporary.exists():
             shutil.rmtree(temporary)
 
-    stages = dict(run_manifest.get("stages", {}))
-    stages["consolidation"] = {
-        "path": "stages/06_consolidation_v2/output",
-        "manifest_content_id": file_content_id(output / "manifest.json"),
-    }
-    run_manifest["stages"] = stages
-    atomic_write(run_manifest_path, run_manifest, temporary_root)
+    if publish_run_stage:
+        stages = dict(run_manifest.get("stages", {}))
+        stages["consolidation"] = {
+            "path": "stages/06_consolidation_v2/output",
+            "manifest_content_id": file_content_id(output / "manifest.json"),
+        }
+        run_manifest["stages"] = stages
+        atomic_write(run_manifest_path, run_manifest, temporary_root)
     return output

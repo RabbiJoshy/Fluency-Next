@@ -48,13 +48,13 @@ def _verify_outputs(output: Path, manifest: dict[str, Any], run_id: str) -> None
             )
 
 
-def _expected_inputs(run: Path) -> dict[str, str]:
+def _expected_branch_inputs(run: Path, wsd: Path) -> dict[str, str]:
     owners = {
         "source": run / "stages/01_source_ingest/output",
         "process": run / "stages/02_process/output",
         "lexical": run / "stages/03_lexical_menu/output",
         "prepare": run / "stages/04_wsd_prepare/output",
-        "wsd": run / "stages/05_wsd_results/output",
+        "wsd": wsd,
     }
     manifests = {name: _object(path / "manifest.json", f"{name} manifest") for name, path in owners.items()}
     files = (
@@ -86,10 +86,11 @@ def _completed(
     *,
     language: str,
     run_id: str,
+    wsd: Path,
+    output: Path,
     policy: dict[str, Any],
 ) -> bool:
     run = workspace.root / "runs" / language / "lyrics" / run_id
-    output = run / "stages/06_consolidation_v2/output"
     if not output.exists():
         return False
     manifest_path = output / "manifest.json"
@@ -98,7 +99,7 @@ def _completed(
         manifest.get("run_id") != run_id
         or manifest.get("stage") != "consolidation"
         or manifest.get("status") != "complete"
-        or manifest.get("inputs") != _expected_inputs(run)
+        or manifest.get("inputs") != _expected_branch_inputs(run, wsd)
         or manifest.get("policy") != policy
         or manifest.get("implementation_content_id")
         != consolidation_implementation_content_id(repository_root)
@@ -107,12 +108,6 @@ def _completed(
             f"existing consolidation conflicts with the selected policy or implementation: {run_id}"
         )
     _verify_outputs(output, manifest, run_id)
-    reference = _object(run / "manifest.json", "Lyrics run manifest").get("stages", {}).get("consolidation", {})
-    if (
-        reference.get("path") != "stages/06_consolidation_v2/output"
-        or reference.get("manifest_content_id") != file_content_id(manifest_path)
-    ):
-        raise LyricsCorpusConsolidationError(f"consolidation stage reference is invalid: {run_id}")
     return True
 
 
@@ -157,6 +152,13 @@ def consolidate_lyrics_corpus(
     ]
     if len(songs) != wsd_report.get("song_run_count"):
         raise LyricsCorpusConsolidationError("WSD import does not cover the corpus song ledger")
+    method_profile_id = wsd_report.get("method_profile_id")
+    expected_branch = (
+        workspace.root / "runs" / language / "lyrics-corpora" / plan_id
+        / "methods" / str(method_profile_id) / "songs"
+    )
+    if wsd_report.get("method_branch") != expected_branch.relative_to(workspace.root).as_posix():
+        raise LyricsCorpusConsolidationError("WSD import report names an unexpected method branch")
     policy = consolidation_policy(
         example_cap_per_sense=example_cap_per_sense,
         translation_language=translation_language,
@@ -167,8 +169,11 @@ def consolidate_lyrics_corpus(
         run_id = song.get("planned_run_id")
         if not isinstance(run_id, str):
             raise LyricsCorpusConsolidationError("corpus plan contains an incomplete run identity")
+        wsd = expected_branch / run_id / "wsd_results"
+        output = expected_branch / run_id / "consolidation"
         if _completed(
-            repository_root, workspace, language=language, run_id=run_id, policy=policy
+            repository_root, workspace, language=language, run_id=run_id,
+            wsd=wsd, output=output, policy=policy,
         ):
             skipped += 1
             action = "skipped"
@@ -177,12 +182,12 @@ def consolidate_lyrics_corpus(
                 repository_root, workspace, run_id=run_id, language=language,
                 example_cap_per_sense=example_cap_per_sense,
                 translation_language=translation_language,
+                wsd_output_path=wsd, output_path=output, publish_run_stage=False,
             )
             created += 1
             action = "created"
         report = _object(
-            workspace.root / "runs" / language / "lyrics" / run_id
-            / "stages/06_consolidation_v2/output/report.json",
+            output / "report.json",
             "song consolidation report",
         )
         card_count += report["study_card_count"]
@@ -204,7 +209,8 @@ def consolidate_lyrics_corpus(
         "plan_content_id": file_content_id(plan_path),
         "wsd_import_report_content_id": file_content_id(wsd_import_report_path),
         "language": language,
-        "method_profile_id": wsd_report["method_profile_id"],
+        "method_profile_id": method_profile_id,
+        "method_branch": expected_branch.relative_to(workspace.root).as_posix(),
         "implementation_content_id": consolidation_implementation_content_id(repository_root),
         "policy": policy,
         "song_run_count": len(songs),

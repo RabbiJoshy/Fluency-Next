@@ -141,11 +141,20 @@ class LyricsWSDResultTests(unittest.TestCase):
             bundle_path = workspace.root / "raw/wsd/results/fixture.json"
             bundle_path.parent.mkdir(parents=True)
             bundle_path.write_text(json.dumps(bundle))
+            branch_output = workspace.root / "runs/es/lyrics-corpora/plan/methods/fixture/songs/lyrics-fixture/wsd_results"
             output = import_lyrics_wsd_results(
                 Path(__file__).resolve().parents[2], workspace,
                 run_id=run_id, language="es", bundle_path=bundle_path,
+                output_path=branch_output, publish_run_stage=False,
             )
             self.assertTrue((output / "results.jsonl").is_file())
+            self.assertEqual(json.loads((run / "manifest.json").read_text())["stages"], {})
+            canonical = import_lyrics_wsd_results(
+                Path(__file__).resolve().parents[2], workspace,
+                run_id=run_id, language="es", bundle_path=bundle_path,
+            )
+            self.assertTrue((canonical / "results.jsonl").is_file())
+            self.assertIn("wsd_results", json.loads((run / "manifest.json").read_text())["stages"])
 
 
 if __name__ == "__main__":

@@ -163,6 +163,8 @@ def import_lyrics_wsd_results(
     run_id: str,
     language: str,
     bundle_path: Path,
+    output_path: Path | None = None,
+    publish_run_stage: bool = True,
     started_at: datetime | None = None,
 ) -> Path:
     run = workspace.root / "runs" / language / "lyrics" / run_id
@@ -242,7 +244,13 @@ def import_lyrics_wsd_results(
         raise LyricsWSDResultImportError(
             f"Lyrics WSD coverage is incomplete: expected {len(requests)}, received {len(results)}"
         )
-    output = run / "stages/05_wsd_results/output"
+    output = run / "stages/05_wsd_results/output" if output_path is None else output_path.resolve()
+    if not _inside(output, workspace.root / "runs"):
+        raise LyricsWSDResultImportError("Lyrics WSD output must be inside workspace/runs")
+    if output_path is not None and publish_run_stage:
+        raise LyricsWSDResultImportError(
+            "an external WSD branch cannot replace the source run's canonical stage reference"
+        )
     if output.exists():
         raise LyricsWSDResultImportError("Lyrics WSD output already exists; create a new run")
     started_at = datetime.now(UTC) if started_at is None else started_at.astimezone(UTC)
@@ -290,8 +298,12 @@ def import_lyrics_wsd_results(
     finally:
         if temporary.exists():
             shutil.rmtree(temporary)
-    stages = dict(run_manifest.get("stages", {}))
-    stages["wsd_results"] = {"path": "stages/05_wsd_results/output", "manifest_content_id": file_content_id(output / "manifest.json")}
-    run_manifest["stages"] = stages
-    atomic_write(run_manifest_path, run_manifest, temporary_root)
+    if publish_run_stage:
+        stages = dict(run_manifest.get("stages", {}))
+        stages["wsd_results"] = {
+            "path": "stages/05_wsd_results/output",
+            "manifest_content_id": file_content_id(output / "manifest.json"),
+        }
+        run_manifest["stages"] = stages
+        atomic_write(run_manifest_path, run_manifest, temporary_root)
     return output

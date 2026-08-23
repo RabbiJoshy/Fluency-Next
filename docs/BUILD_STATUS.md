@@ -355,3 +355,15 @@ The existing Fluency repository's local Apps Script and matching client were
 updated for schema compatibility, but nothing was remotely deployed. No old
 French deck data is an input to the clean pipeline. The active local candidate
 uses the fresh Tatoeba run and makes no WSD or corpus-coverage claims.
+## Gate 44 — WSD branches and corpus Artist assembly
+
+- Full-corpus WSD, consolidation and app outputs are keyed by exact method
+  profile instead of competing for one mutable per-song stage path.
+- Source ingestion, routing, lexical menus and prepared contexts remain shared
+  immutable inputs across WSD experiments.
+- A resumable corpus assembler merges exact song assemblies into per-artist
+  split assets and one language surface-card master, with stable sense alignment
+  and explicit empty buckets for artist-absent senses.
+- Two-artist fixture coverage proves that the shared master cannot shift one
+  artist's example buckets onto another artist's sense.
+- The operation is inactive: it cannot compose or activate a Lyrics release.
