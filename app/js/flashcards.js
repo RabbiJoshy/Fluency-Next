@@ -2954,11 +2954,10 @@ function exampleProvenanceHTML(example) {
         const tt = 'tt' + String(p.title_id).padStart(7, '0');
         const title = sourceTitleLabel(p);
         bits.push(`<a href="https://www.imdb.com/title/${tt}/" target="_blank" ` +
-                  `rel="noopener noreferrer">${title ? `${escapeCardText(title)} · ` : ''}${tt}</a>`);
+                  `rel="noopener noreferrer">${title ? escapeCardText(title) : tt}</a>`);
     } else {
         bits.push('OpenSubtitles');
     }
-    if (p.line) bits.push(`line ${escapeCardText(String(p.line))}`);
     return bits.join(' · ');
 }
 
@@ -6416,8 +6415,7 @@ function buildProvenancePanelHTML(card) {
                     const tt = 'tt' + String(pv.title_id).padStart(7, '0');
                     const title = sourceTitleLabel(pv);
                     src = `<a class="prov-ex-src" href="https://www.imdb.com/title/${tt}/"
-                              target="_blank" rel="noopener noreferrer">${title ? `${esc(title)} · ` : ''}${tt}</a>`
-                        + (pv.line ? ` <span class="prov-ex-line">line ${esc(pv.line)}</span>` : '');
+                              target="_blank" rel="noopener noreferrer">${title ? esc(title) : tt}</a>`;
                 } else if (x.source) {
                     src = `<span class="prov-ex-src">${esc(x.source)}</span>`;
                 }
