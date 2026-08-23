@@ -707,6 +707,21 @@ catalog consumed by the existing importer. The branch remains labelled
 `es-sd-beto-cal-v5-migration-v1`; replacing it later creates a sibling method
 branch and leaves source, routing, menus and requests untouched.
 
+Migration-baseline decision (2026-08-23): completing a full provisional WSD
+rerun is no longer required to finish the repository migration. The immutable
+`lyrics-legacy-parity-20260822` release is the initial migrated Artist dataset,
+including its materialized assignments, examples, song catalogs, media and
+available historical provenance. Retained embeddings and other reusable raw
+assets remain in the external workspace. The clean method-branch machinery is
+the reproducible replacement path, not a requirement to discard working data
+before the framework and audit surfaces can be accepted.
+
+The attempted full placeholder run discovered 43,701 exact new context/gloss
+embedding misses and stopped at the paid API rate limit before producing any
+song bundle. No release changed. The runner now checkpoints its branch delta,
+paces requests below the limit and resumes quota pauses automatically for a
+future clean run, but that run is deliberately deferred.
+
 #### 9. Add further languages through adapters
 
 Implement French first, then Portuguese and Dutch, without forking the pipeline.

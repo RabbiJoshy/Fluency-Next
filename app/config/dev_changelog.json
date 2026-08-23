@@ -3,6 +3,16 @@
   "entries": [
     {
       "date": "2026-08-23",
+      "commit": "67ee8f3",
+      "summary": "Preserved Artist assignments are now clearly identified while auditing",
+      "detail": [
+        "Card Data names the exact immutable Lyrics release supplying the active deck.",
+        "Historical prompt IDs that are not part of the new registry are labelled retained assignments instead of unregistered models.",
+        "Existing example-level method, translation, song and raw-record evidence remains available while clean WSD regeneration stays optional."
+      ]
+    },
+    {
+      "date": "2026-08-23",
       "commit": "0a3a230",
       "summary": "Artist data now stays bound to one immutable release",
       "detail": [
