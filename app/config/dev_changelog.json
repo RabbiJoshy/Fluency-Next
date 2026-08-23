@@ -3,6 +3,16 @@
   "entries": [
     {
       "date": "2026-08-23",
+      "commit": "59f3e2a",
+      "summary": "Assigned cards now show only learner-supported senses and honest percentages",
+      "detail": [
+        "Unused dictionary alternatives remain available as audit-only menu evidence instead of appearing as a giant unassigned learner row.",
+        "Assigned sense percentages once again total 100%; the hidden remainder bucket can no longer halve them to 50%.",
+        "The explicit unassigned fallback remains available for cards that genuinely have no assigned sense."
+      ]
+    },
+    {
+      "date": "2026-08-23",
       "commit": "b602c56",
       "summary": "Multi-headword card backs no longer repeat lemma labels",
       "detail": [
