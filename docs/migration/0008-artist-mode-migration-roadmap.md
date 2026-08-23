@@ -218,7 +218,8 @@ This section is the authoritative continuation plan. A new agent should start
 here rather than infer the remaining work from chat history. The completed
 implementation checkpoints are commits `d4f2810` (source lineage), `a9c83e5`
 (clean processing lineage), `d75403d` (direct live routing and policy-trace
-auditing), and `3f3c018` (provider-neutral lexical menus and auditor v8). The verified run is
+auditing), `3f3c018` (provider-neutral lexical menus), and `984ab9a`
+(mode-neutral WSD preparation and auditor v9). The verified run is
 `runs/es/lyrics/bad-bunny-estamos-arriba-source-v7` in the external workspace.
 
 Environment map:
