@@ -25,6 +25,7 @@ from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
 from fluency.inventory.runner import build_inventory_stage
 from fluency.lyrics.ingest import ingest_legacy_genius_song
 from fluency.lyrics.consolidate import consolidate_lyrics_run
+from fluency.lyrics.assemble import assemble_lyrics_app_stage
 from fluency.lyrics.lexical import build_lyrics_lexical_menu_stage
 from fluency.lyrics.process import process_lyrics_run
 from fluency.lyrics.wsd import prepare_lyrics_wsd_stage
@@ -318,6 +319,15 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_consolidate.add_argument("--language", required=True)
     lyrics_consolidate.add_argument("--example-cap-per-sense", type=int, default=12)
     lyrics_consolidate.add_argument("--translation-language", default="en")
+    lyrics_assemble = lyrics_actions.add_parser(
+        "assemble-app",
+        help="render an inactive clean consolidation into the existing split Artist app contract",
+    )
+    lyrics_assemble.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    lyrics_assemble.add_argument("--run-id", required=True)
+    lyrics_assemble.add_argument("--language", required=True)
+    lyrics_assemble.add_argument("--artist-slug", required=True)
+    lyrics_assemble.add_argument("--comparison-release", type=Path)
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -837,6 +847,24 @@ def handle_lyrics(args: argparse.Namespace) -> int:
             f"Retained {report['non_study_disposition_count']} non-study outcomes as auditable dispositions."
         )
         print("No app assets, release, or activation were created.")
+        return 0
+    if args.lyrics_command == "assemble-app":
+        output = assemble_lyrics_app_stage(
+            project_root(), workspace, run_id=args.run_id, language=args.language,
+            artist_slug=args.artist_slug, comparison_release=args.comparison_release,
+        )
+        report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+        print(f"Completed inactive Lyrics app assembly: {output}")
+        print(
+            f"Rendered {report['card_count']} cards and {report['example_count']} selected examples "
+            f"into the exact split index/examples/master contract."
+        )
+        if report["comparison"]["status"] == "compared":
+            print(
+                f"Parity comparison: {report['comparison']['surface_words_already_in_parity']} clean surfaces already exist; "
+                f"selected-example delta {report['comparison']['selected_example_delta']:+d}."
+            )
+        print("No release was composed or activated.")
         return 0
     raise AssertionError(f"Unhandled lyrics command: {args.lyrics_command}")
 

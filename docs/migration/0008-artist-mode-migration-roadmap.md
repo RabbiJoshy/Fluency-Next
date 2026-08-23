@@ -477,10 +477,19 @@ available language alignments remain attached. Auditor v11 exposes both an
 included card candidate and the explicit non-study state for any selected
 token. The browser reports 162 clean cards and no console errors.
 
-The provider-neutral consolidation half of this section is complete. The
-remaining half is the app assembler: render these typed cards/examples into a
-one-song split `index.json`, `examples.json` and `vocabulary_master.json`, then
-validate that exact payload against the learner app without activation.
+The provider-neutral consolidation and app-assembly halves of this section are
+now complete. The inactive app assembly contains an exact 162-ID intersection
+across `index.json`, `examples.json` and `vocabulary_master.json`, with 349
+selected examples in sense-aligned buckets. Every example carries its run,
+occurrence, analysis-unit, route, lexical-candidate, menu, WSD result, source
+snapshot and optional alignment provenance. Of those examples, 297 have an
+English alignment and 52 degrade to an empty translation. All 162 clean surface
+words already exist in the parity vocabulary; the clean one-song policy selects
+243 more examples than the parity release currently exposes for this song.
+That difference is reported for review, not silently blended.
+
+The remaining acceptance check is to package this exact payload in an inactive
+preview release and exercise it through the real learner app and Card Data UI.
 
 #### 6. Compose and compare a clean immutable Artist release
 
@@ -570,11 +579,11 @@ Before making Fluency-Next the live repository:
 
 ### Immediate next action
 
-Build the thin app-assembly adapter for the clean one-song consolidation. It
-must preserve the learner app's existing split Artist contract, include all
-example metadata needed by Card Data, and emit a validation report comparing
-the clean payload with the active parity release. It remains inactive; release
-composition and activation are later, explicit decisions.
+Compose an inactive one-song preview release around the clean split payload,
+reusing only the parity shell/song/media files that are explicitly named in its
+composition. Open it through the real learner app, verify Card Data can scrub
+every selected example and its provenance, and compare Learn/Review behavior.
+Do not change `active.json` until that preview is accepted.
 
 The key separation is now enforceable: shell and study behavior can evolve
 without rebuilding corpus data, while a new Artist data run can be activated
