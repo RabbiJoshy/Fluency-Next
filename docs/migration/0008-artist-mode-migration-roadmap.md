@@ -35,6 +35,11 @@ src/fluency/lyrics/
   records.py                 stable song, line and optional alignment identities
   lineage.py                 append-only typed pipeline events
   ingest.py                  immutable source-ingestion stage and legacy adapter
+  process.py                 shared token occurrence and analysis-unit runner
+  routing.py                 explicit migration-snapshot routing adapter
+  languages/
+    base.py                  common normalization adapter contract
+    spanish.py               Spanish elision and normalization policy
 schemas/
   lyrics-release-manifest.schema.json
   lyrics-release-composition.schema.json
@@ -43,6 +48,9 @@ schemas/
   raw-lyrics-song.schema.json
   lyrics-line.schema.json
   lyrics-line-alignment.schema.json
+  lyrics-occurrence.schema.json
+  lyrics-analysis-unit.schema.json
+  lyrics-route-decision.schema.json
 app/
   config/artists.json        empty static fallback only
   lyrics-audit/              development-only lineage explorer
@@ -154,14 +162,27 @@ alignment absences and 105 lineage events. Both raw legacy inputs are pinned by
 content identity in the workspace object store. No routing, WSD, deck or active
 release changed.
 
+`bad-bunny-estamos-arriba-source-v4` is the verified clean processing checkpoint. It
+emits 585 exact-span token occurrences, 585 normalized analysis units, 585
+route decisions and 1,755 direct lineage events. Tokenization and Spanish
+elision restoration are recomputed; routing is deliberately labelled as a
+decision against a pinned migration snapshot rather than misrepresented as a
+new router result. Every policy input is read back from its immutable object-
+store artifact before computation. Against the mature Spanish normalization overlay it matches
+574 of 585 occurrences (98.12%). The eleven differences are ten newly handled
+leading-aphesis occurrences (`'Tamo` to `estamos`) and one preservation of
+`Yeh` where the old overlay inherited `eh`. The lineage explorer now exposes
+this clean processing record for every token.
+
 ## Remaining Artist work
 
 These are subsequent R&D phases, not blockers for starting the Artist audit:
 
 1. ~~Define a language-agnostic raw-lyrics and line-alignment source contract.~~
    Completed with a real immutable Bad Bunny source run.
-2. Make every subsequent pipeline stage emit the lineage event contract while it runs,
-   rather than reconstructing lineage after materialization.
+2. ~~Make tokenization and normalization emit lineage while they run.~~ Complete
+   for the shared runner and Spanish adapter. Port the live routing algorithm
+   next; the current route record correctly names its pinned migration snapshot.
 3. Build a clean Artist inventory/example/assignment pipeline that emits the
    same split app contract.
 4. Recompute assignments with the selected shared WSD architecture and explicit

@@ -1,2 +1,1 @@
-"""Lyrics pipeline tests."""
-
+"""Lyrics source-lineage and processing tests."""

@@ -111,6 +111,7 @@ def build_bundle(
     baseline_run: str,
     candidate_run: str,
     source_ingest: Path | None = None,
+    process_output: Path | None = None,
 ) -> dict[str, Any]:
     evidence = legacy_artist_root / "data" / "evidence"
     candidate_ledger = evidence / "ledger" / "runs" / candidate_run
@@ -149,6 +150,11 @@ def build_bundle(
     ingested_by_text: dict[str, deque[dict[str, Any]]] = defaultdict(deque)
     alignments_by_line: dict[str, dict[str, Any]] = {}
     source_lineage_event_count = 0
+    process_manifest: dict[str, Any] | None = None
+    processed_by_line: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    processed_units: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    processed_routes: dict[str, dict[str, Any]] = {}
+    process_lineage_event_count = 0
     if source_ingest is not None:
         source_ingest = source_ingest.expanduser().resolve()
         ingested_song = _read_json(source_ingest / "song.json")
@@ -159,13 +165,35 @@ def build_bundle(
             for alignment in _read_jsonl(source_ingest / "alignments.jsonl")
         }
         source_lineage_event_count = sum(1 for _ in _read_jsonl(source_ingest / "lineage.jsonl"))
+    if process_output is not None:
+        if source_ingest is None:
+            raise ValueError("process output requires its matching source ingest")
+        process_output = process_output.expanduser().resolve()
+        process_manifest = _read_json(process_output / "manifest.json")
+        for processed in _read_jsonl(process_output / "occurrences.jsonl"):
+            processed_by_line[processed["line_id"]].append(processed)
+        for values in processed_by_line.values():
+            values.sort(key=lambda item: item["ordinal"])
+        for unit in _read_jsonl(process_output / "analysis-units.jsonl"):
+            processed_units[unit["occurrence_id"]].append(unit)
+        for values in processed_units.values():
+            values.sort(key=lambda item: item["slot"])
+        processed_routes = {
+            route["analysis_unit_id"]: route
+            for route in _read_jsonl(process_output / "routes.jsonl")
+        }
+        process_lineage_event_count = sum(1 for _ in _read_jsonl(process_output / "lineage.jsonl"))
 
     changed_count = 0
     restored_count = 0
     lines: list[dict[str, Any]] = []
     for line_index, segment in enumerate(segments):
+        text = segment["text"]
+        source_line = ingested_by_text[text].popleft() if ingested_by_text.get(text) else None
+        alignment = alignments_by_line.get(source_line["line_id"]) if source_line else None
+        clean_occurrences = processed_by_line.get(source_line["line_id"], []) if source_line else []
         line_occurrences: list[dict[str, Any]] = []
-        for occurrence in occurrences_by_segment.get(segment["segment_id"], []):
+        for occurrence_index, occurrence in enumerate(occurrences_by_segment.get(segment["segment_id"], [])):
             occurrence_id = occurrence["occurrence_id"]
             baseline_claim = baseline_claims.get(occurrence_id)
             candidate_claim = candidate_claims.get(occurrence_id)
@@ -177,6 +205,22 @@ def build_bundle(
             restored = "'" in baseline_form and "'" not in candidate_form
             if restored:
                 restored_count += 1
+            clean_occurrence = clean_occurrences[occurrence_index] if occurrence_index < len(clean_occurrences) else None
+            clean_units = processed_units.get(clean_occurrence["occurrence_id"], []) if clean_occurrence else []
+            clean_route_records = [
+                processed_routes[unit["analysis_unit_id"]]
+                for unit in clean_units
+                if unit["analysis_unit_id"] in processed_routes
+            ]
+            clean_route = clean_route_records[0] if len(clean_route_records) == 1 else None
+            current_route = (
+                {
+                    "status": clean_route["status"],
+                    "label": clean_route["bucket"].replace("_", " "),
+                }
+                if clean_route
+                else _route_for(candidate_form, routing)
+            )
             line_occurrences.append(
                 {
                     "occurrence_id": occurrence_id,
@@ -200,12 +244,24 @@ def build_bundle(
                             "method_id": (candidate_claim or {}).get("method", {}).get("method_id"),
                         },
                     },
-                    "current_route": _route_for(candidate_form, routing),
+                    "current_route": current_route,
+                    "clean_processing": (
+                        {
+                            "occurrence_id": clean_occurrence["occurrence_id"],
+                            "surface": clean_occurrence["surface"],
+                            "span": clean_occurrence["span"],
+                            "normalized_form": " + ".join(unit["normalized_form"] for unit in clean_units),
+                            "units": clean_units,
+                            "routes": clean_route_records,
+                            "tokenizer_method": (process_manifest or {}).get("methods", {}).get("tokenize"),
+                            "normalizer_method": (process_manifest or {}).get("methods", {}).get("normalize"),
+                            "router_method": (process_manifest or {}).get("methods", {}).get("route"),
+                        }
+                        if clean_occurrence
+                        else None
+                    ),
                 }
             )
-        text = segment["text"]
-        source_line = ingested_by_text[text].popleft() if ingested_by_text.get(text) else None
-        alignment = alignments_by_line.get(source_line["line_id"]) if source_line else None
         lines.append(
             {
                 "segment_id": segment["segment_id"],
@@ -260,6 +316,7 @@ def build_bundle(
             "app_assignment_count": assignment_count,
             "aligned_line_count": len(alignments_by_line),
             "source_lineage_event_count": source_lineage_event_count,
+            "process_lineage_event_count": process_lineage_event_count,
         },
         "evidence": {
             "source_ingest": (
@@ -268,13 +325,23 @@ def build_bundle(
                 else "not included in this audit bundle"
             ),
             "normalization": "preserved claims from two immutable legacy evidence runs",
-            "routing": "reconstructed lookup against the current materialized word_routing.json",
+            "clean_processing": (
+                "direct immutable tokenization and language-adapter normalization lineage"
+                if process_output
+                else "not included in this audit bundle"
+            ),
+            "routing": (
+                "direct route records against an explicitly pinned migration snapshot"
+                if process_output
+                else "reconstructed lookup against the current materialized word_routing.json"
+            ),
             "app_assignments": "current materialized immutable Artist release",
         },
         "limitations": [
             "The legacy ledger recorded language as 'und'; this adapter supplies 'es' from the selected artist release.",
-            "Only normalization is directly comparable across these two runs.",
-            "Routing and app assignments are current materialized snapshots, not invented historical run events.",
+            "The two legacy normalization runs remain the historical comparison; clean processing is a new directly reproducible run.",
+            "Routing uses a pinned materialized migration snapshot until the shared router itself is ported.",
+            "App assignments are current materialized release records, not invented historical run events.",
         ],
     }
 
@@ -288,6 +355,7 @@ def main() -> None:
     parser.add_argument("--candidate-run", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--source-ingest", type=Path)
+    parser.add_argument("--process-output", type=Path)
     args = parser.parse_args()
     bundle = build_bundle(
         legacy_artist_root=args.legacy_artist_root,
@@ -296,6 +364,7 @@ def main() -> None:
         baseline_run=args.baseline_run,
         candidate_run=args.candidate_run,
         source_ingest=args.source_ingest,
+        process_output=args.process_output,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(bundle, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

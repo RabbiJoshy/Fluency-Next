@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/lyrics-route-decision.schema.json",
+  "title": "Provenanced route decision for one lyrics analysis unit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_version", "route_id", "analysis_unit_id", "normalized_form", "status", "bucket", "target", "method_id", "snapshot_content_id"],
+  "properties": {
+    "record_version": {"const": "lyrics-route-decision/v1"},
+    "route_id": {"type": "string", "pattern": "^route_[0-9a-f]{32}$"},
+    "analysis_unit_id": {"type": "string", "pattern": "^unit_[0-9a-f]{32}$"},
+    "normalized_form": {"type": "string", "minLength": 1},
+    "status": {"enum": ["excluded", "classified", "derived", "review", "unresolved"]},
+    "bucket": {"type": "string", "minLength": 1},
+    "target": {"type": ["string", "null"]},
+    "method_id": {"type": "string", "minLength": 1},
+    "snapshot_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

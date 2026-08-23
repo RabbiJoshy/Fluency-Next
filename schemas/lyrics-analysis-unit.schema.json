@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/lyrics-analysis-unit.schema.json",
+  "title": "Language-normalized lyrics analysis unit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_version", "analysis_unit_id", "occurrence_id", "language", "slot", "source_surface", "normalized_form", "operation", "reason_code"],
+  "properties": {
+    "record_version": {"const": "lyrics-analysis-unit/v1"},
+    "analysis_unit_id": {"type": "string", "pattern": "^unit_[0-9a-f]{32}$"},
+    "occurrence_id": {"type": "string", "pattern": "^occurrence_[0-9a-f]{32}$"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "slot": {"type": "integer", "minimum": 0},
+    "source_surface": {"type": "string", "minLength": 1},
+    "normalized_form": {"type": "string", "minLength": 1},
+    "operation": {"enum": ["preserve", "normalize", "split"]},
+    "reason_code": {"type": "string", "minLength": 1}
+  }
+}

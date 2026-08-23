@@ -24,6 +24,7 @@ from fluency.harvest.runner import harvest_run_stage
 from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
 from fluency.inventory.runner import build_inventory_stage
 from fluency.lyrics.ingest import ingest_legacy_genius_song
+from fluency.lyrics.process import process_lyrics_run
 from fluency.migration.legacy_identity import write_legacy_crosswalk
 from fluency.migration.spanish_assets import migrate_spanish_retained_assets
 from fluency.migration.spanish_dictionary import migrate_spanish_dictionary_snapshot
@@ -234,6 +235,21 @@ def build_parser() -> argparse.ArgumentParser:
     lyrics_ingest.add_argument("--artist-id", required=True)
     lyrics_ingest.add_argument("--artist-name", required=True)
     lyrics_ingest.add_argument("--translation-language", default="en")
+    lyrics_process = lyrics_actions.add_parser(
+        "process",
+        help="tokenize, normalize, restore elisions, and route one source run",
+    )
+    lyrics_process.add_argument(
+        "--workspace", default=os.environ.get("FLUENCY_WORKSPACE")
+    )
+    lyrics_process.add_argument("--run-id", required=True)
+    lyrics_process.add_argument("--language", required=True)
+    lyrics_process.add_argument("--elision-mapping", type=Path, required=True)
+    lyrics_process.add_argument("--multi-word-elisions", type=Path, required=True)
+    lyrics_process.add_argument("--known-forms", type=Path, required=True)
+    lyrics_process.add_argument("--frequency-snapshot", type=Path, required=True)
+    lyrics_process.add_argument("--lexeme-register", type=Path, required=True)
+    lyrics_process.add_argument("--routing-snapshot", type=Path, required=True)
 
     release = subparsers.add_parser("release", help="compose, inspect, validate, and activate exact releases")
     release_actions = release.add_subparsers(dest="release_command", required=True)
@@ -628,6 +644,31 @@ def handle_lyrics(args: argparse.Namespace) -> int:
                 "translation and remain valid source lines."
             )
         print("No token routing, WSD, deck assembly, release build, or activation was run.")
+        return 0
+    if args.lyrics_command == "process":
+        output = process_lyrics_run(
+            workspace,
+            run_id=args.run_id,
+            language=args.language,
+            elision_mapping=args.elision_mapping,
+            multi_word_elisions=args.multi_word_elisions,
+            known_forms=args.known_forms,
+            frequency_snapshot=args.frequency_snapshot,
+            lexeme_register=args.lexeme_register,
+            routing_snapshot=args.routing_snapshot,
+        )
+        report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+        print(f"Completed immutable Lyrics processing layer: {output}")
+        print(
+            f"Tokenized {report['occurrence_count']} occurrences into "
+            f"{report['analysis_unit_count']} analysis units; emitted "
+            f"{report['lineage_event_count']} lineage events."
+        )
+        print(
+            "Normalization and elision restoration were recomputed directly; "
+            "routing is explicitly sourced from the pinned migration snapshot."
+        )
+        print("No WSD, deck assembly, release build, or activation was run.")
         return 0
     raise AssertionError(f"Unhandled lyrics command: {args.lyrics_command}")
 

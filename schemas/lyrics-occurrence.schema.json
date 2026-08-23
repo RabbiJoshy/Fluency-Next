@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/lyrics-occurrence.schema.json",
+  "title": "Immutable token occurrence in one lyrics line",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_version", "occurrence_id", "line_id", "language", "ordinal", "span", "source_span", "surface", "context"],
+  "properties": {
+    "record_version": {"const": "lyrics-occurrence/v1"},
+    "occurrence_id": {"type": "string", "pattern": "^occurrence_[0-9a-f]{32}$"},
+    "line_id": {"type": "string", "pattern": "^line_[0-9a-f]{32}$"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "ordinal": {"type": "integer", "minimum": 0},
+    "span": {"$ref": "#/$defs/span"},
+    "source_span": {"$ref": "#/$defs/span"},
+    "surface": {"type": "string", "minLength": 1},
+    "context": {"enum": ["lyric", "adlib"]}
+  },
+  "$defs": {
+    "span": {"type": "array", "prefixItems": [{"type": "integer", "minimum": 0}, {"type": "integer", "minimum": 1}], "minItems": 2, "maxItems": 2}
+  }
+}

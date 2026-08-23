@@ -64,7 +64,7 @@ function findToken(occurrenceId) {
 }
 
 function assignmentHtml(assignments, token) {
-  const normalized = Object.values(token.states).at(-1)?.normalized_form?.toLocaleLowerCase();
+  const normalized = (token.clean_processing?.normalized_form || Object.values(token.states).at(-1)?.normalized_form)?.toLocaleLowerCase();
   const likely = assignments.filter((item) => [item.word, item.lemma].filter(Boolean).some((value) => value.toLocaleLowerCase() === normalized));
   if (!assignments.length) return `<div class="no-evidence">This line is not materialized as an example in the selected Artist release. That absence is visible rather than inferred as a failed WSD decision.</div>`;
   if (!likely.length) return `<div class="no-evidence">This line has ${assignments.length} deck assignment${assignments.length === 1 ? "" : "s"}, but the legacy output does not preserve a safe link from this token occurrence to one of them. Nothing is guessed here.</div>`;
@@ -80,6 +80,7 @@ function renderTrace(token, line) {
   const before = token.states[baseline.run_id] || {};
   const after = token.states[candidate.run_id] || {};
   const source = line.source_ingest;
+  const clean = token.clean_processing;
   const sourceStage = source ? `
           <div class="stage"><div class="stage-title"><strong>Acquire + extract line</strong><span class="evidence-kind">new direct lineage</span></div><div class="mono-block">${escapeHtml(source.line_id)} · span ${escapeHtml(source.source_span?.join(":"))}<br>${escapeHtml(source.section?.label || "No labelled section")}</div></div>
           <div class="stage ${source.alignment ? "current" : ""}"><div class="stage-title"><strong>Align translation</strong><span class="evidence-kind">${source.alignment ? "optional snapshot" : "graceful absence"}</span></div>${source.alignment ? `<div class="state-box"><small>${escapeHtml(source.alignment.source.provider || source.alignment.source.adapter)}</small><strong>${escapeHtml(source.alignment.target.text)}</strong></div>` : `<div class="no-evidence">No translation alignment exists for this line. The lyric remains valid and continues through the pipeline.</div>`}</div>` : "";
@@ -101,11 +102,12 @@ function renderTrace(token, line) {
           <div class="stage ${token.changed ? "diverged" : ""}"><div class="stage-title"><strong>Normalize</strong><span class="evidence-kind">direct comparison</span></div>
             <div class="comparison"><div class="state-box"><small>${escapeHtml(baseline.label)}</small><strong>${escapeHtml(before.normalized_form)}</strong></div><span>→</span><div class="state-box"><small>${escapeHtml(candidate.label)}</small><strong>${escapeHtml(after.normalized_form)}</strong></div></div>
           </div>
-          <div class="stage current"><div class="stage-title"><strong>Route</strong><span class="evidence-kind">current snapshot</span></div><div class="state-box"><small>${escapeHtml(token.current_route.status)}</small><strong>${escapeHtml(token.current_route.label)}</strong></div></div>
+          ${clean ? `<div class="stage current"><div class="stage-title"><strong>Clean recomputation</strong><span class="evidence-kind">new direct lineage</span></div><div class="comparison"><div class="state-box"><small>${escapeHtml(clean.surface)} · ${escapeHtml(clean.tokenizer_method)}</small><strong>${escapeHtml(clean.normalized_form)}</strong></div><span>→</span><div class="state-box"><small>${escapeHtml(clean.units.map((unit) => unit.reason_code).join(" + "))}</small><strong>${escapeHtml(clean.units.map((unit) => unit.operation).join(" + "))}</strong></div></div></div>` : ""}
+          <div class="stage current"><div class="stage-title"><strong>Route</strong><span class="evidence-kind">${clean ? "pinned migration snapshot" : "current snapshot"}</span></div><div class="state-box"><small>${escapeHtml(token.current_route.status)}</small><strong>${escapeHtml(token.current_route.label)}</strong></div></div>
           <div class="stage current"><div class="stage-title"><strong>Materialize in app</strong><span class="evidence-kind">current release</span></div>${assignmentHtml(line.app_assignments, token)}</div>
         </div>
       </section>
-      <section class="trace-section"><h3>Claim provenance</h3><div class="mono-block">baseline claim: ${escapeHtml(before.claim_id || "not preserved")}<br>candidate claim: ${escapeHtml(after.claim_id || "not preserved")}<br>candidate method: ${escapeHtml(after.method_id || "not preserved")}<br>input: ${escapeHtml(after.input_fingerprint || "not preserved")}</div></section>
+      <section class="trace-section"><h3>Claim provenance</h3><div class="mono-block">baseline claim: ${escapeHtml(before.claim_id || "not preserved")}<br>candidate claim: ${escapeHtml(after.claim_id || "not preserved")}<br>candidate method: ${escapeHtml(after.method_id || "not preserved")}<br>input: ${escapeHtml(after.input_fingerprint || "not preserved")}${clean ? `<br>clean occurrence: ${escapeHtml(clean.occurrence_id)}<br>clean normalizer: ${escapeHtml(clean.normalizer_method)}<br>clean router: ${escapeHtml(clean.router_method)}` : ""}</div></section>
     </div>`;
 }
 
@@ -154,7 +156,7 @@ function bindControls() {
 
 async function start() {
   try {
-    const response = await fetch("data/estamos-arriba.json?v=3", { cache: "no-store" });
+    const response = await fetch("data/estamos-arriba.json?v=4", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     state.data = await response.json();
     renderHeader();
