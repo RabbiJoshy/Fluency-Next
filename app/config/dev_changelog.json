@@ -3,6 +3,16 @@
   "entries": [
     {
       "date": "2026-08-23",
+      "commit": "ed83c92",
+      "summary": "Language choice now leads directly to a lightweight Speech or Lyrics decision",
+      "detail": [
+        "Choosing Spanish no longer loads the Speech release before a learner can select Lyrics; the exact source starts loading only after it is chosen.",
+        "Merge Lemmas remains available as learner-facing form grouping, while optional Lyrics, cognate and morphology controls follow explicit language or release capabilities.",
+        "Card backs omit a redundant single inert POS label, cognate settings use clearer Include/Exclude wording, and secondary setup guidance is quieter and provenance-accurate."
+      ]
+    },
+    {
+      "date": "2026-08-23",
       "commit": "67ee8f3",
       "summary": "Preserved Artist assignments are now clearly identified while auditing",
       "detail": [
