@@ -21,7 +21,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; min-width: 320px; background: var(--bg); color: var(--text); }
-button, input { font: inherit; }
+button, input, select { font: inherit; }
 button { color: inherit; }
 code { font-family: "SFMono-Regular", Consolas, monospace; }
 .app-shell { min-height: 100vh; }
@@ -39,6 +39,10 @@ main { max-width: 1600px; margin: 0 auto; padding: 42px 34px 80px; }
 .eyebrow { color: var(--cyan); text-transform: uppercase; letter-spacing: .13em; font-weight: 700; font-size: 11px; margin: 0 0 12px; }
 h1 { margin: 0; font-size: clamp(34px, 5vw, 62px); line-height: .98; letter-spacing: -.045em; }
 .artist { margin: 12px 0 0; color: var(--muted); font-size: 16px; }
+.song-picker { display: grid; gap: 6px; width: min(390px, 100%); margin-top: 22px; }
+.song-picker span { color: var(--faint); font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.song-picker select { width: 100%; padding: 10px 36px 10px 12px; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.song-picker select:disabled { color: var(--faint); cursor: wait; }
 .run-pair { display: flex; align-items: center; gap: 10px; }
 .run-card { min-width: 180px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
 .run-card span, .run-card strong, .run-card code { display: block; }

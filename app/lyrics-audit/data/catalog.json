@@ -1,0 +1,30 @@
+{
+  "schema": "fluency.lyrics-audit-catalog/v1",
+  "default_song_id": "4628729",
+  "songs": [
+    {
+      "song_id": "4628729",
+      "title": "Estamos Arriba",
+      "artist": "Bad Bunny",
+      "language": "es",
+      "bundle": "estamos-arriba.json",
+      "coverage": "clean processing + legacy comparison"
+    },
+    {
+      "song_id": "9614104",
+      "title": "MONACO",
+      "artist": "Bad Bunny",
+      "language": "es",
+      "bundle": "monaco.json",
+      "coverage": "legacy comparison"
+    },
+    {
+      "song_id": "6855744",
+      "title": "Yonaguni",
+      "artist": "Bad Bunny",
+      "language": "es",
+      "bundle": "yonaguni.json",
+      "coverage": "legacy comparison"
+    }
+  ]
+}

@@ -280,6 +280,12 @@ shape. Replace the hard-coded `estamos-arriba.json` assumption with a small
 auditor catalog and song selector. It must support at least two songs from one
 artist, then songs from different artists/languages without changing the UI.
 
+The first multi-song slice is complete: the catalog and selector safely switch
+among `Estamos Arriba`, `MONACO` and `Yonaguni`, validate bundle/song identity,
+update the URL, and state the available evidence per song. Only `Estamos
+Arriba` currently has clean processing lineage. Cross-run selection, token
+history and cross-artist/language fixtures remain part of this work package.
+
 For a selected song, retain the whole-song token map and token drawer. Add:
 
 - selection of baseline and candidate run where both contain that song;

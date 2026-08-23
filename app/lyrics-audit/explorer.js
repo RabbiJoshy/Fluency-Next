@@ -1,4 +1,4 @@
-const state = { data: null, filter: "all", query: "", selected: null, showIds: false };
+const state = { catalog: null, data: null, filter: "all", query: "", selected: null, showIds: false, requestId: 0 };
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
@@ -137,6 +137,10 @@ function renderHeader() {
   $("changeCount").textContent = data.comparison.changed_occurrence_count.toLocaleString();
   $("restoreCount").textContent = data.comparison.restored_occurrence_count.toLocaleString();
   $("alignmentCount").textContent = data.comparison.aligned_line_count.toLocaleString();
+  const hasCleanProcessing = data.comparison.process_lineage_event_count > 0;
+  $("evidenceSummary").innerHTML = hasCleanProcessing
+    ? "<strong>Evidence boundary:</strong> historical normalization is compared from two preserved runs. Clean processing has direct lineage; routing names its pinned migration snapshot, and app assignments remain current release records."
+    : "<strong>Evidence boundary:</strong> this song currently has the preserved legacy normalization comparison and current release records. Clean source and processing lineage have not been generated for it yet.";
   $("evidenceList").innerHTML = Object.entries(data.evidence).map(([key, value]) => `<div><strong>${escapeHtml(key)}</strong><span>${escapeHtml(value)}</span></div>`).join("");
   $("limitationsList").innerHTML = data.limitations.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
 }
@@ -152,24 +156,69 @@ function bindControls() {
   $("limitationsButton").addEventListener("click", () => $("limitationsDialog").showModal());
   $("dialogClose").addEventListener("click", () => $("limitationsDialog").close());
   $("themeButton").addEventListener("click", () => document.documentElement.classList.toggle("high-contrast"));
+  $("songSelect").addEventListener("change", (event) => loadSong(event.target.value));
+}
+
+function resetSongView() {
+  state.selected = null;
+  state.query = "";
+  state.filter = "all";
+  $("searchInput").value = "";
+  document.querySelectorAll(".filter").forEach((item) => item.classList.toggle("active", item.dataset.filter === "all"));
+  $("traceEmpty").hidden = false;
+  $("traceContent").hidden = true;
+}
+
+async function loadSong(songId) {
+  const entry = state.catalog.songs.find((song) => song.song_id === songId);
+  if (!entry) throw new Error(`Unknown song ${songId}`);
+  const requestId = ++state.requestId;
+  const picker = $("songSelect");
+  picker.disabled = true;
+  $("songTitle").textContent = `Loading ${entry.title}…`;
+  try {
+    const response = await fetch(`data/${entry.bundle}?v=6`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    const bundle = await response.json();
+    if (requestId !== state.requestId) return;
+    if (String(bundle.song.id) !== entry.song_id) throw new Error("Audit catalog and bundle song IDs do not match");
+    state.data = bundle;
+    resetSongView();
+    picker.value = entry.song_id;
+    renderHeader();
+    renderSong();
+    const firstChanged = state.data.song.lines.flatMap((line) => line.occurrences).find((token) => token.changed);
+    const firstToken = state.data.song.lines.flatMap((line) => line.occurrences)[0];
+    if (firstChanged || firstToken) selectToken((firstChanged || firstToken).occurrence_id);
+    const url = new URL(window.location.href);
+    url.searchParams.set("song", entry.song_id);
+    window.history.replaceState({}, "", url);
+  } catch (error) {
+    if (requestId !== state.requestId) return;
+    $("songTitle").textContent = "Could not load audit bundle";
+    $("artistName").textContent = error.message;
+  } finally {
+    if (requestId === state.requestId) picker.disabled = false;
+  }
 }
 
 async function start() {
   if (window.location.protocol === "file:") {
-    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=5";
+    const servedUrl = "http://127.0.0.1:4173/lyrics-audit/?v=6";
     $("songTitle").textContent = "Local server required";
     $("artistName").innerHTML = `This explorer loads its audit bundle over HTTP. <a href="${servedUrl}">Open the working explorer</a>.`;
     return;
   }
   try {
-    const response = await fetch("data/estamos-arriba.json?v=4", { cache: "no-store" });
+    const response = await fetch("data/catalog.json?v=6", { cache: "no-store" });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-    state.data = await response.json();
-    renderHeader();
-    renderSong();
-    const firstChanged = state.data.song.lines.flatMap((line) => line.occurrences).find((token) => token.changed);
-    if (firstChanged) selectToken(firstChanged.occurrence_id);
+    state.catalog = await response.json();
+    const picker = $("songSelect");
+    picker.innerHTML = state.catalog.songs.map((song) => `<option value="${escapeHtml(song.song_id)}">${escapeHtml(song.title)} — ${escapeHtml(song.coverage)}</option>`).join("");
     bindControls();
+    const requested = new URLSearchParams(window.location.search).get("song");
+    const initial = state.catalog.songs.some((song) => song.song_id === requested) ? requested : state.catalog.default_song_id;
+    await loadSong(initial);
   } catch (error) {
     $("songTitle").textContent = "Could not load audit bundle";
     $("artistName").textContent = error.message;
