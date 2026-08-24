@@ -1,0 +1,6 @@
+{
+  "config_version": "inventory-language-policy/v1",
+  "policy_id": "pt-v1",
+  "language": "pt",
+  "surface_exclusions": {}
+}

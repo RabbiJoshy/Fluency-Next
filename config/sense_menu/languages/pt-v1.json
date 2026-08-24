@@ -1,0 +1,33 @@
+{
+  "config_version": "sense-menu-language-policy/v1",
+  "policy_id": "pt-v1",
+  "language": "pt",
+  "provider": "wiktionary",
+  "card_binding": {
+    "identity": "surface-card/v1",
+    "headword_role": "lookup_metadata_only"
+  },
+  "menu_order_role": "provider_prior",
+  "redirects": {
+    "require_source_case_match": true,
+    "reject_tags": ["abbreviation", "initialism"],
+    "allow_if_tags": ["contraction"],
+    "target_pos_by_source_pos": {
+      "adj": ["adj"],
+      "adv": ["adv"],
+      "article": ["article"],
+      "conj": ["conj"],
+      "contraction": ["article", "prep"],
+      "det": ["det"],
+      "intj": ["intj"],
+      "name": ["name"],
+      "noun": ["noun"],
+      "num": ["num"],
+      "particle": ["particle"],
+      "phrase": ["phrase"],
+      "prep": ["prep"],
+      "pron": ["pron"],
+      "verb": ["verb"]
+    }
+  }
+}

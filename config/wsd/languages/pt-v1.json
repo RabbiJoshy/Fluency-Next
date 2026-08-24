@@ -1,0 +1,17 @@
+{
+  "config_version": "wsd-language-profile/v1",
+  "profile_id": "pt-v1",
+  "language": "pt",
+  "surface_locator": "portuguese-tokenizer/v1",
+  "sense_menu_adapter": "wiktionary-sense-menu/v1",
+  "card_identity": "surface-card/v1",
+  "lemma_role": "lookup_metadata_only",
+  "morphology_gate": {
+    "status": "disabled",
+    "reason": "no frozen Portuguese benchmark"
+  },
+  "provider_leaf_repair": {
+    "status": "disabled",
+    "reason": "no measured Wiktionary constraint parser"
+  }
+}

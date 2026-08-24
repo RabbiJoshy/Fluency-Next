@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/harvest-pool.schema.json",
+  "title": "A named, described set of harvested sentences",
+  "description": "A pool is a flat set of sentences with no cards in it. Keeping cards out is what lets one pool serve any inventory: a pool built against 200 surfaces would otherwise be useless at 2000. Every stage below a pool only ever narrows within it, so 'every example on this card came from one pool' holds by construction rather than by bookkeeping.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pool_version", "pool_id", "language", "description", "sources", "config", "coverage", "content_id"],
+  "properties": {
+    "pool_version": {"const": "harvest-pool/v1"},
+    "pool_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Free text: what this pool is for, in your own words. The field that makes a pool choosable months later."
+    },
+    "intent": {
+      "type": "string",
+      "description": "Optional: what you were trying to achieve, as opposed to what the config says."
+    },
+    "variety": {
+      "type": "string",
+      "description": "Optional tag such as european or brazilian. Advisory only; never used for selection."
+    },
+    "created_at": {"type": "string"},
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "adapter", "snapshot_id", "snapshot_content_id"],
+        "properties": {
+          "name": {"type": "string"},
+          "adapter": {"type": "string"},
+          "snapshot_id": {"type": "string"},
+          "snapshot_content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "description": "The exact policy that produced this pool.",
+      "additionalProperties": true,
+      "required": ["shared_policy", "language_policy"],
+      "properties": {
+        "shared_policy": {"type": "string"},
+        "language_policy": {"type": "string"},
+        "config_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sentences"],
+      "properties": {
+        "sentences": {"type": "integer", "minimum": 0},
+        "records_scanned": {"type": "integer", "minimum": 0},
+        "years": {
+          "type": "object",
+          "description": "Release-year histogram, when the source carries it. Makes corpus recency inspectable without a separate lookup.",
+          "additionalProperties": {"type": "integer"}
+        }
+      }
+    },
+    "content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

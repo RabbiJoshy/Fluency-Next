@@ -1,0 +1,24 @@
+{
+  "config_version": "wsd-model-profile/v1",
+  "profile_id": "pt-rehearsal-v1",
+  "language": "pt",
+  "execution_status": "blocked_pending_benchmark",
+  "gloss": {"enabled": true, "model_revision": null},
+  "token_tuple_vote": {
+    "enabled": true,
+    "model_revision": null,
+    "prototype_content_id": null,
+    "minimum_margin": null
+  },
+  "calibration": {
+    "enabled": true,
+    "model_revision": null,
+    "feature_version": null
+  },
+  "alignment": {
+    "enabled": false,
+    "candidate_model": "bert-base-multilingual-cased",
+    "activation_requirement": "frozen Portuguese benchmark"
+  },
+  "generative_escalation": false
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": "pt-tokenization/v1",
+  "unicode_normalization": "NFC",
+  "casefold": true,
+  "accent_folding": false,
+  "card_identity": "complete_observed_surface",
+  "attached_clitics": {
+    "identity_role": "preserve_surface",
+    "lookup_role": "may_propose_base_headword",
+    "may_replace_surface_card": false,
+    "note": "Portuguese attaches clitics with a hyphen (da-me, ve-lo) and can infix them in the future and conditional (far-me-ia). The complete observed surface stays the card; any base headword is lookup metadata only."
+  },
+  "apostrophe_policy": "preserve_observed_character",
+  "hyphen_policy": "preserve_observed_character",
+  "surface_frequency": {
+    "token_pattern": "[^\\W\\d_]+(?:['’-][^\\W\\d_]+)*",
+    "reject_line_if_contains": ["http://", "https://", "<", ">", "♪", "♫"],
+    "frequency_measure": "surface_token_occurrences"
+  }
+}

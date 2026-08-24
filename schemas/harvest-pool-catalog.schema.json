@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluency.local/schemas/harvest-pool-catalog.schema.json",
+  "title": "Overview of the harvest pools available for one language",
+  "description": "The single file that answers 'what can I pick from'. Pools may overlap freely: a sentence appearing in two pools is not a conflict, because which pool a card used is a fact about the run's choice, not about the sentence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["catalog_version", "language", "pools"],
+  "properties": {
+    "catalog_version": {"const": "harvest-pool-catalog/v1"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "updated_at": {"type": "string"},
+    "pools": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "description", "sentences", "content_id"],
+        "properties": {
+          "path": {"type": "string"},
+          "description": {"type": "string"},
+          "intent": {"type": "string"},
+          "variety": {"type": "string"},
+          "sentences": {"type": "integer", "minimum": 0},
+          "content_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      }
+    }
+  }
+}
