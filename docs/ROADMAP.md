@@ -11,6 +11,11 @@ Fluency product experience, backed by a much smaller, auditable repository in
 which languages, pipeline experiments, and exact combinations of runs can be
 changed without stale data, accidental fallback, or hidden legacy machinery.
 
+## Invariants
+
+`INVARIANTS.md` holds the rules that outlive this plan. Read it first: this
+roadmap describes a migration that will finish, and those do not.
+
 ## Working agreement
 
 - Work through one layer at a time and stop for Josh's approval at material

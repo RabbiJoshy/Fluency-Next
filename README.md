@@ -8,6 +8,12 @@ The code repository contains source code, configuration, tests, documentation,
 and compact release metadata. Large corpora, model caches, intermediate runs,
 registries, and generated releases belong in the separate `Fluency-Workspace`.
 
+## Invariants
+
+`docs/INVARIANTS.md` records the rules that constrain every decision here:
+compatibility, declared absence, verified provenance, adapters at the edges, and
+discovery over registration.
+
 ## Local bootstrap
 
 Python 3.12 is the supported development runtime for the initial rebuild.
