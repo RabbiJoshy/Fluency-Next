@@ -1,13 +1,18 @@
 # Fluency Next — AI reference
 
 Local-first successor to Fluency. Python pipeline plus a transplanted vanilla-JS
-app. Large corpora, model caches and generated releases live in a separate
-`Fluency-Workspace`, never here.
+app (`app/`, no framework or build step). Python 3.12; `.venv` is a symlink to
+the old repository's virtualenv.
+
+**Two roots.** Code, config, tests and compact release metadata live here. Large
+corpora, model caches, runs, pools and generated releases live in
+`../Fluency-Workspace` and never in git. `../Fluency` is the older repository,
+still the live app; treat it as reference, not a target.
 
 ## Read first
 
-**`docs/INVARIANTS.md`** — the five rules that constrain every change. Read it
-before altering architecture, contracts or provenance. In brief:
+**`docs/INVARIANTS.md`** — the five rules that constrain every change. Read
+before altering architecture, contracts or provenance.
 
 1. Migrate the shape, preserve the substance, label both.
 2. Absence is declared, never inferred.
@@ -15,8 +20,16 @@ before altering architecture, contracts or provenance. In brief:
 4. Adapters absorb irregularity at the edges; the engine exists once.
 5. A language or mode is added by creating files, not by editing lists.
 
-Then `docs/ROADMAP.md` for the migration plan and `docs/decisions/` for why
-particular things are the way they are.
+Then `docs/ROADMAP.md` for the plan and `docs/decisions/` for why things are as
+they are.
+
+## The load-bearing fact
+
+**A card's identity is the observed surface form.** `card_id = f(language,
+surface_key)` and nothing else — not the lemma, not a sense, not a rank.
+Everything else is metadata hanging off it. Lemmas may be lookup or linguistic
+detail; making one an identity breaks learner progress, and the surface-inventory
+schema has no field for one.
 
 ## Shape
 
@@ -25,52 +38,74 @@ src/fluency/
   cli/            one module per command group, behind a registry
   core/           workspace, hashing, io, language naming
   languages/      one package per language; each declares LANGUAGE_CODE
-  inventory/      4 frequency adapters -> surface-inventory/v1
-  sense_menu/     kaikki + spanishdict  -> sense-menu/v1
+  inventory/      4 frequency adapters   -> surface-inventory/v1
+  sense_menu/     kaikki + spanishdict   -> sense-menu/v1
   harvest/        tatoeba + opensubtitles -> parallel-sentence/v1, and pools
-  features/       provider-neutral sense features (NOT under wsd/)
-  menus.py        sense-menu contract    (NOT under wsd/)
-  projections.py  release-facing view    (NOT under wsd/)
+  features/       provider-neutral sense features   (NOT under wsd/)
+  menus.py        sense-menu contract                (NOT under wsd/)
+  projections.py  release-facing view                (NOT under wsd/)
   nlp/            pinned POS model, resumable embedding store, model registry
-  wsd/            the classifier; optional enrichment, runs two stages late
+  wsd/            the classifier: optional enrichment, runs two stages late
   release/        composition, validation, activation
 config/           policies per language, mode, provider and model
 ```
 
-The three files marked *NOT under wsd/* are there deliberately: a menu or a
-release must be buildable without the classifier importing. A test enforces it.
+The three marked *NOT under wsd/* are placed deliberately: a menu or a release
+must build without the classifier importing. A test enforces it by blocking
+`fluency.wsd` entirely and importing both.
 
-## Stage graph
+## Pipeline
 
-`STAGE_INPUTS` in `pipeline/planning.py` is authoritative. It is a **diamond,
-not a chain** — `sense_menu` and `sentence_harvest` are siblings, both reading
-only the inventory. Changing a dictionary snapshot costs no corpus re-scan.
-Use `stages_invalidated_by()` rather than reasoning from the stage numbering.
+```
+01 inventory → 02 sense_menu ┐
+             → 03 harvest    ┴→ 04 wsd → 05 selection → 06 release
+```
+
+`STAGE_INPUTS` in `pipeline/planning.py` is authoritative and it is a **diamond,
+not a chain**: `sense_menu` and `sentence_harvest` are siblings, both reading only
+the inventory. Changing a dictionary snapshot costs no corpus re-scan. Use
+`stages_invalidated_by()`; do not reason from the numbering.
+
+**Stages are immutable.** A stage with output refuses to be rebuilt — create a
+new run instead. Run ids are `<timestamp>-<8 lowercase hex>`; `pt` or `00pt0001`
+are rejected because they are not hex.
+
+**WSD is optional.** A deck ships with every example marked explicitly
+unassigned rather than blocking. Portuguese and Spanish both have such releases.
+
+Languages with profiles: `es`, `fr`, `pt`. Modes: speech, lyrics, artist.
 
 ## Working with Josh
 
-- **Verify before recommending.** Read the file rather than the label. Repeated
-  mistakes here came from reading a name (`retained_materialized_assignments`,
-  a `SPACY_POS_MODEL` constant, one assignment record) and generalising.
-  Measure the distribution; it is usually one command away.
-- **Long runs belong in the background.** Corpus scans, embeddings and model
-  downloads take minutes; print progress rather than blocking.
-- **Spend is gated.** Anything calling a paid model reports its projected units
-  before running. Note the guard currently reads the harvest cap rather than the
-  sampling cap and over-estimates about sixfold.
-- **Name pipeline steps by file and purpose**, not by number.
-- **Concurrent sessions are normal.** Check `git status` before committing and
-  commit only your own paths.
+- **Verify before recommending.** Read the file, not the label. Repeated errors
+  here came from trusting a name (`retained_materialized_assignments`), a
+  constant (`SPACY_POS_MODEL`), or a single record (axis margins) and
+  generalising. The distribution is usually one command away — measure it.
+- **Long runs go in the background.** Corpus scans, embeddings and model
+  downloads take minutes.
+- **Spend is gated.** Anything calling a paid model prints projected units first.
+  Known defect: the guard reads the harvest cap rather than the sampling cap and
+  over-estimates roughly sixfold.
+- **Name pipeline steps by file and purpose**, never by number alone.
+- **Concurrent sessions are normal.** Check `git status` before committing;
+  commit only your own paths. Others' uncommitted work is routinely present.
+- **Don't rebuild what a pool already holds.** Named, described sentence pools
+  live in `<workspace>/pools/<lang>/`; `fluency pools list` shows them.
 
 ## Commands
 
 ```bash
-make test                       # unittest, currently 422
+make test        # unittest discovery, currently 422
 PYTHONPATH=src python -m fluency pipeline plan --profile config/pipelines/<lang>/speech/<profile>.json
 PYTHONPATH=src python -m fluency pipeline inventory|sense-menu|harvest|wsd-import|build-run-release
 PYTHONPATH=src python -m fluency pools list --language <lang>
 PYTHONPATH=src python -m fluency release list|validate|activate --language <lang>
+PYTHONPATH=src python -m fluency.speech.wsd_execute --run-dir <run> --out <bundle.json> --profile-id <id>
 ```
 
-`--language` defaults to `fr` on every pipeline subcommand. Passing the wrong one
-fails loudly, but it is an easy omission.
+Every pipeline subcommand takes `--workspace`, and **`--language` defaults to
+`fr`** — an easy omission that fails loudly but confusingly.
+
+WSD writes a *bundle*; `pipeline wsd-import` publishes it into stage 04. The
+release builder reads `stages/04_wsd_assignments/output/assignments.jsonl`, not
+the bundle, so the import step is not optional.
