@@ -1,0 +1,153 @@
+{
+  "_readme": "User-visible changes in the replacement app, newest first.",
+  "entries": [
+    {
+      "date": "2026-08-24",
+      "commit": "73578b4",
+      "summary": "Example credits now favour readable titles over source codes",
+      "detail": [
+        "Resolved film and television names remain clickable without appending their raw IMDb identifier.",
+        "Subtitle line numbers remain in raw Card Data for auditing but no longer clutter learner-facing source credits.",
+        "An IMDb identifier is shown only when no human title can be resolved."
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "commit": "7f17dec",
+      "summary": "Speech examples once again identify their film or television source",
+      "detail": [
+        "Fresh release metadata is normalized into the app's provenance view, restoring IMDb links and subtitle line numbers.",
+        "A pinned IMDb title layer adds human movie names and resolves television episodes to their parent series.",
+        "The active 2,000-card Spanish release has IMDb links for all 5,997 examples and human titles for 5,967 of them."
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "commit": "f3ecb4c",
+      "summary": "POS pills now preserve complete grammatical labels",
+      "detail": [
+        "The fixed front-and-back grammar bay is wide enough for two full labels per row, including Adjective and other longer names.",
+        "POS text no longer wraps inside a pill."
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "commit": "79a69f3",
+      "summary": "The POS grid now occupies the same header position on both card faces",
+      "detail": [
+        "The front-face grammar bay has moved from beside the central surface prompt to the fixed top-right header area used on the back.",
+        "Its bounded one-row or two-row layout is unchanged."
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "commit": "6e7319a",
+      "summary": "Part-of-speech labels now use a stable one- or two-row card layout",
+      "detail": [
+        "One or two labels remain together on one centred row, while three or four labels use a compact two-row grid.",
+        "The same bounded grammar area is used on both card faces and remains vertically aligned with the headword.",
+        "Every label stays readable, the active part of speech remains highlighted, and changing senses does not reorder the labels."
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "commit": "59f3e2a",
+      "summary": "Assigned cards now show only learner-supported senses and honest percentages",
+      "detail": [
+        "Unused dictionary alternatives remain available as audit-only menu evidence instead of appearing as a giant unassigned learner row.",
+        "Assigned sense percentages once again total 100%; the hidden remainder bucket can no longer halve them to 50%.",
+        "The explicit unassigned fallback remains available for cards that genuinely have no assigned sense."
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "commit": "b602c56",
+      "summary": "Multi-headword card backs no longer repeat lemma labels",
+      "detail": [
+        "Each lemma remains visible in its existing part-of-speech and headword row.",
+        "Redundant horizontal lemma strips above the corresponding sense rows were removed.",
+        "Sense grouping, selection highlighting and source order are unchanged."
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "commit": "7432402",
+      "summary": "The active workspace now has two explicit demonstration decks",
+      "detail": [
+        "French Speech keeps its fresh 200-card Tatoeba release, while Spanish Lyrics keeps a self-contained Bad Bunny-only release.",
+        "Spanish Speech and French Lyrics now say they are awaiting a fresh run instead of attempting to load archived evidence.",
+        "All other migration runs, source copies, previews and candidates were moved into a dated recoverable archive outside the live workspace."
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "commit": "97de51d",
+      "summary": "Artist acceptance now covers French Lyrics, offline decks and playlist restoration",
+      "detail": [
+        "French Lyrics is available from the language-first chooser and opens its real Artist source without loading Speech first.",
+        "An explicitly downloaded immutable Lyrics release can launch offline while the active catalogue remains network-authoritative whenever a connection exists.",
+        "A fresh named login now restores its saved cross-artist playlist from SongSets, including contributing-artist provenance."
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "commit": "ed83c92",
+      "summary": "Language choice now leads directly to a lightweight Speech or Lyrics decision",
+      "detail": [
+        "Choosing Spanish no longer loads the Speech release before a learner can select Lyrics; the exact source starts loading only after it is chosen.",
+        "Merge Lemmas remains available as learner-facing form grouping, while optional Lyrics, cognate and morphology controls follow explicit language or release capabilities.",
+        "Card backs omit a redundant single inert POS label, cognate settings use clearer Include/Exclude wording, and secondary setup guidance is quieter and provenance-accurate."
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "commit": "67ee8f3",
+      "summary": "Preserved Artist assignments are now clearly identified while auditing",
+      "detail": [
+        "Card Data names the exact immutable Lyrics release supplying the active deck.",
+        "Historical prompt IDs that are not part of the new registry are labelled retained assignments instead of unregistered models.",
+        "Existing example-level method, translation, song and raw-record evidence remains available while clean WSD regeneration stays optional."
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "commit": "0a3a230",
+      "summary": "Artist data now stays bound to one immutable release",
+      "detail": [
+        "The active Lyrics catalog rewrites vocabulary, examples, songs, artwork and Spotify data to release-versioned URLs before they are loaded.",
+        "Offline caches can retain immutable release assets without accidentally serving data from an older active release.",
+        "Preview and active releases now use the same loading path; release activation remains an explicit separate action."
+      ]
+    },
+    {
+      "date": "2026-08-22",
+      "commit": "7b6da6d",
+      "summary": "Repeated audit flags now remain separate, traceable events",
+      "detail": [
+        "Every flag gesture has an immutable FlagId, so retries deduplicate safely without overwriting a later report on the same card.",
+        "Flags include the client build and exact example/source-record identifiers when available.",
+        "The shared backend adds open-to-fixed resolution fields while retaining all historical evidence."
+      ]
+    },
+    {
+      "date": "2026-08-22",
+      "commit": "d842f34",
+      "summary": "Flags now identify their exact release and JSTA is a dedicated audit account",
+      "detail": [
+        "French flags include the immutable release, run, content and layer provenance available at the time of review.",
+        "JSTA receives the same information and flagging controls as JST while keeping separate progress.",
+        "Choose your own remembers contributing artists as well as exact song IDs through the shared SongSets backend contract."
+      ]
+    },
+    {
+      "date": "2026-08-22",
+      "commit": "ddd22d0",
+      "summary": "The existing Fluency app surface now runs against the clean release architecture",
+      "detail": [
+        "The interface and active-set experience are transplanted from the existing app.",
+        "French data is mounted from one explicitly active immutable release.",
+        "No historical French sentences or WSD assignments are bundled in the code repository."
+      ]
+    }
+  ]
+}

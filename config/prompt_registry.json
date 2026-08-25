@@ -1,0 +1,8 @@
+{
+  "_meta": {
+    "description": "Fresh-run WSD provenance only; populated when a reviewed run is built.",
+    "schema_version": 1
+  },
+  "prompts": {},
+  "acceptance_policies": {}
+}
