@@ -12,7 +12,7 @@ from fluency.core.artifacts import artifact_directory, store_artifact_bytes, ver
 from fluency.core.hashing import file_content_id
 from fluency.core.workspace import Workspace
 from fluency.lyrics.ingest import ingest_legacy_genius_song
-from fluency.release.io import atomic_write
+from fluency.core.io import atomic_write
 
 
 PLAN_VERSION = "lyrics-corpus-plan/v1"

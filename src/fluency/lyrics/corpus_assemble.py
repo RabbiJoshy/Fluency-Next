@@ -15,7 +15,7 @@ from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
 from fluency.lyrics.assemble import METHOD_ID, assemble_lyrics_app_stage
 from fluency.lyrics.corpus import PLAN_VERSION
-from fluency.release.io import atomic_write, json_bytes
+from fluency.core.io import atomic_write, json_bytes
 
 
 REPORT_VERSION = "lyrics-corpus-app-assembly-report/v1"

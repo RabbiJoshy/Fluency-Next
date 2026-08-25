@@ -24,6 +24,9 @@ import time
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
+from fluency.nlp.models import pin, setting
+from fluency.nlp.embeddings import ensure_embeddings, load_cache
+from fluency.nlp.pos import load_pinned
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.wsd.commit import CommitPolicy
 from fluency.wsd.contracts import SelectedTuple, SelectionProjection, WSDAssignment
@@ -48,9 +51,9 @@ from fluency.wsd.runner import (
 )
 
 BUNDLE_VERSION = "wsd-assignment-bundle/v1"
-EMBED_MODEL = "gemini-embedding-001"
-TASK_TYPE = "SEMANTIC_SIMILARITY"
-SPACY_POS_MODEL = "es_dep_news_trf@3.8.0"
+EMBED_MODEL = setting("exact-text-embedding", "name")
+TASK_TYPE = setting("exact-text-embedding", "task_type")
+SPACY_POS_MODEL = pin("occurrence-pos")
 SPACY_POS_MODEL_NAME, SPACY_POS_MODEL_VERSION = SPACY_POS_MODEL.split("@", 1)
 SUPPORTED_PROFILE_CONSTRAINT_MODES = {
     "es-v6-1": "filter",
@@ -116,16 +119,11 @@ def occurrence_pos_tags(
     same observed POS; disagreement is explicit and passes ``None``.
     """
 
-    if model is None:
-        import spacy
-
-        model = spacy.load(model_name)
-        actual_version = str(model.meta.get("version") or "")
-        if model_name != SPACY_POS_MODEL_NAME or actual_version != SPACY_POS_MODEL_VERSION:
-            raise RuntimeError(
-                "occurrence POS model does not match the pinned revision "
-                f"{SPACY_POS_MODEL}"
-            )
+    if model_name != SPACY_POS_MODEL_NAME:
+        raise RuntimeError(
+            f"occurrence POS model does not match the pinned revision {SPACY_POS_MODEL}"
+        )
+    model = load_pinned(SPACY_POS_MODEL, model=model)
     grouped: dict[
         str,
         list[
@@ -457,39 +455,26 @@ def main() -> None:
     # written somewhere nothing will look for it and every run re-embeds.
     workspace_root = args.run_dir.resolve().parents[3]
     cache_path = args.embedding_cache or (
-        workspace_root / "embeddings" / "es" / "exact-text-gemini-embedding-001.npz"
+        # Named for the model that produced it: vectors from different models
+        # must never share a store.
+        workspace_root / "embeddings" / "es" / f"exact-text-{EMBED_MODEL}.npz"
     )
-    vectors: dict[str, Any] = {}
-    if cache_path.exists():
-        import numpy as np
-        blob = np.load(cache_path, allow_pickle=True)
-        keys = list(blob["keys"])
-        matrix = blob["vectors"]
-        vectors = {str(k): matrix[i] for i, k in enumerate(keys)}
-        print(f"exact-text cache: {len(vectors):,} vectors at {cache_path}")
-    missing = sorted(text for text in needed if text not in vectors)
+    api_key = ""
+    if args.env_file.is_file():
+        for line in args.env_file.read_text(encoding="utf-8").splitlines():
+            if line.startswith("GEMINI_API_KEY"):
+                api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
+
+    cached_before = len(load_cache(cache_path))
+    # Shared store, resumable writer: an interrupted embed keeps every vector
+    # already paid for instead of starting the run again from nothing.
+    vectors = ensure_embeddings(cache_path, needed, api_key=api_key or None)
+    missing = [text for text in needed if text not in vectors]
     if missing:
-        api_key = ""
-        if args.env_file.is_file():
-            for line in args.env_file.read_text(encoding="utf-8").splitlines():
-                if line.startswith("GEMINI_API_KEY"):
-                    api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
-        if not api_key:
-            raise SystemExit(
-                f"{len(missing):,} exact-text embeddings are missing; "
-                "provide GEMINI_API_KEY via --env-file to create them"
-            )
-        print(f"embedding {len(missing):,} cache misses into a run-scoped delta...")
-        vectors.update(embed_texts(missing, api_key=api_key))
-        import numpy as np
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        ordered = sorted(vectors)
-        np.savez_compressed(
-            cache_path,
-            keys=np.array(ordered, dtype=object),
-            vectors=np.stack([vectors[k] for k in ordered]),
-        )
-    print(f"reused {len(needed) - len(missing):,}, newly embedded {len(missing):,}")
+        raise SystemExit(f"{len(missing):,} exact-text embeddings could not be created")
+    newly_embedded = max(0, len(vectors) - cached_before)
+    print(f"exact-text cache: {len(vectors):,} vectors at {cache_path}")
+    print(f"reused {len(needed) - newly_embedded:,}, newly embedded {newly_embedded:,}")
 
     components = WSDComponents(
         language=SpanishWSDAdapter(),

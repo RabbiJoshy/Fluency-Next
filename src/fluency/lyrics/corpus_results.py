@@ -12,7 +12,7 @@ from fluency.core.hashing import file_content_id
 from fluency.core.workspace import Workspace
 from fluency.lyrics.corpus import PLAN_VERSION, SAFE_ID
 from fluency.lyrics.wsd_results import import_lyrics_wsd_results
-from fluency.release.io import atomic_write
+from fluency.core.io import atomic_write
 
 
 CATALOG_VERSION = "lyrics-wsd-corpus-bundle-catalog/v1"

@@ -16,7 +16,7 @@ from fluency.core.hashing import canonical_content_id, file_content_id, validate
 from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
 from fluency.pipeline.planning import load_pipeline_profile
-from fluency.release.io import atomic_write, json_bytes
+from fluency.core.io import atomic_write, json_bytes
 from fluency.wsd.contracts import SelectionProjection, WSDAssignment
 from fluency.wsd.menus import build_analysis_id
 from fluency.wsd.multiword import MULTIWORD_SOURCE_ADAPTER

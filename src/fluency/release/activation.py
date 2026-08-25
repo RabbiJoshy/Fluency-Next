@@ -5,7 +5,7 @@ from __future__ import annotations
 from fluency.core.workspace import Workspace
 from fluency.release.catalog import write_catalog
 from fluency.release.composition import SAFE_RELEASE_ID
-from fluency.release.io import atomic_write
+from fluency.core.io import atomic_write
 from fluency.release.validation import ACTIVE_RELEASE_VERSION, validate_active_release, validate_release_bundle
 
 

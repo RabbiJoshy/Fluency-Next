@@ -18,7 +18,7 @@ from fluency.artist.release import (
 )
 from fluency.core.hashing import file_content_id
 from fluency.core.workspace import Workspace
-from fluency.release.io import json_bytes
+from fluency.core.io import json_bytes
 
 
 class LyricsPreviewReleaseError(ValueError):

@@ -15,7 +15,7 @@ from fluency.core.hashing import canonical_content_id, file_content_id, validate
 from fluency.core.workspace import Workspace
 from fluency.lyrics.lineage import build_lineage_event
 from fluency.lyrics.lexical import index_menu_analyses, resolve_candidate_analyses
-from fluency.release.io import atomic_write, json_bytes
+from fluency.core.io import atomic_write, json_bytes
 
 
 BUNDLE_VERSION = "lyrics-wsd-result-bundle/v1"

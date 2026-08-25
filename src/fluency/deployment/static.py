@@ -14,13 +14,14 @@ from typing import Any
 from fluency.artist.release import validate_lyrics_release
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
-from fluency.release.io import json_bytes
+from fluency.core.languages import language_keys
+from fluency.core.io import json_bytes
 from fluency.release.validation import validate_release_bundle
 
 
 MANIFEST_VERSION = "static-deployment/v1"
 SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
-LANGUAGE_KEYS = {"es": "spanish", "fr": "french", "nl": "dutch", "pt": "portuguese"}
+LANGUAGE_KEYS = language_keys()
 EXCLUDED_APP_ROOTS = frozenset({"backend", "docs", "lyrics-audit"})
 
 

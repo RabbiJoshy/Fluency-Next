@@ -20,7 +20,7 @@ from fluency.pipeline.budget import (
     display_examples_per_card,
     wsd_budget_per_card,
 )
-from fluency.release.io import json_bytes
+from fluency.core.io import json_bytes
 
 
 PROFILE_VERSION = "speech-pipeline-profile/v1"
@@ -34,6 +34,53 @@ STAGE_ORDER = (
     "example_selection",
     "release_build",
 )
+
+# What each stage actually reads. The linear STAGE_ORDER is an execution
+# sequence, not a dependency chain, and flattening the two hides a real fact:
+# `sense_menu` and `sentence_harvest` are siblings. Both read only the
+# inventory; neither reads the other. Running the menu first is a scheduling
+# preference -- it is cheap and fails fast on a bad dictionary snapshot -- and
+# not a data dependency.
+#
+# Declared because "I changed one thing, what moved?" is otherwise unanswerable
+# from the artifacts: re-running the menu does not invalidate a harvest, and
+# changing corpus does not invalidate a menu, but the numbering suggests both do.
+STAGE_INPUTS = {
+    "inventory": (),
+    "sense_menu": ("inventory",),
+    "sentence_harvest": ("inventory",),
+    "wsd_assignments": ("sense_menu", "sentence_harvest"),
+    "example_selection": ("sentence_harvest", "wsd_assignments"),
+    "release_build": ("inventory", "sense_menu", "example_selection"),
+}
+
+
+def stage_dependencies(stage: str) -> tuple[str, ...]:
+    """Return the stages whose output this stage reads."""
+
+    if stage not in STAGE_INPUTS:
+        raise PipelineProfileError(f"unknown pipeline stage: {stage}")
+    return STAGE_INPUTS[stage]
+
+
+def stages_invalidated_by(stage: str) -> tuple[str, ...]:
+    """Return the stages that must be rebuilt if this stage's output changes.
+
+    Transitive, so it answers the question directly rather than requiring the
+    caller to walk the graph and get the sibling case wrong.
+    """
+
+    if stage not in STAGE_INPUTS:
+        raise PipelineProfileError(f"unknown pipeline stage: {stage}")
+    dirty = {stage}
+    changed = True
+    while changed:
+        changed = False
+        for candidate, inputs in STAGE_INPUTS.items():
+            if candidate not in dirty and dirty.intersection(inputs):
+                dirty.add(candidate)
+                changed = True
+    return tuple(name for name in STAGE_ORDER if name in dirty and name != stage)
 STAGE_OUTPUTS = {
     "inventory": ("inventory", "surface-inventory/v1"),
     "sense_menu": ("sense_menu", "sense-menu/v1"),

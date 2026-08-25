@@ -15,7 +15,7 @@ from fluency.lyrics.wsd import (
     prepare_lyrics_wsd_stage,
     wsd_preparation_implementation_content_id,
 )
-from fluency.release.io import atomic_write
+from fluency.core.io import atomic_write
 
 
 REPORT_VERSION = "lyrics-corpus-wsd-preparation-report/v1"

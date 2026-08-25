@@ -23,11 +23,11 @@ from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
 from fluency.pipeline.planning import validate_pipeline_profile
 from fluency.release.composition import compose_release
-from fluency.release.io import atomic_write, json_bytes
+from fluency.core.io import atomic_write, json_bytes
 from fluency.release.study_structure import build_study_structure
 from fluency.release.validation import SPEECH_DECK_VERSION
 from fluency.pipeline.budget import display_examples_per_card
-from fluency.wsd.projection import (
+from fluency.projections import (
     PUBLICATION_PROJECTIONS,
     SELECTION_PROJECTIONS,
     materialize_selection,

@@ -33,7 +33,7 @@ from fluency.inventory.recovered import (
     load_recovered_surface_ranking,
 )
 from fluency.pipeline.planning import load_pipeline_profile
-from fluency.release.io import atomic_write, json_bytes
+from fluency.core.io import atomic_write, json_bytes
 
 
 STAGE_VERSION = "inventory-stage/v1"

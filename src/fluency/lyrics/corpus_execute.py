@@ -18,7 +18,7 @@ from fluency.lyrics.wsd_execute import (
     spanish_v5_required_texts,
 )
 from fluency.lyrics.wsd_results import BUNDLE_VERSION
-from fluency.release.io import atomic_write
+from fluency.core.io import atomic_write
 
 
 class LyricsCorpusWSDExecutionError(ValueError):

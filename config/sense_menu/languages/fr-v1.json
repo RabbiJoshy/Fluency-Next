@@ -67,5 +67,8 @@
     }
   },
   "region_tags": [],
-  "region_tags_note": "Declared and empty: no French regional tag list has been established yet. Populate and re-run the sense-menu stage to backfill."
+  "region_tags_note": "Declared and empty: no French regional tag list has been established yet. Populate and re-run the sense-menu stage to backfill.",
+  "register_tags": [],
+  "construction_tags": [],
+  "feature_vocabulary_note": "Declared and empty: no French vocabulary has been established, so the extractor falls back to its provider defaults. Populate and re-run the sense-menu stage to backfill."
 }

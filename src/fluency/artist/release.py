@@ -12,6 +12,7 @@ import shutil
 import tempfile
 from typing import Any
 
+from fluency.wsd.provenance import method_composition
 from fluency.artist.wsd_bridge import (
     bridge_materialized_assignments,
     overlay_native_assignments,
@@ -19,7 +20,7 @@ from fluency.artist.wsd_bridge import (
 )
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
-from fluency.release.io import atomic_write, json_bytes
+from fluency.core.io import atomic_write, json_bytes
 
 
 LYRICS_MANIFEST_VERSION = "lyrics-release-manifest/v1"
@@ -377,6 +378,13 @@ def _artist_config(
             bridged_index, wsd_evidence = overlay_native_assignments(
                 bridged_index, wsd_evidence, master, records
             )
+    # State what actually computed these decisions. The release speaks the v7
+    # contract either way, so without this a fully migrated deck and a fully
+    # native one are indistinguishable from the outside.
+    composition = method_composition(bridged_index)
+    if wsd_evidence is not None:
+        wsd_evidence["method_composition"] = composition
+
     index_relative = f"{artist_base}/index.json"
     index_target = app_root / index_relative
     index_target.parent.mkdir(parents=True, exist_ok=True)
@@ -403,6 +411,7 @@ def _artist_config(
         wsd_evidence_target.write_bytes(json_bytes(wsd_evidence))
         copied[wsd_evidence_path] = wsd_evidence_target
         output["wsdEvidencePath"] = wsd_evidence_path
+    output["wsdMethodComposition"] = composition
     songs_count = 0
     songs_value = source.get("songsPath")
     if isinstance(songs_value, str):

@@ -833,11 +833,11 @@ window.showArtistPicker = showArtistPicker;
 // Standard-mode language adapter: flag pictures + existing hidden language
 // buttons, so all loading/theme/progress behavior stays in ui.js.
 function showLanguagePicker(languages) {
-    const languageOrder = ['spanish', 'swedish', 'italian', 'dutch', 'polish', 'french', 'portuguese', 'russian'];
-    const flags = {
-        spanish: '🇪🇸', swedish: '🇸🇪', italian: '🇮🇹', dutch: '🇳🇱',
-        polish: '🇵🇱', french: '🇫🇷', portuguese: '🇧🇷', russian: '🇷🇺'
-    };
+    const languageOrder = config.languageDisplayOrder || Object.keys(config.languages);
+    // Flags live on each language's own config entry.
+    const flags = Object.fromEntries(
+        Object.entries(languages).map(([key, cfg]) => [key, cfg.flag || ''])
+    );
     const entries = languageOrder.filter(key => languages[key]).map(key => {
         const cfg = languages[key];
         return {

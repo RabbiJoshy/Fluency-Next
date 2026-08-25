@@ -13,8 +13,8 @@ import unicodedata
 from typing import Any, Iterable
 
 from fluency.core.hashing import canonical_content_id, file_content_id
-from fluency.wsd.features import SpecialistFeature
-from fluency.wsd.menus import MenuAnalysis, SenseLeaf, build_analysis_id
+from fluency.features import SpecialistFeature
+from fluency.menus import MenuAnalysis, SenseLeaf, build_analysis_id
 
 
 ADAPTER_ID = "spanishdict-sense-menu/v1"

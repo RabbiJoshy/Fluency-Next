@@ -8,7 +8,7 @@ from fluency.core.hashing import content_id, file_content_id
 from fluency.core.identity import create_card_record
 from fluency.core.workspace import Workspace
 from fluency.pipeline.planning import create_pipeline_plan, load_pipeline_profile
-from fluency.release.io import json_bytes
+from fluency.core.io import json_bytes
 from fluency.wsd.contracts import SelectedTuple, WSDAssignment
 from fluency.wsd.importer import WSDAssignmentImportError, import_wsd_assignments
 from fluency.wsd.menus import build_analysis_id

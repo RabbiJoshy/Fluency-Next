@@ -15,20 +15,15 @@ from fluency.languages.surfaces import (
     normalizer_for_language,
     typography_canonicalizer_for_language,
 )
-from fluency.wsd.features import SpecialistFeature
-from fluency.wsd.menus import MenuAnalysis, SenseLeaf, build_analysis_id
+from fluency.features import SpecialistFeature
+from fluency.features.wiktionary import extract as extract_wiktionary_features
+from fluency.menus import MenuAnalysis, SenseLeaf, build_analysis_id
 
 
 ADAPTER_ID = "wiktionary-sense-menu/v1"
 MENU_VERSION = "sense-menu/v1"
 REPORT_VERSION = "sense-menu-report/v1"
 FORM_TAGS = frozenset({"form-of", "alt-of"})
-REGISTER_TAGS = frozenset(
-    {"archaic", "colloquial", "dated", "formal", "informal", "offensive", "slang", "vulgar"}
-)
-CONSTRUCTION_TAGS = frozenset(
-    {"ditransitive", "impersonal", "intransitive", "reflexive", "transitive"}
-)
 
 
 class KaikkiMenuError(ValueError):
@@ -304,18 +299,20 @@ def _metadata(
     return metadata
 
 
-def _specialist_features(sense: dict[str, Any]) -> tuple[SpecialistFeature, ...]:
-    features = [
-        SpecialistFeature("domain", "topic", topic.strip(), topic.strip())
-        for topic in sense.get("topics", [])
-        if isinstance(topic, str) and topic.strip()
-    ]
-    for tag in sorted(_sense_tags(sense)):
-        if tag in REGISTER_TAGS:
-            features.append(SpecialistFeature("register", "usage_tag", tag, tag))
-        elif tag in CONSTRUCTION_TAGS:
-            features.append(SpecialistFeature("construction", "grammar_tag", tag, tag))
-    return tuple(features)
+def _specialist_features(
+    sense: dict[str, Any],
+    policy: dict[str, Any] | None = None,
+) -> tuple[SpecialistFeature, ...]:
+    """Delegate to the provider-neutral extractor.
+
+    Feature typing is deliberately not the dictionary reader's job: it changes
+    for different reasons and on a different cadence, and its vocabulary is
+    language policy rather than code.
+    """
+
+    return extract_wiktionary_features(
+        sense, tags=sorted(_sense_tags(sense)), policy=policy
+    )
 
 
 class KaikkiSenseMenuAdapter:
@@ -518,7 +515,7 @@ class KaikkiSenseMenuAdapter:
                         definition=_context(sense),
                         source_reference=source_reference,
                         provider_metadata=_metadata(row, sense, self.language_policy),
-                        specialist_features=_specialist_features(sense),
+                        specialist_features=_specialist_features(sense, self.language_policy),
                     )
                     previous = leaves.get(sense_id)
                     if previous is not None and previous != leaf:

@@ -15,20 +15,22 @@ import re
 import time
 from typing import Any
 
+from fluency.nlp.models import pin, setting
+from fluency.nlp.pos import load_pinned
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
 from fluency.lyrics.lexical import index_menu_analyses, resolve_candidate_analyses
 from fluency.lyrics.wsd_results import BUNDLE_VERSION, RESULT_VERSION
-from fluency.release.io import atomic_write
+from fluency.core.io import atomic_write
 from fluency.wsd.spanish_v5_features import build_features, companion_features, structural_features
 
 
 METHOD_PROFILE = "es-sd-beto-cal-v5-migration-v1"
 SOURCE_METHOD = "spanishdict-beto-cal-v5"
 SOURCE_COMMIT = "78506bf6ee785049393b2a760eceecd083c53495"
-BETO_MODEL = "dccuchile/bert-base-spanish-wwm-cased"
-BETO_REVISION = "c4d86612f51b4f46759c8390d1798c2febe71b93"
-SPACY_POS_MODEL = "es_dep_news_trf@3.8.0"
+BETO_MODEL = setting("token-context", "name")
+BETO_REVISION = setting("token-context", "revision")
+SPACY_POS_MODEL = pin("occurrence-pos")
 
 
 class LyricsWSDExecutionError(ValueError):
@@ -140,8 +142,10 @@ def _load_vectors(base: Path, delta: Path, required: list[str], api_key: str | N
                 started = time.monotonic()
                 try:
                     response = client.models.embed_content(
-                        model="gemini-embedding-001", contents=batch,
-                        config=types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY"),
+                        model=setting("exact-text-embedding", "name"), contents=batch,
+                        config=types.EmbedContentConfig(
+                            task_type=setting("exact-text-embedding", "task_type")
+                        ),
                     )
                     break
                 except Exception as error:
@@ -189,8 +193,10 @@ def _load_vectors(base: Path, delta: Path, required: list[str], api_key: str | N
 
 
 def _pos_tags(requests: list[dict[str, Any]], model: Any | None = None) -> dict[str, str | None]:
-    import spacy
-    model = spacy.load("es_dep_news_trf") if model is None else model
+    # Enforce the pin this module already declares. It was previously used only
+    # to write `occurrence_pos` into the run manifest, so the artifact asserted
+    # a revision nothing had checked.
+    model = load_pinned(SPACY_POS_MODEL, model=model)
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for request in requests:
         if request["eligibility"] == "ready":
@@ -289,7 +295,7 @@ def build_spanish_v5_runtime(
         resolved_api_key = dotenv_value(env_file, "GEMINI_API_KEY")
     vector = _load_vectors(base_embeddings, delta, required_texts, resolved_api_key)
     print("Loading Spanish POS and BETO models once for this execution branch...", flush=True)
-    spacy_model = spacy.load("es_dep_news_trf")
+    spacy_model = load_pinned(SPACY_POS_MODEL)
     tokenizer = AutoTokenizer.from_pretrained(BETO_MODEL, revision=BETO_REVISION)
     token_model = AutoModel.from_pretrained(
         BETO_MODEL, revision=BETO_REVISION, output_hidden_states=True
@@ -490,7 +496,7 @@ def execute_spanish_v5_lyrics(
             "features": file_content_id(repository_root / "src/fluency/wsd/spanish_v5_features.py"),
             "policy": file_content_id(repository_root / "src/fluency/wsd/languages/spanish.py"),
         }),
-        "model_revisions": {"gloss": "gemini-embedding-001", "token": f"{BETO_MODEL}@{BETO_REVISION}", "occurrence_pos": SPACY_POS_MODEL, "calibrator_features": "5"},
+        "model_revisions": {"gloss": setting("exact-text-embedding", "name"), "token": f"{BETO_MODEL}@{BETO_REVISION}", "occurrence_pos": SPACY_POS_MODEL, "calibrator_features": "5"},
         "asset_refs": asset_refs,
         "parameters": {"menu_prior": 0.02, "menu_prior_decay": 0.5, "pos_filter": "bridged-occurrence-pos/v1", "clitic_gate": "se-only", "tuple_vote_minimum_gap": 0.02, "calibrator_release_role": "evidence_only"},
         "optional_methods": {"alignment": "disabled", "generative_escalation": "disabled"},

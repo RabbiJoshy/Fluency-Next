@@ -79,5 +79,28 @@
     "Portugal",
     "São-Tomé",
     "Timor-Leste"
+  ],
+  "register_tags": [
+    "archaic",
+    "colloquial",
+    "dated",
+    "euphemistic",
+    "formal",
+    "informal",
+    "obsolete",
+    "offensive",
+    "poetic",
+    "slang",
+    "vulgar"
+  ],
+  "construction_tags": [
+    "auxiliary",
+    "copulative",
+    "ditransitive",
+    "impersonal",
+    "intransitive",
+    "pronominal",
+    "reflexive",
+    "transitive"
   ]
 }

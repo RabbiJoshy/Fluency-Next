@@ -1,0 +1,30 @@
+{
+  "config_version": "nlp-model-registry/v1",
+  "note": "Every model this pipeline calls, declared once. The same three identifiers were previously written into five modules, so a provider or revision change meant finding all of them and the run manifests recorded whichever copy happened to be read.",
+  "models": {
+    "exact-text-embedding": {
+      "provider": "google-genai",
+      "name": "gemini-embedding-001",
+      "task_type": "SEMANTIC_SIMILARITY",
+      "batch_size": 100,
+      "checkpoint_every": 1000,
+      "max_quota_retries": 12,
+      "min_seconds_per_batch": 2.2,
+      "note": "min_seconds_per_batch keeps a 100-item batch under the paid-tier per-minute ceiling rather than discovering it by being throttled."
+    },
+    "occurrence-pos": {
+      "provider": "spacy",
+      "name": "es_dep_news_trf",
+      "revision": "3.8.0",
+      "language": "es",
+      "note": "Pinned and enforced at load. A run must not record a revision it did not verify."
+    },
+    "token-context": {
+      "provider": "huggingface",
+      "name": "dccuchile/bert-base-spanish-wwm-cased",
+      "revision": "c4d86612f51b4f46759c8390d1798c2febe71b93",
+      "language": "es",
+      "note": "BETO, used by the lyrics token-tuple vote."
+    }
+  }
+}

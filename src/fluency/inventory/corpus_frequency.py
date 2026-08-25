@@ -20,7 +20,7 @@ import unicodedata
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
 from fluency.languages.surfaces import normalizer_for_language
-from fluency.release.io import json_bytes
+from fluency.core.io import json_bytes
 
 
 ADAPTER_ID = "corpus-surface-frequency/v1"

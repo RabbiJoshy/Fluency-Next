@@ -27,7 +27,7 @@ from fluency.harvest.sources import (
     TatoebaAdapter,
 )
 from fluency.pipeline.planning import load_pipeline_profile
-from fluency.release.io import atomic_write, json_bytes
+from fluency.core.io import atomic_write, json_bytes
 
 
 STAGE_VERSION = "sentence-harvest/v1"

@@ -14,7 +14,7 @@ from typing import Any
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
 from fluency.lyrics.lineage import build_lineage_event
-from fluency.release.io import atomic_write, json_bytes
+from fluency.core.io import atomic_write, json_bytes
 
 
 STAGE_VERSION = "lyrics-app-assembly-stage/v1"

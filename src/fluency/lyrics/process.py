@@ -28,7 +28,7 @@ from fluency.lyrics.languages import (
 )
 from fluency.lyrics.lineage import build_lineage_event
 from fluency.lyrics.routing import RoutingSnapshot
-from fluency.release.io import atomic_write, json_bytes
+from fluency.core.io import atomic_write, json_bytes
 
 
 STAGE_VERSION = "lyrics-processing-stage/v2"

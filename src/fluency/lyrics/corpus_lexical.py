@@ -22,7 +22,7 @@ from fluency.lyrics.lexical import (
     lexical_implementation_content_id,
     lexical_lookup_forms,
 )
-from fluency.release.io import atomic_write, json_bytes
+from fluency.core.io import atomic_write, json_bytes
 from fluency.sense_menu.config import load_sense_menu_language_policy
 from fluency.sense_menu.spanishdict import REQUIRED_FILES as SPANISHDICT_FILES
 

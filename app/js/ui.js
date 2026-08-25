@@ -311,21 +311,16 @@ function unmergeStandardProgressFromLanguageStep() {
 function renderLanguageTabs() {
     const tabsContainer = document.getElementById('languageTabs');
 
-    // Define custom language order (Polish before grayed-out French and Russian)
-    const languageOrder = ['spanish', 'swedish', 'italian', 'dutch', 'polish', 'french', 'portuguese', 'russian'];
+    // Order is a product decision (enabled languages before grayed-out ones), so
+    // it is declared once in config.json rather than restated in each file that
+    // renders a language list.
+    const languageOrder = config.languageDisplayOrder || Object.keys(config.languages);
     const languages = languageOrder.filter(lang => config.languages[lang]);
 
-    // Map language keys to 2-letter codes
-    const langCodeMap = {
-        'dutch': 'NL',
-        'polish': 'PL',
-        'spanish': 'ES',
-        'italian': 'IT',
-        'french': 'FR',
-        'portuguese': 'BR',
-        'russian': 'RU',
-        'swedish': 'SE'
-    };
+    // Short codes live on each language's own config entry.
+    const langCodeMap = Object.fromEntries(
+        Object.entries(config.languages).map(([key, cfg]) => [key, cfg.shortCode || key.slice(0, 2).toUpperCase()])
+    );
 
     // Generate language tabs dynamically - no active state initially
     const tabsHTML = languages.map((langKey, index) => {

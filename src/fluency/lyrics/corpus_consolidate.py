@@ -16,7 +16,7 @@ from fluency.lyrics.consolidate import (
     consolidation_policy,
 )
 from fluency.lyrics.corpus import PLAN_VERSION
-from fluency.release.io import atomic_write
+from fluency.core.io import atomic_write
 
 
 REPORT_VERSION = "lyrics-corpus-consolidation-report/v1"

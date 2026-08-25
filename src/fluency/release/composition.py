@@ -18,7 +18,7 @@ from fluency.release.app_compat import (
     build_app_compatibility_assets,
     build_app_conjugations,
 )
-from fluency.release.io import json_bytes
+from fluency.core.io import json_bytes
 from fluency.release.validation import (
     RELEASE_MANIFEST_VERSION,
     validate_composition,

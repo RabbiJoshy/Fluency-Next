@@ -12,7 +12,7 @@ from typing import Any
 from fluency.core.artifacts import ArtifactMetadata, store_artifact_bytes
 from fluency.core.hashing import file_content_id
 from fluency.core.workspace import Workspace
-from fluency.release.io import json_bytes
+from fluency.core.io import json_bytes
 
 
 LAYER_VERSION = "conjugation-layer/v1"

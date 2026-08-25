@@ -15,7 +15,7 @@ from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.identity import build_card_id, create_card_record
 from fluency.core.workspace import Workspace
 from fluency.lyrics.lineage import build_lineage_event
-from fluency.release.io import atomic_write, json_bytes
+from fluency.core.io import atomic_write, json_bytes
 from fluency.sense_menu.config import load_sense_menu_language_policy
 from fluency.sense_menu.kaikki import ADAPTER_ID as KAIKKI_ADAPTER_ID, KaikkiSenseMenuAdapter
 from fluency.sense_menu.spanishdict import ADAPTER_ID as SPANISHDICT_ADAPTER_ID, SpanishDictSenseMenuAdapter

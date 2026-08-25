@@ -1,50 +1,14 @@
-"""Provider-neutral sense features exposed to optional WSD specialists."""
+"""Backwards-compatible re-export of the provider-neutral feature contract.
 
-from __future__ import annotations
+The contract moved to :mod:`fluency.features` so that dictionary adapters stop
+depending on the WSD package. Existing imports keep working; new code should
+import from ``fluency.features`` directly.
+"""
 
-from dataclasses import dataclass
-from typing import Any, Literal, Mapping
+from fluency.features.contract import (
+    FEATURE_FAMILIES,
+    FeatureFamily,
+    SpecialistFeature,
+)
 
-
-FEATURE_FAMILIES = frozenset({"domain", "register", "construction"})
-FeatureFamily = Literal["domain", "register", "construction"]
-
-
-@dataclass(frozen=True, slots=True)
-class SpecialistFeature:
-    family: FeatureFamily
-    kind: str
-    value: str
-    embedding_text: str
-
-    def __post_init__(self) -> None:
-        if self.family not in FEATURE_FAMILIES:
-            raise ValueError("unsupported specialist feature family")
-        for name, value in (
-            ("kind", self.kind),
-            ("value", self.value),
-            ("embedding_text", self.embedding_text),
-        ):
-            if not isinstance(value, str) or not value.strip():
-                raise ValueError(f"specialist feature {name} must not be empty")
-
-    def to_dict(self) -> dict[str, str]:
-        return {
-            "family": self.family,
-            "kind": self.kind,
-            "value": self.value,
-            "embedding_text": self.embedding_text,
-        }
-
-    @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "SpecialistFeature":
-        if not isinstance(value, Mapping) or set(value) != {
-            "family", "kind", "value", "embedding_text"
-        }:
-            raise ValueError("specialist feature fields do not match the contract")
-        return cls(
-            family=value["family"],
-            kind=value["kind"],
-            value=value["value"],
-            embedding_text=value["embedding_text"],
-        )
+__all__ = ["FEATURE_FAMILIES", "FeatureFamily", "SpecialistFeature"]

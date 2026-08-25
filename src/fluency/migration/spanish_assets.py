@@ -16,7 +16,7 @@ from typing import Any
 from fluency.core.hashing import file_content_id
 from fluency.core.workspace import Workspace
 from fluency.languages.spanish.surfaces import normalize_surface
-from fluency.release.io import json_bytes
+from fluency.core.io import json_bytes
 
 
 MANIFEST_VERSION = "retained-source-artifact/v1"

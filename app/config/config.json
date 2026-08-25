@@ -70,7 +70,10 @@
         "cognateFilter": true,
         "morphology": true
       },
-      "hasData": true
+      "hasData": true,
+      "flag": "🇪🇸",
+      "shortCode": "ES",
+      "speechLang": "es-ES"
     },
     "swedish": {
       "name": "Swedish",
@@ -125,7 +128,10 @@
         "conjugation": "https://cooljugator.com/sv/{word}",
         "babla": "https://en.bab.la/dictionary/swedish-english/{word}"
       },
-      "hasData": false
+      "hasData": false,
+      "flag": "🇸🇪",
+      "shortCode": "SE",
+      "speechLang": "sv-SE"
     },
     "italian": {
       "name": "Italian",
@@ -180,7 +186,10 @@
         "reverso": "https://context.reverso.net/translation/italian-english/{word}",
         "conjugation": "https://www.italian-verbs.com/italian-verbs/conjugation.php?verbo={word}"
       },
-      "hasData": false
+      "hasData": false,
+      "flag": "🇮🇹",
+      "shortCode": "IT",
+      "speechLang": "it-IT"
     },
     "dutch": {
       "name": "Dutch",
@@ -235,7 +244,10 @@
         "reverso": "https://context.reverso.net/translation/dutch-english/{word}",
         "conjugation": "https://www.verbix.com/webverbix/Dutch/{word}"
       },
-      "hasData": false
+      "hasData": false,
+      "flag": "🇳🇱",
+      "shortCode": "NL",
+      "speechLang": "nl-NL"
     },
     "french": {
       "name": "French",
@@ -298,7 +310,10 @@
         "wordReference": "https://www.wordreference.com/fren/{word}",
         "reverso": "https://context.reverso.net/translation/french-english/{word}",
         "conjugation": "https://conjugator.reverso.net/conjugation-french-verb-{word}.html"
-      }
+      },
+      "flag": "🇫🇷",
+      "shortCode": "FR",
+      "speechLang": "fr-FR"
     },
     "russian": {
       "name": "Russian",
@@ -353,7 +368,10 @@
         "wordReference": "https://www.wordreference.com/ruen/{word}",
         "reverso": "https://context.reverso.net/translation/russian-english/{word}",
         "conjugation": "https://cooljugator.com/ru/{word}"
-      }
+      },
+      "flag": "🇷🇺",
+      "shortCode": "RU",
+      "speechLang": "ru-RU"
     },
     "polish": {
       "name": "Polish",
@@ -408,7 +426,10 @@
         "reverso": "https://context.reverso.net/translation/polish-english/{word}",
         "conjugation": "https://pl.pons.com/odmiana/polski/{word}"
       },
-      "hasData": false
+      "hasData": false,
+      "flag": "🇵🇱",
+      "shortCode": "PL",
+      "speechLang": "pl-PL"
     },
     "portuguese": {
       "name": "Portuguese",
@@ -471,7 +492,20 @@
         "wordReference": "https://www.wordreference.com/pten/{word}",
         "reverso": "https://context.reverso.net/translation/portuguese-english/{word}",
         "conjugation": "https://conjugator.reverso.net/conjugation-portuguese-verb-{word}.html"
-      }
+      },
+      "flag": "🇧🇷",
+      "shortCode": "BR",
+      "speechLang": "pt-BR"
     }
-  }
+  },
+  "languageDisplayOrder": [
+    "spanish",
+    "swedish",
+    "italian",
+    "dutch",
+    "polish",
+    "french",
+    "portuguese",
+    "russian"
+  ]
 }

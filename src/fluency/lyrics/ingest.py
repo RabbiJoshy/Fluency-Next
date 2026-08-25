@@ -28,7 +28,7 @@ from fluency.lyrics.records import (
     validate_lyrics_line,
     validate_raw_song,
 )
-from fluency.release.io import atomic_write, json_bytes
+from fluency.core.io import atomic_write, json_bytes
 
 
 STAGE_VERSION = "lyrics-source-ingest/v1"

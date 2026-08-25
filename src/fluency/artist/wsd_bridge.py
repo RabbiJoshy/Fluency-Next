@@ -36,6 +36,7 @@ def bridge_materialized_assignments(
     master: dict[str, dict[str, Any]],
     *,
     artist_slug: str,
+    allow_migration: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     """Add the forced-leaf view while declaring absent support evidence honestly.
 
@@ -43,7 +44,20 @@ def bridge_materialized_assignments(
     supported-specificity decision.  The bridge preserves every flattened
     assignment as a forced decision and leaves ``supported_selection`` absent;
     it never promotes a missing confidence judgment into a supported leaf.
+
+    This is a **migration** path. It gives historical decisions the current
+    contract's shape; it does not recompute them. Passing
+    ``allow_migration=False`` refuses that, which is what a run wanting genuine
+    v7 decisions should do -- otherwise older choices are frozen behind a v7
+    label and every later measurement silently describes the wrong classifier.
     """
+
+    if not allow_migration:
+        raise ArtistWSDBridgeError(
+            "migration is disabled for this run: flattened assignments would be "
+            "given the v7 contract without being recomputed by v7. Run WSD "
+            "natively, or set allow_migration=True to ship retained decisions."
+        )
 
     bridged_index = deepcopy(index)
     evidence_cards: dict[str, Any] = {}

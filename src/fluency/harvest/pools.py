@@ -29,7 +29,7 @@ import shutil
 from typing import Any
 
 from fluency.core.hashing import canonical_content_id
-from fluency.release.io import atomic_write
+from fluency.core.io import atomic_write
 
 
 POOL_VERSION = "harvest-pool/v1"

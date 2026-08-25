@@ -1,0 +1,35 @@
+{
+  "config_version": "wsd-mode-methods/v1",
+  "note": "Which WSD method each mode's decisions were actually computed by, and which contract its releases speak. Measured from assignment_method in each release's wsd-evidence.json, not inferred from release names or source_kind labels -- 'retained_materialized_assignments' describes how decisions were carried forward, not what computed them.",
+  "modes": {
+    "speech": {
+      "method": "v7",
+      "entrypoint": "fluency.speech.wsd_execute",
+      "uses": [
+        "wsd.runner",
+        "wsd.commit",
+        "wsd.contracts",
+        "wsd.disposition",
+        "wsd.gloss_scoring",
+        "wsd.multiword",
+        "wsd.sampling",
+        "wsd.projection"
+      ],
+      "status": "active",
+      "note": "The line under active development: v6 executor, then the v7 dual-view architecture.",
+      "contract": "v7"
+    },
+    "lyrics": {
+      "method": "v7",
+      "entrypoint": "fluency.lyrics.wsd_execute",
+      "uses": [
+        "wsd.spanish_v5_features"
+      ],
+      "status": "active",
+      "note": "Measured on the Rosalia releases: 4,919 decisions, all v7 (spanishdict-embed-v7-provider 4,698, spanishdict-v7-auto 221), zero migrated. The bridge preserves the SHAPE of retained assets; it does not hold decisions at an older method. The v5 executor (lyrics/wsd_execute.py, spanish_v5_features) is still reachable from `fluency lyrics wsd-execute` and corpus_execute.py, so the open question is whether that path is now dead code -- not whether shipped decks are v5.",
+      "contract": "v7-via-artist-bridge",
+      "bridge": "fluency.artist.wsd_bridge",
+      "legacy_executor": "fluency.lyrics.wsd_execute (v5, still callable)"
+    }
+  }
+}

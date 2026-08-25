@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from fluency.core.workspace import Workspace
-from fluency.release.io import atomic_write
+from fluency.core.io import atomic_write
 from fluency.release.validation import (
     RELEASE_CATALOG_VERSION,
     ReleaseValidationError,

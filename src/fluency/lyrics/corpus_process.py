@@ -24,7 +24,7 @@ from fluency.lyrics.process import (
     process_lyrics_run,
     processing_implementation_content_id,
 )
-from fluency.release.io import atomic_write
+from fluency.core.io import atomic_write
 
 
 PROFILE_VERSION = "lyrics-corpus-processing-profile/v1"
