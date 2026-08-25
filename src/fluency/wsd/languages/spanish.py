@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import replace
 import re
 import unicodedata
-from typing import Sequence
+from typing import Callable, Sequence
 
 from fluency.wsd.candidate_policy import CandidatePreparation
 from fluency.wsd.gloss_scoring import LeafScore
@@ -147,7 +147,18 @@ class SpanishV5CandidatePolicy:
         menu_prior: float = 0.02,
         menu_prior_decay: float = 0.5,
         constraint_mode: str = "filter",
+        sense_compatible: Callable[[str, str], bool] | None = None,
+        pos_is_orthogonal: Callable[[str], bool] | None = None,
     ) -> None:
+        # The POS gate is a property of the DICTIONARY, not the language: the
+        # bridge below reconciles a tagger's UD tags with SpanishDict's tagset.
+        # A Wiktionary-backed language must supply its own, or the filter
+        # deletes correct senses on the commonest words -- measured at 12 of the
+        # 13 most frequent Portuguese surfaces.
+        self._sense_compatible = sense_compatible or sense_compatible_bridged
+        self._pos_is_orthogonal = pos_is_orthogonal or (
+            lambda value: str(value or "").upper() in ORTHOGONAL_POS
+        )
         if menu_prior < 0 or not 0 < menu_prior_decay <= 1:
             raise ValueError("invalid Spanish menu-prior parameters")
         if constraint_mode not in {"filter", "evidence_only"}:
@@ -174,8 +185,8 @@ class SpanishV5CandidatePolicy:
                 # provider gate. A SpanishDict PHRASE row is therefore not an
                 # orthogonal MWE candidate: treating it as one is what allowed
                 # renderings such as ``está`` -> "he's" to beat the verb menu.
-                if analysis.part_of_speech.upper() not in ORTHOGONAL_POS
-                and sense_compatible_bridged(analysis.part_of_speech, observed_pos)
+                if not self._pos_is_orthogonal(analysis.part_of_speech)
+                and self._sense_compatible(analysis.part_of_speech, observed_pos)
             }
             if compatible:
                 pos_removed = sorted(keep_ids - compatible)

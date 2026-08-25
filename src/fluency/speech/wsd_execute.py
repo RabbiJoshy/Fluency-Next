@@ -33,6 +33,7 @@ from fluency.wsd.contracts import SelectedTuple, SelectionProjection, WSDAssignm
 from fluency.wsd.features import SpecialistFeature
 from fluency.wsd.disposition import DispositionPolicy
 from fluency.wsd.gloss_scoring import LeafScore
+from fluency.wsd.bindings import binding_for, pos_gate_for
 from fluency.wsd.languages.spanish import SpanishV5CandidatePolicy, SpanishWSDAdapter
 from fluency.wsd.menus import MenuAnalysis, SenseLeaf
 from fluency.wsd.multiword import index_multiword_senses, multiword_analyses
@@ -58,6 +59,10 @@ SPACY_POS_MODEL_NAME, SPACY_POS_MODEL_VERSION = SPACY_POS_MODEL.split("@", 1)
 SUPPORTED_PROFILE_CONSTRAINT_MODES = {
     "es-v6-1": "filter",
     "es-v7-1": "filter",
+    # Portuguese reads a Wiktionary menu; the POS gate it uses is selected from
+    # the run's language, not from this id. The id is provenance -- a bundle
+    # must not claim it ran a Spanish profile.
+    "pt-v7-1": "filter",
 }
 
 
@@ -106,6 +111,7 @@ def occurrence_pos_tags(
     work: Sequence[tuple[dict[str, Any], dict[str, Any], str, str, str]],
     *,
     model_name: str = SPACY_POS_MODEL_NAME,
+    model_pin: str = SPACY_POS_MODEL,
     model: Any | None = None,
 ) -> tuple[
     dict[tuple[str, str], str | None],
@@ -119,11 +125,12 @@ def occurrence_pos_tags(
     same observed POS; disagreement is explicit and passes ``None``.
     """
 
-    if model_name != SPACY_POS_MODEL_NAME:
+    pinned_name, _pinned_version = model_pin.split("@", 1)
+    if model_name != pinned_name:
         raise RuntimeError(
-            f"occurrence POS model does not match the pinned revision {SPACY_POS_MODEL}"
+            f"occurrence POS model {model_name!r} does not match the pinned revision {model_pin}"
         )
-    model = load_pinned(SPACY_POS_MODEL, model=model)
+    model = load_pinned(model_pin, model=model)
     grouped: dict[
         str,
         list[
@@ -211,7 +218,7 @@ def occurrence_pos_tags(
                 "observed_pos": value,
                 "occurrence_tags": tags,
                 "canonicalized_target_for_model": normalized_for_model,
-                "model_revision": SPACY_POS_MODEL,
+                "model_revision": model_pin,
             }
     return observed, diagnostics
 
@@ -306,9 +313,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--spacy-model",
-        choices=(SPACY_POS_MODEL_NAME,),
-        default=SPACY_POS_MODEL_NAME,
-        help=f"pinned spaCy model used for exact occurrence POS tagging ({SPACY_POS_MODEL})",
+        default=None,
+        help="override the POS model; defaults to the pin the run's language declares",
     )
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
     parser.add_argument(
@@ -325,6 +331,16 @@ def main() -> None:
              "mature historical 10). Separate from the study-example cap.",
     )
     args = parser.parse_args()
+
+    # The run states its own language. Counting directory levels is how
+    # project_root() silently resolved to src/, and the same arithmetic here
+    # produced "runs" instead of "pt".
+    run_language = json.loads(
+        (args.run_dir / "profile.json").read_text(encoding="utf-8")
+    )["language"]
+    binding = binding_for(run_language)
+    sense_compatible, pos_is_orthogonal = pos_gate_for(run_language)
+    pos_pin = pin(binding.pos_model_role)
 
     stages = args.run_dir / "stages"
     inventory_path = stages / "01_inventory/output/inventory.json"
@@ -422,9 +438,11 @@ def main() -> None:
     )
     print(f"  deterministic single-option (no model): {len(deterministic):,}")
     print(f"  model-scored provider/MWE assignments:  {len(work):,}")
-    print(f"Tagging occurrence POS with {args.spacy_model} (batch size 1)...", flush=True)
+    print(f"Tagging occurrence POS with {pos_pin} (batch size 1)...", flush=True)
     observed_pos, observed_pos_evidence = occurrence_pos_tags(
-        work, model_name=args.spacy_model
+        work,
+        model_name=args.spacy_model or pos_pin.split("@", 1)[0],
+        model_pin=pos_pin,
     )
     if multiword_index is not None:
         for card, menu_card, _sentence_id, text, _translation in work:
@@ -457,7 +475,10 @@ def main() -> None:
     cache_path = args.embedding_cache or (
         # Named for the model that produced it: vectors from different models
         # must never share a store.
-        workspace_root / "embeddings" / "es" / f"exact-text-{EMBED_MODEL}.npz"
+        # Per language, and named for the model that produced it: vectors from
+        # different models must never share a store, and mixing languages in one
+        # makes it impossible to say what a cache is for.
+        workspace_root / "embeddings" / run_language / f"exact-text-{EMBED_MODEL}.npz"
     )
     api_key = ""
     if args.env_file.is_file():
@@ -477,14 +498,17 @@ def main() -> None:
     print(f"reused {len(needed) - newly_embedded:,}, newly embedded {newly_embedded:,}")
 
     components = WSDComponents(
-        language=SpanishWSDAdapter(),
+        language=binding.adapter_factory(),
         gloss=ExactTextGlossScorer(vectors),
         candidate_policy=SpanishV5CandidatePolicy(
-            constraint_mode=SUPPORTED_PROFILE_CONSTRAINT_MODES[args.profile_id]
+            constraint_mode=SUPPORTED_PROFILE_CONSTRAINT_MODES[args.profile_id],
+            # The POS gate follows the dictionary, not the language.
+            sense_compatible=sense_compatible,
+            pos_is_orthogonal=pos_is_orthogonal,
         ),
         multiword_index=multiword_index,
         multiword_inventory_content_id=multiword_content_id,
-        context_model_revisions={"occurrence_pos": SPACY_POS_MODEL},
+        context_model_revisions={"occurrence_pos": pos_pin},
     )
     runner = ClosedMenuWSDRunner(profile, components)
 
@@ -533,7 +557,7 @@ def main() -> None:
                 confidence=None,
                 model_revisions={
                     "gloss": EMBED_MODEL,
-                    "occurrence_pos": SPACY_POS_MODEL,
+                    "occurrence_pos": pos_pin,
                 } if has_menu else {},
             ).to_dict()
         )
@@ -576,7 +600,7 @@ def main() -> None:
                 confidence=None,
                 model_revisions={
                     "gloss": EMBED_MODEL,
-                    "occurrence_pos": SPACY_POS_MODEL,
+                    "occurrence_pos": pos_pin,
                 },
                 emitted_level="leaf",
                 decision_kind="deterministic_default",
@@ -610,7 +634,7 @@ def main() -> None:
         "bundle_version": BUNDLE_VERSION,
         "sampling": report,
         "run_id": run_id,
-        "language": "es",
+        "language": run_language,
         "mode": "speech",
         "coverage": "complete_candidate_pool",
         "method": {
@@ -619,7 +643,7 @@ def main() -> None:
             "implementation_content_id": file_content_id(Path(__file__)),
             "model_revisions": {
                 "gloss": EMBED_MODEL,
-                "occurrence_pos": SPACY_POS_MODEL,
+                "occurrence_pos": pos_pin,
             },
             "constraint_mode": SUPPORTED_PROFILE_CONSTRAINT_MODES[args.profile_id],
             "random_seed": 0,

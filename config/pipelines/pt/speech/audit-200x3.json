@@ -58,12 +58,15 @@
   ],
   "wsd": {
     "strategy": "language-adapted-closed-menu/v1",
-    "shared_profile": "closed-menu-v1",
+    "shared_profile": "closed-menu-provider-prior-v1",
     "language_profile": "pt-v1",
-    "model_profile": "pt-rehearsal-v1",
+    "model_profile": "pt-v7-1",
     "require_model_pins": true,
-    "execution_status": "blocked_pending_benchmark",
-    "model_revisions": {},
+    "execution_status": "ready",
+    "model_revisions": {
+      "gloss.model_revision": "gemini-embedding-001",
+      "occurrence_pos.model_revision": "pt_core_news_lg@3.8.0"
+    },
     "max_wsd_units_per_run": 25000
   },
   "release": {

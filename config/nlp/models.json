@@ -17,7 +17,7 @@
       "name": "es_dep_news_trf",
       "revision": "3.8.0",
       "language": "es",
-      "note": "Pinned and enforced at load. A run must not record a revision it did not verify."
+      "note": "Spanish. Pinned and enforced at load: a run must not record a revision it did not verify."
     },
     "token-context": {
       "provider": "huggingface",
@@ -25,6 +25,13 @@
       "revision": "c4d86612f51b4f46759c8390d1798c2febe71b93",
       "language": "es",
       "note": "BETO, used by the lyrics token-tuple vote."
+    },
+    "occurrence-pos-pt": {
+      "provider": "spacy",
+      "name": "pt_core_news_lg",
+      "revision": "3.8.0",
+      "language": "pt",
+      "note": "Portuguese. Verified to tag `do`/`ao` as ADP, `a` as DET and `é` as AUX -- none of which Wiktionary publishes under those names, which is why the wiktionary POS bridge is required before any filtering."
     }
   }
 }

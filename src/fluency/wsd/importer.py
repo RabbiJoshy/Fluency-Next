@@ -264,7 +264,14 @@ def _validate_method(method: Any) -> dict[str, Any]:
         "model_revisions",
         "random_seed",
     }
-    if set(method) != expected:
+    # v7 records the constraint mode it ran under, which is real method
+    # provenance: "filter" and "evidence_only" produce different decisions from
+    # the same inputs. Optional rather than required so v6 bundles still import,
+    # and named rather than allowing anything so an unknown field is still a
+    # contract break.
+    optional = {"constraint_mode"}
+    fields = set(method)
+    if not expected <= fields or not fields <= expected | optional:
         raise WSDAssignmentImportError("WSD method fields do not match the bundle contract")
     for name in ("profile_id", "implementation_version"):
         if not isinstance(method[name], str) or not method[name]:
