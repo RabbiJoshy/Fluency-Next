@@ -67,7 +67,7 @@ class ProductShellTests(unittest.TestCase):
             key for key, value in config["languages"].items()
             if value.get("hasData", True)
         }
-        self.assertEqual(enabled, {"french", "spanish"})
+        self.assertEqual(enabled, {"french", "portuguese", "spanish"})
         self.assertEqual(
             config["languages"]["spanish"]["studyStructurePath"],
             "Data/Spanish/study-structure.json",
@@ -141,6 +141,15 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn('<span class="settings-row-label">Cognates', html)
         self.assertIn('data-setting="excludeCognates" data-value="off" aria-pressed="true">Include</button>', html)
         self.assertIn('data-setting="excludeCognates" data-value="on" aria-pressed="false">Exclude</button>', html)
+
+    def test_wsd_publication_view_is_user_selectable(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        vocab = (APP_ROOT / "js" / "vocab.js").read_text(encoding="utf-8")
+        self.assertIn('data-wsd-publication="forced_leaf"', html)
+        self.assertIn('data-wsd-publication="supported_specificity"', html)
+        self.assertIn("window.setWsdPublicationProjection", ui)
+        self.assertIn("target.searchParams.set('wsdPublication', projection)", vocab)
 
     def test_active_set_keeps_existing_interaction_model(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")

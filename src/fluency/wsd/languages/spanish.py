@@ -87,6 +87,11 @@ def se_reflexive_evidence(surface_form: str, sentence: str) -> bool | None:
     """Return the exact conservative v5 ``se-only`` gate evidence."""
 
     surface = _deaccent(surface_form)
+    # Speech inventories can contain an enclitic surface (``diviértanse``).
+    # Looking only to the left mislabels it as non-reflexive even though the
+    # clitic is fused into the observed token.
+    if surface.endswith("se") and len(surface) > 2:
+        return True
     tokens = WORD_RE.findall(_deaccent(sentence))
     try:
         index = tokens.index(surface)
@@ -136,11 +141,20 @@ def companion_satisfied(leaf: SenseLeaf, sentence: str) -> bool:
 class SpanishV5CandidatePolicy:
     method_id = "spanish-v5-candidate-policy/v1"
 
-    def __init__(self, *, menu_prior: float = 0.02, menu_prior_decay: float = 0.5) -> None:
+    def __init__(
+        self,
+        *,
+        menu_prior: float = 0.02,
+        menu_prior_decay: float = 0.5,
+        constraint_mode: str = "filter",
+    ) -> None:
         if menu_prior < 0 or not 0 < menu_prior_decay <= 1:
             raise ValueError("invalid Spanish menu-prior parameters")
+        if constraint_mode not in {"filter", "evidence_only"}:
+            raise ValueError("unsupported Spanish constraint mode")
         self.menu_prior = menu_prior
         self.menu_prior_decay = menu_prior_decay
+        self.constraint_mode = constraint_mode
 
     def prepare(
         self,
@@ -156,13 +170,24 @@ class SpanishV5CandidatePolicy:
             compatible = {
                 analysis.menu_analysis_id
                 for analysis in analyses
-                if sense_compatible_bridged(analysis.part_of_speech, observed_pos)
+                # Synthetic multiword PHRASE analyses are added only after this
+                # provider gate. A SpanishDict PHRASE row is therefore not an
+                # orthogonal MWE candidate: treating it as one is what allowed
+                # renderings such as ``está`` -> "he's" to beat the verb menu.
+                if analysis.part_of_speech.upper() not in ORTHOGONAL_POS
+                and sense_compatible_bridged(analysis.part_of_speech, observed_pos)
             }
             if compatible:
                 pos_removed = sorted(keep_ids - compatible)
                 keep_ids &= compatible
 
         evidence = se_reflexive_evidence(surface_form, sentence)
+        # In ``se ha ido`` / ``se está haciendo``, ``se`` belongs to the main
+        # predicate, not to a lexical ``haberse`` / ``estarse`` reading of the
+        # auxiliary. Once the occurrence tag says AUX, the non-reflexive
+        # dictionary analysis is the only compatible side of that ambiguity.
+        if str(observed_pos or "").upper() == "AUX":
+            evidence = False
         headwords = {analysis.headword.casefold() for analysis in analyses}
         reflexive_ambiguous = any(
             not headword.endswith("se") and headword + "se" in headwords
@@ -180,17 +205,28 @@ class SpanishV5CandidatePolicy:
                 clitic_removed = sorted(keep_ids - compatible)
                 keep_ids &= compatible
 
-        prepared = tuple(analysis for analysis in analyses if analysis.menu_analysis_id in keep_ids)
-        if not prepared:
-            prepared = analyses
+        selected_analyses = (
+            analyses
+            if self.constraint_mode == "evidence_only"
+            else tuple(
+                analysis
+                for analysis in analyses
+                if analysis.menu_analysis_id in keep_ids
+            )
+        )
         return CandidatePreparation(
-            analyses=prepared,
+            analyses=selected_analyses,
             evidence={
                 "method_id": self.method_id,
+                "policy": self.constraint_mode,
                 "observed_pos": observed_pos,
                 "pos_removed_analysis_ids": pos_removed,
                 "se_reflexive_evidence": evidence,
                 "clitic_removed_analysis_ids": clitic_removed,
+                "constraint_supported_analysis_ids": sorted(keep_ids),
+                "constraint_rejected_analysis_ids": sorted(
+                    {analysis.menu_analysis_id for analysis in analyses} - keep_ids
+                ),
             },
         )
 

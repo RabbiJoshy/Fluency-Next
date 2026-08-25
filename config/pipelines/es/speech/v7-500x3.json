@@ -1,0 +1,67 @@
+{
+  "profile_version": "speech-pipeline-profile/v1",
+  "profile_id": "spanish_speech_v7_500x3",
+  "language": "es",
+  "locale": "es-ES",
+  "mode": "speech",
+  "identity": {
+    "unit_type": "surface",
+    "identity_version": "surface-card/v1",
+    "allow_lemma_identity": false
+  },
+  "source_policy": {
+    "fresh_snapshots_only": true,
+    "allow_legacy_inputs": false,
+    "allow_recovered_inputs": true,
+    "fallback_policy": "none"
+  },
+  "scope": {
+    "surface_limit": 500,
+    "examples_per_surface": 3,
+    "shortfall_policy": "publish_explicit"
+  },
+  "inventory": {
+    "source_adapter": "recovered-surface-ranking/v1",
+    "language_policy": "es-v1",
+    "source_edition": "fluency-2026-07-28-surface-ranking-v1",
+    "frequency_measure": "recovered_corpus_count_upstream_unknown",
+    "output_schema": "surface-inventory/v1",
+    "identity_unit": "surface",
+    "lemma_role": "excluded"
+  },
+  "sense_menu": {
+    "source_adapter": "spanishdict-sense-menu/v1",
+    "language_policy": "es-spanishdict-v1",
+    "source_edition": "spanishdict-pinned-snapshot",
+    "gloss_language": "en",
+    "snapshot_id": "spanishdict-complete-menu-2026-08-23-v1",
+    "minimum_card_coverage": 0.99,
+    "output_schema": "sense-menu/v1",
+    "join_key": "surface_card_id",
+    "lemma_role": "lookup_metadata_only"
+  },
+  "harvest": {
+    "shared_policy": "speech-v1",
+    "language_policy": "es-v1",
+    "source_policy": "exclusive",
+    "sources": ["retained-opensubtitles"],
+    "candidate_cap_per_surface": 60
+  },
+  "stage_order": [
+    "inventory", "sense_menu", "sentence_harvest", "wsd_assignments",
+    "example_selection", "release_build"
+  ],
+  "wsd": {
+    "strategy": "language-adapted-closed-menu/v1",
+    "shared_profile": "closed-menu-provider-prior-v1",
+    "language_profile": "es-v2",
+    "model_profile": "es-v7-1",
+    "require_model_pins": true,
+    "execution_status": "ready",
+    "model_revisions": {
+      "gloss.model_revision": "gemini-embedding-001",
+      "occurrence_pos.model_revision": "es_dep_news_trf@3.8.0"
+    }
+  },
+  "release": {"activation": "manual", "fallback_policy": "none"}
+}

@@ -1,0 +1,31 @@
+{
+  "config_version": "wsd-language-profile/v1",
+  "profile_id": "es-v2",
+  "language": "es",
+  "surface_locator": "spanish-tokenizer/v1",
+  "sense_menu_adapter": "spanishdict-sense-menu/v1",
+  "card_identity": "surface-card/v1",
+  "lemma_role": "lookup_metadata_only",
+  "morphology_gate": {
+    "status": "enabled",
+    "method": "bridged-occurrence-pos/v2",
+    "scope": "candidate_filter_and_audit_evidence",
+    "model_revision": "es_dep_news_trf@3.8.0"
+  },
+  "clitic_gate": {
+    "status": "enabled",
+    "method": "spanish-se-only/v2",
+    "scope": "candidate_filter_and_audit_evidence",
+    "may_replace_surface_card": false
+  },
+  "provider_leaf_repair": {
+    "status": "enabled",
+    "method": "spanishdict-renderable-leaf/v1"
+  },
+  "specialist_features": {
+    "status": "normalized_evidence_only",
+    "families": ["domain", "register", "construction"],
+    "missing_feature_outcome": "unknown"
+  },
+  "pos_bridge": "spanishdict-ud-v2"
+}

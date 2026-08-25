@@ -21,9 +21,15 @@ class LyricsReleaseTests(unittest.TestCase):
         artist.mkdir(parents=True)
         (self.source / "config").mkdir()
         (self.source / "Artists/spanish").mkdir(exist_ok=True)
-        index = [{"id": "abc123", "word": "hola", "meanings": [], "sense_frequencies": []}]
-        examples = {"abc123": {"m": []}}
-        master = {"abc123": {"word": "hola", "lemma": "hola", "senses": []}}
+        index = [{"id": "abc123", "word": "hola", "meanings": [], "sense_frequencies": [1.0]}]
+        examples = {"abc123": {"m": [[{
+            "spanish": "hola, amiga", "song": "song-1",
+            "assignment_method": "gemini-quality", "prompt_id": "legacy-v7",
+        }]]}}
+        master = {"abc123": {"word": "hola", "lemma": "hola", "senses": [{
+            "sense_id": "sense-1", "headword": "hola", "pos": "INTJ",
+            "translation": "hello",
+        }]}}
         master["unreachable"] = {"word": "adiós", "lemma": "adiós", "senses": []}
         songs = {"schemaVersion": 1, "source": "test", "songs": []}
         (artist / "index.json").write_text(json.dumps(index), encoding="utf-8")
@@ -59,15 +65,40 @@ class LyricsReleaseTests(unittest.TestCase):
         )
         manifest, composition = validate_lyrics_release(release)
         self.assertEqual(manifest["artist_count"], 1)
+        self.assertEqual(
+            manifest["assignment_status"],
+            "forced_leaf_assignments_preserved_in_dual_view_contract",
+        )
+        self.assertEqual(
+            manifest["supported_specificity_status"],
+            "not_recorded_in_materialized_sources",
+        )
         self.assertEqual(composition["fallback_policy"], "none")
         catalog = json.loads((release / "app/config/artists.json").read_text())
         self.assertEqual(catalog["test-artist"]["indexPath"], "Artists/es/test-artist/index.json")
         self.assertEqual(catalog["test-artist"]["spotifyPath"], "Artists/spotify_tracks.json")
         self.assertFalse(any("monolith" in item["path"] for item in manifest["files"]))
         packaged_master = json.loads(
-            (release / "app/Artists/es/vocabulary_master.json").read_text()
+            (release / "app/Artists/es/test-artist/vocabulary_master.json").read_text()
         )
         self.assertEqual(set(packaged_master), {"abc123"})
+        self.assertEqual(
+            catalog["test-artist"]["wsdEvidencePath"],
+            "Artists/es/test-artist/wsd-evidence.json",
+        )
+        packaged_index = json.loads(
+            (release / "app/Artists/es/test-artist/index.json").read_text()
+        )
+        distribution = packaged_index[0]["wsd_distribution"]
+        self.assertEqual(distribution["forced_leaf_counts"], {"sense-1": 1})
+        self.assertEqual(distribution["supported_unavailable_mass"], 1)
+        evidence = json.loads(
+            (release / "app/Artists/es/test-artist/wsd-evidence.json").read_text()
+        )
+        decision = evidence["cards"]["abc123"]["decisions"][0]
+        self.assertEqual(decision["forced_selection"]["sense_id"], "sense-1")
+        self.assertIsNone(decision["supported_selection"])
+        self.assertEqual(decision["provenance"]["assignment_method"], "gemini-quality")
 
         activate_lyrics_release(self.workspace, "lyrics-test-1")
         resolved = resolve_active_lyrics_asset(

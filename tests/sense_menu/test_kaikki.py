@@ -55,7 +55,8 @@ class KaikkiSenseMenuTests(unittest.TestCase):
                     {
                         "id": "en-suivre-fr-verb-follow",
                         "glosses": ["to follow"],
-                        "topics": ["movement"],
+                        "topics": ["movement", "transport"],
+                        "tags": ["masculine", "slang", "transitive"],
                     }
                 ],
             },
@@ -214,6 +215,27 @@ class KaikkiSenseMenuTests(unittest.TestCase):
         self.assertEqual(leaf["sense_id"], "en-est-fr-noun-east")
         self.assertEqual(leaf["source_reference"], "kaikki:en-est-fr-noun-east")
         self.assertEqual(leaf["provider_metadata"]["tags"], ["masculine"])
+
+    def test_topics_and_semantic_tags_become_normalized_specialist_features(self):
+        cards = [{**create_card_record("fr", "suis").to_dict(), "rank": 1}]
+        menu, _ = KaikkiSenseMenuAdapter(
+            self.snapshot, language_policy=self.policy
+        ).build(cards, snapshot_id="fixture-2026-08")
+        leaf = next(
+            sense
+            for analysis in menu["cards"][0]["analyses"]
+            if analysis["headword"] == "suivre"
+            for sense in analysis["senses"]
+        )
+        features = {
+            (item["family"], item["kind"], item["value"])
+            for item in leaf["specialist_features"]
+        }
+        self.assertIn(("domain", "topic", "movement"), features)
+        self.assertIn(("domain", "topic", "transport"), features)
+        self.assertIn(("register", "usage_tag", "slang"), features)
+        self.assertIn(("construction", "grammar_tag", "transitive"), features)
+        self.assertFalse(any(value == "masculine" for _, _, value in features))
 
     def test_abbreviation_redirect_does_not_expand_an_unrelated_headword(self):
         cards = [{**create_card_record("fr", "de").to_dict(), "rank": 1}]

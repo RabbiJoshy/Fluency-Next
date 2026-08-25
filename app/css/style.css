@@ -5357,6 +5357,12 @@
         .lsw-readout .lsw-range {
             color: var(--text-secondary);
         }
+        .lsw-readout .lsw-deck-total {
+            color: var(--text-muted);
+            font-size: 0.78em;
+            font-weight: 500;
+            opacity: 0.78;
+        }
         .lsw-readout .lsw-coverage {
             margin-left: auto;
         }

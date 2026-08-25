@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from copy import deepcopy
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -11,7 +12,12 @@ import shutil
 import tempfile
 from typing import Any
 
-from fluency.core.hashing import file_content_id
+from fluency.artist.wsd_bridge import (
+    bridge_materialized_assignments,
+    overlay_native_assignments,
+    validate_artist_wsd_evidence,
+)
+from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.workspace import Workspace
 from fluency.release.io import atomic_write, json_bytes
 
@@ -103,32 +109,194 @@ def _copy_file(source: Path, app_root: Path, relative: str, copied: dict[str, Pa
     return normalized
 
 
-def _copy_filtered_master(
-    source: Path,
+def _aligned_materialized_master(
+    index_source: Path,
+    index: list[dict[str, Any]],
+    examples: dict[str, dict[str, Any]],
+    source_master: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Return the exact artist-specific menu aligned with its flattened buckets."""
+
+    monolith_by_id: dict[str, dict[str, Any]] = {}
+    suffix = ".index.json"
+    if index_source.name.endswith(suffix):
+        monolith_path = index_source.with_name(index_source.name.removesuffix(suffix) + ".json")
+        if monolith_path.is_file():
+            monolith = _load_json(monolith_path, list)
+            monolith_by_id = {
+                row["id"]: row
+                for row in monolith
+                if isinstance(row, dict) and isinstance(row.get("id"), str)
+            }
+
+    aligned: dict[str, dict[str, Any]] = {}
+
+    def example_key(example: dict[str, Any]) -> tuple[Any, ...]:
+        return (
+            example.get("song"),
+            example.get("spanish", example.get("target")),
+            example.get("timestamp_ms"),
+        )
+
+    def sense_payload(meaning: dict[str, Any]) -> dict[str, Any]:
+        payload = {
+            key: deepcopy(meaning[key])
+            for key in (
+                "pos", "translation", "sense_id", "source", "headword",
+                "context", "detail", "definition",
+            )
+            if key in meaning
+        }
+        if not payload.get("sense_id"):
+            identity = {
+                key: payload.get(key)
+                for key in ("pos", "translation", "headword", "context", "definition")
+            }
+            payload["sense_id"] = (
+                "generated:retained-materialized:"
+                + canonical_content_id(identity).removeprefix("sha256:")[:12]
+            )
+        return payload
+
+    def retained_prefix_is_proven(
+        candidate: list[dict[str, Any]],
+        meanings: list[dict[str, Any]],
+        buckets: list[list[dict[str, Any]]],
+    ) -> bool:
+        meaning_examples = [
+            {example_key(example) for example in (meaning.get("examples") or [])}
+            for meaning in meanings
+        ]
+        for position, bucket in enumerate(buckets):
+            bucket_keys = {example_key(example) for example in bucket}
+            if not bucket_keys:
+                continue
+            matches = [
+                meaning
+                for meaning, keys in zip(meanings, meaning_examples, strict=True)
+                if bucket_keys <= keys
+            ]
+            if len(matches) != 1:
+                return False
+            retained_ids = {
+                candidate[position].get("sense_id"),
+                *(candidate[position].get("sense_id_aliases") or []),
+            }
+            if matches[0].get("sense_id") not in retained_ids:
+                return False
+        return True
+
+    def evidence_aligned_senses(
+        card_id: str,
+        meanings: list[dict[str, Any]],
+        buckets: list[list[dict[str, Any]]],
+    ) -> list[dict[str, Any]] | None:
+        meaning_examples = [
+            {example_key(example) for example in (meaning.get("examples") or [])}
+            for meaning in meanings
+        ]
+        result: list[dict[str, Any]] = []
+        used: set[int] = set()
+        for position, bucket in enumerate(buckets):
+            bucket_keys = {example_key(example) for example in bucket}
+            if not bucket_keys:
+                result.append({
+                    "pos": "X",
+                    "translation": "",
+                    "sense_id": f"unresolved:materialized-menu:{card_id}:{position}",
+                    "source": "retained-materialized-unresolved",
+                    "context": "historical empty menu slot; identity not recoverable",
+                })
+                continue
+            matches = [
+                index
+                for index, keys in enumerate(meaning_examples)
+                if index not in used and bucket_keys <= keys
+            ]
+            if len(matches) != 1:
+                return None
+            match = matches[0]
+            used.add(match)
+            result.append(sense_payload(meanings[match]))
+        return result
+
+    for card in index:
+        card_id = card.get("id") if isinstance(card, dict) else None
+        if not isinstance(card_id, str):
+            raise LyricsReleaseError("artist index contains an invalid card while aligning its master")
+        source_row = source_master.get(card_id)
+        materialized = monolith_by_id.get(card_id)
+        if not isinstance(source_row, dict) and not isinstance(materialized, dict):
+            raise LyricsReleaseError(f"artist master is missing card {card_id}")
+        row = deepcopy(source_row if isinstance(source_row, dict) else {})
+        if isinstance(materialized, dict):
+            for field in (
+                "word", "lemma", "is_english", "is_noise", "is_interjection",
+                "is_propernoun", "is_transparent_cognate", "display_form",
+            ):
+                if field in materialized:
+                    row[field] = deepcopy(materialized[field])
+        buckets = (examples.get(card_id) or {}).get("m") or []
+        materialized_meanings = (
+            materialized.get("meanings") if isinstance(materialized, dict) else None
+        )
+        source_senses = row.get("senses") or []
+        if isinstance(materialized_meanings, list) and len(materialized_meanings) == len(buckets):
+            row["senses"] = [sense_payload(meaning) for meaning in materialized_meanings]
+        elif isinstance(source_senses, list) and len(source_senses) == len(buckets):
+            row["senses"] = deepcopy(source_senses)
+        elif (
+            isinstance(source_senses, list)
+            and len(source_senses) > len(buckets)
+            and isinstance(materialized_meanings, list)
+        ):
+            retained = deepcopy(source_senses[:len(buckets)])
+            if retained_prefix_is_proven(retained, materialized_meanings, buckets):
+                row["senses"] = retained
+        senses = row.get("senses") or []
+        if len(senses) != len(buckets) and isinstance(materialized_meanings, list):
+            evidence_aligned = evidence_aligned_senses(
+                card_id, materialized_meanings, buckets
+            )
+            if evidence_aligned is not None:
+                row["senses"] = evidence_aligned
+        senses = row.get("senses") or []
+        if not isinstance(senses, list) or len(senses) != len(buckets):
+            raise LyricsReleaseError(
+                f"artist-specific sense menu is not aligned with examples for {card_id}"
+            )
+        for position, sense in enumerate(senses):
+            if not isinstance(sense, dict):
+                raise LyricsReleaseError(f"artist-specific sense is invalid for {card_id}")
+            if not sense.get("sense_id"):
+                identity = {
+                    "card_id": card_id,
+                    "position": position,
+                    "pos": sense.get("pos"),
+                    "translation": sense.get("translation"),
+                    "context": sense.get("context", sense.get("definition")),
+                }
+                sense["sense_id"] = (
+                    "generated:retained-materialized:"
+                    + canonical_content_id(identity).removeprefix("sha256:")[:12]
+                )
+        aligned[card_id] = row
+    return aligned
+
+
+def _write_artist_master(
+    master: dict[str, dict[str, Any]],
     app_root: Path,
     relative: str,
     copied: dict[str, Path],
-    allowed_card_ids: set[str],
 ) -> tuple[str, Path]:
-    """Package only master rows reachable from the selected artist indexes."""
-
     pure = PurePosixPath(relative)
     if pure.is_absolute() or any(part in {"", ".", ".."} for part in pure.parts):
         raise LyricsReleaseError(f"unsafe release asset path: {relative}")
     normalized = pure.as_posix()
-    existing = copied.get(normalized)
-    if existing is not None:
-        return normalized, existing
-    master = _load_json(source, dict)
-    missing = allowed_card_ids - set(master)
-    if missing:
-        raise LyricsReleaseError(
-            f"selected artist indexes reference {len(missing)} absent master cards: {source}"
-        )
-    filtered = {card_id: value for card_id, value in master.items() if card_id in allowed_card_ids}
     target = app_root.joinpath(*pure.parts)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(json_bytes(filtered))
+    target.write_bytes(json_bytes(master))
     copied[normalized] = target
     return normalized, target
 
@@ -175,7 +343,7 @@ def _artist_config(
     slug: str,
     source: dict[str, Any],
     release_id: str,
-    master_card_ids: dict[Path, set[str]],
+    wsd_assignments_path: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     if SAFE_SLUG.fullmatch(slug) is None:
         raise LyricsReleaseError(f"unsafe artist slug: {slug}")
@@ -186,18 +354,35 @@ def _artist_config(
     index_source, examples_source = _split_paths(source_root, source)
     card_count, example_card_count = _validate_index_examples(index_source, examples_source)
     artist_base = f"Artists/{language}/{slug}"
-    index_path = _copy_file(index_source, app_root, f"{artist_base}/index.json", copied)
     examples_path = _copy_file(examples_source, app_root, f"{artist_base}/examples.json", copied)
 
     master_value = source.get("masterPath") or f"Artists/{language_name}/vocabulary_master.json"
     master_source = _source_path(source_root, master_value)
-    master_path, packaged_master = _copy_filtered_master(
-        master_source,
-        app_root,
-        f"Artists/{language}/vocabulary_master.json",
-        copied,
-        master_card_ids[master_source.resolve()],
+    index = _load_json(index_source, list)
+    examples = _load_json(examples_source, dict)
+    source_master = _load_json(master_source, dict)
+    master = _aligned_materialized_master(
+        index_source, index, examples, source_master
     )
+    master_path, packaged_master = _write_artist_master(
+        master, app_root, f"{artist_base}/vocabulary_master.json", copied
+    )
+
+    bridged_index, wsd_evidence = bridge_materialized_assignments(
+        index, examples, master, artist_slug=slug
+    )
+    if wsd_assignments_path is not None:
+        with wsd_assignments_path.open(encoding="utf-8") as assignment_file:
+            records = (json.loads(line) for line in assignment_file if line.strip())
+            bridged_index, wsd_evidence = overlay_native_assignments(
+                bridged_index, wsd_evidence, master, records
+            )
+    index_relative = f"{artist_base}/index.json"
+    index_target = app_root / index_relative
+    index_target.parent.mkdir(parents=True, exist_ok=True)
+    index_target.write_bytes(json_bytes(bridged_index))
+    copied[index_relative] = index_target
+    index_path = index_relative
 
     output: dict[str, Any] = {
         "name": source.get("name") or slug,
@@ -211,6 +396,13 @@ def _artist_config(
         "releaseManifestPath": "Artists/release-manifest.json",
         "releaseCompositionPath": "Artists/release-composition.json",
     }
+    wsd_evidence_path = None
+    if wsd_evidence is not None:
+        wsd_evidence_path = f"{artist_base}/wsd-evidence.json"
+        wsd_evidence_target = app_root / wsd_evidence_path
+        wsd_evidence_target.write_bytes(json_bytes(wsd_evidence))
+        copied[wsd_evidence_path] = wsd_evidence_target
+        output["wsdEvidencePath"] = wsd_evidence_path
     songs_count = 0
     songs_value = source.get("songsPath")
     if isinstance(songs_value, str):
@@ -261,7 +453,7 @@ def _artist_config(
         "card_count": card_count,
         "example_card_count": example_card_count,
         "song_count": songs_count,
-        "index_content_id": file_content_id(index_source),
+        "index_content_id": file_content_id(index_target),
         "examples_content_id": file_content_id(examples_source),
         "master_content_id": file_content_id(packaged_master),
         "source_master_content_id": file_content_id(master_source),
@@ -269,6 +461,13 @@ def _artist_config(
         "provenance": provenance,
         "migration_status": "retained_materialized_output_for_product_parity",
     }
+    if wsd_evidence_path is not None:
+        record["wsd_evidence_content_id"] = file_content_id(app_root / wsd_evidence_path)
+        record["assignment_bridge_status"] = (
+            "native_v7_forced_and_supported_available"
+            if wsd_assignments_path is not None
+            else "forced_leaf_preserved_supported_specificity_not_recorded"
+        )
     return output, record
 
 
@@ -289,6 +488,7 @@ def build_lyrics_catalog_release(
     source_repository: Path,
     release_id: str,
     include_artists: set[str] | None = None,
+    wsd_assignment_overrides: dict[str, Path] | None = None,
 ) -> Path:
     """Freeze every configured Artist app asset into one exact catalog release."""
 
@@ -324,27 +524,13 @@ def build_lyrics_catalog_release(
         copied: dict[str, Path] = {}
         app_catalog: dict[str, Any] = {}
         artist_records: list[dict[str, Any]] = []
-        master_card_ids: dict[Path, set[str]] = {}
-        for slug, source in sorted(source_config.items()):
-            if not isinstance(source, dict):
-                raise LyricsReleaseError(f"artist config is not an object: {slug}")
-            index_source, _ = _split_paths(source_root, source)
-            index = _load_json(index_source, list)
-            card_ids = {
-                card.get("id") for card in index
-                if isinstance(card, dict) and isinstance(card.get("id"), str)
-            }
-            language_name = str(source.get("language", "spanish"))
-            master_value = source.get("masterPath") or f"Artists/{language_name}/vocabulary_master.json"
-            master_source = _source_path(source_root, master_value).resolve()
-            master_card_ids.setdefault(master_source, set()).update(card_ids)
         for slug, source in sorted(source_config.items()):
             if not isinstance(source, dict):
                 raise LyricsReleaseError(f"artist config is not an object: {slug}")
             app_config, record = _artist_config(
                 source_root, app_root, copied,
                 slug=slug, source=source, release_id=release_id,
-                master_card_ids=master_card_ids,
+                wsd_assignments_path=(wsd_assignment_overrides or {}).get(slug),
             )
             app_catalog[slug] = app_config
             artist_records.append(record)
@@ -369,6 +555,11 @@ def build_lyrics_catalog_release(
                     "index": record["index_content_id"],
                     "examples": record["examples_content_id"],
                     "master": record["master_content_id"],
+                    **(
+                        {"wsd_evidence": record["wsd_evidence_content_id"]}
+                        if record.get("wsd_evidence_content_id")
+                        else {}
+                    ),
                 },
                 "requires": {},
             }
@@ -394,6 +585,10 @@ def build_lyrics_catalog_release(
         composition_path = temporary / "composition.json"
         composition_path.write_bytes(json_bytes(composition))
         composition_content_id = file_content_id(composition_path)
+        has_native_v7 = any(
+            record.get("assignment_bridge_status") == "native_v7_forced_and_supported_available"
+            for record in artist_records
+        )
         manifest = {
             "manifest_version": LYRICS_MANIFEST_VERSION,
             "release_id": release_id,
@@ -407,7 +602,14 @@ def build_lyrics_catalog_release(
             "artist_count": len(artist_records),
             "languages": sorted({record["language"] for record in artist_records}),
             "card_count": sum(record["card_count"] for record in artist_records),
-            "assignment_status": "historical_materialized_assignments_preserved_for_product_parity",
+            "assignment_status": (
+                "native_v7_and_retained_forced_leaf_assignments"
+                if has_native_v7 else "forced_leaf_assignments_preserved_in_dual_view_contract"
+            ),
+            "supported_specificity_status": (
+                "available_for_native_v7_artists"
+                if has_native_v7 else "not_recorded_in_materialized_sources"
+            ),
             "files": _release_file_records(app_root),
         }
         (temporary / "manifest.json").write_bytes(json_bytes(manifest))
@@ -467,7 +669,7 @@ def validate_lyrics_release(release_directory: Path) -> tuple[dict[str, Any], di
                 raise LyricsReleaseError(f"Lyrics artist {slug} is missing {field}")
         if config["releaseId"] != release_id:
             raise LyricsReleaseError(f"Lyrics artist {slug} points at another release")
-        for field in ("indexPath", "examplesPath", "masterPath", "songsPath", "spotifyPath", "albumsDictionary", "defaultAlbumArt", "pickerImage"):
+        for field in ("indexPath", "examplesPath", "masterPath", "wsdEvidencePath", "songsPath", "spotifyPath", "albumsDictionary", "defaultAlbumArt", "pickerImage"):
             value = config.get(field)
             if value and f"app/{value}" not in declared:
                 raise LyricsReleaseError(f"Lyrics artist {slug} references an undeclared {field}")
@@ -477,6 +679,11 @@ def validate_lyrics_release(release_directory: Path) -> tuple[dict[str, Any], di
         index_path = release_directory / "app" / config["indexPath"]
         examples_path = release_directory / "app" / config["examplesPath"]
         _validate_index_examples(index_path, examples_path)
+        if config.get("wsdEvidencePath"):
+            evidence = _load_json(
+                release_directory / "app" / config["wsdEvidencePath"], dict
+            )
+            validate_artist_wsd_evidence(evidence)
     return manifest, composition
 
 

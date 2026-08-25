@@ -4,114 +4,346 @@
   "title": "Fresh Speech pipeline profile",
   "type": "object",
   "additionalProperties": false,
-  "required": ["profile_version", "profile_id", "language", "locale", "mode", "identity", "source_policy", "scope", "inventory", "sense_menu", "harvest", "stage_order", "wsd", "release"],
+  "required": [
+    "profile_version",
+    "profile_id",
+    "language",
+    "locale",
+    "mode",
+    "identity",
+    "source_policy",
+    "scope",
+    "inventory",
+    "sense_menu",
+    "harvest",
+    "stage_order",
+    "wsd",
+    "release"
+  ],
   "properties": {
-    "profile_version": {"const": "speech-pipeline-profile/v1"},
-    "profile_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
-    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
-    "locale": {"type": "string", "minLength": 2},
-    "mode": {"const": "speech"},
+    "profile_version": {
+      "const": "speech-pipeline-profile/v1"
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "language": {
+      "type": "string",
+      "pattern": "^[a-z]{2,3}$"
+    },
+    "locale": {
+      "type": "string",
+      "minLength": 2
+    },
+    "mode": {
+      "const": "speech"
+    },
     "identity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["unit_type", "identity_version", "allow_lemma_identity"],
+      "required": [
+        "unit_type",
+        "identity_version",
+        "allow_lemma_identity"
+      ],
       "properties": {
-        "unit_type": {"const": "surface"},
-        "identity_version": {"const": "surface-card/v1"},
-        "allow_lemma_identity": {"const": false}
+        "unit_type": {
+          "const": "surface"
+        },
+        "identity_version": {
+          "const": "surface-card/v1"
+        },
+        "allow_lemma_identity": {
+          "const": false
+        }
       }
     },
     "source_policy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["fresh_snapshots_only", "allow_legacy_inputs", "allow_recovered_inputs", "fallback_policy"],
+      "required": [
+        "fresh_snapshots_only",
+        "allow_legacy_inputs",
+        "allow_recovered_inputs",
+        "fallback_policy"
+      ],
       "properties": {
-        "fresh_snapshots_only": {"const": true},
-        "allow_legacy_inputs": {"const": false},
-        "allow_recovered_inputs": {"type": "boolean"},
-        "fallback_policy": {"const": "none"}
+        "fresh_snapshots_only": {
+          "const": true
+        },
+        "allow_legacy_inputs": {
+          "const": false
+        },
+        "allow_recovered_inputs": {
+          "type": "boolean"
+        },
+        "fallback_policy": {
+          "const": "none"
+        }
       }
     },
     "scope": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["surface_limit", "examples_per_surface", "shortfall_policy"],
+      "required": [
+        "surface_limit",
+        "shortfall_policy"
+      ],
       "properties": {
-        "surface_limit": {"type": "integer", "minimum": 1},
-        "examples_per_surface": {"const": 3},
-        "shortfall_policy": {"enum": ["block_release", "publish_explicit"]}
-      }
+        "surface_limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "examples_per_surface": {
+          "const": 3,
+          "description": "Deprecated alias for display_examples_per_card."
+        },
+        "shortfall_policy": {
+          "enum": [
+            "block_release",
+            "publish_explicit"
+          ]
+        },
+        "display_examples_per_card": {
+          "const": 3,
+          "description": "Examples the finished card shows. Costs bytes only. Replaces examples_per_surface."
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "display_examples_per_card"
+          ]
+        },
+        {
+          "required": [
+            "examples_per_surface"
+          ]
+        }
+      ]
     },
     "inventory": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["source_adapter", "language_policy", "source_edition", "frequency_measure", "output_schema", "identity_unit", "lemma_role"],
+      "required": [
+        "source_adapter",
+        "language_policy",
+        "source_edition",
+        "frequency_measure",
+        "output_schema",
+        "identity_unit",
+        "lemma_role"
+      ],
       "properties": {
-        "source_adapter": {"type": "string", "pattern": "^[a-z0-9-]+/v[0-9]+$"},
-        "language_policy": {"type": "string", "pattern": "^[a-z0-9-]+$"},
-        "source_edition": {"type": "string", "minLength": 1},
-        "frequency_measure": {"type": "string", "minLength": 1},
-        "output_schema": {"const": "surface-inventory/v1"},
-        "identity_unit": {"const": "surface"},
-        "lemma_role": {"const": "excluded"}
+        "source_adapter": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+/v[0-9]+$"
+        },
+        "language_policy": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "source_edition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frequency_measure": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output_schema": {
+          "const": "surface-inventory/v1"
+        },
+        "identity_unit": {
+          "const": "surface"
+        },
+        "lemma_role": {
+          "const": "excluded"
+        }
       }
     },
     "sense_menu": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["source_adapter", "language_policy", "source_edition", "gloss_language", "snapshot_id", "output_schema", "join_key", "lemma_role"],
+      "required": [
+        "source_adapter",
+        "language_policy",
+        "source_edition",
+        "gloss_language",
+        "snapshot_id",
+        "output_schema",
+        "join_key",
+        "lemma_role"
+      ],
       "properties": {
-        "source_adapter": {"type": "string", "pattern": "^[a-z0-9-]+/v[0-9]+$"},
-        "language_policy": {"type": "string", "pattern": "^[a-z0-9-]+$"},
-        "source_edition": {"type": "string", "minLength": 1},
-        "gloss_language": {"const": "en"},
-        "snapshot_id": {"type": ["string", "null"]},
-        "output_schema": {"const": "sense-menu/v1"},
-        "join_key": {"const": "surface_card_id"},
-        "lemma_role": {"const": "lookup_metadata_only"}
+        "source_adapter": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+/v[0-9]+$"
+        },
+        "language_policy": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "source_edition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gloss_language": {
+          "const": "en"
+        },
+        "snapshot_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "output_schema": {
+          "const": "sense-menu/v1"
+        },
+        "join_key": {
+          "const": "surface_card_id"
+        },
+        "lemma_role": {
+          "const": "lookup_metadata_only"
+        }
       }
     },
     "harvest": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["shared_policy", "language_policy", "source_policy", "sources", "candidate_cap_per_surface"],
+      "required": [
+        "shared_policy",
+        "language_policy",
+        "source_policy",
+        "sources"
+      ],
       "properties": {
-        "shared_policy": {"type": "string", "pattern": "^[a-z0-9-]+$"},
-        "language_policy": {"type": "string", "pattern": "^[a-z0-9-]+$"},
-        "source_policy": {"enum": ["exclusive", "explicit_union"]},
+        "shared_policy": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "language_policy": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "source_policy": {
+          "enum": [
+            "exclusive",
+            "explicit_union"
+          ]
+        },
         "sources": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*$"}
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          }
         },
-        "candidate_cap_per_surface": {"type": "integer", "minimum": 3}
-      }
+        "candidate_cap_per_surface": {
+          "type": "integer",
+          "minimum": 3,
+          "description": "Deprecated alias for wsd_budget_per_card.",
+          "maximum": 5000
+        },
+        "wsd_budget_per_card": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 5000,
+          "description": "Sentences per card handed to WSD. Every one may be embedded or sent to a model, so this number is spent. Replaces candidate_cap_per_surface."
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "wsd_budget_per_card"
+          ]
+        },
+        {
+          "required": [
+            "candidate_cap_per_surface"
+          ]
+        }
+      ]
     },
     "stage_order": {
-      "const": ["inventory", "sense_menu", "sentence_harvest", "wsd_assignments", "example_selection", "release_build"]
+      "const": [
+        "inventory",
+        "sense_menu",
+        "sentence_harvest",
+        "wsd_assignments",
+        "example_selection",
+        "release_build"
+      ]
     },
     "wsd": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["strategy", "shared_profile", "language_profile", "model_profile", "require_model_pins", "execution_status", "model_revisions"],
+      "required": [
+        "strategy",
+        "shared_profile",
+        "language_profile",
+        "model_profile",
+        "require_model_pins",
+        "execution_status",
+        "model_revisions"
+      ],
       "properties": {
-        "strategy": {"const": "language-adapted-closed-menu/v1"},
-        "shared_profile": {"type": "string", "pattern": "^[a-z0-9-]+$"},
-        "language_profile": {"type": "string", "pattern": "^[a-z0-9-]+$"},
-        "model_profile": {"type": "string", "pattern": "^[a-z0-9-]+$"},
-        "require_model_pins": {"const": true},
-        "execution_status": {"enum": ["blocked_pending_assets", "blocked_pending_benchmark", "ready"]},
-        "model_revisions": {"type": "object", "additionalProperties": {"type": "string"}}
+        "strategy": {
+          "const": "language-adapted-closed-menu/v1"
+        },
+        "shared_profile": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "language_profile": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "model_profile": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "require_model_pins": {
+          "const": true
+        },
+        "execution_status": {
+          "enum": [
+            "blocked_pending_assets",
+            "blocked_pending_benchmark",
+            "ready"
+          ]
+        },
+        "model_revisions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "max_wsd_units_per_run": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000000,
+          "description": "Hard ceiling on surface_limit x wsd_budget_per_card, checked at plan time before any spend."
+        }
       }
     },
     "release": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["activation", "fallback_policy"],
+      "required": [
+        "activation",
+        "fallback_policy"
+      ],
       "properties": {
-        "activation": {"const": "manual"},
-        "fallback_policy": {"const": "none"}
+        "activation": {
+          "const": "manual"
+        },
+        "fallback_policy": {
+          "const": "none"
+        }
       }
     }
   }

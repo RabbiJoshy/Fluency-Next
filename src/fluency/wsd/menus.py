@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
 from fluency.core.hashing import canonical_content_id
+from fluency.wsd.features import SpecialistFeature
 
 
 SENSE_MENU_VERSION = "sense-menu/v1"
@@ -18,6 +19,7 @@ class SenseLeaf:
     definition: str
     source_reference: str
     provider_metadata: Mapping[str, Any]
+    specialist_features: tuple[SpecialistFeature, ...] = ()
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -28,19 +30,28 @@ class SenseLeaf:
                 raise ValueError(f"{name} must not be empty")
         if not isinstance(self.translation, str):
             raise ValueError("translation must be a string")
+        if not isinstance(self.specialist_features, tuple) or any(
+            not isinstance(item, SpecialistFeature) for item in self.specialist_features
+        ):
+            raise ValueError("specialist_features must contain normalized features")
 
     @property
     def gloss_text(self) -> str:
         return " — ".join(value for value in (self.translation, self.definition) if value)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        record = {
             "sense_id": self.sense_id,
             "translation": self.translation,
             "definition": self.definition,
             "source_reference": self.source_reference,
             "provider_metadata": dict(self.provider_metadata),
         }
+        if self.specialist_features:
+            record["specialist_features"] = [
+                feature.to_dict() for feature in self.specialist_features
+            ]
+        return record
 
 
 def build_analysis_id(
@@ -101,6 +112,7 @@ class MenuAnalysis:
             "menu_analysis_id": self.menu_analysis_id,
             "headword": self.headword,
             "part_of_speech": self.part_of_speech,
+            "source_adapter": self.source_adapter,
             "source_analysis_key": self.source_analysis_key,
             "senses": [sense.to_dict() for sense in self.senses],
             "provider_metadata": dict(self.provider_metadata),

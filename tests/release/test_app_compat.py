@@ -103,6 +103,25 @@ class AppCompatibilityTests(unittest.TestCase):
             "sense_unused_menu_leaf",
         )
 
+    def test_wsd_distribution_keeps_unresolved_mass_in_the_denominator(self) -> None:
+        seed = json.loads(default_seed_path().read_text(encoding="utf-8"))
+        deck = build_pilot_deck(seed)
+        card = deck["cards"][0]
+        sense_id = card["meanings"][0]["sense_id"]
+        card["wsd_distribution"] = {
+            "distribution_version": "wsd-distribution/v1",
+            "selection_projection": "provider_only",
+            "publication_projection": "supported_specificity",
+            "denominator": 10,
+            "published_leaf_counts": {sense_id: 2},
+            "unresolved_mass": 8,
+            "supported_unavailable_mass": 0,
+        }
+
+        index, _ = build_app_compatibility_assets(deck)
+        self.assertEqual(index[0]["meanings"][0]["frequency"], "0.200000")
+        self.assertEqual(index[0]["wsd_distribution"]["unresolved_mass"], 8)
+
     def test_typed_conjugations_map_to_the_existing_optional_app_shape(self) -> None:
         result = build_app_conjugations({
             "layer_version": "conjugation-layer/v1",

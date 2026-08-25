@@ -15,6 +15,7 @@ from fluency.core.canonical_json import canonical_json
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
+from fluency.pipeline.budget import display_examples_per_card, wsd_budget_per_card
 from fluency.harvest.config import load_harvest_policies
 from fluency.harvest.inventory import load_frequency_ranks, load_harvest_inventory
 from fluency.harvest.matching import SurfaceMatcher, easiness_metrics, quality_rejection
@@ -178,11 +179,15 @@ def harvest_run_stage(
         normalized = matcher.normalize(token)
         frequency_ranks[normalized] = min(rank, frequency_ranks.get(normalized, rank))
 
-    cap = profile["harvest"]["candidate_cap_per_surface"]
+    cap = wsd_budget_per_card(profile["harvest"])
     candidates: dict[str, dict[str, dict[str, Any]]] = {
         card["card_id"]: {} for card in cards
     }
     sentence_records: dict[str, dict[str, Any]] = {}
+    # Every distinct sentence that ever matched a card, counted before the
+    # budget trims it. Without this the funnel is unreadable per card: the
+    # report only ever showed the number that SURVIVED the cut.
+    matched_per_card: Counter[str] = Counter()
     rejections: Counter[str] = Counter()
     matched_records = 0
     accepted_matches = 0
@@ -237,6 +242,7 @@ def harvest_run_stage(
                 if record["sentence_id"] not in card_candidates:
                     card_candidates[record["sentence_id"]] = candidate
                     accepted_matches += 1
+                    matched_per_card[card["card_id"]] += 1
                 if len(card_candidates) > cap * 2:
                     _trim_candidates(candidates, cap=cap)
 
@@ -252,7 +258,7 @@ def harvest_run_stage(
     }
     candidate_cards: list[dict[str, Any]] = []
     per_surface: list[dict[str, Any]] = []
-    final_target = profile["scope"]["examples_per_surface"]
+    final_target = display_examples_per_card(profile["scope"])
     for card in cards:
         retained = sorted(
             candidates[card["card_id"]].values(),
@@ -267,12 +273,19 @@ def harvest_run_stage(
                 "candidates": retained,
             }
         )
+        matched_before_budget = matched_per_card[card["card_id"]]
         per_surface.append(
             {
                 "card_id": card["card_id"],
                 "surface_key": card["surface_key"],
                 "candidate_count": len(retained),
                 "shortfall": max(0, final_target - len(retained)),
+                # Funnel: how many sentences matched this card, how many the
+                # per-card WSD budget discarded, and the rule that discarded them.
+                "matched_before_budget": matched_before_budget,
+                "discarded_by_budget": max(0, matched_before_budget - len(retained)),
+                "budget_rule": f"wsd_budget_per_card={cap}",
+                "display_rule": f"display_examples_per_card={final_target}",
             }
         )
 

@@ -21,11 +21,18 @@ from fluency.core.artifacts import verify_artifact
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
-from fluency.pipeline.planning import load_pipeline_profile
+from fluency.pipeline.planning import validate_pipeline_profile
 from fluency.release.composition import compose_release
 from fluency.release.io import atomic_write, json_bytes
 from fluency.release.study_structure import build_study_structure
 from fluency.release.validation import SPEECH_DECK_VERSION
+from fluency.pipeline.budget import display_examples_per_card
+from fluency.wsd.projection import (
+    PUBLICATION_PROJECTIONS,
+    SELECTION_PROJECTIONS,
+    materialize_selection,
+    publishes_exact_leaf,
+)
 
 
 SELECTION_VERSION = "example-selection/v1"
@@ -64,7 +71,9 @@ def _sentence_bank(path: Path) -> dict[str, dict[str, Any]]:
     return records
 
 
-def _load_assignments(run: Path) -> dict[tuple[str, str], dict[str, Any]]:
+def _load_assignments(
+    run: Path, *, selection_projection: str
+) -> dict[tuple[str, str], dict[str, Any]]:
     """Stage 04 keyed by (card_id, sentence_id); empty when WSD did not run."""
 
     path = run / "stages/04_wsd_assignments/output/assignments.jsonl"
@@ -81,7 +90,9 @@ def _load_assignments(run: Path) -> dict[tuple[str, str], dict[str, Any]]:
         card_id, sentence_id = row.get("card_id"), row.get("sentence_id")
         if not card_id or not sentence_id:
             raise RunCandidateError(f"WSD assignment row {number} lacks identity")
-        rows[(card_id, sentence_id)] = row
+        rows[(card_id, sentence_id)] = materialize_selection(
+            row, selection_projection
+        )
     return rows
 
 
@@ -109,10 +120,16 @@ def build_inactive_run_candidate(
     created_at: datetime | None = None,
     conjugations_artifact_id: str | None = None,
     source_titles_path: Path | None = None,
+    wsd_selection_projection: str = "provider_only",
+    wsd_publication_projection: str = "forced_leaf",
 ) -> Path:
     """Select harvested examples and compose a non-activated release."""
 
     created_at = datetime.now(UTC) if created_at is None else created_at
+    if wsd_selection_projection not in SELECTION_PROJECTIONS:
+        raise RunCandidateError("unsupported WSD selection projection")
+    if wsd_publication_projection not in PUBLICATION_PROJECTIONS:
+        raise RunCandidateError("unsupported WSD publication projection")
     existing_composition = (
         workspace.root / "releases" / language / mode / release_id / "composition.json"
     )
@@ -121,7 +138,17 @@ def build_inactive_run_candidate(
             _object(existing_composition)["created_at"].replace("Z", "+00:00")
         )
     run = workspace.root / "runs" / language / mode / run_id
-    profile = load_pipeline_profile(run / "profile.json")
+    profile_path = run / "profile.json"
+    profile_value = _object(profile_path)
+    source_policy = profile_value.get("source_policy")
+    if isinstance(source_policy, dict) and "allow_recovered_inputs" not in source_policy:
+        # Runs planned before recovered-input policy existed are immutable.
+        # Missing historically meant disabled; make that conservative meaning
+        # explicit only in the in-memory release view, never in the run itself.
+        profile_value = json.loads(json.dumps(profile_value))
+        profile_value["source_policy"]["allow_recovered_inputs"] = False
+    validate_pipeline_profile(profile_value)
+    profile = profile_value
     if profile["language"] != language or profile["mode"] != mode:
         raise RunCandidateError("run profile identity mismatch")
     manifest = _object(run / "manifest.json")
@@ -152,7 +179,9 @@ def build_inactive_run_candidate(
             if not isinstance(title_id, str) or not isinstance(metadata, dict) or not metadata.get("title"):
                 raise RunCandidateError("source titles snapshot contains an invalid record")
         source_titles_content_id = file_content_id(source_titles_path)
-    assignments = _load_assignments(run)
+    assignments = _load_assignments(
+        run, selection_projection=wsd_selection_projection
+    )
     if assignments:
         # Stage 04 becomes an input to the release, so a deck can be traced back
         # to the exact assignment set that produced it.
@@ -161,7 +190,7 @@ def build_inactive_run_candidate(
         )
     menu_by_card = {card["card_id"]: card for card in menus.get("cards", [])}
     candidates_by_card = {card["card_id"]: card for card in candidates.get("cards", [])}
-    limit = profile["scope"]["examples_per_surface"]
+    limit = display_examples_per_card(profile["scope"])
     menu_adapter = str(menus.get("source_adapter", ""))
     menu_provider = "spanishdict" if menu_adapter.startswith("spanishdict-") else "wiktionary"
 
@@ -193,10 +222,15 @@ def build_inactive_run_candidate(
             }
         )
 
-        assigned_here = {
+        computed_here = {
             key[1]: row
             for key, row in assignments.items()
             if key[0] == card_id and row.get("status") == "assigned"
+        }
+        assigned_here = {
+            sentence_id: row
+            for sentence_id, row in computed_here.items()
+            if publishes_exact_leaf(row, wsd_publication_projection)
         }
         assigned_scoped: set[str] = set()
         multiword_meanings: dict[str, dict[str, Any]] = {}
@@ -295,6 +329,21 @@ def build_inactive_run_candidate(
                 "target": sentence["target"],
                 "translation": sentence["translation"],
             }
+            computed = computed_here.get(sentence_id)
+            if computed is not None:
+                example_metadata["wsd"] = {
+                    "selection_projection": wsd_selection_projection,
+                    "publication_projection": wsd_publication_projection,
+                    "supported_level": computed.get("emitted_level"),
+                    "supported_status": (
+                        "recorded" if "emitted_level" in computed else "not_recorded"
+                    ),
+                    "forced_selection": {
+                        "menu_analysis_id": computed["menu_analysis_id"],
+                        "sense_id": computed["selected_sense_id"],
+                        "selected_tuple": computed["selected_tuple"],
+                    },
+                }
             title_id = str((sentence["source"].get("document") or {}).get("title_id") or "")
             if title_id and title_id in source_titles:
                 example_metadata["source_title"] = source_titles[title_id]
@@ -311,7 +360,57 @@ def build_inactive_run_candidate(
                     "metadata": example_metadata,
                 }
             )
-        cards.append({**card, "meanings": meanings, "examples": examples})
+        card_payload = {**card, "meanings": meanings, "examples": examples}
+        all_here = [row for key, row in assignments.items() if key[0] == card_id]
+        forced_counts: dict[str, int] = {}
+        supported_leaf_counts: dict[str, int] = {}
+        level_counts = {level: 0 for level in ("leaf", "glosskey", "tuple", "unresolved")}
+        status_counts: dict[str, int] = {}
+        supported_unavailable = 0
+        for row in all_here:
+            status = str(row.get("status") or "unknown")
+            status_counts[status] = status_counts.get(status, 0) + 1
+            if status != "assigned":
+                supported_unavailable += 1
+                continue
+            scoped = _scoped_sense_id(
+                card_id, row["menu_analysis_id"], row["selected_sense_id"]
+            )
+            forced_counts[scoped] = forced_counts.get(scoped, 0) + 1
+            level = row.get("emitted_level")
+            if level not in level_counts:
+                supported_unavailable += 1
+                continue
+            level_counts[level] += 1
+            if level == "leaf":
+                supported_leaf_counts[scoped] = supported_leaf_counts.get(scoped, 0) + 1
+        denominator = len(all_here)
+        if not all_here:
+            denominator = len(selected)
+            supported_unavailable = denominator
+            if denominator:
+                status_counts["unassigned"] = denominator
+        published_counts = (
+            forced_counts
+            if wsd_publication_projection == "forced_leaf"
+            else supported_leaf_counts
+        )
+        known = sum(published_counts.values())
+        card_payload["wsd_distribution"] = {
+            "distribution_version": "wsd-distribution/v1",
+            "selection_projection": wsd_selection_projection,
+            "publication_projection": wsd_publication_projection,
+            "denominator": denominator,
+            "forced_leaf_counts": forced_counts,
+            "supported_leaf_counts": supported_leaf_counts,
+            "published_leaf_counts": published_counts,
+            "supported_level_counts": level_counts,
+            "status_counts": status_counts,
+            "known_leaf_mass": known,
+            "unresolved_mass": denominator - known,
+            "supported_unavailable_mass": supported_unavailable,
+        }
+        cards.append(card_payload)
 
     selection = {
         "selection_version": SELECTION_VERSION,
@@ -446,6 +545,10 @@ def build_inactive_run_candidate(
             sum(1 for row in assignments.values() if row.get("status") == "assigned"),
             {"sense_menu": inputs["sense_menu"], "sentences": inputs["sentence_bank"]},
         )
+        layers["wsd_assignments"]["parameters"] = {
+            "selection_projection": wsd_selection_projection,
+            "publication_projection": wsd_publication_projection,
+        }
     else:
         omitted_layers.insert(
             0,
@@ -468,7 +571,10 @@ def build_inactive_run_candidate(
     composition = {
         "composition_version": "release-composition/v1",
         "release_id": release_id,
-        "label": f"{profile['locale']} Speech · real-data audit · unassigned",
+        "label": (
+            f"{profile['locale']} Speech · real-data audit · "
+            f"{wsd_selection_projection}/{wsd_publication_projection}"
+        ),
         "language": language,
         "locale": profile["locale"],
         "mode": mode,

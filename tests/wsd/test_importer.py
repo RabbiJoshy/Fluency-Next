@@ -12,6 +12,7 @@ from fluency.release.io import json_bytes
 from fluency.wsd.contracts import SelectedTuple, WSDAssignment
 from fluency.wsd.importer import WSDAssignmentImportError, import_wsd_assignments
 from fluency.wsd.menus import build_analysis_id
+from fluency.wsd.multiword import MULTIWORD_SOURCE_ADAPTER
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -136,6 +137,66 @@ class WSDImporterTests(unittest.TestCase):
         bundle_path.write_bytes(json_bytes(bundle))
         return workspace, run, bundle_path, bundle
 
+    def _add_mwe_alternate(self, bundle, *, pin_inventory):
+        assignment = bundle["assignments"][0]
+        expression = "je veux"
+        expression_id = "mwe-je-veux"
+        analysis_id = build_analysis_id(
+            card_id=assignment["card_id"],
+            source_adapter=MULTIWORD_SOURCE_ADAPTER,
+            source_analysis_key=expression,
+        )
+        inventory_content_id = content_id(b"fixture multiword inventory")
+        assignment["emitted_level"] = "leaf"
+        assignment["decision_kind"] = "disambiguated"
+        assignment["active_selection_projection"] = "provider_only"
+        assignment["selection_projections"] = {
+            "provider_only": {
+                "menu_analysis_id": assignment["menu_analysis_id"],
+                "selected_sense_id": assignment["selected_sense_id"],
+                "selected_tuple": assignment["selected_tuple"],
+                "source_kind": "provider",
+                "selected_score": 0.9,
+                "runner_up_score": 0.5,
+                "raw_margin": 0.4,
+                "rank": 2,
+                "emitted_level": "leaf",
+                "raw_axis_margins": {"leaf": 0.8, "glosskey": 0.8, "tuple": 0.8},
+            },
+            "mwe_augmented": {
+                "menu_analysis_id": analysis_id,
+                "selected_sense_id": expression_id,
+                "selected_tuple": {
+                    "headword": expression,
+                    "part_of_speech": "PHRASE",
+                },
+                "source_kind": "multiword",
+                "selected_score": 0.95,
+                "runner_up_score": 0.9,
+                "raw_margin": 0.05,
+                "rank": 1,
+                "emitted_level": "leaf",
+                "raw_axis_margins": {"leaf": 0.7, "glosskey": 0.7, "tuple": 0.7},
+            },
+        }
+        assignment["evidence"].update(
+            {
+                "selected_multiword": None,
+                "multiword_candidates": [
+                    {
+                        "expression": expression,
+                        "expression_id": expression_id,
+                        "translation": "I want",
+                        "menu_analysis_id": analysis_id,
+                        "inventory_content_id": inventory_content_id,
+                    }
+                ],
+            }
+        )
+        if pin_inventory:
+            bundle["inputs"]["multiword_inventory"] = inventory_content_id
+        return analysis_id
+
     def test_publishes_only_exact_complete_external_assignments(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             workspace, run, bundle_path, _ = self._fixture(Path(directory))
@@ -220,6 +281,48 @@ class WSDImporterTests(unittest.TestCase):
             bundle_path.write_bytes(json_bytes(bundle))
             with self.assertRaisesRegex(
                 WSDAssignmentImportError, "invalid WSD assignment at index 0"
+            ):
+                import_wsd_assignments(
+                    workspace,
+                    run_id=run.name,
+                    language="fr",
+                    mode="speech",
+                    bundle_path=bundle_path,
+                )
+
+    def test_rejects_forged_multiword_alternate_when_provider_is_active(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspace, run, bundle_path, bundle = self._fixture(Path(directory))
+            self._add_mwe_alternate(bundle, pin_inventory=True)
+            forged = "analysis_" + "f" * 32
+            alternate = bundle["assignments"][0]["selection_projections"]["mwe_augmented"]
+            alternate["menu_analysis_id"] = forged
+            bundle["assignments"][0]["evidence"]["multiword_candidates"][0][
+                "menu_analysis_id"
+            ] = forged
+            bundle_path.write_bytes(json_bytes(bundle))
+
+            with self.assertRaisesRegex(
+                WSDAssignmentImportError,
+                "multiword analysis ID does not recompute",
+            ):
+                import_wsd_assignments(
+                    workspace,
+                    run_id=run.name,
+                    language="fr",
+                    mode="speech",
+                    bundle_path=bundle_path,
+                )
+
+    def test_multiword_alternate_requires_bundle_inventory_pin(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspace, run, bundle_path, bundle = self._fixture(Path(directory))
+            self._add_mwe_alternate(bundle, pin_inventory=False)
+            bundle_path.write_bytes(json_bytes(bundle))
+
+            with self.assertRaisesRegex(
+                WSDAssignmentImportError,
+                "without pinning its inventory",
             ):
                 import_wsd_assignments(
                     workspace,

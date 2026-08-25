@@ -8,6 +8,7 @@ import re
 from typing import Any
 
 from fluency.core.hashing import canonical_content_id
+from fluency.pipeline.budget import wsd_budget_per_card
 
 
 SHARED_CONFIG_VERSION = "harvest-shared-policy/v1"
@@ -66,7 +67,7 @@ def load_harvest_policies(
         raise HarvestConfigurationError("language harvest policy ID does not match its file")
     if language.get("language") != profile["language"]:
         raise HarvestConfigurationError("language harvest policy does not match the run")
-    if shared.get("candidate_cap_per_surface") != selection["candidate_cap_per_surface"]:
+    if shared.get("candidate_cap_per_surface") != wsd_budget_per_card(selection):
         raise HarvestConfigurationError("profile and shared candidate caps disagree")
 
     expected_sources = selection["sources"]

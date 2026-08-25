@@ -12,7 +12,7 @@ A system that can emit less turns it into a vaguer one:
     confident throughout       ->  leaf       "está — is (location)"
     unsure which context       ->  glosskey   "está — is"
     unsure which gloss too     ->  tuple      "estar — to be"
-    unsure of the word itself  ->  escalate / redraw
+    unsure of the word itself  ->  unresolved / escalate / redraw
 
 The three levels are a lattice over the same selection, not different answers.
 The selected sense never changes; only how much of it is published does.
@@ -64,10 +64,10 @@ from fluency.wsd.gloss_scoring import LeafScore
 from fluency.wsd.menus import MenuAnalysis, require_analysis
 
 
-EmitLevel = Literal["leaf", "glosskey", "tuple"]
+EmitLevel = Literal["leaf", "glosskey", "tuple", "unresolved"]
 UncertainAxis = Literal["none", "gloss", "tuple"]
 
-EMIT_LEVELS: tuple[EmitLevel, ...] = ("leaf", "glosskey", "tuple")
+EMIT_LEVELS: tuple[EmitLevel, ...] = ("leaf", "glosskey", "tuple", "unresolved")
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,7 +175,7 @@ def decide(
     margins = axis_margins(scores, analyses, temperature=policy.temperature)
     if margins["tuple"] < policy.tuple_minimum:
         return CommitDecision(
-            level="tuple", uncertain_axis="tuple", margins=margins, escalate=True
+            level="unresolved", uncertain_axis="tuple", margins=margins, escalate=True
         )
     if margins["glosskey"] < policy.glosskey_minimum:
         return CommitDecision(
@@ -194,6 +194,8 @@ def published_fields(level: EmitLevel, analysis: MenuAnalysis, sense_id: str) ->
     """What a card may show at this level. The selection itself never changes."""
 
     leaf = analysis.sense(sense_id)
+    if level == "unresolved":
+        return {}
     if level == "tuple":
         return {"headword": analysis.headword, "part_of_speech": analysis.part_of_speech}
     payload: dict[str, object] = {

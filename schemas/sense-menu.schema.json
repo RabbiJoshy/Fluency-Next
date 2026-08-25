@@ -32,6 +32,7 @@
                 "menu_analysis_id": {"type": "string", "pattern": "^analysis_[0-9a-f]{32}$"},
                 "headword": {"type": "string", "minLength": 1},
                 "part_of_speech": {"type": "string", "minLength": 1},
+                "source_adapter": {"type": "string", "minLength": 1},
                 "source_analysis_key": {"type": "string", "minLength": 1},
                 "provider_metadata": {"type": "object"},
                 "senses": {
@@ -46,7 +47,21 @@
                       "translation": {"type": "string"},
                       "definition": {"type": "string"},
                       "source_reference": {"type": "string", "minLength": 1},
-                      "provider_metadata": {"type": "object"}
+                      "provider_metadata": {"type": "object"},
+                      "specialist_features": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["family", "kind", "value", "embedding_text"],
+                          "properties": {
+                            "family": {"enum": ["domain", "register", "construction"]},
+                            "kind": {"type": "string", "minLength": 1},
+                            "value": {"type": "string", "minLength": 1},
+                            "embedding_text": {"type": "string", "minLength": 1}
+                          }
+                        }
+                      }
                     }
                   }
                 }

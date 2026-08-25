@@ -22,6 +22,7 @@ from __future__ import annotations
 from collections import Counter
 from datetime import UTC, datetime
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -196,10 +197,13 @@ def register_pool_from_run(
     lifts it out of the run, so a later run can pick it deliberately instead of
     re-scanning the corpus.
 
-    The sentence bank is copied rather than referenced. That is knowingly
-    wasteful (measured at 59% duplication across three Spanish runs) and is what
-    the shared content-addressed store removes later; correctness does not
-    depend on it, so it is not a prerequisite for naming pools.
+    The sentence bank is hard-linked to the run's copy where the filesystem
+    allows it, falling back to a real copy across devices. Both files are
+    immutable by contract, so sharing the inode costs nothing and a pool no
+    longer doubles the bytes of the run it came from. This is a stopgap for the
+    shared content-addressed store, which additionally deduplicates ACROSS runs
+    (measured at 59% duplication over three Spanish runs); correctness does not
+    depend on either, so neither is a prerequisite for naming pools.
     """
 
     stage = run_directory / "stages" / "03_sentence_harvest" / "output"
@@ -241,6 +245,11 @@ def register_pool_from_run(
     )
 
     directory = write_pool(workspace_root, descriptor)
-    shutil.copyfile(bank, directory / "sentence-bank.jsonl")
+    target = directory / "sentence-bank.jsonl"
+    try:
+        os.link(bank, target)
+    except OSError:
+        # Different device, or a filesystem without hard links.
+        shutil.copyfile(bank, target)
     rebuild_catalog(workspace_root, descriptor["language"])
     return directory

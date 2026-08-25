@@ -3,7 +3,11 @@ import unittest
 from fluency.core.hashing import content_id
 from fluency.core.identity import create_card_record
 from fluency.harvest.records import build_sentence_id
-from fluency.wsd.contracts import SelectedTuple, WSDAssignment
+from fluency.wsd.contracts import (
+    SelectedTuple,
+    SelectionProjection,
+    WSDAssignment,
+)
 
 
 class WSDAssignmentContractTests(unittest.TestCase):
@@ -49,6 +53,93 @@ class WSDAssignmentContractTests(unittest.TestCase):
                 evidence={},
                 confidence=None,
                 model_revisions={},
+            )
+
+    def test_unresolved_publication_retains_the_forced_exact_selection(self) -> None:
+        record = WSDAssignment(
+            card_id=self.card.card_id,
+            surface_form="veux",
+            sentence_id=self.sentence_id,
+            status="assigned",
+            sense_menu_content_id=content_id(b"menu"),
+            menu_analysis_id="analysis_" + "a" * 32,
+            selected_sense_id="sense-want",
+            selected_tuple=SelectedTuple("vouloir", "verb"),
+            decision_path=("gloss", "commit"),
+            evidence={"commit": {"axis_confidences": {
+                "leaf": None, "glosskey": None, "tuple": None,
+            }}},
+            confidence=None,
+            model_revisions={"gloss": "fixture@1"},
+            emitted_level="unresolved",
+        )
+
+        restored = WSDAssignment.from_dict(record.to_dict())
+        self.assertEqual(restored.status, "assigned")
+        self.assertEqual(restored.menu_analysis_id, "analysis_" + "a" * 32)
+        self.assertEqual(restored.selected_sense_id, "sense-want")
+        self.assertEqual(restored.selected_tuple, SelectedTuple("vouloir", "verb"))
+        self.assertEqual(restored.supported_level, "unresolved")
+
+    def test_selection_projection_round_trips_and_materializes_top_level(self) -> None:
+        projection = SelectionProjection(
+            menu_analysis_id="analysis_" + "a" * 32,
+            selected_sense_id="sense-want",
+            selected_tuple=SelectedTuple("vouloir", "verb"),
+            source_kind="provider",
+            selected_score=0.72,
+            runner_up_score=0.70,
+            raw_margin=0.02,
+            rank=1,
+            emitted_level="glosskey",
+            raw_axis_margins={"leaf": 0.2, "glosskey": 0.4, "tuple": 0.8},
+        )
+        record = WSDAssignment(
+            card_id=self.card.card_id,
+            surface_form="veux",
+            sentence_id=self.sentence_id,
+            status="assigned",
+            sense_menu_content_id=content_id(b"menu"),
+            menu_analysis_id=projection.menu_analysis_id,
+            selected_sense_id=projection.selected_sense_id,
+            selected_tuple=projection.selected_tuple,
+            decision_path=("gloss", "commit"),
+            evidence={},
+            confidence=None,
+            model_revisions={"gloss": "fixture@1"},
+            emitted_level=projection.emitted_level,
+            selection_projections={"provider_only": projection},
+            active_selection_projection="provider_only",
+        )
+
+        payload = record.to_dict()
+        self.assertEqual(
+            payload["menu_analysis_id"],
+            payload["selection_projections"]["provider_only"]["menu_analysis_id"],
+        )
+        self.assertEqual(
+            payload["selected_sense_id"],
+            payload["selection_projections"]["provider_only"]["selected_sense_id"],
+        )
+        self.assertEqual(WSDAssignment.from_dict(payload), record)
+
+        with self.assertRaisesRegex(ValueError, "top-level selection"):
+            WSDAssignment(
+                card_id=self.card.card_id,
+                surface_form="veux",
+                sentence_id=self.sentence_id,
+                status="assigned",
+                sense_menu_content_id=content_id(b"menu"),
+                menu_analysis_id=projection.menu_analysis_id,
+                selected_sense_id="different-sense",
+                selected_tuple=projection.selected_tuple,
+                decision_path=("gloss", "commit"),
+                evidence={},
+                confidence=None,
+                model_revisions={"gloss": "fixture@1"},
+                emitted_level=projection.emitted_level,
+                selection_projections={"provider_only": projection},
+                active_selection_projection="provider_only",
             )
 
 

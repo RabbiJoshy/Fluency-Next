@@ -50,6 +50,16 @@ from fluency.migration.legacy_identity import write_legacy_crosswalk
 from fluency.migration.spanish_assets import migrate_spanish_retained_assets
 from fluency.migration.spanish_dictionary import migrate_spanish_dictionary_snapshot
 from fluency.migration.spanish_wsd_assets import migrate_spanish_wsd_assets
+from fluency.harvest.pools import (
+    read_pool,
+    rebuild_catalog,
+    register_pool_from_run,
+)
+from fluency.pipeline.budget import (
+    check_wsd_budget,
+    display_examples_per_card,
+    wsd_budget_per_card,
+)
 from fluency.pipeline.planning import create_pipeline_plan, load_pipeline_profile
 from fluency.release.activation import activate_release
 from fluency.release.catalog import build_catalog, write_catalog
@@ -255,6 +265,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         dest="artists",
         help="include only this artist slug; repeat for more than one source",
+    )
+    artist_build.add_argument(
+        "--wsd-assignments", action="append", default=[], metavar="ARTIST=PATH",
+        help="overlay native v7 JSONL assignments for an artist; repeat as needed",
     )
     for action in ("validate", "activate"):
         action_parser = artist_actions.add_parser(action)
@@ -487,6 +501,30 @@ def build_parser() -> argparse.ArgumentParser:
     compose.add_argument("--composition", type=Path, required=True, help="exact release-composition JSON")
     compose.add_argument("--deck", type=Path, required=True, help="already assembled compact deck JSON")
 
+    pools = subparsers.add_parser(
+        "pools", help="name, describe, and list reusable harvested sentence pools"
+    )
+    pool_actions = pools.add_subparsers(dest="pools_command", required=True)
+    pool_register = pool_actions.add_parser(
+        "register", help="promote a finished harvest into a named, described pool"
+    )
+    pool_register.add_argument("--workspace", type=Path, required=True)
+    pool_register.add_argument("--run-id", required=True)
+    pool_register.add_argument("--language", default="fr")
+    pool_register.add_argument("--mode", default="speech")
+    pool_register.add_argument("--pool-id", required=True)
+    pool_register.add_argument(
+        "--description", required=True,
+        help="free text: what this pool is for, in your own words",
+    )
+    pool_register.add_argument("--intent", default=None)
+    pool_register.add_argument(
+        "--variety", default=None, help="advisory tag such as european or brazilian"
+    )
+    pool_list = pool_actions.add_parser("list", help="show the pools available to pick from")
+    pool_list.add_argument("--workspace", type=Path, required=True)
+    pool_list.add_argument("--language", default="fr")
+
     pipeline = subparsers.add_parser("pipeline", help="plan clean, auditable data runs")
     pipeline_actions = pipeline.add_subparsers(dest="pipeline_command", required=True)
     pipeline_plan = pipeline_actions.add_parser(
@@ -581,6 +619,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--source-titles",
         type=Path,
         help="optional pinned source-title JSON snapshot inside workspace/raw",
+    )
+    pipeline_run_release.add_argument(
+        "--wsd-selection-projection",
+        choices=("provider_only", "mwe_augmented"),
+        default="provider_only",
+        help="candidate universe to materialize from the immutable v7 assignment",
+    )
+    pipeline_run_release.add_argument(
+        "--wsd-publication-projection",
+        choices=("forced_leaf", "supported_specificity"),
+        default="forced_leaf",
+        help="publish every forced leaf or only leaf-level supported claims",
     )
 
     identity = subparsers.add_parser(
@@ -842,11 +892,18 @@ def handle_deployment(args: argparse.Namespace) -> int:
 def handle_artist(args: argparse.Namespace) -> int:
     workspace = Workspace.load(_workspace_path(args.workspace))
     if args.artist_command == "build-catalog-release":
+        wsd_assignments: dict[str, Path] = {}
+        for value in args.wsd_assignments:
+            artist, separator, path = value.partition("=")
+            if not separator or not artist or not path or artist in wsd_assignments:
+                raise SystemExit("Each --wsd-assignments must be one unique ARTIST=PATH mapping")
+            wsd_assignments[artist] = Path(path).expanduser().resolve()
         output = build_lyrics_catalog_release(
             workspace,
             source_repository=args.source_repository,
             release_id=args.release_id,
             include_artists=set(args.artists) if args.artists else None,
+            wsd_assignment_overrides=wsd_assignments,
         )
         manifest, _ = validate_lyrics_release(output)
         print(f"Built immutable Lyrics catalog release: {output}")
@@ -854,7 +911,12 @@ def handle_artist(args: argparse.Namespace) -> int:
             f"Frozen {manifest['artist_count']} artist sources across "
             f"{', '.join(manifest['languages'])}; {manifest['card_count']} source-card rows."
         )
-        print("Historical materialized assignments were retained explicitly for product parity.")
+        if wsd_assignments:
+            print("Native v7 evidence was overlaid for: " + ", ".join(sorted(wsd_assignments)))
+            print("Both forced-leaf and supported-specificity publication views are available there.")
+        else:
+            print("Historical forced-leaf assignments were retained in the dual-view WSD contract.")
+            print("Supported-specificity remains explicitly not recorded; no confidence was invented.")
         print("No Artist pipeline, model, Google Sheet, or release activation was run.")
         return 0
     release_directory = workspace.root / "releases/lyrics" / args.release_id
@@ -1300,12 +1362,19 @@ def handle_pipeline(args: argparse.Namespace) -> int:
         run_directory = create_pipeline_plan(workspace, profile)
         target = (
             profile["scope"]["surface_limit"]
-            * profile["scope"]["examples_per_surface"]
+            * display_examples_per_card(profile["scope"])
         )
         print(f"Created fresh pipeline skeleton: {run_directory}")
         print(
             f"Audit target: {profile['scope']['surface_limit']} surface cards, "
-            f"{profile['scope']['examples_per_surface']} examples each ({target} total)"
+            f"{display_examples_per_card(profile['scope'])} examples each ({target} total)"
+        )
+        budget = check_wsd_budget(profile)
+        print(
+            f"WSD spend: {profile['scope']['surface_limit']} cards x "
+            f"{wsd_budget_per_card(profile['harvest'])} sentences = "
+            f"{budget['projected_wsd_units']:,} units "
+            f"(ceiling {budget['max_wsd_units_per_run']:,})"
         )
         print("No data stages were executed and no release was activated.")
         return 0
@@ -1407,6 +1476,8 @@ def handle_pipeline(args: argparse.Namespace) -> int:
             mode=args.mode,
             conjugations_artifact_id=args.conjugations_artifact,
             source_titles_path=args.source_titles,
+            wsd_selection_projection=args.wsd_selection_projection,
+            wsd_publication_projection=args.wsd_publication_projection,
         )
         manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
         deck = json.loads((output / "deck.json").read_text(encoding="utf-8"))
@@ -1557,6 +1628,48 @@ def serve_app(host: str, port: int, raw_workspace: str | None) -> None:
         server.server_close()
 
 
+def handle_pools(args) -> int:
+    workspace = Workspace.initialize(args.workspace)
+    if args.pools_command == "register":
+        run_directory = (
+            workspace.root / "runs" / args.language / args.mode / args.run_id
+        )
+        directory = register_pool_from_run(
+            workspace.root,
+            run_directory,
+            pool_id=args.pool_id,
+            description=args.description,
+            intent=args.intent,
+            variety=args.variety,
+        )
+        descriptor = read_pool(workspace.root, args.language, args.pool_id)
+        coverage = descriptor["coverage"]
+        print(f"Registered pool: {directory}")
+        print(f"  {descriptor['description']}")
+        print(f"  {coverage['sentences']:,} sentences")
+        years = coverage.get("years") or {}
+        if years:
+            recent = sum(v for y, v in years.items() if int(y) >= 2010)
+            total = sum(years.values())
+            print(
+                f"  years {min(years)}-{max(years)}; "
+                f"{recent / total:.1%} from 2010 or later"
+            )
+        return 0
+    if args.pools_command == "list":
+        catalog = rebuild_catalog(workspace.root, args.language)
+        if not catalog["pools"]:
+            print(f"No pools registered for {args.language}.")
+            return 0
+        print(f"Pools available for {args.language}:")
+        for pool_id, entry in catalog["pools"].items():
+            variety = f" [{entry['variety']}]" if entry.get("variety") else ""
+            print(f"  {pool_id}{variety}  {entry['sentences']:,} sentences")
+            print(f"      {entry['description']}")
+        return 0
+    return 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "dev":
@@ -1580,6 +1693,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handle_lyrics(args)
     if args.command == "release":
         return handle_release(args)
+    if args.command == "pools":
+        return handle_pools(args)
     if args.command == "pipeline":
         return handle_pipeline(args)
     if args.command == "identity":

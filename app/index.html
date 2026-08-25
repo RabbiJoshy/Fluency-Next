@@ -40,38 +40,38 @@
             document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#eef2f5' : '#0a0e14';
         })();
     </script>
-    <link rel="stylesheet" href="css/style.css?v=20260823aj">
-    <link rel="stylesheet" href="css/light-theme.css?v=20260822p">
+    <link rel="stylesheet" href="css/style.css?v=20260824c">
+    <link rel="stylesheet" href="css/light-theme.css?v=20260825ak">
     <!-- Module preloads. Without these the browser waits to discover the
          imports inside main.js before kicking off the per-module fetches,
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260824b">
-    <link rel="modulepreload" href="js/theme.js?v=20260822p">
-    <link rel="modulepreload" href="js/state.js?v=20260822p">
-    <link rel="modulepreload" href="js/data-contracts.js?v=20260822p">
-    <link rel="modulepreload" href="js/offline-db.js?v=20260822p">
-    <link rel="modulepreload" href="js/sync-queue.js?v=20260822p">
-    <link rel="modulepreload" href="js/offline-content.js?v=20260822p">
-    <link rel="modulepreload" href="js/speech.js?v=20260822p">
-    <link rel="modulepreload" href="js/artist-ui.js?v=20260822p">
+    <link rel="modulepreload" href="js/main.js?v=20260825ak">
+    <link rel="modulepreload" href="js/theme.js?v=20260825ak">
+    <link rel="modulepreload" href="js/state.js?v=20260825ak">
+    <link rel="modulepreload" href="js/data-contracts.js?v=20260825ak">
+    <link rel="modulepreload" href="js/offline-db.js?v=20260825ak">
+    <link rel="modulepreload" href="js/sync-queue.js?v=20260825ak">
+    <link rel="modulepreload" href="js/offline-content.js?v=20260825ak">
+    <link rel="modulepreload" href="js/speech.js?v=20260824d">
+    <link rel="modulepreload" href="js/artist-ui.js?v=20260825ak">
     <link rel="modulepreload" href="js/auth.js?v=20260823ae">
-    <link rel="modulepreload" href="js/about-example.js?v=20260822p">
-    <link rel="modulepreload" href="js/estimation.js?v=20260822p">
+    <link rel="modulepreload" href="js/about-example.js?v=20260825ak">
+    <link rel="modulepreload" href="js/estimation.js?v=20260825ak">
     <link rel="modulepreload" href="js/config.js?v=20260823ad">
-    <link rel="modulepreload" href="js/progress.js?v=20260822p">
-    <link rel="modulepreload" href="js/knowledge.js?v=20260822p">
-    <link rel="modulepreload" href="js/ui.js?v=20260823af">
-    <link rel="modulepreload" href="js/vocab.js?v=20260823ah">
-    <link rel="modulepreload" href="js/song-sets-core.js?v=20260822p">
+    <link rel="modulepreload" href="js/progress.js?v=20260825ak">
+    <link rel="modulepreload" href="js/knowledge.js?v=20260825ak">
+    <link rel="modulepreload" href="js/ui.js?v=20260825ak">
+    <link rel="modulepreload" href="js/vocab.js?v=20260825ak">
+    <link rel="modulepreload" href="js/song-sets-core.js?v=20260825ak">
     <link rel="modulepreload" href="js/song-sets.js?v=20260823ae">
-    <link rel="modulepreload" href="js/vocabulary-import-core.js?v=20260822p">
-    <link rel="modulepreload" href="js/vocabulary-import.js?v=20260822p">
-    <link rel="modulepreload" href="js/spanishdict-usage.js?v=20260822p">
-    <link rel="modulepreload" href="js/reverse-cues.js?v=20260822p">
+    <link rel="modulepreload" href="js/vocabulary-import-core.js?v=20260825ak">
+    <link rel="modulepreload" href="js/vocabulary-import.js?v=20260825ak">
+    <link rel="modulepreload" href="js/spanishdict-usage.js?v=20260825ak">
+    <link rel="modulepreload" href="js/reverse-cues.js?v=20260825ak">
     <link rel="modulepreload" href="js/flashcards.js?v=20260824b">
-    <link rel="modulepreload" href="js/example-personalisation.js?v=20260822p">
+    <link rel="modulepreload" href="js/example-personalisation.js?v=20260825ak">
     <script>
         // Fail open if a boot-time script error prevents main.js from taking
         // ownership of the loading screen. Normal boot removes this class as
@@ -1188,6 +1188,18 @@
                             <button type="button" class="group-size-btn global-study-default-btn" data-setting="excludeCognates" data-value="on" aria-pressed="false">Exclude</button>
                         </div>
                     </div>
+                    <div class="settings-default-row" id="wsdPublicationRow">
+                        <span class="settings-row-label-block">
+                            <span class="settings-row-label">Sense confidence
+                                <button type="button" class="settings-info-btn" aria-label="Explain sense confidence" aria-expanded="false">?</button>
+                            </span>
+                            <small class="settings-row-explanation" hidden>Forced leaf always publishes one exact dictionary meaning. Supported only publishes exact-sense percentages when v7 has enough evidence to separate the meanings.</small>
+                        </span>
+                        <div class="group-size-selector settings-toggle" role="group" aria-label="Sense confidence publication">
+                            <button type="button" class="group-size-btn wsd-publication-btn selected" data-wsd-publication="forced_leaf" aria-pressed="true" onclick="event.stopImmediatePropagation();if(window.selectWsdPublicationView){window.selectWsdPublicationView('forced_leaf',this)}else{const u=new URL(location.href);u.searchParams.set('wsdPublication','forced_leaf');location.assign(u)}">Forced leaf</button>
+                            <button type="button" class="group-size-btn wsd-publication-btn" data-wsd-publication="supported_specificity" aria-pressed="false" onclick="event.stopImmediatePropagation();if(window.selectWsdPublicationView){window.selectWsdPublicationView('supported_specificity',this)}else{const u=new URL(location.href);u.searchParams.set('wsdPublication','supported_specificity');location.assign(u)}">Supported</button>
+                        </div>
+                    </div>
                     <!-- Cognate exclusion sensitivity. Higher threshold = only
                          the most obvious cognates get excluded (looser); lower
                          = more aggressive. Hidden unless cognates are actually
@@ -1480,6 +1492,6 @@
             }
         })();
     </script>
-    <script type="module" src="js/main.js?v=20260824b"></script>
+    <script type="module" src="js/main.js?v=20260825ak"></script>
 </body>
 </html>

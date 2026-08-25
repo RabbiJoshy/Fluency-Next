@@ -1,6 +1,7 @@
 import unittest
 
 from fluency.core.identity import create_card_record
+from fluency.speech.wsd_execute import build_analyses
 from fluency.wsd.menus import (
     MenuAnalysis,
     SenseLeaf,
@@ -44,6 +45,40 @@ class MenuIdentityTests(unittest.TestCase):
         )
         with self.assertRaises(KeyError):
             require_analysis(analyses, "analysis_" + "0" * 32)
+
+    def test_source_adapter_survives_menu_serialization_and_reconstruction(self) -> None:
+        card_id = create_card_record("fr", "suis").card_id
+        original = analysis(card_id, "être:verb", "être")
+        serialized = original.to_dict()
+        self.assertEqual(serialized["source_adapter"], "wiktionary-sense-menu/v1")
+
+        rebuilt = build_analyses(
+            {
+                "card_id": card_id,
+                "surface_form": "suis",
+                "analyses": [serialized],
+            },
+            menu_source_adapter="spanishdict-sense-menu/v1",
+        )
+        self.assertEqual(rebuilt[0].source_adapter, "wiktionary-sense-menu/v1")
+        self.assertEqual(rebuilt[0].menu_analysis_id, original.menu_analysis_id)
+
+    def test_legacy_analysis_uses_the_menu_adapter_not_a_spanishdict_default(self) -> None:
+        card_id = create_card_record("fr", "suis").card_id
+        original = analysis(card_id, "être:verb", "être")
+        serialized = original.to_dict()
+        del serialized["source_adapter"]
+
+        rebuilt = build_analyses(
+            {
+                "card_id": card_id,
+                "surface_form": "suis",
+                "analyses": [serialized],
+            },
+            menu_source_adapter="wiktionary-sense-menu/v1",
+        )
+        self.assertEqual(rebuilt[0].source_adapter, "wiktionary-sense-menu/v1")
+        self.assertEqual(rebuilt[0].menu_analysis_id, original.menu_analysis_id)
 
 
 if __name__ == "__main__":

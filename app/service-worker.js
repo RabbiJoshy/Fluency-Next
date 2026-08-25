@@ -5,7 +5,7 @@
 // Bump CACHE_NAME alongside any change to ASSET_VERSION below — old caches
 // are deleted in the activate handler, so a bump forces the new pre-cache
 // list to be rebuilt on next install.
-const CACHE_NAME = 'flashcards-v303';
+const CACHE_NAME = 'flashcards-v307';
 const SHELL_CACHE_PREFIX = 'flashcards-v';
 const CONTENT_CACHE_PREFIX = 'fluency-content-';
 const CONTENT_STAGING_PREFIX = `${CONTENT_CACHE_PREFIX}staging-`;
@@ -13,7 +13,7 @@ const CONTENT_STAGING_PREFIX = `${CONTENT_CACHE_PREFIX}staging-`;
 // Single source of truth for the module/CSS version tags. Must match
 // js/main.js's import URLs and index.html's modulepreload links. When you
 // bump the ?v= tags, change this and bump CACHE_NAME above.
-const ASSET_VERSION = '20260822p';
+const ASSET_VERSION = '20260825ak';
 
 // Pre-cache the boot-critical static assets on install. Without this, the
 // first install populates the cache lazily — visit 1 doesn't go through
@@ -24,19 +24,19 @@ const ASSET_VERSION = '20260822p';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/css/style.css?v=20260823aj',
+  '/css/style.css?v=20260824c',
   `/css/light-theme.css?v=${ASSET_VERSION}`,
   '/config/config.json',
   '/config/cefr_levels.json',
   '/config/offline-content-manifest.json',
-  '/js/main.js?v=20260824b',
+  '/js/main.js?v=20260825ak',
   `/js/theme.js?v=${ASSET_VERSION}`,
   `/js/state.js?v=${ASSET_VERSION}`,
   `/js/data-contracts.js?v=${ASSET_VERSION}`,
   `/js/offline-db.js?v=${ASSET_VERSION}`,
   `/js/sync-queue.js?v=${ASSET_VERSION}`,
   `/js/offline-content.js?v=${ASSET_VERSION}`,
-  `/js/speech.js?v=${ASSET_VERSION}`,
+  '/js/speech.js?v=20260824d',
   `/js/artist-ui.js?v=${ASSET_VERSION}`,
   '/js/auth.js?v=20260823ae',
   `/js/about-example.js?v=${ASSET_VERSION}`,
@@ -45,8 +45,8 @@ const urlsToCache = [
   '/js/config.js?v=20260823ad',
   `/js/progress.js?v=${ASSET_VERSION}`,
   `/js/knowledge.js?v=${ASSET_VERSION}`,
-  '/js/ui.js?v=20260823af',
-  '/js/vocab.js?v=20260823ah',
+  '/js/ui.js?v=20260825ak',
+  '/js/vocab.js?v=20260825ak',
   `/js/song-sets-core.js?v=${ASSET_VERSION}`,
   '/js/song-sets.js?v=20260823ae',
   `/js/vocabulary-import-core.js?v=${ASSET_VERSION}`,
@@ -68,7 +68,16 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(
       urlsToCache.map(url => new Request(url, { cache: 'reload' }))
-    ))
+    )).then(() => {
+      // Development tabs change rapidly and mixing yesterday's controller
+      // with today's HTML produces controls that visibly exist but cannot
+      // route. Activate local builds immediately; production still uses the
+      // explicit, learner-controlled "Update ready" handoff above.
+      if (self.location.hostname === '127.0.0.1' || self.location.hostname === 'localhost') {
+        return self.skipWaiting();
+      }
+      return undefined;
+    })
   );
 });
 

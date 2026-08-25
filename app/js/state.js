@@ -183,7 +183,8 @@ export const speechLangCodes = {
     dutch:   'nl-NL',
     polish:  'pl-PL',
     french:  'fr-FR',
-    russian: 'ru-RU'
+    russian: 'ru-RU',
+    portuguese: 'pt-BR'
 };
 
 // Expose all mutable state as globalThis properties with getters/setters.

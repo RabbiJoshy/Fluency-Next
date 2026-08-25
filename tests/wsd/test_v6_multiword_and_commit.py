@@ -195,6 +195,7 @@ class Commit(unittest.TestCase):
             LeafScore(rival.menu_analysis_id, "x1", 0.50),
         )
         decision = decide(scores, candidates, CommitPolicy(tuple_minimum=0.5))
+        self.assertEqual(decision.level, "unresolved")
         self.assertEqual(decision.uncertain_axis, "tuple")
         self.assertTrue(decision.escalate, "the wrong word is the unacceptable error")
 
@@ -229,6 +230,9 @@ class Commit(unittest.TestCase):
         self.assertNotIn("translation", tuple_level)
         for payload in (leaf, glosskey, tuple_level):
             self.assertEqual(payload["headword"], "nuevo")
+
+    def test_unresolved_publishes_no_fields(self):
+        self.assertEqual(published_fields("unresolved", NUEVO[0], "n1"), {})
 
 
 class DecisionOrder(unittest.TestCase):

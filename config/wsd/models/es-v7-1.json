@@ -1,0 +1,63 @@
+{
+  "config_version": "wsd-model-profile/v1",
+  "profile_id": "es-v7-1",
+  "language": "es",
+  "execution_status": "ready",
+  "source_method_id": "spanishdict-v7",
+  "method_summary": "one-pass dual candidate universes, forced exact decisions, and separately supported publication specificity",
+  "provider_prior": {
+    "enabled": true,
+    "source": "spanishdict_menu_order",
+    "weight": 0.02,
+    "decay": 0.5
+  },
+  "gloss": {
+    "enabled": true,
+    "model_revision": "gemini-embedding-001",
+    "task_type": "SEMANTIC_SIMILARITY",
+    "dimensions": 3072,
+    "cache_lookup": "exact_text"
+  },
+  "occurrence_pos": {
+    "enabled": true,
+    "model_revision": "es_dep_news_trf@3.8.0",
+    "batch_size": 1,
+    "role": "constraint_evidence_only"
+  },
+  "constrain": {
+    "pos_filter": "sense_compatible_bridged",
+    "clitic_gate": "se_only",
+    "rejected_candidates_retained_as_audit_evidence": true,
+    "companion_note": "leaf_repair_only"
+  },
+  "multiword": {
+    "enabled": true,
+    "inventory": "mwe_merged/v1",
+    "minimum_corpus_frequency": 1,
+    "role": "stored_mwe_augmented_projection",
+    "active_projection": "provider_only",
+    "single_scoring_pass": true
+  },
+  "commit": {
+    "leaf_minimum": 0.0,
+    "glosskey_minimum": 0.0,
+    "tuple_minimum": 0.0,
+    "status": "thresholds_unmeasured_defaults_emit_leaf",
+    "raw_margins_are_confidence": false
+  },
+  "specialists": {
+    "enabled": false,
+    "status": "portable_contract_and_sparse_channels_ready_unvalidated",
+    "channels": ["full_gloss", "domain", "register", "construction"],
+    "missing_feature_outcome": "unknown"
+  },
+  "token_tuple_vote": {"enabled": false, "status": "held_out"},
+  "calibration": {"enabled": false, "status": "unmeasured"},
+  "alignment": {"enabled": false, "status": "held_out"},
+  "generative_escalation": false,
+  "asset_gate": {
+    "required_before_ready": ["gemini_exact_text_embedding_cache", "es_dep_news_trf", "mwe_merged_inventory"],
+    "derived_per_run": ["gemini_exact_text_cache_delta"],
+    "assignment_outputs_are_inputs": false
+  }
+}

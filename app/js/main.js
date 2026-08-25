@@ -1,22 +1,22 @@
-import './theme.js?v=20260822p';
-import './state.js?v=20260822p';
-import './offline-db.js?v=20260822p';
-import './sync-queue.js?v=20260822p';
-import { initOfflineContent } from './offline-content.js?v=20260822p';
-import './speech.js?v=20260822p';
-import './artist-ui.js?v=20260822p';
+import './theme.js?v=20260825ak';
+import './state.js?v=20260825ak';
+import './offline-db.js?v=20260825ak';
+import './sync-queue.js?v=20260825ak';
+import { initOfflineContent } from './offline-content.js?v=20260825ak';
+import './speech.js?v=20260824d';
+import './artist-ui.js?v=20260825ak';
 import './auth.js?v=20260823ae';
-import './about-example.js?v=20260822p';
-import './estimation.js?v=20260822p';
+import './about-example.js?v=20260825ak';
+import './estimation.js?v=20260825ak';
 import './config.js?v=20260823ad';
-import './progress.js?v=20260822p';
-import './knowledge.js?v=20260822p';
-import './ui.js?v=20260823af';
-import './vocab.js?v=20260823ah';
+import './progress.js?v=20260825ak';
+import './knowledge.js?v=20260825ak';
+import './ui.js?v=20260825ak';
+import './vocab.js?v=20260825ak';
 import './song-sets.js?v=20260823ae';
-import './vocabulary-import.js?v=20260822p';
+import './vocabulary-import.js?v=20260825ak';
 import './flashcards.js?v=20260824b';
-import { validateArtistCatalog } from './data-contracts.js?v=20260822p';
+import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import
 // immediately for an artist URL so it races setup/data loading, but keep it
@@ -24,7 +24,7 @@ import { validateArtistCatalog } from './data-contracts.js?v=20260822p';
 // lazy module stubs in flashcards.js.
 const _initialParams = new URLSearchParams(window.location.search);
 const _spotifyModulePromise = (_initialParams.has('artist') || _initialParams.get('mode') === 'badbunny')
-    ? import('./spotify.js?v=20260822p').catch(error => {
+    ? import('./spotify.js?v=20260825ak').catch(error => {
         console.warn('Spotify controls deferred:', error);
         return null;
     })
@@ -833,10 +833,10 @@ window.showArtistPicker = showArtistPicker;
 // Standard-mode language adapter: flag pictures + existing hidden language
 // buttons, so all loading/theme/progress behavior stays in ui.js.
 function showLanguagePicker(languages) {
-    const languageOrder = ['spanish', 'swedish', 'italian', 'dutch', 'polish', 'french', 'russian'];
+    const languageOrder = ['spanish', 'swedish', 'italian', 'dutch', 'polish', 'french', 'portuguese', 'russian'];
     const flags = {
         spanish: '🇪🇸', swedish: '🇸🇪', italian: '🇮🇹', dutch: '🇳🇱',
-        polish: '🇵🇱', french: '🇫🇷', russian: '🇷🇺'
+        polish: '🇵🇱', french: '🇫🇷', portuguese: '🇧🇷', russian: '🇷🇺'
     };
     const entries = languageOrder.filter(key => languages[key]).map(key => {
         const cfg = languages[key];

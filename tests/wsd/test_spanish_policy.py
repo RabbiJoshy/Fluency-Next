@@ -45,7 +45,11 @@ class SpanishV5CandidatePolicyTests(unittest.TestCase):
             card.card_id, "casarse:verb", "casarse", "VERB",
             (("get-married", "to get married", ""),),
         )
-        self.policy = SpanishV5CandidatePolicy()
+        self.phrase = analysis(
+            card.card_id, "casa:phrase", "casa", "PHRASE",
+            (("phrase", "at home", "provider phrase rendering"),),
+        )
+        self.policy = SpanishV5CandidatePolicy(constraint_mode="evidence_only")
 
     def test_tagset_bridge_preserves_spanishdict_determiner_categories(self):
         self.assertTrue(sense_compatible_bridged("ADJ", "DET"))
@@ -56,12 +60,13 @@ class SpanishV5CandidatePolicyTests(unittest.TestCase):
         self.assertFalse(se_reflexive_evidence("casa", "Casa a la pareja"))
         self.assertIsNone(se_reflexive_evidence("casa", "Me casa hoy"))
 
-    def test_pos_and_clitic_filters_only_remove_closed_menu_candidates(self):
+    def test_pos_and_clitic_constraints_are_evidence_not_destructive_filters(self):
         prepared = self.policy.prepare(
             sentence="Se casa hoy", surface_form="casa", observed_pos="VERB",
             analyses=(self.noun, self.verb, self.reflexive),
         )
-        self.assertEqual(prepared.analyses, (self.reflexive,))
+        self.assertEqual(prepared.analyses, (self.noun, self.verb, self.reflexive))
+        self.assertEqual(prepared.evidence["policy"], "evidence_only")
         self.assertEqual(
             prepared.evidence["pos_removed_analysis_ids"],
             [self.noun.menu_analysis_id],
@@ -70,6 +75,53 @@ class SpanishV5CandidatePolicyTests(unittest.TestCase):
             prepared.evidence["clitic_removed_analysis_ids"],
             [self.verb.menu_analysis_id],
         )
+        self.assertEqual(
+            prepared.evidence["constraint_supported_analysis_ids"],
+            [self.reflexive.menu_analysis_id],
+        )
+        self.assertEqual(
+            prepared.evidence["constraint_rejected_analysis_ids"],
+            sorted((self.noun.menu_analysis_id, self.verb.menu_analysis_id)),
+        )
+
+    def test_filter_mode_restores_the_v6_active_candidate_set(self):
+        prepared = SpanishV5CandidatePolicy(constraint_mode="filter").prepare(
+            sentence="Se casa hoy", surface_form="casa", observed_pos="VERB",
+            analyses=(self.noun, self.verb, self.reflexive, self.phrase),
+        )
+        self.assertEqual(prepared.analyses, (self.reflexive,))
+        self.assertEqual(prepared.evidence["policy"], "filter")
+        self.assertEqual(
+            prepared.evidence["constraint_rejected_analysis_ids"],
+            sorted((
+                self.noun.menu_analysis_id,
+                self.verb.menu_analysis_id,
+                self.phrase.menu_analysis_id,
+            )),
+        )
+
+    def test_constraint_mode_must_be_explicitly_supported(self):
+        with self.assertRaisesRegex(ValueError, "constraint mode"):
+            SpanishV5CandidatePolicy(constraint_mode="guess")
+
+    def test_auxiliary_se_does_not_select_a_lexical_reflexive_headword(self):
+        card = create_card_record("es", "ha")
+        haber = analysis(
+            card.card_id, "haber:verb", "haber", "VERB",
+            (("aux", "to have", "auxiliary"),),
+        )
+        haberse = analysis(
+            card.card_id, "haberse:verb", "haberse", "VERB",
+            (("confront", "to have it out", "to confront"),),
+        )
+
+        prepared = SpanishV5CandidatePolicy(constraint_mode="filter").prepare(
+            sentence="Se ha ido", surface_form="ha", observed_pos="AUX",
+            analyses=(haber, haberse),
+        )
+
+        self.assertEqual(prepared.analyses, (haber,))
+        self.assertFalse(prepared.evidence["se_reflexive_evidence"])
 
     def test_menu_prior_and_leaf_repair_match_v5_order(self):
         scores = (

@@ -16,12 +16,13 @@ from fluency.sense_menu.spanishdict import (
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
-def sense(pos: str, translation: str, context: str = "") -> dict:
+def sense(pos: str, translation: str, context: str = "", **metadata) -> dict:
     return {
         "pos": pos,
         "translation": translation,
         "context": context,
         "source": "spanishdict",
+        **metadata,
     }
 
 
@@ -57,6 +58,24 @@ class SpanishDictSenseMenuTests(unittest.TestCase):
                 ],
                 "possible_results": [],
             },
+            "cura": {
+                "query": "cura",
+                "entry_lang": "es",
+                "dictionary_analyses": [
+                    {
+                        "headword": "cura",
+                        "senses": [
+                            sense(
+                                "NOUN",
+                                "treatment",
+                                'medicine; used with "por"',
+                                regions=["Mexico"],
+                            )
+                        ],
+                    }
+                ],
+                "possible_results": [],
+            },
         }
         headword_cache = {
             "estar": {
@@ -74,7 +93,9 @@ class SpanishDictSenseMenuTests(unittest.TestCase):
         payloads = {
             "surface_cache.json": surface_cache,
             "headword_cache.json": headword_cache,
-            "spanish_forms.json": {"estar": {}, "usted": {}, "ustedes": {}},
+            "spanish_forms.json": {
+                "cura": {}, "estar": {}, "usted": {}, "ustedes": {}
+            },
             "conjugation_reverse.json": {
                 "está": [{"lemma": "estar"}],
             },
@@ -151,6 +172,24 @@ class SpanishDictSenseMenuTests(unittest.TestCase):
         self.assertEqual([item["sense_id"] for item in leaves], ["913", "953"])
         self.assertEqual(leaves[0]["definition"], "used to express a quality")
         self.assertEqual(leaves[0]["provider_metadata"]["legacy_menu_sense_id"], "913")
+
+    def test_provider_context_and_regions_become_normalized_specialist_features(self):
+        cards = [{**create_card_record("es", "cura").to_dict(), "rank": 1}]
+        menu, _ = self.adapter().build(cards, snapshot_id="fixture-2026-08")
+        leaf = menu["cards"][0]["analyses"][0]["senses"][0]
+        features = leaf["specialist_features"]
+
+        self.assertIn(
+            ("domain", "medicine"),
+            {(item["family"], item["value"]) for item in features},
+        )
+        self.assertIn(
+            ("register", "Mexico"),
+            {(item["family"], item["value"]) for item in features},
+        )
+        construction = [item for item in features if item["family"] == "construction"]
+        self.assertEqual(len(construction), 1)
+        self.assertIn('used with "por"', construction[0]["embedding_text"])
 
     def test_complete_normalized_menu_fills_surfaces_absent_from_raw_cache(self):
         retained_path = self.snapshot / "normalized_menu.json"

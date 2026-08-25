@@ -1,10 +1,54 @@
 // Vocabulary loading, filtering, and ID generation.
 // Key functions: buildFilteredVocab() (central filter), loadVocabularyData(), getWordId(),
 // mergeArtistVocabularies() (multi-artist merge by hex ID).
-import './state.js?v=20260822p';
-import { validateVocabularyIndex } from './data-contracts.js?v=20260822p';
+import './state.js?v=20260825ak';
+import { validateVocabularyIndex } from './data-contracts.js?v=20260825ak';
 
 const LAST_STUDY_SESSION_KEY = 'fluency_last_study_session_v1';
+const WSD_PUBLICATION_PROJECTION_KEY = 'fluency_wsd_publication_projection_v1';
+
+function currentWsdPublicationProjection() {
+    const requested = new URLSearchParams(window.location.search).get('wsdPublication');
+    if (requested === 'forced_leaf' || requested === 'supported_specificity') {
+        try { localStorage.setItem(WSD_PUBLICATION_PROJECTION_KEY, requested); } catch (_) {}
+        return requested;
+    }
+    try {
+        if (localStorage.getItem(WSD_PUBLICATION_PROJECTION_KEY) === 'supported_specificity') {
+            return 'supported_specificity';
+        }
+    } catch (_) {}
+    return 'forced_leaf';
+}
+
+window.getWsdPublicationProjection = currentWsdPublicationProjection;
+window.selectWsdPublicationView = (projection, sourceButton = null) => {
+    if (projection !== 'forced_leaf' && projection !== 'supported_specificity') {
+        throw new Error('Unsupported WSD publication projection');
+    }
+    document.querySelectorAll('.wsd-publication-btn').forEach(button => {
+        const selected = button === sourceButton || button.dataset.wsdPublication === projection;
+        button.classList.toggle('selected', selected);
+        button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    });
+    localStorage.setItem(WSD_PUBLICATION_PROJECTION_KEY, projection);
+    const target = new URL(window.location.href);
+    target.searchParams.set('wsdPublication', projection);
+    window.location.assign(target.toString());
+};
+window.setWsdPublicationProjection = window.selectWsdPublicationView;
+
+function projectedSenseFrequency(indexRow, sense, fallbackFrequency) {
+    const distribution = indexRow?.wsd_distribution;
+    if (!distribution || currentWsdPublicationProjection() === 'forced_leaf') {
+        return Number(fallbackFrequency) || 0;
+    }
+    const denominator = Number(distribution.denominator) || 0;
+    const counts = distribution.supported_leaf_counts;
+    const senseId = sense?.id || sense?.sense_id;
+    if (!denominator || !counts || !senseId) return 0;
+    return (Number(counts[senseId]) || 0) / denominator;
+}
 
 function readStudySession(key) {
     try {
@@ -472,15 +516,18 @@ function joinWithMaster(indexData, master) {
         const bands = idx.sense_band || [];
         const modelProposed = idx.sense_model_proposed || [];
         const freqs = idx.sense_frequencies || [];
+        const publicationProjection = currentWsdPublicationProjection();
         const meanings = [];
         (m.senses || []).forEach((sense, i) => {
             const freq = Number(freqs[i]) || 0;
+            const displayFrequency = projectedSenseFrequency(idx, sense, freq);
             const method = freq > 0 ? methods[i] : null;
             const isAutomatic = isAutomaticSenseMethod(method);
             const meaning = {
                 pos: sense.pos,
                 translation: sense.translation,
                 frequency: String(freq),
+                display_frequency: String(displayFrequency),
                 examples: []  // Attached later from examples file
             };
             // Provenance (which prompt/model produced this sense) for the
@@ -594,6 +641,11 @@ function joinWithMaster(indexData, master) {
             clitic_memberships: clitic_memberships.length > 0 ? clitic_memberships : undefined,
             sense_cycles: sense_cycles.length > 0 ? sense_cycles : undefined,
             morphology: idx.morphology || null,
+            wsd_distribution: idx.wsd_distribution || null,
+            wsd_publication_projection: publicationProjection,
+            wsd_supported_specificity_available: Object.values(
+                idx.wsd_distribution?.supported_level_counts || {}
+            ).some(value => Number(value) > 0),
             synonyms: idx.synonyms || null,
             antonyms: idx.antonyms || null,
             related_lemma: idx.related_lemma || m.related_lemma || null,
@@ -1806,7 +1858,7 @@ async function loadVocabularyData(rangeString, opts = {}) {
                 const meaning = {
                     pos: m.pos,
                     meaning: m.translation,
-                    percentage: parseFloat(m.frequency),
+                    percentage: parseFloat(m.display_frequency ?? m.frequency),
                     targetSentence,
                     englishSentence,
                     allExamples

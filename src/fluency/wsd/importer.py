@@ -17,7 +17,7 @@ from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
 from fluency.pipeline.planning import load_pipeline_profile
 from fluency.release.io import atomic_write, json_bytes
-from fluency.wsd.contracts import WSDAssignment
+from fluency.wsd.contracts import SelectionProjection, WSDAssignment
 from fluency.wsd.menus import build_analysis_id
 from fluency.wsd.multiword import MULTIWORD_SOURCE_ADAPTER
 
@@ -36,14 +36,38 @@ def _timestamp(value: datetime) -> str:
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
-def _validated_multiword_analysis(assignment: WSDAssignment, pair: Any):
+def _validated_multiword_fields(
+    assignment: WSDAssignment,
+    *,
+    menu_analysis_id: str,
+    selected_sense_id: str,
+    selected_tuple: Any,
+    source_kind: str | None,
+    pair: Any,
+):
     """Admit a multiword selection only if its identity is self-verifying.
 
     Returns the (headword, part_of_speech, sense_ids) triple the provider-menu
     path returns, or None when this is not a declared multiword selection.
     """
 
+    records = (assignment.evidence or {}).get("multiword_candidates")
+    candidates = [
+        item for item in (records if isinstance(records, list) else [])
+        if isinstance(item, dict)
+    ]
     expression = (assignment.evidence or {}).get("selected_multiword")
+    if source_kind == "multiword":
+        declared_by_id = next(
+            (
+                item
+                for item in candidates
+                if item.get("menu_analysis_id") == menu_analysis_id
+                and item.get("expression_id") == selected_sense_id
+            ),
+            None,
+        )
+        expression = None if declared_by_id is None else declared_by_id.get("expression")
     if not isinstance(expression, str) or not expression:
         return None
     expected = build_analysis_id(
@@ -51,16 +75,15 @@ def _validated_multiword_analysis(assignment: WSDAssignment, pair: Any):
         source_adapter=MULTIWORD_SOURCE_ADAPTER,
         source_analysis_key=expression,
     )
-    if assignment.menu_analysis_id != expected:
+    if menu_analysis_id != expected:
         raise WSDAssignmentImportError(
             f"multiword analysis ID does not recompute from its expression: {pair}"
         )
-    records = (assignment.evidence or {}).get("multiword_candidates")
     declared = next(
         (
             item
-            for item in (records if isinstance(records, list) else [])
-            if isinstance(item, dict) and item.get("expression") == expression
+            for item in candidates
+            if item.get("expression") == expression
         ),
         None,
     )
@@ -71,7 +94,7 @@ def _validated_multiword_analysis(assignment: WSDAssignment, pair: Any):
     # The leaf must be the inventory entry, not merely something named after it:
     # the selected sense ID has to be the entry ID the candidate declared, and a
     # renderable translation must be present or the card cannot show it.
-    if declared.get("expression_id") != assignment.selected_sense_id:
+    if declared.get("expression_id") != selected_sense_id:
         raise WSDAssignmentImportError(
             f"multiword sense ID does not match its inventory entry: {pair}"
         )
@@ -83,7 +106,73 @@ def _validated_multiword_analysis(assignment: WSDAssignment, pair: Any):
         raise WSDAssignmentImportError(
             f"multiword selection does not name a pinned inventory: {pair}"
         )
-    return (expression, "PHRASE", {assignment.selected_sense_id})
+    if (
+        selected_tuple is None
+        or selected_tuple.headword != expression
+        or selected_tuple.part_of_speech != "PHRASE"
+    ):
+        raise WSDAssignmentImportError(
+            f"multiword tuple does not match its expression: {pair}"
+        )
+    return (expression, "PHRASE", {selected_sense_id})
+
+
+def _validated_multiword_analysis(assignment: WSDAssignment, pair: Any):
+    """Backwards-compatible validator for the materialized top-level choice."""
+
+    if assignment.menu_analysis_id is None or assignment.selected_sense_id is None:
+        return None
+    return _validated_multiword_fields(
+        assignment,
+        menu_analysis_id=assignment.menu_analysis_id,
+        selected_sense_id=assignment.selected_sense_id,
+        selected_tuple=assignment.selected_tuple,
+        source_kind=(
+            None
+            if assignment.selection_projections is None
+            else assignment.selection_projections[
+                assignment.active_selection_projection
+            ].source_kind
+        ),
+        pair=pair,
+    )
+
+
+def _validate_selection(
+    assignment: WSDAssignment,
+    *,
+    card_menu: dict[str, tuple[str, str, set[str]]],
+    menu_analysis_id: str,
+    selected_sense_id: str,
+    selected_tuple: Any,
+    source_kind: str | None,
+    pair: Any,
+) -> None:
+    selected = card_menu.get(menu_analysis_id)
+    if selected is None:
+        selected = _validated_multiword_fields(
+            assignment,
+            menu_analysis_id=menu_analysis_id,
+            selected_sense_id=selected_sense_id,
+            selected_tuple=selected_tuple,
+            source_kind=source_kind,
+            pair=pair,
+        )
+    if selected is None:
+        raise WSDAssignmentImportError(
+            f"selected analysis is not in the card menu: {pair}"
+        )
+    headword, part_of_speech, sense_ids = selected
+    if selected_sense_id not in sense_ids:
+        raise WSDAssignmentImportError(f"selected sense is not in the analysis: {pair}")
+    if (
+        selected_tuple is None
+        or selected_tuple.headword != headword
+        or selected_tuple.part_of_speech != part_of_speech
+    ):
+        raise WSDAssignmentImportError(
+            f"selected tuple does not match the analysis: {pair}"
+        )
 
 
 def _load_object(path: Path) -> dict[str, Any]:
@@ -334,31 +423,41 @@ def import_wsd_assignments(
             if assignment.sense_menu_content_id != menu_content_id:
                 raise WSDAssignmentImportError(f"assignment uses a stale sense menu: {pair}")
         if assignment.status == "assigned":
-            selected = card_menu.get(assignment.menu_analysis_id)
-            if selected is None:
-                # A multiword sense is a TYPED inventory extension, not a
-                # provider menu analysis, so it is legitimately absent from the
-                # card menu. It is admitted only if the assignment declares it
-                # and the analysis ID recomputes from the declared expression --
-                # so an arbitrary ID cannot be passed off as one, and the
-                # closed-menu guarantee still holds for every provider sense.
-                selected = _validated_multiword_analysis(assignment, pair)
-            if selected is None:
-                raise WSDAssignmentImportError(f"selected analysis is not in the card menu: {pair}")
-            headword, part_of_speech, sense_ids = selected
-            if assignment.selected_sense_id not in sense_ids:
-                raise WSDAssignmentImportError(f"selected sense is not in the analysis: {pair}")
-            if (
-                assignment.selected_tuple is None
-                or assignment.selected_tuple.headword != headword
-                or assignment.selected_tuple.part_of_speech != part_of_speech
-            ):
-                raise WSDAssignmentImportError(f"selected tuple does not match the analysis: {pair}")
+            _validate_selection(
+                assignment,
+                card_menu=card_menu,
+                menu_analysis_id=assignment.menu_analysis_id,
+                selected_sense_id=assignment.selected_sense_id,
+                selected_tuple=assignment.selected_tuple,
+                source_kind=(
+                    None
+                    if assignment.selection_projections is None
+                    else assignment.selection_projections[
+                        assignment.active_selection_projection
+                    ].source_kind
+                ),
+                pair=pair,
+            )
+            for name, projection in (assignment.selection_projections or {}).items():
+                _validate_selection(
+                    assignment,
+                    card_menu=card_menu,
+                    menu_analysis_id=projection.menu_analysis_id,
+                    selected_sense_id=projection.selected_sense_id,
+                    selected_tuple=projection.selected_tuple,
+                    source_kind=projection.source_kind,
+                    pair=f"{pair}/{name}",
+                )
         assignments[pair] = assignment
         counts[assignment.status] += 1
 
     used_multiword = any(
-        (row.evidence or {}).get("selected_multiword") for row in assignments.values()
+        (row.evidence or {}).get("selected_multiword")
+        or any(
+            projection.source_kind == "multiword"
+            for projection in (row.selection_projections or {}).values()
+        )
+        for row in assignments.values()
     )
     if used_multiword and not str(declared_inputs.get("multiword_inventory") or "").startswith("sha256:"):
         raise WSDAssignmentImportError(

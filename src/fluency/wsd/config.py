@@ -48,6 +48,7 @@ def model_revisions(model: dict[str, Any]) -> dict[str, str]:
         "token_tuple_vote": ("model_revision", "prototype_content_id"),
         "calibration": ("model_revision", "feature_version"),
         "alignment": ("model_revision",),
+        "occurrence_pos": ("model_revision",),
     }
     for component, fields in component_fields.items():
         selection = model.get(component)

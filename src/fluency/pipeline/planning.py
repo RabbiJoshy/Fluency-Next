@@ -14,6 +14,12 @@ from fluency.core.canonical_json import canonical_json_bytes
 from fluency.core.hashing import content_id
 from fluency.core.manifests import create_run_manifest
 from fluency.core.workspace import Workspace
+from fluency.pipeline.budget import (
+    BudgetError,
+    check_wsd_budget,
+    display_examples_per_card,
+    wsd_budget_per_card,
+)
 from fluency.release.io import json_bytes
 
 
@@ -88,7 +94,7 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
         isinstance(scope.get("surface_limit"), int) and scope["surface_limit"] > 0,
         "surface limit must be a positive integer",
     )
-    _require(scope.get("examples_per_surface") == 3, "Speech profiles must target up to three final examples per surface")
+    _require(display_examples_per_card(scope) == 3, "Speech profiles must target up to three final examples per surface")
     _require(
         scope.get("shortfall_policy") in {"block_release", "publish_explicit"},
         "example shortfall policy is invalid",
@@ -160,11 +166,19 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
         harvest.get("source_policy") != "exclusive" or len(sources) == 1,
         "exclusive harvesting requires exactly one source",
     )
+    try:
+        budget = wsd_budget_per_card(harvest)
+        display_limit = display_examples_per_card(scope)
+    except BudgetError as error:
+        raise PipelineProfileError(str(error)) from error
     _require(
-        isinstance(harvest.get("candidate_cap_per_surface"), int)
-        and harvest["candidate_cap_per_surface"] >= scope["examples_per_surface"],
-        "harvest candidate cap cannot be below the final example target",
+        budget >= display_limit,
+        "the per-card WSD budget cannot be below the number of examples displayed",
     )
+    try:
+        check_wsd_budget(profile)
+    except BudgetError as error:
+        raise PipelineProfileError(str(error)) from error
 
     _require(profile.get("stage_order") == list(STAGE_ORDER), "pipeline stage order is not canonical")
     wsd = profile.get("wsd")
@@ -262,7 +276,7 @@ def _acceptance(stage: str, *, surfaces: int, examples: int) -> list[str]:
 
 def _stage_contract(profile: dict[str, Any], stage: str, ordinal: int) -> dict[str, Any]:
     surfaces = profile["scope"]["surface_limit"]
-    examples = surfaces * profile["scope"]["examples_per_surface"]
+    examples = surfaces * display_examples_per_card(profile["scope"])
     output_name, output_schema = STAGE_OUTPUTS[stage]
     contract: dict[str, Any] = {
         "contract_version": CONTRACT_VERSION,
@@ -328,12 +342,14 @@ def create_pipeline_plan(
         "execution_status": "not_started",
         "targets": {
             "surface_cards": profile["scope"]["surface_limit"],
-            "examples_per_surface": profile["scope"]["examples_per_surface"],
+            "examples_per_surface": display_examples_per_card(profile["scope"]),
             "total_examples": (
                 profile["scope"]["surface_limit"]
-                * profile["scope"]["examples_per_surface"]
+                * display_examples_per_card(profile["scope"])
             ),
-            "candidate_cap_per_surface": profile["harvest"]["candidate_cap_per_surface"],
+            "candidate_cap_per_surface": wsd_budget_per_card(profile["harvest"]),
+            "wsd_budget_per_card": wsd_budget_per_card(profile["harvest"]),
+            **check_wsd_budget(profile),
         },
         "stage_order": list(STAGE_ORDER),
         "release_activation": "manual_only",

@@ -88,12 +88,21 @@ class OpenSubtitlesAdapter:
         segments = parts[1].split("/")
         if len(segments) < 4 or not parts[3]:
             return None
-        return {
+        document: dict[str, str | int] = {
             "title_id": segments[2],
             "subtitle_id": segments[3].split(".")[0],
             "line": parts[3],
             "aligned_row": row_number,
         }
+        # segments[1] is the release year, which OpenSubtitles encodes in the
+        # document path. It was previously discarded, so corpus recency was
+        # invisible without a separate IMDb lookup. It does not feed
+        # ``sentence_id``, so surfacing it re-keys nothing.
+        # OpenSubtitles writes "0" when the release year is unknown, so only a
+        # plausible year is recorded rather than a placeholder.
+        if segments[1].isdigit() and 1800 <= int(segments[1]) <= 2100:
+            document["year"] = segments[1]
+        return document
 
     def iter_records(self) -> Iterator[dict[str, Any]]:
         with (

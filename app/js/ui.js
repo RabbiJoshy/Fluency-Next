@@ -1,6 +1,6 @@
 // Setup panel UI: language tabs, stable level selector, and automatic set progress.
 // Key functions: renderLanguageTabs(), renderLevelSelector(), renderRangeSelector().
-import './state.js?v=20260822p';
+import './state.js?v=20260825ak';
 
 const GLOBAL_STUDY_DEFAULTS_KEY = 'fluency_global_study_defaults_v1';
 let _setupLevelSelectionWasManual = false;
@@ -141,6 +141,17 @@ function setupGlobalStudyDefaults() {
                 document.getElementById('flashcard')?.classList.remove('flipped');
                 window.updateSpeakIcons?.();
                 if (flashcards.length > 0) window.updateCard?.();
+            }
+        });
+    });
+    const publication = window.getWsdPublicationProjection?.() || 'forced_leaf';
+    document.querySelectorAll('.wsd-publication-btn').forEach(button => {
+        const selected = button.dataset.wsdPublication === publication;
+        button.classList.toggle('selected', selected);
+        button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        button.addEventListener('click', function() {
+            if (this.dataset.wsdPublication !== publication) {
+                window.setWsdPublicationProjection?.(this.dataset.wsdPublication);
             }
         });
     });
@@ -301,7 +312,7 @@ function renderLanguageTabs() {
     const tabsContainer = document.getElementById('languageTabs');
 
     // Define custom language order (Polish before grayed-out French and Russian)
-    const languageOrder = ['spanish', 'swedish', 'italian', 'dutch', 'polish', 'french', 'russian'];
+    const languageOrder = ['spanish', 'swedish', 'italian', 'dutch', 'polish', 'french', 'portuguese', 'russian'];
     const languages = languageOrder.filter(lang => config.languages[lang]);
 
     // Map language keys to 2-letter codes
@@ -311,6 +322,7 @@ function renderLanguageTabs() {
         'spanish': 'ES',
         'italian': 'IT',
         'french': 'FR',
+        'portuguese': 'BR',
         'russian': 'RU',
         'swedish': 'SE'
     };
@@ -786,6 +798,7 @@ async function renderLevelSelector(language, { preferActionable = false } = {}) 
         const initialIdx = savedIdx >= 0 ? savedIdx : lastIdx;
         const initial = percentageRanges[initialIdx];
         const initialMetrics = _levelBandMetrics(initial, preparedSamples);
+        const initialDeckTotal = _levelDeckTotal(percentageRanges, preparedSamples);
         // Coverage display: use threshold for smart ranges, level string for legacy.
         const initialCoverage = initial.threshold != null
             ? `${(initial.threshold * 100).toFixed(1)}%`
@@ -795,7 +808,7 @@ async function renderLevelSelector(language, { preferActionable = false } = {}) 
             <div class="level-slider-wrap">
                 <div class="lsw-readout">
                     <span class="lsw-rank"><strong id="lswLevelVal">Level ${initialIdx + 1}</strong></span>
-                    <span class="lsw-range">Ranks <strong id="lswRankVal">${initialMetrics.start.toLocaleString()}–${initialMetrics.end.toLocaleString()}</strong></span>
+                    <span class="lsw-range">Ranks <strong id="lswRankVal">${initialMetrics.start.toLocaleString()}–${initialMetrics.end.toLocaleString()}</strong> <span class="lsw-deck-total" id="lswDeckTotal" aria-label="${initialDeckTotal.toLocaleString()} cards in deck">/ ${initialDeckTotal.toLocaleString()}</span></span>
                     <span class="lsw-coverage">~<strong id="lswCovVal">${initialCoverage}</strong> ${coverageType}</span>
                 </div>
                 <div id="lswSlider" class="lsw-segments lsw-scrubber" role="radiogroup" aria-label="Level scrubber" data-value="${initialIdx}">
@@ -1292,6 +1305,26 @@ function _levelBandMetrics(level, samples = null) {
     return { start, end, count: Math.max(0, count) };
 }
 
+// The quiet denominator beside the selected rank band is the size of the
+// whole active deck after the learner's current filters have been applied.
+// Fall back to the final level boundary only if the deck samples could not be
+// loaded, so the readout remains useful during a transient fetch failure.
+function _levelDeckTotal(ranges, samples = null) {
+    if (samples) return samples.length;
+    const finalLevel = ranges?.[ranges.length - 1];
+    const finalCardCount = Number(finalLevel?.cardCount);
+    if (Number.isFinite(finalCardCount)) return Math.max(0, finalCardCount);
+    return Math.max(0, (Number(finalLevel?.endRank) || 1) - 1);
+}
+
+function _updateLevelDeckTotal(samples) {
+    const totalEl = document.getElementById('lswDeckTotal');
+    if (!totalEl || !samples) return;
+    const total = samples.length;
+    totalEl.textContent = `/ ${total.toLocaleString()}`;
+    totalEl.setAttribute('aria-label', `${total.toLocaleString()} card${total === 1 ? '' : 's'} in deck`);
+}
+
 function _levelRankAccessor(rankBasis) {
     if (rankBasis === 'category') return item => item.categoryRank;
     if (rankBasis === 'stable') return item => item.stableRank;
@@ -1312,6 +1345,7 @@ function _applyFilteredRankCounts(samples) {
     const ranges = getActiveLevelRanges();
     const segBar = document.getElementById('lswSlider');
     const rankEl = document.getElementById('lswRankVal');
+    _updateLevelDeckTotal(samples);
     if (segBar && rankEl && ranges.length > 0) {
         const i = parseInt(segBar.dataset.value || '0', 10);
         const lv = ranges[i];

@@ -76,7 +76,18 @@ def build_app_compatibility_assets(
                 record.pop("assignment_method", None)
                 unassigned_examples.append(record)
 
-        total_examples = max(1, len(card["examples"]))
+        distribution = card.get("wsd_distribution")
+        distribution_counts = (
+            distribution.get("published_leaf_counts")
+            if isinstance(distribution, dict)
+            else None
+        )
+        total_examples = max(
+            1,
+            distribution.get("denominator", 0)
+            if isinstance(distribution, dict)
+            else len(card["examples"]),
+        )
         meanings: list[dict[str, Any]] = []
         buckets: list[list[dict[str, Any]]] = []
         unassigned_senses: list[dict[str, Any]] = []
@@ -85,7 +96,11 @@ def build_app_compatibility_assets(
             old_meaning: dict[str, Any] = {
                 "pos": meaning["part_of_speech"],
                 "translation": meaning["translation"],
-                "frequency": f"{len(bucket) / total_examples:.6f}",
+                "frequency": f"{(
+                    distribution_counts.get(meaning['sense_id'], 0)
+                    if isinstance(distribution_counts, dict)
+                    else len(bucket)
+                ) / total_examples:.6f}",
                 "source": meaning.get("source", "release"),
                 "assignment_method": meaning["assignment_status"],
                 "sense_id": meaning["sense_id"],
@@ -112,6 +127,8 @@ def build_app_compatibility_assets(
             "meanings": meanings,
             "surface_card_id": card["card_id"],
         }
+        if isinstance(distribution, dict):
+            old_card["wsd_distribution"] = distribution
         split_examples: dict[str, Any] = {"m": buckets}
         if not meanings and (unassigned_senses or unassigned_examples):
             # Normal-mode setup intentionally rejects cards with no primary

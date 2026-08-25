@@ -19,6 +19,10 @@ from fluency.inventory.corpus_frequency import (
     ADAPTER_ID as CORPUS_ADAPTER_ID,
     load_corpus_frequency_snapshot,
 )
+from fluency.inventory.frequency_list import (
+    ADAPTER_ID as FREQUENCY_LIST_ADAPTER_ID,
+    read_frequency_list,
+)
 from fluency.inventory.lexique import (
     ADAPTER_ID as LEXIQUE_ADAPTER_ID,
     ranked_surfaces,
@@ -70,6 +74,7 @@ def _implementation_content_id(adapter_id: str) -> str:
         LEXIQUE_ADAPTER_ID: package / "lexique.py",
         CORPUS_ADAPTER_ID: package / "corpus_frequency.py",
         RECOVERED_ADAPTER_ID: package / "recovered.py",
+        FREQUENCY_LIST_ADAPTER_ID: package / "frequency_list.py",
     }[adapter_id]
     paths = (Path(__file__).resolve(), package / "config.py", adapter_path)
     return canonical_content_id(
@@ -110,6 +115,7 @@ def build_inventory_stage(
         LEXIQUE_ADAPTER_ID,
         CORPUS_ADAPTER_ID,
         RECOVERED_ADAPTER_ID,
+        FREQUENCY_LIST_ADAPTER_ID,
     }:
         raise InventoryRunError("no installed inventory adapter matches the run profile")
     language_policy = load_inventory_language_policy(
@@ -142,6 +148,23 @@ def build_inventory_stage(
             "duplicate_analysis_rows": result.duplicate_rows,
         }
         upstream_inputs: dict[str, str] = {}
+        source_ranked = list(ranked_surfaces(frequencies))
+    elif adapter_id == FREQUENCY_LIST_ADAPTER_ID:
+        if not resolved_snapshot.is_file():
+            raise InventoryRunError(
+                "the frequency-list adapter requires one published two-column list file"
+            )
+        listed = read_frequency_list(resolved_snapshot, language=language)
+        frequencies = listed.frequencies
+        source_content_id = file_content_id(resolved_snapshot)
+        source_metrics = {
+            "source_rows": listed.source_rows,
+            "rejected_malformed": listed.rejected_malformed,
+            "rejected_empty_or_zero": listed.rejected_empty_or_zero,
+            "rejected_surface_shape": listed.rejected_surface_shape,
+            "duplicate_normalized_rows": listed.duplicate_rows,
+        }
+        upstream_inputs = {}
         source_ranked = list(ranked_surfaces(frequencies))
     elif adapter_id == CORPUS_ADAPTER_ID:
         if not resolved_snapshot.is_dir():

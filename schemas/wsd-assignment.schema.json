@@ -28,9 +28,57 @@
         }
       ]
     },
-    "decision_path": {"type": "array", "uniqueItems": true, "items": {"enum": ["gloss", "token_tuple_vote", "leaf_repair", "calibration", "alignment"]}},
+    "decision_path": {"type": "array", "uniqueItems": true, "items": {"enum": ["constrain", "multiword", "gloss", "token_tuple_vote", "leaf_repair", "calibration", "alignment", "commit"]}},
     "evidence": {"type": "object"},
     "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-    "model_revisions": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}}
+    "model_revisions": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}},
+    "emitted_level": {"enum": ["leaf", "glosskey", "tuple", "unresolved"]},
+    "decision_kind": {"enum": ["deterministic_default", "disambiguated"]},
+    "active_selection_projection": {"enum": ["provider_only", "mwe_augmented"]},
+    "selection_projections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider_only"],
+      "properties": {
+        "provider_only": {"$ref": "#/$defs/selectionProjection"},
+        "mwe_augmented": {"$ref": "#/$defs/selectionProjection"}
+      }
+    }
+  },
+  "$defs": {
+    "selectionProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["menu_analysis_id", "selected_sense_id", "selected_tuple", "source_kind", "selected_score", "runner_up_score", "raw_margin", "rank", "emitted_level", "raw_axis_margins"],
+      "properties": {
+        "menu_analysis_id": {"type": "string", "pattern": "^analysis_[0-9a-f]{32}$"},
+        "selected_sense_id": {"type": "string", "minLength": 1},
+        "selected_tuple": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["headword", "part_of_speech"],
+          "properties": {
+            "headword": {"type": "string", "minLength": 1},
+            "part_of_speech": {"type": "string", "minLength": 1}
+          }
+        },
+        "source_kind": {"enum": ["provider", "multiword"]},
+        "selected_score": {"type": "number"},
+        "runner_up_score": {"type": ["number", "null"]},
+        "raw_margin": {"type": ["number", "null"]},
+        "rank": {"type": "integer", "minimum": 1},
+        "emitted_level": {"enum": ["leaf", "glosskey", "tuple", "unresolved"]},
+        "raw_axis_margins": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["leaf", "glosskey", "tuple"],
+          "properties": {
+            "leaf": {"type": "number", "minimum": 0, "maximum": 1},
+            "glosskey": {"type": "number", "minimum": 0, "maximum": 1},
+            "tuple": {"type": "number", "minimum": 0, "maximum": 1}
+          }
+        }
+      }
+    }
   }
 }
