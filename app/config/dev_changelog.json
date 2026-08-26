@@ -2,6 +2,16 @@
   "_readme": "User-visible changes in the replacement app, newest first.",
   "entries": [
     {
+      "date": "2026-08-26",
+      "commit": "18857d9",
+      "summary": "Spotify buttons now open sign-in reliably in deployed Lyrics decks",
+      "detail": [
+        "The public Spotify OAuth client ID now ships with static deployments while private backend configuration remains excluded.",
+        "Desktop sign-in opens before asynchronous PKCE work can trigger popup blocking, with a full-page fallback; mobile keeps its full-page return-to-card flow.",
+        "The Web Playback SDK now loads only after its readiness callback exists, removing a startup race, and missing configuration produces a visible message instead of a silent no-op."
+      ]
+    },
+    {
       "date": "2026-08-24",
       "commit": "73578b4",
       "summary": "Example credits now favour readable titles over source codes",
