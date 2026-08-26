@@ -6,8 +6,12 @@ from dataclasses import dataclass
 from typing import Any, Literal, Mapping
 
 
-FEATURE_FAMILIES = frozenset({"domain", "register", "construction"})
-FeatureFamily = Literal["domain", "register", "construction"]
+# `companion` is a word the sense requires nearby -- SpanishDict writes it as
+# prose ("used with \"de\""), Wiktionary as a structured +obj template. Unlike the
+# other families it is checkable rather than comparable: a gate can ask whether
+# the word is present, instead of scoring a similarity.
+FEATURE_FAMILIES = frozenset({"domain", "register", "construction", "companion"})
+FeatureFamily = Literal["domain", "register", "construction", "companion"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,3 +52,15 @@ class SpecialistFeature:
             value=value["value"],
             embedding_text=value["embedding_text"],
         )
+
+
+# Companion notes sometimes name a grammatical FORM rather than a word to look
+# for in the line -- "used with an infinitive", "[with gerund]". Those constrain
+# construction; only a real word can be a companion, because only a real word can
+# be searched for.
+GRAMMATICAL_FORMS = frozenset(
+    {"a", "an", "the", "infinitive", "gerund", "participle", "subjunctive",
+     "adjective", "adverb", "noun", "pronoun", "clause",
+     # "[with direct object]", "[with indirect object]"
+     "direct", "indirect", "object", "reflexive"}
+)

@@ -24,10 +24,12 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping, Sequence
 
-from fluency.features.contract import SpecialistFeature
+from fluency.features.contract import GRAMMATICAL_FORMS, SpecialistFeature
 
 
 PARENTHETICAL = re.compile(r"^\((?P<context>[^)]{2,60})\)\s*\S")
+# "[with com 'with something']", "[with gerund (Brazil) ...]"
+_WITH_HEAD = re.compile(r"^\[with\s+(?P<word>[^\W\d_]+)", re.UNICODE)
 
 # Fallbacks used when a language policy declares no vocabulary of its own.
 DEFAULT_REGISTER_TAGS = frozenset(
@@ -97,6 +99,27 @@ def extract(
             add("register", "usage_tag", tag)
         elif tag in construction:
             add("construction", "grammar_tag", tag)
+
+    # The companion note: SpanishDict writes this as prose in `context`,
+    # Wiktionary as a structured +obj template. Both emit the same family so a
+    # gate never has to know which provider it is reading.
+    for template in sense.get("info_templates", []) or []:
+        if not isinstance(template, dict) or template.get("name") != "+obj":
+            continue
+        # The expansion is structured -- "[with com 'with something']" -- while
+        # extra_data.words is fragments of it, so the first alpha token there is
+        # as likely to be "or" or "(Brazil)" as the companion.
+        expansion = str(template.get("expansion") or "").strip()
+        head = _WITH_HEAD.match(expansion)
+        companion = head.group("word") if head else None
+        if companion and companion.lower() in GRAMMATICAL_FORMS:
+            companion = None
+        if companion:
+            add("companion", "required_word", companion.strip().lower())
+        elif expansion:
+            # "[with adjective]", "[with gerund]" -- a form, not a word to look
+            # for, so it constrains construction rather than companionship.
+            add("construction", "companion_form", expansion)
 
     for part in _split_parenthetical(sense):
         lowered = part.lower()
