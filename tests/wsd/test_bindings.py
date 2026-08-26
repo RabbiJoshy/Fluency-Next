@@ -32,6 +32,21 @@ class BindingTests(unittest.TestCase):
             binding_for("pt").pos_model_role, binding_for("es").pos_model_role
         )
 
+    def test_no_two_languages_share_a_pos_model(self) -> None:
+        """Tagging one language with another's model is silent and plausible.
+
+        French pointed at `occurrence-pos` -- the Spanish model -- for exactly as
+        long as nobody ran French WSD.
+        """
+
+        from fluency.nlp.models import pin
+
+        roles = {lang: binding_for(lang).pos_model_role for lang in ("es", "pt", "fr")}
+        self.assertEqual(len(set(roles.values())), 3, f"shared POS model: {roles}")
+        for lang, role in roles.items():
+            with self.subTest(language=lang):
+                self.assertIn(lang, pin(role), f"{lang} uses {pin(role)}")
+
     def test_menu_provider_drives_the_gate_not_the_language(self) -> None:
         self.assertEqual(binding_for("es").menu_provider, "spanishdict")
         self.assertEqual(binding_for("pt").menu_provider, "wiktionary")

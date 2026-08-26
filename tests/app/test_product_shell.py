@@ -271,6 +271,9 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("config?.publicServices?.spotifyClientId", auth)
         self.assertIn("secrets.spotifyClientId || window._spotifyClientId", auth)
         self.assertIn("Spotify sign-in is temporarily unavailable", spotify)
+        self.assertIn("window.open('about:blank', 'spotify-auth'", spotify)
+        self.assertIn("spotifyLogin(trackId, positionMs, options.authPopup)", spotify)
+        self.assertIn("Popup blocked; redirecting to Spotify auth", spotify)
         self.assertIn("function _loadSpotifyPlaybackSdk()", spotify)
         self.assertIn("if (_isMobile) return", spotify)
         self.assertLess(
@@ -278,7 +281,7 @@ class ProductShellTests(unittest.TestCase):
             spotify.index("_loadSpotifyPlaybackSdk();"),
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
-        self.assertIn("/js/spotify.js?v=20260826b", worker)
+        self.assertIn("/js/spotify.js?v=20260826c", worker)
 
     def test_audit_accounts_and_flags_use_release_provenance(self) -> None:
         auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")

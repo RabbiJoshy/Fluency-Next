@@ -1,0 +1,77 @@
+{
+  "profile_version": "speech-pipeline-profile/v1",
+  "profile_id": "portuguese_speech_v7_2000x3",
+  "language": "pt",
+  "locale": "pt-PT",
+  "mode": "speech",
+  "identity": {
+    "unit_type": "surface",
+    "identity_version": "surface-card/v1",
+    "allow_lemma_identity": false
+  },
+  "source_policy": {
+    "fresh_snapshots_only": true,
+    "allow_legacy_inputs": false,
+    "allow_recovered_inputs": false,
+    "fallback_policy": "none"
+  },
+  "scope": {
+    "surface_limit": 2000,
+    "shortfall_policy": "publish_explicit",
+    "display_examples_per_card": 3
+  },
+  "inventory": {
+    "source_adapter": "published-surface-frequency-list/v1",
+    "language_policy": "pt-v1",
+    "source_edition": "FrequencyWords OpenSubtitles 2018 pt_br 50k",
+    "frequency_measure": "surface_token_occurrences",
+    "output_schema": "surface-inventory/v1",
+    "identity_unit": "surface",
+    "lemma_role": "excluded"
+  },
+  "sense_menu": {
+    "source_adapter": "wiktionary-sense-menu/v1",
+    "language_policy": "pt-v1",
+    "source_edition": "enwiktionary",
+    "gloss_language": "en",
+    "snapshot_id": null,
+    "output_schema": "sense-menu/v1",
+    "join_key": "surface_card_id",
+    "lemma_role": "lookup_metadata_only"
+  },
+  "harvest": {
+    "shared_policy": "speech-v1",
+    "language_policy": "pt-v1",
+    "source_policy": "exclusive",
+    "sources": [
+      "opensubtitles"
+    ],
+    "wsd_budget_per_card": 60
+  },
+  "stage_order": [
+    "inventory",
+    "sense_menu",
+    "sentence_harvest",
+    "wsd_assignments",
+    "example_selection",
+    "release_build"
+  ],
+  "wsd": {
+    "strategy": "language-adapted-closed-menu/v1",
+    "shared_profile": "closed-menu-provider-prior-v1",
+    "language_profile": "pt-v1",
+    "model_profile": "pt-v7-1",
+    "require_model_pins": true,
+    "execution_status": "ready",
+    "model_revisions": {
+      "gloss.model_revision": "gemini-embedding-001",
+      "occurrence_pos.model_revision": "pt_core_news_lg@3.8.0"
+    },
+    "max_wsd_units_per_run": 25000,
+    "execution_cap_per_card": 10
+  },
+  "release": {
+    "activation": "manual",
+    "fallback_policy": "none"
+  }
+}

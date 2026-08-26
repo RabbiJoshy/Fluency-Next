@@ -32,6 +32,13 @@
       "revision": "3.8.0",
       "language": "pt",
       "note": "Portuguese. Verified to tag `do`/`ao` as ADP, `a` as DET and `é` as AUX -- none of which Wiktionary publishes under those names, which is why the wiktionary POS bridge is required before any filtering."
+    },
+    "occurrence-pos-fr": {
+      "provider": "spacy",
+      "name": "fr_core_news_lg",
+      "revision": "3.8.0",
+      "language": "fr",
+      "note": "French. Elision splits a token (n', j'), so a surface span may not align with a whole word the way it does in Spanish or Portuguese."
     }
   }
 }

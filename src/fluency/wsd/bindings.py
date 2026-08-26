@@ -52,7 +52,7 @@ def _french() -> Any:
 
 _BINDINGS["es"] = LanguageBinding("es", _spanish, "occurrence-pos", "spanishdict")
 _BINDINGS["pt"] = LanguageBinding("pt", _portuguese, "occurrence-pos-pt", "wiktionary")
-_BINDINGS["fr"] = LanguageBinding("fr", _french, "occurrence-pos", "wiktionary")
+_BINDINGS["fr"] = LanguageBinding("fr", _french, "occurrence-pos-fr", "wiktionary")
 
 
 def binding_for(language: str) -> LanguageBinding:

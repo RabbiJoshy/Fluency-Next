@@ -5,10 +5,10 @@ import './sync-queue.js?v=20260825ak';
 import { initOfflineContent } from './offline-content.js?v=20260825ak';
 import './speech.js?v=20260824d';
 import './artist-ui.js?v=20260825ak';
-import './auth.js?v=20260826b';
+import './auth.js?v=20260826c';
 import './about-example.js?v=20260825ak';
 import './estimation.js?v=20260825ak';
-import './config.js?v=20260826b';
+import './config.js?v=20260826c';
 import './progress.js?v=20260825ak';
 import './knowledge.js?v=20260825ak';
 import './ui.js?v=20260825ak';
@@ -24,7 +24,7 @@ import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 // lazy module stubs in flashcards.js.
 const _initialParams = new URLSearchParams(window.location.search);
 const _spotifyModulePromise = (_initialParams.has('artist') || _initialParams.get('mode') === 'badbunny')
-    ? import('./spotify.js?v=20260826b').catch(error => {
+    ? import('./spotify.js?v=20260826c').catch(error => {
         console.warn('Spotify controls deferred:', error);
         return null;
     })
