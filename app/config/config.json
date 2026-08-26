@@ -1,4 +1,7 @@
 {
+  "publicServices": {
+    "spotifyClientId": "f2341f303cff471ea80d3fcdefbb6d7d"
+  },
   "languages": {
     "spanish": {
       "name": "Spanish",

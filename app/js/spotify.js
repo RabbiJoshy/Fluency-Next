@@ -15,6 +15,7 @@ let _currentTrackStartMs = null;
 let _isPlaying = false;
 let _snippetTimer = null;
 let _snippetRunId = 0;
+let _configurationWarningShown = false;
 
 // --- Mobile debug logging (Safari Web Inspector console is broken for remote iOS) ---
 
@@ -129,7 +130,11 @@ function spotifyLogin(pendingTrackId, pendingPositionMs) {
         const redirectUri = new URL('callback.html', window.location.href).href;
 
         if (!clientId) {
-            _debugLog('ERROR: Spotify client ID not configured in secrets.json');
+            _debugLog('ERROR: Spotify client ID not configured in public app config');
+            if (!_configurationWarningShown) {
+                _configurationWarningShown = true;
+                alert('Spotify sign-in is temporarily unavailable. Please reload the app and try again.');
+            }
             resolve(false);
             return;
         }
@@ -377,6 +382,25 @@ window.onSpotifyWebPlaybackSDKReady = () => {
 };
 
 window._spotifyTryInit = _tryInitPlayer;
+
+// Register the readiness callback before requesting the SDK. The previous
+// index.html injection could win the race on fast connections, causing the SDK
+// to throw before spotify.js existed. Mobile playback uses Spotify Connect and
+// does not need to download the desktop Web Playback SDK at all.
+function _loadSpotifyPlaybackSdk() {
+    if (_isMobile) return;
+    if (window.Spotify?.Player) {
+        window.onSpotifyWebPlaybackSDKReady();
+        return;
+    }
+    if (document.querySelector('script[src="https://sdk.scdn.co/spotify-player.js"]')) return;
+    const script = document.createElement('script');
+    script.src = 'https://sdk.scdn.co/spotify-player.js';
+    script.async = true;
+    document.body.appendChild(script);
+}
+
+_loadSpotifyPlaybackSdk();
 
 // --- Playback ---
 

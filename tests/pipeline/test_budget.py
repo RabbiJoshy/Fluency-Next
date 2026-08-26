@@ -46,26 +46,47 @@ class BudgetTests(unittest.TestCase):
         with self.assertRaises(BudgetError):
             wsd_budget_per_card({})
 
-    def test_projected_units_is_the_product(self) -> None:
-        self.assertEqual(projected_wsd_units(_profile(200, 60)), 12000)
-        self.assertEqual(projected_wsd_units(_profile(200, 60, legacy=True)), 12000)
+    def test_projected_units_follows_the_execution_cap_not_the_harvest_budget(self) -> None:
+        """Two caps narrow a run; only the executor's sampling cap is spent.
+
+        Measured: a 200-card run with a harvest budget of 60 sampled 2,000
+        occurrences, not 12,000. Reading the harvest budget over-estimated
+        sixfold.
+        """
+
+        self.assertEqual(projected_wsd_units(_profile(200, 60)), 2000)
+        self.assertEqual(projected_wsd_units(_profile(200, 60, legacy=True)), 2000)
+
+    def test_the_harvest_budget_binds_when_it_is_the_smaller(self) -> None:
+        """A card cannot have more scored than were retained for it."""
+
+        self.assertEqual(projected_wsd_units(_profile(200, 3)), 600)
+
+    def test_a_declared_execution_cap_wins(self) -> None:
+        profile = _profile(200, 60)
+        profile["wsd"]["execution_cap_per_card"] = 25
+        self.assertEqual(projected_wsd_units(profile), 5000)
 
     def test_within_ceiling_passes_and_reports(self) -> None:
         result = check_wsd_budget(_profile(200, 60, ceiling=25000))
-        self.assertEqual(result["projected_wsd_units"], 12000)
+        self.assertEqual(result["projected_wsd_units"], 2000)
         self.assertEqual(result["max_wsd_units_per_run"], 25000)
 
     def test_over_ceiling_fails_before_anything_is_spent(self) -> None:
+        profile = _profile(5000, 500, ceiling=25000)
+        profile["wsd"]["execution_cap_per_card"] = 500
         with self.assertRaises(BudgetError) as caught:
-            check_wsd_budget(_profile(5000, 500, ceiling=25000))
+            check_wsd_budget(profile)
         self.assertIn("2,500,000", str(caught.exception))
 
     def test_default_ceiling_applies_when_unstated(self) -> None:
         self.assertEqual(
             check_wsd_budget(_profile(200, 60))["max_wsd_units_per_run"], 250_000
         )
+        huge = _profile(10_000, 1_000)
+        huge["wsd"]["execution_cap_per_card"] = 1_000
         with self.assertRaises(BudgetError):
-            check_wsd_budget(_profile(10_000, 1_000))
+            check_wsd_budget(huge)
 
     def test_booleans_are_not_integers(self) -> None:
         with self.assertRaises(BudgetError):

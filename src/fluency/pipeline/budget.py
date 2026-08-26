@@ -30,6 +30,7 @@ LEGACY_WSD_BUDGET_KEY = "candidate_cap_per_surface"
 DISPLAY_LIMIT_KEY = "display_examples_per_card"
 LEGACY_DISPLAY_LIMIT_KEY = "examples_per_surface"
 MAX_UNITS_KEY = "max_wsd_units_per_run"
+EXECUTION_CAP_KEY = "execution_cap_per_card"
 
 DEFAULT_MAX_WSD_UNITS_PER_RUN = 250_000
 
@@ -66,12 +67,30 @@ def display_examples_per_card(scope: dict[str, Any]) -> int:
     )
 
 
+def execution_cap_per_card(profile: dict[str, Any]) -> int:
+    """Return how many occurrences per card actually reach the classifier.
+
+    Two different caps narrow a run and only this one governs spend. The harvest
+    budget decides how many candidates are RETAINED; the executor then samples
+    from them, historically ten per card. Reading the harvest budget as the spend
+    over-estimated it roughly sixfold -- safe in direction, but a guard that is
+    routinely wrong is one you learn to ignore.
+    """
+
+    declared = (profile.get("wsd") or {}).get(EXECUTION_CAP_KEY)
+    if isinstance(declared, int) and not isinstance(declared, bool) and declared > 0:
+        return declared
+    from fluency.wsd.sampling import DEFAULT_EXECUTION_CAP
+
+    return DEFAULT_EXECUTION_CAP
+
+
 def projected_wsd_units(profile: dict[str, Any]) -> int:
     """Return how many sentences this profile would put through WSD.
 
-    This is the number that costs money. It is the product of the surface limit
-    and the per-card budget, and it is deliberately reported before any stage
-    runs rather than discovered from a bill.
+    This is the number that costs money: surfaces times whichever of the
+    execution cap and the harvest budget binds first. A card cannot have more
+    occurrences scored than were retained for it.
     """
 
     scope = profile.get("scope") or {}
@@ -79,7 +98,7 @@ def projected_wsd_units(profile: dict[str, Any]) -> int:
     surfaces = scope.get("surface_limit")
     if not isinstance(surfaces, int) or isinstance(surfaces, bool) or surfaces < 1:
         raise BudgetError("scope.surface_limit must be a positive integer")
-    return surfaces * wsd_budget_per_card(harvest)
+    return surfaces * min(execution_cap_per_card(profile), wsd_budget_per_card(harvest))
 
 
 def max_wsd_units_per_run(profile: dict[str, Any]) -> int:

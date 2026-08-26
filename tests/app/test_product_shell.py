@@ -259,6 +259,27 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("url.searchParams.set('lyricsRelease', snapshot.releaseId)", vocab)
         self.assertIn("if (cachedExamples)", vocab)
 
+    def test_spotify_login_uses_deployable_public_configuration(self) -> None:
+        config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))
+        auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
+        spotify = (APP_ROOT / "js" / "spotify.js").read_text(encoding="utf-8")
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        worker = (APP_ROOT / "service-worker.js").read_text(encoding="utf-8")
+
+        client_id = config["publicServices"]["spotifyClientId"]
+        self.assertRegex(client_id, r"^[A-Za-z0-9]{16,128}$")
+        self.assertIn("config?.publicServices?.spotifyClientId", auth)
+        self.assertIn("secrets.spotifyClientId || window._spotifyClientId", auth)
+        self.assertIn("Spotify sign-in is temporarily unavailable", spotify)
+        self.assertIn("function _loadSpotifyPlaybackSdk()", spotify)
+        self.assertIn("if (_isMobile) return", spotify)
+        self.assertLess(
+            spotify.index("window.onSpotifyWebPlaybackSDKReady ="),
+            spotify.index("_loadSpotifyPlaybackSdk();"),
+        )
+        self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
+        self.assertIn("/js/spotify.js?v=20260826b", worker)
+
     def test_audit_accounts_and_flags_use_release_provenance(self) -> None:
         auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
         modals = (APP_ROOT / "js" / "flashcards-modals.js").read_text(encoding="utf-8")

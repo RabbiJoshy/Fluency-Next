@@ -2,5 +2,315 @@
   "config_version": "inventory-language-policy/v1",
   "policy_id": "pt-v1",
   "language": "pt",
-  "surface_exclusions": {}
+  "surface_exclusions": {
+    "adam": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "alex": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "amy": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "américa": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "ben": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "bill": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "billy": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "bobby": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "brian": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "charlie": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "chris": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "chuck": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "cia": {
+      "reason": "abbreviation or unit, not vocabulary",
+      "decision": "exclude_without_redirect"
+    },
+    "claire": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "clark": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "cristo": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "dan": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "daniel": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "danny": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "david": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "don": {
+      "reason": "English, not Portuguese: subtitle files leak untranslated lines",
+      "decision": "exclude_without_redirect"
+    },
+    "eddie": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "emily": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "eric": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "eua": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "fbi": {
+      "reason": "abbreviation or unit, not vocabulary",
+      "decision": "exclude_without_redirect"
+    },
+    "frank": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "frança": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "george": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "harry": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "inglaterra": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "iorque": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "jake": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "james": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "jane": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "jason": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "jerry": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "jim": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "jimmy": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "joe": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "john": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "johnny": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "kate": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "kevin": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "km": {
+      "reason": "abbreviation or unit, not vocabulary",
+      "decision": "exclude_without_redirect"
+    },
+    "lee": {
+      "reason": "English, not Portuguese: subtitle files leak untranslated lines",
+      "decision": "exclude_without_redirect"
+    },
+    "londres": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "luke": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "maria": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "mark": {
+      "reason": "English, not Portuguese: subtitle files leak untranslated lines",
+      "decision": "exclude_without_redirect"
+    },
+    "martin": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "mary": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "matt": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "max": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "michael": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "mike": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "miss": {
+      "reason": "English, not Portuguese: subtitle files leak untranslated lines",
+      "decision": "exclude_without_redirect"
+    },
+    "näo": {
+      "reason": "encoding corruption of 'nao'; the correct form is already a card",
+      "decision": "exclude_without_redirect"
+    },
+    "pete": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "peter": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "rachel": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "ray": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "richard": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "robert": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "ryan": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "sam": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "sarah": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "scott": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "steve": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "the": {
+      "reason": "English, not Portuguese: subtitle files leak untranslated lines",
+      "decision": "exclude_without_redirect"
+    },
+    "thomas": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "tommy": {
+      "reason": "given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "tony": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "uh": {
+      "reason": "non-lexical filler",
+      "decision": "exclude_without_redirect"
+    },
+    "walter": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "washington": {
+      "reason": "proper noun: Wiktionary files it only as a name",
+      "decision": "exclude_without_redirect"
+    },
+    "will": {
+      "reason": "English, not Portuguese: subtitle files leak untranslated lines",
+      "decision": "exclude_without_redirect"
+    }
+  },
+  "exclusion_note": "Derived by cross-referencing the top 2,000 European surfaces against the Portuguese Wiktionary extract: a surface with no Portuguese entry, or filed only as a name, is not vocabulary. Hyphenated clitics (da-me, ve-lo) are deliberately NOT excluded despite lacking entries -- they are exactly the European constructions this deck exists to teach. See the note in docs/reference/portuguese-v7-baseline.md."
 }

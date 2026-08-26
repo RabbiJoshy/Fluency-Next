@@ -70,6 +70,15 @@ def _validate_site(site: Path, manifest: dict[str, Any]) -> None:
         raise StaticDeploymentError("deployment contains development-only or backend files")
     if not (site / "index.html").is_file() or not (site / "service-worker.js").is_file():
         raise StaticDeploymentError("deployment app shell is incomplete")
+    public_services = _object(site / "config/config.json").get("publicServices")
+    spotify_client_id = (
+        public_services.get("spotifyClientId") if isinstance(public_services, dict) else None
+    )
+    if (
+        not isinstance(spotify_client_id, str)
+        or re.fullmatch(r"[A-Za-z0-9]{16,128}", spotify_client_id) is None
+    ):
+        raise StaticDeploymentError("deployment has no valid public Spotify OAuth client ID")
     for record in manifest.get("files", []):
         relative = record.get("path")
         if not isinstance(relative, str):
