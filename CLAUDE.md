@@ -21,7 +21,9 @@ before altering architecture, contracts or provenance.
 5. A language or mode is added by creating files, not by editing lists.
 
 Then `docs/ROADMAP.md` for the plan and `docs/decisions/` for why things are as
-they are.
+they are. `docs/reference/` holds WSD measurements carried over from the older
+repository — read its README first, because those were taken on Spanish against
+a SpanishDict menu and not all of them transfer.
 
 ## The load-bearing fact
 
