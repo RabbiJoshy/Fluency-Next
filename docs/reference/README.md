@@ -7,6 +7,7 @@ pipeline's machinery.
 | File | What it is |
 |---|---|
 | `wsd_dead_ends.md` | Experiments implemented, measured and rejected. Re-running one costs a day and returns the same answer. |
+| `portuguese-v7-baseline.md` | The first Portuguese WSD measurement, and the POS-bridge and ladder numbers behind it. Untuned by construction. |
 | `wsd_open_threads.md` | Leads that were partly measured and not ruled out. Not a backlog; several are mutually exclusive and at least one is probably wrong. |
 
 Both carry a header stating what they were measured on. That matters more than
