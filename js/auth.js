@@ -37,6 +37,15 @@ function currentClientBuild() {
 }
 
 async function loadSecrets() {
+    // Spotify's OAuth client ID is public browser configuration, not a
+    // credential. Static deployments deliberately exclude backend/, so load
+    // the client ID from the public app config before trying the optional
+    // local/backend override below.
+    const publicSpotifyClientId = config?.publicServices?.spotifyClientId;
+    window._spotifyClientId = typeof publicSpotifyClientId === 'string'
+        ? publicSpotifyClientId.trim()
+        : '';
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
     try {
@@ -44,7 +53,7 @@ async function loadSecrets() {
         if (response.ok) {
             const secrets = await response.json();
             GOOGLE_SCRIPT_URL = secrets.googleScriptUrl || '';
-            window._spotifyClientId = secrets.spotifyClientId || '';
+            window._spotifyClientId = secrets.spotifyClientId || window._spotifyClientId;
         }
     } catch (error) {
         console.warn('Could not load backend/secrets.json - Google Sheets sync will be disabled');

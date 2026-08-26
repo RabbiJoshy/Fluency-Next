@@ -15,6 +15,7 @@ let _currentTrackStartMs = null;
 let _isPlaying = false;
 let _snippetTimer = null;
 let _snippetRunId = 0;
+let _configurationWarningShown = false;
 
 // --- Mobile debug logging (Safari Web Inspector console is broken for remote iOS) ---
 
@@ -122,14 +123,19 @@ async function _prepareAuth() {
     return { clientId, redirectUri, verifier, challenge };
 }
 
-function spotifyLogin(pendingTrackId, pendingPositionMs) {
+function spotifyLogin(pendingTrackId, pendingPositionMs, authPopup = null) {
     return new Promise(async (resolve) => {
         const clientId = window._spotifyClientId;
         // See _prepareAuth() above — always derive from the current origin.
         const redirectUri = new URL('callback.html', window.location.href).href;
 
         if (!clientId) {
-            _debugLog('ERROR: Spotify client ID not configured in secrets.json');
+            authPopup?.close();
+            _debugLog('ERROR: Spotify client ID not configured in public app config');
+            if (!_configurationWarningShown) {
+                _configurationWarningShown = true;
+                alert('Spotify sign-in is temporarily unavailable. Please reload the app and try again.');
+            }
             resolve(false);
             return;
         }
@@ -184,7 +190,12 @@ function spotifyLogin(pendingTrackId, pendingPositionMs) {
         const verifier = generateCodeVerifier();
         const challenge = await generateCodeChallenge(verifier);
 
-        const stateObj = JSON.stringify({ verifier, clientId, redirectUri });
+        const stateObj = JSON.stringify({
+            verifier,
+            clientId,
+            redirectUri,
+            returnUrl: window.location.href
+        });
         const stateB64 = btoa(stateObj);
 
         const params = new URLSearchParams({
@@ -198,7 +209,25 @@ function spotifyLogin(pendingTrackId, pendingPositionMs) {
         });
 
         const authUrl = `https://accounts.spotify.com/authorize?${params}`;
-        const popup = window.open(authUrl, 'spotify-auth', 'width=500,height=700,left=200,top=100');
+        const popup = authPopup
+            || window.open(authUrl, 'spotify-auth', 'width=500,height=700,left=200,top=100');
+
+        if (!popup) {
+            // A hardened desktop browser may still reject the popup. Use the
+            // mobile-style full-page flow so a click always has a visible
+            // outcome and callback.html can return to this exact card.
+            if (pendingTrackId) {
+                sessionStorage.setItem('spotify_pending_play', JSON.stringify({
+                    trackId: pendingTrackId,
+                    positionMs: pendingPositionMs || 0
+                }));
+            }
+            _debugLog('Popup blocked; redirecting to Spotify auth...');
+            window.location.href = authUrl;
+            return;
+        }
+
+        if (authPopup) authPopup.location.replace(authUrl);
 
         const poll = setInterval(() => {
             if (!popup || popup.closed) {
@@ -378,6 +407,25 @@ window.onSpotifyWebPlaybackSDKReady = () => {
 
 window._spotifyTryInit = _tryInitPlayer;
 
+// Register the readiness callback before requesting the SDK. The previous
+// index.html injection could win the race on fast connections, causing the SDK
+// to throw before spotify.js existed. Mobile playback uses Spotify Connect and
+// does not need to download the desktop Web Playback SDK at all.
+function _loadSpotifyPlaybackSdk() {
+    if (_isMobile) return;
+    if (window.Spotify?.Player) {
+        window.onSpotifyWebPlaybackSDKReady();
+        return;
+    }
+    if (document.querySelector('script[src="https://sdk.scdn.co/spotify-player.js"]')) return;
+    const script = document.createElement('script');
+    script.src = 'https://sdk.scdn.co/spotify-player.js';
+    script.async = true;
+    document.body.appendChild(script);
+}
+
+_loadSpotifyPlaybackSdk();
+
 // --- Playback ---
 
 function _normalizedSpotifyPosition(positionMs) {
@@ -442,7 +490,7 @@ async function spotifyPlayTrack(trackId, positionMs, options = {}) {
         if (_isMobile) {
             _pendingAuth = await _prepareAuth();
         }
-        const loggedIn = await spotifyLogin(trackId, positionMs);
+        const loggedIn = await spotifyLogin(trackId, positionMs, options.authPopup);
         // On mobile, spotifyLogin navigates away — we won't reach here
         if (!loggedIn) { _debugLog('Login failed or cancelled'); return false; }
         token = await getSpotifyToken();
@@ -933,8 +981,15 @@ function _playCommandAccepted() {
 async function _playTrackWithLoadingState(trackId, positionMs, options = {}) {
     // Autoplay snippets drive their own indicator on the autoplay control.
     if (options.fromSnippet) return spotifyPlayTrack(trackId, positionMs, options);
+    // Open a named blank window synchronously inside the user gesture. PKCE
+    // challenge generation is asynchronous, and opening the real auth URL
+    // afterwards is otherwise rejected by desktop popup blockers.
+    const authPopup = !_isMobile && !isSpotifyConnected()
+        ? window.open('about:blank', 'spotify-auth', 'width=500,height=700,left=200,top=100')
+        : null;
+    const playOptions = authPopup ? { ...options, authPopup } : options;
     try {
-        const ok = await spotifyPlayTrack(trackId, positionMs, options);
+        const ok = await spotifyPlayTrack(trackId, positionMs, playOptions);
         // A tap on the already-playing track pauses it — nothing is starting,
         // so the ring must not linger.
         if (ok && _isPlaying) _playCommandAccepted();
