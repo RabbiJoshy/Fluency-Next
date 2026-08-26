@@ -25,6 +25,17 @@ they are. `docs/reference/` holds WSD measurements carried over from the older
 repository — read its README first, because those were taken on Spanish against
 a SpanishDict menu and not all of them transfer.
 
+## Words to use precisely
+
+`docs/NOMENCLATURE.md` pins the vocabulary. The one that matters most:
+**provider** means a *sense-menu source* — SpanishDict, Wiktionary — not a
+language and not a corpus. SpanishDict serves one language; Wiktionary serves
+French, Portuguese and everything after. **Provider parity** is the requirement
+that a concept built for one provider ships with the other's equivalent.
+
+Ask "is this provider-agnostic?" rather than "does this work for other
+languages?" — the second hides which you meant.
+
 ## The load-bearing fact
 
 **A card's identity is the observed surface form.** `card_id = f(language,

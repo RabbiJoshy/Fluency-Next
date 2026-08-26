@@ -62,6 +62,9 @@ refuses a model whose revision does not match the pin.
 
 ## 4. Adapters absorb irregularity at the edges; the engine exists once
 
+*Vocabulary: `NOMENCLATURE.md`. A **provider** is a sense-menu source, not a
+language; **provider parity** is the requirement below.*
+
 Everything that varies by language, mode or provider is data behind an adapter.
 Everything that does not exists exactly once.
 
@@ -70,6 +73,14 @@ contracts are neutral and the engine is shared: `surface-inventory/v1`,
 `sense-menu/v1`, `parallel-sentence/v1`, then one WSD, one selection, one release
 path. Adding Portuguese cost one language package and config entries; it required
 no new stage and no branch in the engine.
+
+Corollary -- **provider parity**: a concept implemented for one provider is not
+implemented. SpanishDict serves one language; Wiktionary serves every other. A
+signal, gate or feature built for one ships with the other's equivalent, or
+records why there is none. Providers encode the same concept differently, so
+parity comes from adapters rather than sameness: the companion note is prose in
+SpanishDict's `context` and a structured `+obj` template in Wiktionary, and both
+emit one `companion` family that no gate can see behind.
 
 Corollary: a contract lives outside the package that consumes it. A sense menu or
 a release must be buildable without the classifier importing, and a test asserts
