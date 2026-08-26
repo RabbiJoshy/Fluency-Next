@@ -94,6 +94,44 @@ change to the expensive number look like a change to the cheap one.
 pool serves any inventory. Everything below a pool narrows within it, which is
 why "every example on this card came from one pool" holds by construction.
 
+## provider-agnostic, provider-specific, provider-shaped
+
+Three states worth distinguishing when reviewing a change:
+
+- **provider-agnostic** — works for any provider without knowing which. The
+  engine, the contracts, a gate reading a feature family.
+- **provider-specific** — knowingly tied to one, with the reason recorded.
+  SpanishDict's `AUX` bridge is provider-specific because SpanishDict has no
+  `AUX` category; that is a fact about SpanishDict, not a shortcut.
+- **provider-shaped** — the bug. Written for one provider by accident, usually by
+  asking "what does this provider give us?" instead of "what does the engine
+  need, and how does each provider express it?"
+
+The third looks like the second until someone checks.
+
+## family, extractor, channel
+
+The parts of a feature, which are easy to conflate:
+
+- **family** — the kind of thing: `domain`, `register`, `construction`,
+  `companion`. Defined once in `features/contract.py`, shared by every provider.
+- **extractor** — the per-provider code that produces features of those families
+  from that provider's own encoding. One per provider.
+- **channel** — a family as consumed by a specialist or scorer. A channel may be
+  enabled or disabled independently of whether the family is populated.
+
+A family with no extractor on one side is a parity gap. A populated family with
+no channel is captured-but-unused, which is where `surface_grammar` sits today.
+
+## layer
+
+**A per-word or per-card artifact joined onto the spine rather than produced by
+it.** Conjugations are a layer; an enrichment is a layer. Distinct from a
+**stage**, which is a step of the pipeline that every run performs.
+
+"Add a layer" means a new optional join. "Add a stage" means changing the
+pipeline for every language and mode.
+
 ## run, release, deck
 
 - **run** — a directory of immutable stages under
@@ -205,3 +243,69 @@ than a score. Portuguese has never been tuned on.
 
 **The observed surface form.** `card_id = f(language, surface_key)` and nothing
 else. Not the lemma, not a sense, not a rank.
+
+---
+
+# The app
+
+Names taken from the elements that exist, so a request maps to something
+findable. Where a name below is a class or id, it is quoted as such.
+
+## setup flow, study view
+
+The app has two phases, and "the app" alone rarely distinguishes them:
+
+- **setup flow** — everything before cards appear. In order: the **language
+  tabs** (`#languageTabs`), the **level selector** (`#levelSelector`), the
+  **extra-category selector**, and the **range selector** (`#rangeSelector`).
+- **study view** — the card and its controls.
+
+"Change the level screen" is ambiguous; say level selector or range selector.
+
+## card, face, container
+
+- **card** (`.card`) — one word being studied.
+- **card container** (`.card-container`) — the frame it sits in, including
+  swipe/scrub behaviour.
+- **front** and **back** — the two faces. The front carries the surface and
+  meanings; the back carries examples and detail.
+- **card details** (`.card-details`) — the expandable detail region on the back.
+- **card meta** (`.card-meta-*`) — the "Card data" modal, an audit view of
+  provenance. Not part of the card face; say "card data modal" for it.
+
+## on the card
+
+- **lemma line** (`.card-lemma`) — the headword display.
+- **meanings** (`.card-meanings-front`) — the list of senses shown. Each may
+  carry a **context** (`.meaning-context`) and a **usage pill**
+  (`.meaning-usage-pill`).
+- **example block** — one example sentence with its parts: **sentence text**
+  (`.example-sentence-text`), **word highlight** (`.example-word-highlight`),
+  and, in artist mode, **song credit** and **vocalist credit**.
+- **pills** — the small inline labels. **POS pills** (`.pos-pill-*`) mark
+  part-of-speech state including `unassigned`; **selection** and **source pills**
+  sit inline near the example.
+
+Say "the pill on the meaning" or "the POS pill", not "the tag" -- tag means
+something else in the data layer.
+
+## modals
+
+Each has an id ending `Modal`: settings, stats, help, find-word, estimation,
+cognate-rules, song-set, vocabulary-import, about-example, about-project, auth.
+Name the modal, not "the popup".
+
+Note **card actions popup** (`.card-actions-popup`) is a popup, not a modal --
+it is anchored to the card rather than covering the screen.
+
+## words that mean different things in the app and the data
+
+| word | in the app | in the data |
+|---|---|---|
+| **tag** | a pill or label on screen | a Wiktionary sense tag (`reflexive`, `Brazil`) |
+| **context** | the grey text under a meaning | the `context` field, derived per provider |
+| **source** | the source pill crediting a sentence | ambiguous -- say provider, corpus or snapshot |
+| **level** | a CEFR band in the level selector | not a data concept |
+
+When asking for a change, saying which side you mean removes most of the
+ambiguity: "the context line on the card" versus "the context field in the menu".

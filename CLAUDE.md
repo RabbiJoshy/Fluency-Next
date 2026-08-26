@@ -36,6 +36,10 @@ that a concept built for one provider ships with the other's equivalent.
 Ask "is this provider-agnostic?" rather than "does this work for other
 languages?" — the second hides which you meant.
 
+It also names the app's parts (setup flow, study view, card faces, pills,
+modals) and the four words that mean different things on screen and in the data:
+`tag`, `context`, `source`, `level`.
+
 ## The load-bearing fact
 
 **A card's identity is the observed surface form.** `card_id = f(language,
