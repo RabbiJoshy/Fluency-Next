@@ -2,6 +2,16 @@
   "_readme": "User-visible changes in the replacement app, newest first.",
   "entries": [
     {
+      "date": "2026-08-27",
+      "commit": "8cd5c62",
+      "summary": "Cross-device progress now loads in the deployed app",
+      "detail": [
+        "The live static configuration now includes the public Google Sheets sync endpoint instead of relying on an excluded backend file.",
+        "A phone or other new browser can load the same named learner's historical card, knowledge-item, estimate and completed-level progress.",
+        "Static deployment validation now rejects builds that omit either progress sync or Spotify's public OAuth client configuration."
+      ]
+    },
+    {
       "date": "2026-08-26",
       "commit": "18857d9",
       "summary": "Spotify buttons now open sign-in reliably in deployed Lyrics decks",
