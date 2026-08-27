@@ -79,6 +79,15 @@ def _validate_site(site: Path, manifest: dict[str, Any]) -> None:
         or re.fullmatch(r"[A-Za-z0-9]{16,128}", spotify_client_id) is None
     ):
         raise StaticDeploymentError("deployment has no valid public Spotify OAuth client ID")
+    progress_sync_url = (
+        public_services.get("progressSyncUrl") if isinstance(public_services, dict) else None
+    )
+    if (
+        not isinstance(progress_sync_url, str)
+        or re.fullmatch(r"https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec", progress_sync_url)
+        is None
+    ):
+        raise StaticDeploymentError("deployment has no valid public progress sync URL")
     for record in manifest.get("files", []):
         relative = record.get("path")
         if not isinstance(relative, str):

@@ -20,10 +20,30 @@ class StaticDeploymentTests(unittest.TestCase):
                 _validate_site(site, {"files": []})
 
             config_path.write_text(
-                json.dumps({"publicServices": {"spotifyClientId": "a" * 32}}),
+                json.dumps({
+                    "publicServices": {
+                        "spotifyClientId": "a" * 32,
+                        "progressSyncUrl": "https://script.google.com/macros/s/test-deployment/exec",
+                    }
+                }),
                 encoding="utf-8",
             )
             _validate_site(site, {"files": []})
+
+    def test_public_progress_sync_url_is_required(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            site = Path(temporary)
+            (site / "config").mkdir()
+            (site / "index.html").write_text("", encoding="utf-8")
+            (site / "service-worker.js").write_text("", encoding="utf-8")
+            config_path = site / "config/config.json"
+            config_path.write_text(
+                json.dumps({"publicServices": {"spotifyClientId": "a" * 32}}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(StaticDeploymentError, "progress sync URL"):
+                _validate_site(site, {"files": []})
 
 
 if __name__ == "__main__":

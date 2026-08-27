@@ -1,6 +1,7 @@
 {
   "publicServices": {
-    "spotifyClientId": "f2341f303cff471ea80d3fcdefbb6d7d"
+    "spotifyClientId": "f2341f303cff471ea80d3fcdefbb6d7d",
+    "progressSyncUrl": "https://script.google.com/macros/s/AKfycbwZI7L1gQGY5YUyfxcKJrT--EEmRNSc1pkBgNnPJMlaUie_ZDPiJcY_XPKbRDEHAYuF/exec"
   },
   "languages": {
     "spanish": {

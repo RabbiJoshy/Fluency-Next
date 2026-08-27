@@ -283,6 +283,21 @@ class ProductShellTests(unittest.TestCase):
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260826c", worker)
 
+    def test_progress_sync_uses_deployable_public_configuration(self) -> None:
+        config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))
+        auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        worker = (APP_ROOT / "service-worker.js").read_text(encoding="utf-8")
+
+        sync_url = config["publicServices"]["progressSyncUrl"]
+        self.assertRegex(sync_url, r"^https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec$")
+        self.assertIn("config?.publicServices?.progressSyncUrl", auth)
+        self.assertIn("secrets.googleScriptUrl || GOOGLE_SCRIPT_URL", auth)
+        self.assertIn('js/auth.js?v=20260827a', html)
+        self.assertIn("auth.js?v=20260827a", main)
+        self.assertIn("/js/auth.js?v=20260827a", worker)
+
     def test_audit_accounts_and_flags_use_release_provenance(self) -> None:
         auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
         modals = (APP_ROOT / "js" / "flashcards-modals.js").read_text(encoding="utf-8")
