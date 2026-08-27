@@ -5,7 +5,7 @@
 // Bump CACHE_NAME alongside any change to ASSET_VERSION below — old caches
 // are deleted in the activate handler, so a bump forces the new pre-cache
 // list to be rebuilt on next install.
-const CACHE_NAME = 'flashcards-v308';
+const CACHE_NAME = 'flashcards-v309';
 const SHELL_CACHE_PREFIX = 'flashcards-v';
 const CONTENT_CACHE_PREFIX = 'fluency-content-';
 const CONTENT_STAGING_PREFIX = `${CONTENT_CACHE_PREFIX}staging-`;
@@ -29,7 +29,7 @@ const urlsToCache = [
   '/Fluency-Next/config/config.json',
   '/Fluency-Next/config/cefr_levels.json',
   '/Fluency-Next/config/offline-content-manifest.json',
-  '/Fluency-Next/js/main.js?v=20260826c',
+  '/Fluency-Next/js/main.js?v=20260827a',
   `/Fluency-Next/js/theme.js?v=${ASSET_VERSION}`,
   `/Fluency-Next/js/state.js?v=${ASSET_VERSION}`,
   `/Fluency-Next/js/data-contracts.js?v=${ASSET_VERSION}`,
@@ -38,11 +38,11 @@ const urlsToCache = [
   `/Fluency-Next/js/offline-content.js?v=${ASSET_VERSION}`,
   '/Fluency-Next/js/speech.js?v=20260824d',
   `/Fluency-Next/js/artist-ui.js?v=${ASSET_VERSION}`,
-  '/Fluency-Next/js/auth.js?v=20260826c',
+  '/Fluency-Next/js/auth.js?v=20260827a',
   `/Fluency-Next/js/about-example.js?v=${ASSET_VERSION}`,
   `/Fluency-Next/js/spotify.js?v=20260826c`,
   `/Fluency-Next/js/estimation.js?v=${ASSET_VERSION}`,
-  '/Fluency-Next/js/config.js?v=20260826c',
+  '/Fluency-Next/js/config.js?v=20260827a',
   `/Fluency-Next/js/progress.js?v=${ASSET_VERSION}`,
   `/Fluency-Next/js/knowledge.js?v=${ASSET_VERSION}`,
   '/Fluency-Next/js/ui.js?v=20260825ak',
