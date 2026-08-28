@@ -223,6 +223,24 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("deck-scrubber-lens", css)
         self.assertIn(".deck-progress-segment.is-current", css)
 
+    def test_light_theme_does_not_turn_primary_study_action_white(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        light_css = (APP_ROOT / "css" / "light-theme.css").read_text(encoding="utf-8")
+        worker = (APP_ROOT / "service-worker.js").read_text(encoding="utf-8")
+
+        pale_unstarted_selector = (
+            ':root[data-theme="light"] '
+            '.range-btn-new:not(.study-set-start):not(.has-progress):not(:hover)'
+        )
+        self.assertIn(pale_unstarted_selector, light_css)
+        self.assertNotIn(
+            '.range-btn-new:not(.has-progress):not(:hover)',
+            light_css,
+        )
+        self.assertIn('css/light-theme.css?v=20260828a', html)
+        self.assertIn('/css/light-theme.css?v=20260828a', worker)
+        self.assertIn("const CACHE_NAME = 'flashcards-v310'", worker)
+
     def test_active_release_aliases_are_never_cached(self) -> None:
         worker = (APP_ROOT / "service-worker.js").read_text(encoding="utf-8")
         self.assertIn("vocabulary\\.(?:index|examples)", worker)
