@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fluency.cli.shared import *  # noqa: F401,F403
+from fluency.pipeline.budget import execution_cap_per_card  # noqa: F401
 from fluency.cli.shared import (  # noqa: F401
     Path, argparse, json, os, re,
     _workspace_path,  # private names are not re-exported by the star import
@@ -136,11 +137,18 @@ def handle_pipeline(args: argparse.Namespace) -> int:
             f"{display_examples_per_card(profile['scope'])} examples each ({target} total)"
         )
         budget = check_wsd_budget(profile)
+        # Report the cap that actually binds. Naming the harvest budget here
+        # while multiplying by the execution cap is how the old six-fold
+        # over-estimate stayed plausible.
+        per_card = execution_cap_per_card(profile)
+        retained = wsd_budget_per_card(profile["harvest"])
+        binding = "execution cap" if per_card <= retained else "harvest budget"
         print(
             f"WSD spend: {profile['scope']['surface_limit']} cards x "
-            f"{wsd_budget_per_card(profile['harvest'])} sentences = "
+            f"{min(per_card, retained)} scored = "
             f"{budget['projected_wsd_units']:,} units "
-            f"(ceiling {budget['max_wsd_units_per_run']:,})"
+            f"(ceiling {budget['max_wsd_units_per_run']:,}; {binding} binds, "
+            f"{retained} retained per card)"
         )
         print("No data stages were executed and no release was activated.")
         return 0

@@ -78,7 +78,7 @@ class SpeechOccurrencePOSTests(unittest.TestCase):
         self.assertEqual(evidence[key]["status"], "observed")
         self.assertEqual(evidence[key]["occurrence_tags"], ["VERB"])
         self.assertEqual(evidence[key]["model_revision"], SPACY_POS_MODEL)
-        self.assertEqual(model.batch_sizes, [1])
+        self.assertEqual(model.batch_sizes, [1], "v7 pinned batch size 1; keep it the default")
 
     def test_repeated_occurrences_with_conflicting_pos_do_not_guess(self):
         sentence = "Como pan como siempre."

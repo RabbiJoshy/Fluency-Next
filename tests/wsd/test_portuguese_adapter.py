@@ -56,3 +56,30 @@ class PortugueseLocateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TaggerUsesTheRunsAdapterTests(unittest.TestCase):
+    """The tagger locates the target before reading its POS.
+
+    `occurrence_pos_tags` constructed a SpanishWSDAdapter unconditionally. The
+    Spanish word pattern has no c-cedilla or tilde-a, so on Portuguese it finds
+    no occurrence at all and the tag comes back None -- silently, because "no
+    occurrence" is a legitimate outcome.
+    """
+
+    def test_spanish_pattern_cannot_find_a_portuguese_word(self) -> None:
+        from fluency.wsd.languages.spanish import SpanishWSDAdapter
+
+        sentence = "A ação é uma condição"
+        self.assertEqual(SpanishWSDAdapter().locate(sentence, "ação"), ())
+        self.assertEqual(len(PortugueseWSDAdapter().locate(sentence, "ação")), 1)
+
+    def test_the_executor_passes_its_language_adapter(self) -> None:
+        import inspect
+
+        from fluency.speech import wsd_execute
+
+        signature = inspect.signature(wsd_execute.occurrence_pos_tags)
+        self.assertIn("adapter", signature.parameters)
+        source = inspect.getsource(wsd_execute.main)
+        self.assertIn("adapter=binding.adapter_factory()", source)

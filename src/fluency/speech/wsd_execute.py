@@ -113,6 +113,11 @@ def occurrence_pos_tags(
     model_name: str = SPACY_POS_MODEL_NAME,
     model_pin: str = SPACY_POS_MODEL,
     model: Any | None = None,
+    adapter: Any | None = None,
+    # Defaults to v7's pinned batch size of 1. Batching does not change
+    # per-document tags, but a transformer at batch size 1 made tagging the
+    # bottleneck of a 2,000-card run, so callers may raise it deliberately.
+    batch_size: int = 1,
 ) -> tuple[
     dict[tuple[str, str], str | None],
     dict[tuple[str, str], dict[str, Any]],
@@ -166,10 +171,14 @@ def occurrence_pos_tags(
             model_observed,
             normalized_for_model,
         ))
-    adapter = SpanishWSDAdapter()
+    # The adapter locates the target inside the sentence, so it must be the
+    # run's language. The Spanish word pattern has no c-cedilla or tilde-a and
+    # therefore cannot find "acao" at all -- it would return no occurrence and
+    # the tag would silently be None.
+    adapter = adapter or SpanishWSDAdapter()
     observed: dict[tuple[str, str], str | None] = {}
     diagnostics: dict[tuple[str, str], dict[str, Any]] = {}
-    for document, text in zip(model.pipe(grouped, batch_size=1), grouped):
+    for document, text in zip(model.pipe(grouped, batch_size=batch_size), grouped):
         for (
             key,
             surface,
@@ -316,6 +325,12 @@ def main() -> None:
         default=None,
         help="override the POS model; defaults to the pin the run's language declares",
     )
+    parser.add_argument(
+        "--pos-batch-size", type=int, default=1,
+        help="spaCy pipe batch size for occurrence POS tagging. Batching does "
+             "not change per-document tags; it was 1, which made tagging the "
+             "bottleneck of a 2,000-card run.",
+    )
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
     parser.add_argument(
         "--embedding-cache", type=Path,
@@ -438,11 +453,17 @@ def main() -> None:
     )
     print(f"  deterministic single-option (no model): {len(deterministic):,}")
     print(f"  model-scored provider/MWE assignments:  {len(work):,}")
-    print(f"Tagging occurrence POS with {pos_pin} (batch size 1)...", flush=True)
+    print(
+        f"Tagging occurrence POS with {pos_pin} "
+        f"(batch size {args.pos_batch_size}, {len(work):,} occurrences)...",
+        flush=True,
+    )
     observed_pos, observed_pos_evidence = occurrence_pos_tags(
         work,
         model_name=args.spacy_model or pos_pin.split("@", 1)[0],
         model_pin=pos_pin,
+        adapter=binding.adapter_factory(),
+        batch_size=args.pos_batch_size,
     )
     if multiword_index is not None:
         for card, menu_card, _sentence_id, text, _translation in work:
