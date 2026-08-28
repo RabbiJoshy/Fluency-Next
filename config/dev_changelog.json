@@ -2,6 +2,16 @@
   "_readme": "User-visible changes in the replacement app, newest first.",
   "entries": [
     {
+      "date": "2026-08-28",
+      "commit": "131a3ff",
+      "summary": "Light mode keeps primary study actions readable",
+      "detail": [
+        "The Learn new cards action keeps its filled accent background instead of becoming white with white text.",
+        "The correction applies to the shared responsive control, so the action remains legible on desktop and mobile.",
+        "Unstarted set choices retain their intended pale light-mode treatment."
+      ]
+    },
+    {
       "date": "2026-08-27",
       "commit": "8cd5c62",
       "summary": "Cross-device progress now loads in the deployed app",
