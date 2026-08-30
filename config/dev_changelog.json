@@ -2,6 +2,16 @@
   "_readme": "User-visible changes in the replacement app, newest first.",
   "entries": [
     {
+      "date": "2026-08-30",
+      "commit": "2220eb1",
+      "summary": "Mobile Spotify playback no longer depends on an already-playing phone app",
+      "detail": [
+        "Mobile Lyrics cards now create a Spotify Web Playback device in the browser instead of requiring Spotify Connect to find an active phone session.",
+        "The Spotify button activates browser audio directly from the learner's tap, including the user-gesture bridge required by iOS autoplay rules.",
+        "Spotify Connect remains available as a fallback when the browser player cannot become ready; Spotify Premium is still required."
+      ]
+    },
+    {
       "date": "2026-08-28",
       "commit": "131a3ff",
       "summary": "Light mode keeps primary study actions readable",

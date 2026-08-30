@@ -24,7 +24,7 @@ import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 // lazy module stubs in flashcards.js.
 const _initialParams = new URLSearchParams(window.location.search);
 const _spotifyModulePromise = (_initialParams.has('artist') || _initialParams.get('mode') === 'badbunny')
-    ? import('./spotify.js?v=20260826c').catch(error => {
+    ? import('./spotify.js?v=20260830a').catch(error => {
         console.warn('Spotify controls deferred:', error);
         return null;
     })

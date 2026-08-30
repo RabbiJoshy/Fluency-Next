@@ -9,6 +9,9 @@ let _deviceId = null;
 let _playerReady = false;
 let _playerInitStarted = false;
 let _sdkPlaybackActivated = false;
+let _sdkElementActivated = false;
+let _sdkElementActivation = null;
+let _playbackBackend = null;
 let _connectDeviceId = null;
 let _currentTrackId = null;
 let _currentTrackStartMs = null;
@@ -299,6 +302,9 @@ function spotifyLogout() {
     localStorage.removeItem('spotify_refresh_token');
     localStorage.removeItem('spotify_token_expiry');
     _connectDeviceId = null;
+    _playbackBackend = null;
+    _sdkElementActivated = false;
+    _sdkElementActivation = null;
     if (_player) {
         _player.disconnect();
         _player = null;
@@ -348,6 +354,16 @@ async function initSpotifyPlayer() {
         console.log('Spotify player not ready:', device_id);
         _playerReady = false;
         _sdkPlaybackActivated = false;
+        _sdkElementActivated = false;
+        _sdkElementActivation = null;
+    });
+
+    _player.addListener('autoplay_failed', () => {
+        _debugLog('Browser blocked Spotify autoplay; another user tap is required');
+        _sdkElementActivated = false;
+        _sdkElementActivation = null;
+        _setPlaying(false);
+        _endButtonLoading();
     });
 
     _player.addListener('initialization_error', ({ message }) => {
@@ -393,7 +409,7 @@ window.addEventListener('message', (event) => {
 
 // Try to init player when both prerequisites are met: SDK loaded + client ID available
 function _tryInitPlayer() {
-    if (_isMobile || !isSpotifyConnected() || !window._spotifyClientId) return;
+    if (!isSpotifyConnected() || !window._spotifyClientId) return;
     initSpotifyPlayer();
 }
 
@@ -409,10 +425,10 @@ window._spotifyTryInit = _tryInitPlayer;
 
 // Register the readiness callback before requesting the SDK. The previous
 // index.html injection could win the race on fast connections, causing the SDK
-// to throw before spotify.js existed. Mobile playback uses Spotify Connect and
-// does not need to download the desktop Web Playback SDK at all.
+// to throw before spotify.js existed. Mobile loads the same player now: it
+// creates a controllable browser device instead of requiring an already-active
+// Spotify app device.
 function _loadSpotifyPlaybackSdk() {
-    if (_isMobile) return;
     if (window.Spotify?.Player) {
         window.onSpotifyWebPlaybackSDKReady();
         return;
@@ -438,6 +454,41 @@ function _isCurrentPlaybackRequest(trackId, positionMs) {
         && _currentTrackStartMs === _normalizedSpotifyPosition(positionMs);
 }
 
+// iOS and other autoplay-restricted browsers require activateElement() to be
+// called synchronously from the user's tap. Do not await anything before this
+// function is invoked. The promise is retained so the later async playback path
+// can wait for activation without losing the original gesture.
+function _activateMobileSdkElementFromGesture() {
+    if (!_isMobile || !_player?.activateElement) return null;
+    if (_sdkElementActivated) return Promise.resolve(true);
+    if (_sdkElementActivation) return _sdkElementActivation;
+    try {
+        _sdkElementActivation = Promise.resolve(_player.activateElement())
+            .then(() => {
+                _sdkElementActivated = true;
+                _debugLog('Mobile browser playback element activated');
+                return true;
+            })
+            .catch(error => {
+                _debugLog('Mobile browser playback activation failed: ' + error.message);
+                _sdkElementActivation = null;
+                return false;
+            });
+    } catch (error) {
+        _debugLog('Mobile browser playback activation failed: ' + error.message);
+        _sdkElementActivation = null;
+    }
+    return _sdkElementActivation;
+}
+
+async function _mobileSdkIsReadyForPlayback() {
+    if (!_sdkElementActivation || !await _sdkElementActivation) return false;
+    for (let i = 0; i < 50 && !_playerReady; i++) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return _playerReady && !!_deviceId;
+}
+
 async function spotifyPlayTrack(trackId, positionMs, options = {}) {
   try {
     if (!options.fromSnippet) {
@@ -453,7 +504,9 @@ async function spotifyPlayTrack(trackId, positionMs, options = {}) {
     // already-loaded track.
     if (_isCurrentPlaybackRequest(trackId, positionMs) && !options.forceStart) {
         if (_isPlaying) {
-            if (_isMobile) {
+            if (_playbackBackend === 'sdk' && _player) {
+                await _player.pause();
+            } else if (_isMobile) {
                 const t = await getSpotifyToken();
                 const deviceQuery = _connectDeviceId ? `?device_id=${encodeURIComponent(_connectDeviceId)}` : '';
                 if (t) await fetch(`https://api.spotify.com/v1/me/player/pause${deviceQuery}`, {
@@ -461,12 +514,14 @@ async function spotifyPlayTrack(trackId, positionMs, options = {}) {
                     headers: { 'Authorization': `Bearer ${t}` }
                 });
             } else if (_player) {
-                _player.pause();
+                await _player.pause();
             }
             _setPlaying(false);
             _debugLog('Paused');
         } else {
-            if (_isMobile) {
+            if (_playbackBackend === 'sdk' && _player) {
+                await _player.resume();
+            } else if (_isMobile) {
                 const t = await getSpotifyToken();
                 const deviceQuery = _connectDeviceId ? `?device_id=${encodeURIComponent(_connectDeviceId)}` : '';
                 if (t) await fetch(`https://api.spotify.com/v1/me/player/play${deviceQuery}`, {
@@ -474,7 +529,7 @@ async function spotifyPlayTrack(trackId, positionMs, options = {}) {
                     headers: { 'Authorization': `Bearer ${t}` }
                 });
             } else if (_player) {
-                _player.resume();
+                await _player.resume();
             }
             _setPlaying(true);
             _debugLog('Resumed');
@@ -498,6 +553,11 @@ async function spotifyPlayTrack(trackId, positionMs, options = {}) {
     }
 
     if (_isMobile) {
+        if (await _mobileSdkIsReadyForPlayback()) {
+            _debugLog('Mobile: playing through the browser SDK device');
+            return await _playViaSdk(trackId, positionMs, token);
+        }
+        _debugLog('Mobile: browser SDK unavailable; falling back to Spotify Connect');
         return await _playViaConnect(trackId, positionMs, token);
     } else {
         return await _playViaSdk(trackId, positionMs, token);
@@ -595,6 +655,7 @@ async function _playViaConnect(trackId, positionMs, token, retry = {}) {
 
         if (resp.status === 204 || resp.status === 202) {
             _debugLog('Connect: playing OK');
+            _playbackBackend = 'connect';
             _currentTrackId = trackId;
             _currentTrackStartMs = _normalizedSpotifyPosition(positionMs);
             _setPlaying(true);
@@ -682,6 +743,7 @@ async function _playViaSdk(trackId, positionMs, token) {
 
         if (resp.status === 204 || resp.status === 202) {
             console.log(`Spotify SDK: playing track ${trackId} at ${positionMs}ms in browser`);
+            _playbackBackend = 'sdk';
             _currentTrackId = trackId;
             _currentTrackStartMs = _normalizedSpotifyPosition(positionMs);
             _setPlaying(true);
@@ -706,6 +768,7 @@ async function _playViaSdk(trackId, positionMs, token) {
             });
             if (retry.status === 204 || retry.status === 202) {
                 console.log(`Spotify SDK: playing track ${trackId} at ${positionMs}ms (after refresh)`);
+                _playbackBackend = 'sdk';
                 _currentTrackId = trackId;
                 _currentTrackStartMs = _normalizedSpotifyPosition(positionMs);
                 _setPlaying(true);
@@ -739,7 +802,9 @@ async function spotifyPausePlayback(clearTrack = false) {
         return true;
     }
     try {
-        if (_isMobile) {
+        if (_playbackBackend === 'sdk' && _player) {
+            await _player.pause();
+        } else if (_isMobile) {
             const token = await getSpotifyToken();
             if (!token) return false;
             const deviceQuery = _connectDeviceId ? `?device_id=${encodeURIComponent(_connectDeviceId)}` : '';
@@ -882,6 +947,14 @@ window.addEventListener('pagehide', () => cancelSpotifySnippet(true));
     if (pending && isSpotifyConnected()) {
         sessionStorage.removeItem('spotify_pending_play');
         const { trackId, positionMs } = JSON.parse(pending);
+        if (_isMobile) {
+            // The OAuth redirect is no longer inside the originating tap, so
+            // iOS will reject browser audio here. The next Spotify-button tap
+            // can activateElement() synchronously and start without requiring
+            // another song to already be playing in the Spotify app.
+            _debugLog('Spotify connected; waiting for a tap to activate mobile browser playback');
+            return;
+        }
         _debugLog('Resuming pending play: ' + trackId + ' @' + positionMs + 'ms');
         // Small delay to let the page finish loading
         setTimeout(() => spotifyPlayTrack(trackId, positionMs), 800);
@@ -968,12 +1041,12 @@ function _setPlaying(value) {
     _setPlayingIndicator(value);
 }
 
-// Mobile Connect has no state callback, so the accepted play command is the
-// best available start signal there. Desktop waits for player_state_changed
-// (see initSpotifyPlayer) with this as the upper bound.
+// The Connect fallback has no state callback, so the accepted play command is
+// its best available start signal. Browser SDK playback (desktop or mobile)
+// waits for player_state_changed with this timeout as the upper bound.
 function _playCommandAccepted() {
     if (!_loadingBtn) return;
-    if (_isMobile) { _endButtonLoading(); return; }
+    if (_playbackBackend === 'connect') { _endButtonLoading(); return; }
     if (_loadingTimer) clearTimeout(_loadingTimer);
     _loadingTimer = setTimeout(() => _endButtonLoading(), SPOTIFY_LOADING_ACCEPTED_MS);
 }
@@ -981,6 +1054,9 @@ function _playCommandAccepted() {
 async function _playTrackWithLoadingState(trackId, positionMs, options = {}) {
     // Autoplay snippets drive their own indicator on the autoplay control.
     if (options.fromSnippet) return spotifyPlayTrack(trackId, positionMs, options);
+    // This call must remain before every await in the activation path. Spotify
+    // documents it as the user-gesture bridge required for iOS autoplay.
+    _activateMobileSdkElementFromGesture();
     // Open a named blank window synchronously inside the user gesture. PKCE
     // challenge generation is asynchronous, and opening the real auth URL
     // afterwards is otherwise rejected by desktop popup blockers.
