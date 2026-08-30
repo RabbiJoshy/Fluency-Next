@@ -239,7 +239,6 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertIn('css/light-theme.css?v=20260828a', html)
         self.assertIn('/css/light-theme.css?v=20260828a', worker)
-        self.assertIn("const CACHE_NAME = 'flashcards-v310'", worker)
 
     def test_active_release_aliases_are_never_cached(self) -> None:
         worker = (APP_ROOT / "service-worker.js").read_text(encoding="utf-8")
@@ -293,13 +292,26 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("spotifyLogin(trackId, positionMs, options.authPopup)", spotify)
         self.assertIn("Popup blocked; redirecting to Spotify auth", spotify)
         self.assertIn("function _loadSpotifyPlaybackSdk()", spotify)
-        self.assertIn("if (_isMobile) return", spotify)
+        self.assertNotIn("function _loadSpotifyPlaybackSdk() {\n    if (_isMobile) return", spotify)
+        self.assertNotIn("if (_isMobile || !isSpotifyConnected()", spotify)
+        self.assertIn("_player.activateElement()", spotify)
+        self.assertIn("_activateMobileSdkElementFromGesture();", spotify)
+        self.assertLess(
+            spotify.index("_activateMobileSdkElementFromGesture();"),
+            spotify.index("const authPopup = !_isMobile"),
+        )
+        self.assertIn("await _mobileSdkIsReadyForPlayback()", spotify)
+        self.assertIn("return await _playViaConnect(trackId, positionMs, token)", spotify)
+        self.assertIn("_playbackBackend === 'sdk'", spotify)
+        self.assertIn("_playbackBackend === 'connect'", spotify)
         self.assertLess(
             spotify.index("window.onSpotifyWebPlaybackSDKReady ="),
             spotify.index("_loadSpotifyPlaybackSdk();"),
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
-        self.assertIn("/js/spotify.js?v=20260826c", worker)
+        self.assertIn("/js/spotify.js?v=20260830a", worker)
+        self.assertIn("/js/main.js?v=20260830a", worker)
+        self.assertIn("const CACHE_NAME = 'flashcards-v311'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
         config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))
