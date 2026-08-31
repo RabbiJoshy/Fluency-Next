@@ -23,7 +23,7 @@
   "inventory": {
     "source_adapter": "published-surface-frequency-list/v1",
     "language_policy": "pt-v1",
-    "source_edition": "FrequencyWords OpenSubtitles 2018 pt_br 50k",
+    "source_edition": "FrequencyWords OpenSubtitles 2018 pt 50k (European)",
     "frequency_measure": "surface_token_occurrences",
     "output_schema": "surface-inventory/v1",
     "identity_unit": "surface",
