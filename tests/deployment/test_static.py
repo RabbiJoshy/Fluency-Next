@@ -7,6 +7,14 @@ from fluency.deployment.static import StaticDeploymentError, _validate_site
 
 
 class StaticDeploymentTests(unittest.TestCase):
+    def test_release_urls_are_portable_app_relative_paths(self) -> None:
+        source = (Path(__file__).resolve().parents[2] / "src/fluency/deployment/static.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('base = f"releases/{language}/speech/{release_id}"', source)
+        self.assertIn('lyrics_base = f"releases/lyrics/{lyrics_release_id}"', source)
+        self.assertNotIn('base = f"/releases/{language}/speech/{release_id}"', source)
+
     def test_public_spotify_oauth_client_is_required(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             site = Path(temporary)

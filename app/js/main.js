@@ -127,6 +127,14 @@ let allArtistsConfig = null;
 // pathname network-only, so later release activations remain immediately live.
 const ACTIVE_ARTIST_CATALOG_URL = 'config/artists.json?contract=lyrics-v1';
 
+// Deployments may live at the origin root or below a project path such as
+// GitHub Pages' /Fluency-Next/. Resolve immutable release assets against the
+// app directory instead of assuming either hosting shape.
+const APP_BASE_PATH = new URL('.', window.location.href).pathname.replace(/\/$/, '');
+function appAssetPath(path) {
+    return `${APP_BASE_PATH}/${String(path || '').replace(/^\/+/, '')}`;
+}
+
 function requestedLyricsRelease() {
     const value = new URLSearchParams(window.location.search).get('lyricsRelease') || '';
     return /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value) ? value : '';
@@ -135,7 +143,7 @@ function requestedLyricsRelease() {
 function artistCatalogUrl() {
     const releaseId = requestedLyricsRelease();
     return releaseId
-        ? `/releases/lyrics/${encodeURIComponent(releaseId)}/app/config/artists.json`
+        ? appAssetPath(`releases/lyrics/${encodeURIComponent(releaseId)}/app/config/artists.json`)
         : ACTIVE_ARTIST_CATALOG_URL;
 }
 
@@ -143,7 +151,7 @@ function bindArtistCatalogToRelease(catalog, requestedReleaseId = '') {
     for (const artist of Object.values(catalog)) {
         const releaseId = requestedReleaseId || artist.releaseId;
         if (!releaseId) continue;
-        const appBase = `/releases/lyrics/${encodeURIComponent(releaseId)}/app/`;
+        const appBase = appAssetPath(`releases/lyrics/${encodeURIComponent(releaseId)}/app/`);
         for (const field of ['indexPath', 'examplesPath', 'masterPath', 'songsPath', 'spotifyPath', 'albumsDictionary', 'defaultAlbumArt', 'pickerImage']) {
             if (typeof artist[field] === 'string' && artist[field]) artist[field] = appBase + artist[field];
         }
@@ -152,8 +160,8 @@ function bindArtistCatalogToRelease(catalog, requestedReleaseId = '') {
                 Object.entries(artist.albumImageMap).map(([album, path]) => [album, appBase + path])
             );
         }
-        artist.releaseManifestPath = `/releases/lyrics/${encodeURIComponent(releaseId)}/manifest.json`;
-        artist.releaseCompositionPath = `/releases/lyrics/${encodeURIComponent(releaseId)}/composition.json`;
+        artist.releaseManifestPath = appAssetPath(`releases/lyrics/${encodeURIComponent(releaseId)}/manifest.json`);
+        artist.releaseCompositionPath = appAssetPath(`releases/lyrics/${encodeURIComponent(releaseId)}/composition.json`);
     }
     return catalog;
 }

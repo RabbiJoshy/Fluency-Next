@@ -151,7 +151,9 @@ def build_static_deployment(
             release_id = manifest["release_id"]
             target = site / "releases" / language / "speech" / release_id
             _copy_tree(release, target)
-            base = f"/releases/{language}/speech/{release_id}"
+            # Release URLs are app-relative so the same validated candidate
+            # works at an origin root and below a GitHub Pages project path.
+            base = f"releases/{language}/speech/{release_id}"
             contract = manifest["app_contract"]
             language_config = config.get("languages", {}).get(LANGUAGE_KEYS[language])
             if not isinstance(language_config, dict):
@@ -184,7 +186,7 @@ def build_static_deployment(
 
         lyrics_target = site / "releases/lyrics" / lyrics_release_id
         _copy_tree(lyrics_release, lyrics_target)
-        lyrics_base = f"/releases/lyrics/{lyrics_release_id}"
+        lyrics_base = f"releases/lyrics/{lyrics_release_id}"
         (site / "config/artists.json").write_bytes(
             (lyrics_release / lyrics_manifest["catalog_path"]).read_bytes()
         )
