@@ -15,6 +15,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import json
 from pathlib import Path
+import re
+import unicodedata
 from typing import Any
 
 from fluency.core.artifacts import verify_artifact
@@ -37,6 +39,22 @@ from fluency.projections import (
 
 SELECTION_VERSION = "example-selection/v1"
 POLICY_VERSION = "harvest-easiness-order/v1"
+
+_WORDS = re.compile(r"[^\W\d_]+", re.UNICODE)
+
+
+def _example_identity(text: str) -> str:
+    """What makes two displayed examples the same example to a learner.
+
+    Subtitles carry the same line many times over, differing only in a speaker
+    dash, an ellipsis, or terminal punctuation. Easiness scores those variants
+    almost identically, so they arrive adjacent in the ranking and a card shows
+    "- Nao, o que esta a fazer?", "Nao. O que esta a fazer..." and "Nao o que
+    esta a fazer?" as its three examples. Identity is therefore the sequence of
+    words, ignoring case, accent form, and everything that is not a word.
+    """
+
+    return " ".join(_WORDS.findall(unicodedata.normalize("NFC", text).casefold()))
 
 
 class RunCandidateError(ValueError):
@@ -203,10 +221,23 @@ def build_inactive_run_candidate(
         menu_card = menu_by_card.get(card_id)
         if candidate_card is None or menu_card is None:
             raise RunCandidateError(f"run layers do not cover card {card_id}")
-        selected = sorted(
+        ranked = sorted(
             candidate_card.get("candidates", []),
             key=lambda item: (item["metrics"]["score"], item["sentence_id"]),
-        )[:limit]
+        )
+        # Take the best of each distinct example rather than the best `limit`
+        # rows, which would spend all three slots on one sentence's variants.
+        selected = []
+        seen: set[str] = set()
+        for item in ranked:
+            sentence = sentences.get(item["sentence_id"])
+            identity = _example_identity(sentence["target"]["text"]) if sentence else item["sentence_id"]
+            if identity in seen:
+                continue
+            seen.add(identity)
+            selected.append(item)
+            if len(selected) == limit:
+                break
         selected_count += len(selected)
         selection_cards.append(
             {
