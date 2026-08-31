@@ -2386,6 +2386,15 @@ async function goBackToSetup() {
     currentExampleIndex = 0;
     currentMWEIndex = 0;
 
+    // Everything above is cheap DOM work; everything below rebuilds the level
+    // selector, which walks every card in the deck. Without a paint in
+    // between, the browser applies both in one frame, so the tap appeared to
+    // do nothing for seconds and then jumped. Yield once so the setup panel is
+    // on screen first, and show progress while the rest runs.
+    const levelSelectorEl = document.getElementById('levelSelector');
+    if (levelSelectorEl) levelSelectorEl.setAttribute('aria-busy', 'true');
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
     // Always load PPM data if available (needed for coverage bar even in CEFR mode)
     if (!ppmData || ppmData.length === 0) {
         await loadPpmData(selectedLanguage);
@@ -2395,6 +2404,7 @@ async function goBackToSetup() {
     // level that owned the set we just left. Route past levels whose available
     // cards are all seen or which the learner explicitly skipped.
     await renderLevelSelector(selectedLanguage, { preferActionable: true });
+    levelSelectorEl?.removeAttribute('aria-busy');
 
     updateLemmaToggleVisibility();
     updateCognateToggleVisibility();

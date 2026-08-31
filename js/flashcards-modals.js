@@ -929,7 +929,12 @@ function peekHomograph(siblingId) {
 
 let _deckCompleteAutoTimer = null;
 
+// How long the completion screen holds before advancing itself. Cancelled by
+// any deliberate choice — Main menu, Redo set, or pressing continue early.
+const AUTO_CONTINUE_MS = 5000;
+
 function _cancelDeckCompleteAutoContinue() {
+    document.getElementById('markCompleteBtn')?.classList.remove('is-auto-continuing');
     if (!_deckCompleteAutoTimer) return;
     clearTimeout(_deckCompleteAutoTimer);
     _deckCompleteAutoTimer = null;
@@ -1005,15 +1010,21 @@ function showEndOfDeckOptions({ autoContinue = true } = {}) {
     const modal = document.getElementById('deckCompleteModal');
     modal.classList.remove('hidden');
     if (shouldAutoContinue) {
+        // A countdown long enough to read the result and choose Main menu
+        // instead. The bar filling across the button is the whole signal, so
+        // the wait reads as deliberate rather than as the app hanging.
+        finishBtn.style.setProperty('--auto-continue-ms', `${AUTO_CONTINUE_MS}ms`);
+        finishBtn.classList.add('is-auto-continuing');
         _deckCompleteAutoTimer = setTimeout(() => {
             _deckCompleteAutoTimer = null;
+            finishBtn.classList.remove('is-auto-continuing');
             if (modal.classList.contains('hidden')) return;
             if (finishBtn.dataset.action
                 && finishBtn.dataset.loading !== 'true'
                 && !finishBtn.disabled) {
                 finishBtn.click();
             }
-        }, 1200);
+        }, AUTO_CONTINUE_MS);
     }
 }
 

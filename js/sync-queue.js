@@ -126,7 +126,15 @@ async function postToSheet(entry) {
         }
         if (!response.ok || json?.success !== true) {
             const error = new Error(json?.message || `Sync rejected (HTTP ${response.status})`);
-            error.auth = response.status === 401 || response.status === 403 || /auth|login/i.test(error.message);
+            // 401 only. The backend has no authentication, so no response from
+            // it can legitimately mean "your login failed" — but Cloudflare's
+            // edge returns 403 for its bot check (error 1010). Treating that as
+            // an auth failure parked the write as 'auth-paused', which the
+            // flush loop skips forever and nextAutomaticRetryDelay() excludes
+            // from scheduling, so one transient 403 silently lost that answer
+            // until a manual retry. A 403 is transient here: let it back off
+            // and retry like any other failure.
+            error.auth = response.status === 401 || /auth|login/i.test(error.message);
             throw error;
         }
         return json.receipt || json.operationId || entry.idempotencyKey;
@@ -156,7 +164,11 @@ function nextAutomaticRetryDelay() {
 
 async function resetTransientFailures() {
     for (const entry of queue) {
-        if (entry.retryState !== 'failed') continue;
+        // 'auth-paused' is revived too: entries parked before the 403 fix are
+        // stranded forever otherwise, since the flush loop skips them and they
+        // are excluded from retry scheduling. A genuine 401 will simply park
+        // the entry again on the next attempt.
+        if (entry.retryState !== 'failed' && entry.retryState !== 'auth-paused') continue;
         entry.attemptCount = 0;
         entry.retryState = 'pending';
         entry.nextAttemptAt = 0;
