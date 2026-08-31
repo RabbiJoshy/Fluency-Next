@@ -10222,6 +10222,36 @@
             box-shadow: 0 4px 18px rgba(var(--accent-secondary-rgb), 0.35);
         }
 
+        /* Auto-continue countdown. The bar fills left to right across the
+           continue button for the length of the hold, so the pause reads as a
+           deliberate "next set starting" beat with time to choose Main menu
+           instead — rather than the app appearing to freeze then jump. */
+        .deck-complete-btn.is-auto-continuing {
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+        }
+        .deck-complete-btn.is-auto-continuing::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            transform-origin: left center;
+            transform: scaleX(0);
+            background: rgba(255, 255, 255, 0.28);
+            animation: deck-auto-continue-fill var(--auto-continue-ms, 5000ms) linear forwards;
+            z-index: -1;
+            pointer-events: none;
+        }
+        @keyframes deck-auto-continue-fill {
+            from { transform: scaleX(0); }
+            to   { transform: scaleX(1); }
+        }
+        /* Respect a reduced-motion preference: the hold still applies, it just
+           does not animate. */
+        @media (prefers-reduced-motion: reduce) {
+            .deck-complete-btn.is-auto-continuing::before { animation: none; }
+        }
+
         /* Modern completion surface: one obvious continuation action, with
            review/restart demoted to consistent secondary controls. */
         .deck-complete-content {
