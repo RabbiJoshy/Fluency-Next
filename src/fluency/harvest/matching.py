@@ -79,6 +79,14 @@ def quality_rejection(
     ratio = len(translation_tokens) / max(len(target_tokens), 1)
     if not quality["minimum_translation_ratio"] <= ratio <= quality["maximum_translation_ratio"]:
         return "translation_length_ratio"
+    # An example has to show a word doing something. Easiness counts how many
+    # UNFAMILIAR words a learner must get past and skips the target itself, so
+    # "Nao, nao, nao, nao, nao, nao" scores a perfect 0.0 and wins every
+    # ranking. Repetition is a property of the sentence rather than of any one
+    # card, so it is judged here, before a card is known.
+    minimum_distinct = quality.get("minimum_distinct_tokens", 0)
+    if minimum_distinct and len(set(target_tokens)) < minimum_distinct:
+        return "insufficient_distinct_tokens"
     if quality["reject_identical_sides"] and matcher.normalize(target) == matcher.normalize(translation):
         return "identical_sides"
     if quality["reject_all_caps"] and target.isupper() and any(char.isalpha() for char in target):

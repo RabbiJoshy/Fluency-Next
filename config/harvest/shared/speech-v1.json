@@ -11,7 +11,9 @@
     "maximum_translation_ratio": 2.5,
     "reject_identical_sides": true,
     "reject_all_caps": true,
-    "reject_markup": true
+    "reject_markup": true,
+    "minimum_distinct_tokens": 4,
+    "minimum_distinct_tokens_note": "A sentence must show a word doing something. Easiness counts unfamiliar words and skips the target, so a line of pure repetition scores a perfect 0.0 and wins every ranking. Measured on 118,244 harvested Portuguese sentences: only 1.0% have four or fewer distinct tokens, so this removes the pathology at negligible cost to the pool."
   },
   "easiness": {
     "preferred_minimum_tokens": 6,
