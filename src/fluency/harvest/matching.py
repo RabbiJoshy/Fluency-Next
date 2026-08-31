@@ -84,9 +84,16 @@ def quality_rejection(
     # "Nao, nao, nao, nao, nao, nao" scores a perfect 0.0 and wins every
     # ranking. Repetition is a property of the sentence rather than of any one
     # card, so it is judged here, before a card is known.
+    distinct_tokens = len(set(target_tokens))
     minimum_distinct = quality.get("minimum_distinct_tokens", 0)
-    if minimum_distinct and len(set(target_tokens)) < minimum_distinct:
+    if minimum_distinct and distinct_tokens < minimum_distinct:
         return "insufficient_distinct_tokens"
+    # A count alone cannot tell a short sentence from an echoed one: "Isso nao e
+    # o que e." carries five distinct words in six, while "O que? O que e que
+    # eu..." carries four in seven. Judge how much of the sentence is new.
+    minimum_ratio = quality.get("minimum_distinct_ratio", 0.0)
+    if minimum_ratio and target_tokens and distinct_tokens / len(target_tokens) < minimum_ratio:
+        return "echoed_target"
     if quality["reject_identical_sides"] and matcher.normalize(target) == matcher.normalize(translation):
         return "identical_sides"
     if quality["reject_all_caps"] and target.isupper() and any(char.isalpha() for char in target):

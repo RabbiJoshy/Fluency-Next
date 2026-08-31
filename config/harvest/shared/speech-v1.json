@@ -12,7 +12,9 @@
     "reject_identical_sides": true,
     "reject_all_caps": true,
     "reject_markup": true,
-    "minimum_distinct_tokens": 4,
+    "minimum_distinct_tokens": 6,
+    "minimum_distinct_ratio": 0.75,
+    "minimum_distinct_ratio_note": "How much of the sentence is new rather than echoed. Probed against real harvested Portuguese: every degenerate line scored 0.67 or below ('O que? O que e que eu...' 0.57) and every natural one 0.83 or above, so the boundary sits in an empty gap. Drops 1,718 of 120,000 candidates.",
     "minimum_distinct_tokens_note": "A sentence must show a word doing something. Easiness counts unfamiliar words and skips the target, so a line of pure repetition scores a perfect 0.0 and wins every ranking. Measured on 118,244 harvested Portuguese sentences: only 1.0% have four or fewer distinct tokens, so this removes the pathology at negligible cost to the pool."
   },
   "easiness": {
