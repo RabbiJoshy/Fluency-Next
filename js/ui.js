@@ -1824,7 +1824,12 @@ function getSetupLearningState(item, { seenLemmas = new Set(), estimatedIds = nu
     // A real answer is more specific than the estimated starting level;
     // in particular, a later wrong must remain reviewable. Setup and deck
     // construction must inspect the same current/cross-mode identities.
-    if (reviewInfo) {
+    // getWordKnowledgeReviewInfo always returns an object ({needsReview,
+    // reason, reviewAt}), never null — every other caller reads .needsReview.
+    // Testing the object itself made this branch unconditional, so every card
+    // reported seen + needsReview and the setup screen showed 0 known and
+    // 0 unseen for the whole deck.
+    if (reviewInfo?.needsReview) {
         return {
             ...recorded,
             seen: true,
