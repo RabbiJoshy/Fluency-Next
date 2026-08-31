@@ -341,12 +341,14 @@ async function initSpotifyPlayer() {
 
     // The only signal that audio has actually begun (a Web API 204 merely means
     // the command was accepted), so it is what clears the button's loading ring.
-    // It is also the truth for the "playing" ripple: the SDK reports pause,
+    // It is also the truth for the circular music visualizer: the SDK reports pause,
     // track end, and any externally driven change here, so the animation
     // follows real audio rather than our own optimistic flags.
     _player.addListener('player_state_changed', (state) => {
-        const playing = !!state && state.paused === false;
-        _setPlayingIndicator(playing);
+        const stateTrackId = state?.track_window?.current_track?.id || '';
+        const playing = !!state && state.paused === false
+            && !!_currentTrackId && stateTrackId === _currentTrackId;
+        _setPlaying(playing);
         if (playing) _endButtonLoading();
     });
 
@@ -524,15 +526,17 @@ async function spotifyPlayTrack(trackId, positionMs, options = {}) {
             } else if (_isMobile) {
                 const t = await getSpotifyToken();
                 const deviceQuery = _connectDeviceId ? `?device_id=${encodeURIComponent(_connectDeviceId)}` : '';
-                if (t) await fetch(`https://api.spotify.com/v1/me/player/play${deviceQuery}`, {
+                const response = t && await fetch(`https://api.spotify.com/v1/me/player/play${deviceQuery}`, {
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${t}` }
                 });
+                if (t && (response?.status === 204 || response?.status === 202)) {
+                    await _confirmConnectPlayback(_currentTrackId, _connectDeviceId, t);
+                }
             } else if (_player) {
                 await _player.resume();
             }
-            _setPlaying(true);
-            _debugLog('Resumed');
+            _debugLog('Resume requested');
         }
         return true;
     }
@@ -654,11 +658,11 @@ async function _playViaConnect(trackId, positionMs, token, retry = {}) {
         _debugLog('Connect response: ' + resp.status);
 
         if (resp.status === 204 || resp.status === 202) {
-            _debugLog('Connect: playing OK');
+            _debugLog('Connect: play command accepted; confirming audible playback');
             _playbackBackend = 'connect';
             _currentTrackId = trackId;
             _currentTrackStartMs = _normalizedSpotifyPosition(positionMs);
-            _setPlaying(true);
+            await _confirmConnectPlayback(trackId, lookup.device.id, token);
             return true;
         }
 
@@ -694,6 +698,38 @@ async function _playViaConnect(trackId, positionMs, token, retry = {}) {
         _debugLog('Connect request failed: ' + err.message);
         return false;
     }
+}
+
+async function _confirmConnectPlayback(trackId, deviceId, token) {
+    const deadline = Date.now() + 4000;
+    while (Date.now() < deadline) {
+        try {
+            const response = await fetch('https://api.spotify.com/v1/me/player', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.status === 204) break;
+            if (response.ok) {
+                const state = await response.json();
+                const activeTrackId = state?.item?.id || '';
+                const activeDeviceId = state?.device?.id || '';
+                if (state?.is_playing && activeTrackId === trackId
+                        && (!deviceId || !activeDeviceId || activeDeviceId === deviceId)) {
+                    _setPlaying(true);
+                    _debugLog('Connect: playback confirmed');
+                    return true;
+                }
+            }
+        } catch (error) {
+            _debugLog('Connect playback confirmation failed: ' + error.message);
+            break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 120));
+    }
+    // An accepted Connect command is not evidence that sound started. Leave
+    // the music visualizer off when Spotify never confirms active playback.
+    _setPlaying(false);
+    _debugLog('Connect: playback was not confirmed');
+    return false;
 }
 
 async function _playViaSdk(trackId, positionMs, token) {
@@ -746,7 +782,6 @@ async function _playViaSdk(trackId, positionMs, token) {
             _playbackBackend = 'sdk';
             _currentTrackId = trackId;
             _currentTrackStartMs = _normalizedSpotifyPosition(positionMs);
-            _setPlaying(true);
             _sdkPlaybackActivated = true;
             return true;
         }
@@ -771,7 +806,6 @@ async function _playViaSdk(trackId, positionMs, token) {
                 _playbackBackend = 'sdk';
                 _currentTrackId = trackId;
                 _currentTrackStartMs = _normalizedSpotifyPosition(positionMs);
-                _setPlaying(true);
                 _sdkPlaybackActivated = true;
                 return true;
             }
@@ -855,7 +889,6 @@ async function _resumeCurrentSdkTrackAt(positionMs) {
         await _player.seek(positionMs);
         await _player.resume();
         _currentTrackStartMs = _normalizedSpotifyPosition(positionMs);
-        _setPlaying(true);
         _debugLog('SDK: reused current track @' + positionMs + 'ms');
         return true;
     } catch (error) {
@@ -874,6 +907,7 @@ async function _waitForSdkSnippetStart(trackId, startMs, runId) {
             const position = Number(state?.position);
             if (activeTrackId === trackId && !state.paused && Number.isFinite(position)
                     && position >= startMs - 1000 && position <= startMs + 3000) {
+                _setPlaying(true);
                 return position;
             }
         } catch (error) {
@@ -995,7 +1029,7 @@ function _startButtonLoading(btn) {
     _loadingBtn = btn;
     _activatedBtn = btn;
     // The two states are mutually exclusive: a new tap is "starting", not
-    // "playing", so any lingering ripple goes now.
+    // "playing", so any lingering visualizer goes now.
     _setPlayingIndicator(false);
     btn.classList.add('spotify-loading');
     _loadingTimer = setTimeout(() => _endButtonLoading(), SPOTIFY_LOADING_MAX_MS);
@@ -1012,7 +1046,7 @@ function _endButtonLoading() {
 }
 
 // --- "Audio is playing right now" indicator ---
-// Visually distinct from the loading ring (ripples radiating outward vs one
+// Visually distinct from the loading ring (circular amplitude bars vs one
 // sweeping arc) and mutually exclusive with it. Driven only by the real
 // playback signals below, never by the tap.
 
@@ -1031,7 +1065,20 @@ function _setPlayingIndicator(on) {
     // trusting a retained reference.
     document.querySelectorAll('.spotify-btn.spotify-playing')
         .forEach(el => { if (el !== target) el.classList.remove('spotify-playing'); });
-    if (target) target.classList.add('spotify-playing');
+    if (target) {
+        if (!target.querySelector('.spotify-music-visualizer')) {
+            const visualizer = document.createElement('span');
+            visualizer.className = 'spotify-music-visualizer';
+            visualizer.setAttribute('aria-hidden', 'true');
+            for (let index = 0; index < 16; index++) {
+                const bar = document.createElement('i');
+                bar.style.setProperty('--bar-index', index);
+                visualizer.appendChild(bar);
+            }
+            target.appendChild(visualizer);
+        }
+        target.classList.add('spotify-playing');
+    }
 }
 
 // Single writer for _isPlaying so the animation can never drift from the
@@ -1041,9 +1088,8 @@ function _setPlaying(value) {
     _setPlayingIndicator(value);
 }
 
-// The Connect fallback has no state callback, so the accepted play command is
-// its best available start signal. Browser SDK playback (desktop or mobile)
-// waits for player_state_changed with this timeout as the upper bound.
+// Connect is polled until the Web API reports is_playing; browser SDK playback
+// waits for player_state_changed. This timeout bounds only the loading ring.
 function _playCommandAccepted() {
     if (!_loadingBtn) return;
     if (_playbackBackend === 'connect') { _endButtonLoading(); return; }
@@ -1064,11 +1110,13 @@ async function _playTrackWithLoadingState(trackId, positionMs, options = {}) {
         ? window.open('about:blank', 'spotify-auth', 'width=500,height=700,left=200,top=100')
         : null;
     const playOptions = authPopup ? { ...options, authPopup } : options;
+    const wasPauseRequest = _isPlaying && _isCurrentPlaybackRequest(trackId, positionMs)
+        && !options.forceStart;
     try {
         const ok = await spotifyPlayTrack(trackId, positionMs, playOptions);
         // A tap on the already-playing track pauses it — nothing is starting,
         // so the ring must not linger.
-        if (ok && _isPlaying) _playCommandAccepted();
+        if (ok && !wasPauseRequest) _playCommandAccepted();
         else _endButtonLoading();
         return ok;
     } catch (error) {

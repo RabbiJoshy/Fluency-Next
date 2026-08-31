@@ -247,9 +247,16 @@ function mergeKnowledgeProgress(parent, item) {
 }
 
 function getSpecificItemProgress(item) {
-    const primary = itemProgressData?.[item?.itemId];
-    if (primary) return primary;
-    const legacy = (item?.legacyItemIds || [])
+    if (!item?.itemId) return null;
+    const candidateIds = new Set([item.itemId, ...(item.legacyItemIds || [])]);
+    const parentIds = window.getProgressRecordIdsForCard?.(item.parentWordId) || [];
+    for (const parentId of parentIds) {
+        for (const itemId of Array.from(candidateIds)) {
+            const separator = itemId.indexOf('~');
+            if (separator >= 0) candidateIds.add(parentId + itemId.slice(separator));
+        }
+    }
+    const legacy = Array.from(candidateIds)
         .map(itemId => itemProgressData?.[itemId])
         .filter(Boolean);
     if (legacy.length === 0) return null;
@@ -269,7 +276,9 @@ function getSpecificItemProgress(item) {
 }
 
 function getKnowledgeItemState(card, item) {
-    const parent = progressData?.[card?.fullId || item?.parentWordId];
+    const parentId = card?.fullId || item?.parentWordId;
+    const parent = window.getMergedWordProgress?.(parentId, card?.targetWord)
+        || progressData?.[parentId];
     const specific = getSpecificItemProgress(item);
     return getProgressState(mergeKnowledgeProgress(parent, specific));
 }
@@ -304,13 +313,18 @@ function getItemProgressForParent(parentWordId) {
 }
 
 function wordHasKnowledgeProgress(parentWordId) {
-    return getItemProgressForParent(parentWordId).some(item => getProgressState(item).seen);
+    const parentIds = window.getProgressRecordIdsForCard?.(parentWordId) || [parentWordId];
+    return parentIds.some(id =>
+        getItemProgressForParent(id).some(item => getProgressState(item).seen));
 }
 
 function getWordKnowledgeReviewInfo(parentWordId) {
-    const parent = progressData?.[parentWordId] || null;
+    const parent = window.getMergedWordProgress?.(parentWordId)
+        || progressData?.[parentWordId]
+        || null;
     const parentState = getProgressState(parent);
-    const itemRows = getItemProgressForParent(parentWordId);
+    const parentIds = window.getProgressRecordIdsForCard?.(parentWordId) || [parentWordId];
+    const itemRows = parentIds.flatMap(id => getItemProgressForParent(id));
     const itemStates = itemRows.map(item => ({
         row: item,
         state: getProgressState(mergeKnowledgeProgress(parent, item))
@@ -408,7 +422,7 @@ function cacheItemProgress() {
 
 async function saveKnowledgeProgress(card, items, isCorrect) {
     if (!currentUser || currentUser.isGuest || !card?.fullId || !items?.length) return;
-    const parentWasLearned = getProgressState(progressData?.[card.fullId]).learned;
+    const parentWasLearned = getWordProgressState(card.fullId, card.targetWord).learned;
     const timestamp = new Date().toISOString();
     for (const item of items) {
         const previous = getSpecificItemProgress(item);

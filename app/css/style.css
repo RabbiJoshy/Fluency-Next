@@ -7722,45 +7722,58 @@
             }
         }
 
-        /* Steady "audio is playing right now" state. Deliberately a different
-           idiom from the loading ring above: instead of one arc sweeping around
-           the circle, concentric rings ripple outward from the logo's edge —
-           the standard sound-radiating visualisation. Two pseudo-elements run
-           the same 1.7s ripple half a cycle apart, so at 54px there is always
-           one ring mid-flight and the pair reads as sound rather than as a
-           spinner. The logo itself never scales or moves.
-           :not(.spotify-loading) keeps the two states mutually exclusive in CSS
-           as well as in spotify.js, so ::after can never be claimed by both. */
-        .spotify-btn.spotify-playing:not(.spotify-loading)::before,
-        .spotify-btn.spotify-playing:not(.spotify-loading)::after {
+        /* Confirmed playback uses the familiar circular audio-spectrum idiom:
+           sixteen radial bars change amplitude around the Spotify mark. The
+           element is injected by spotify.js only after Spotify reports that
+           audio is actually playing; a tap or accepted command cannot show it. */
+        .spotify-music-visualizer {
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.16s ease;
+        }
+        .spotify-btn.spotify-playing:not(.spotify-loading) .spotify-music-visualizer {
+            opacity: 1;
+        }
+        .spotify-music-visualizer i {
+            position: absolute;
+            inset: 0;
+            transform: rotate(calc(var(--bar-index) * 22.5deg));
+        }
+        .spotify-music-visualizer i::before {
             content: '';
             position: absolute;
-            inset: 2px;
-            border-radius: 50%;
-            border: 2px solid rgba(29, 185, 84, 0.85);
-            opacity: 0;
-            pointer-events: none;
-            animation: spotify-playing-ripple 1.7s cubic-bezier(0.22, 0.6, 0.35, 1) infinite;
+            top: 0;
+            left: 50%;
+            width: 2.5px;
+            height: 7px;
+            border-radius: 999px;
+            background: #1db954;
+            box-shadow: 0 0 4px rgba(29, 185, 84, 0.4);
+            transform: translateX(-50%) scaleY(0.38);
+            transform-origin: 50% 100%;
+            animation: spotify-playing-amplitude 0.68s ease-in-out infinite alternate;
+            animation-delay: calc(var(--bar-index) * -47ms);
         }
-        .spotify-btn.spotify-playing:not(.spotify-loading)::after {
-            animation-delay: 0.85s;
+        .spotify-music-visualizer i:nth-child(3n)::before {
+            animation-duration: 0.52s;
         }
-        @keyframes spotify-playing-ripple {
-            0% { transform: scale(0.94); opacity: 0; }
-            15% { opacity: 0.9; }
-            100% { transform: scale(1.5); opacity: 0; }
+        .spotify-music-visualizer i:nth-child(4n)::before {
+            animation-duration: 0.83s;
         }
-        /* Reduced motion: keep the meaning (a green ring = playing), drop the
-           travel — one static ring, second element suppressed. */
+        @keyframes spotify-playing-amplitude {
+            0% { transform: translateX(-50%) scaleY(0.32); opacity: 0.55; }
+            55% { transform: translateX(-50%) scaleY(0.72); opacity: 0.85; }
+            100% { transform: translateX(-50%) scaleY(1); opacity: 1; }
+        }
+        /* Reduced motion keeps a static circular equalizer as the playing cue. */
         @media (prefers-reduced-motion: reduce) {
-            .spotify-btn.spotify-playing:not(.spotify-loading)::before {
+            .spotify-music-visualizer i::before {
                 animation: none;
-                transform: none;
-                opacity: 0.9;
-            }
-            .spotify-btn.spotify-playing:not(.spotify-loading)::after {
-                animation: none;
-                opacity: 0;
+                transform: translateX(-50%) scaleY(0.65);
+                opacity: 0.85;
             }
         }
 

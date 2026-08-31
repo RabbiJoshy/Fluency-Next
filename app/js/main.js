@@ -9,10 +9,10 @@ import './auth.js?v=20260827a';
 import './about-example.js?v=20260825ak';
 import './estimation.js?v=20260825ak';
 import './config.js?v=20260827a';
-import './progress.js?v=20260825ak';
-import './knowledge.js?v=20260825ak';
-import './ui.js?v=20260825ak';
-import './vocab.js?v=20260825ak';
+import './progress.js?v=20260831a';
+import './knowledge.js?v=20260831a';
+import './ui.js?v=20260831a';
+import './vocab.js?v=20260831a';
 import './song-sets.js?v=20260823ae';
 import './vocabulary-import.js?v=20260825ak';
 import './flashcards.js?v=20260824b';
@@ -24,7 +24,7 @@ import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 // lazy module stubs in flashcards.js.
 const _initialParams = new URLSearchParams(window.location.search);
 const _spotifyModulePromise = (_initialParams.has('artist') || _initialParams.get('mode') === 'badbunny')
-    ? import('./spotify.js?v=20260830a').catch(error => {
+    ? import('./spotify.js?v=20260831a').catch(error => {
         console.warn('Spotify controls deferred:', error);
         return null;
     })
@@ -992,10 +992,7 @@ function renderFindResults(query) {
         // from search — the whole reason for looking one up. Falls back to the
         // other mode's record, so a word studied only in lyrics reads as known
         // in speech, which is exactly what surface identity restored.
-        const progress = progressData?.[entry.fullId]
-            || (window.getCrossModeId?.(entry.fullId)
-                ? progressData?.[window.getCrossModeId(entry.fullId)]
-                : null);
+        const progress = window.getMergedWordProgress?.(entry.fullId, entry.targetWord);
         const state = window.getProgressState?.(progress) || { status: 'unseen' };
         let doneHTML = '<span class="fw-done fw-done--unseen">Not seen</span>';
         if (state.status === 'learned') {

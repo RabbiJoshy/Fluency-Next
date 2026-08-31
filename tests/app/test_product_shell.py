@@ -309,9 +309,9 @@ class ProductShellTests(unittest.TestCase):
             spotify.index("_loadSpotifyPlaybackSdk();"),
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
-        self.assertIn("/js/spotify.js?v=20260830a", worker)
-        self.assertIn("/js/main.js?v=20260830a", worker)
-        self.assertIn("const CACHE_NAME = 'flashcards-v311'", worker)
+        self.assertIn("/js/spotify.js?v=20260831a", worker)
+        self.assertIn("/js/main.js?v=20260831a", worker)
+        self.assertIn("const CACHE_NAME = 'flashcards-v312'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
         config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))
@@ -327,6 +327,34 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn('js/auth.js?v=20260827a', html)
         self.assertIn("auth.js?v=20260827a", main)
         self.assertIn("/js/auth.js?v=20260827a", worker)
+
+    def test_progress_identity_bridges_historical_mode_ids_by_surface(self) -> None:
+        progress = (APP_ROOT / "js" / "progress.js").read_text(encoding="utf-8")
+        identity = (APP_ROOT / "js" / "progress-identity.js").read_text(encoding="utf-8")
+        vocab = (APP_ROOT / "js" / "vocab.js").read_text(encoding="utf-8")
+        worker = (APP_ROOT / "service-worker.js").read_text(encoding="utf-8")
+
+        self.assertIn("matchingProgressRecords", progress)
+        self.assertIn("getMergedWordProgress", progress)
+        self.assertIn("row.language !== language", identity)
+        self.assertIn("normalizeProgressSurface(row.word)", identity)
+        self.assertIn("registerProgressCardSurface", vocab)
+        self.assertIn("/js/progress-identity.js?v=20260831a", worker)
+
+    def test_spotify_music_visualizer_requires_confirmed_playback(self) -> None:
+        spotify = (APP_ROOT / "js" / "spotify.js").read_text(encoding="utf-8")
+        css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
+        worker = (APP_ROOT / "service-worker.js").read_text(encoding="utf-8")
+
+        self.assertIn("_player.addListener('player_state_changed'", spotify)
+        self.assertIn("_setPlaying(playing)", spotify)
+        self.assertIn("await _confirmConnectPlayback", spotify)
+        self.assertIn("state?.is_playing && activeTrackId === trackId", spotify)
+        self.assertIn("spotify-music-visualizer", spotify)
+        self.assertIn("spotify-playing-amplitude", css)
+        self.assertNotIn("spotify-playing-ripple", css)
+        self.assertIn("/js/spotify.js?v=20260831a", worker)
+        self.assertIn("const CACHE_NAME = 'flashcards-v312'", worker)
 
     def test_audit_accounts_and_flags_use_release_provenance(self) -> None:
         auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
