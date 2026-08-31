@@ -9,10 +9,10 @@ import './auth.js?v=20260827a';
 import './about-example.js?v=20260825ak';
 import './estimation.js?v=20260825ak';
 import './config.js?v=20260827a';
-import './progress.js?v=20260825ak';
-import './knowledge.js?v=20260825ak';
-import './ui.js?v=20260825ak';
-import './vocab.js?v=20260825ak';
+import './progress.js?v=20260831a';
+import './knowledge.js?v=20260831a';
+import './ui.js?v=20260831a';
+import './vocab.js?v=20260831a';
 import './song-sets.js?v=20260823ae';
 import './vocabulary-import.js?v=20260825ak';
 import './flashcards.js?v=20260824b';
@@ -24,7 +24,7 @@ import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 // lazy module stubs in flashcards.js.
 const _initialParams = new URLSearchParams(window.location.search);
 const _spotifyModulePromise = (_initialParams.has('artist') || _initialParams.get('mode') === 'badbunny')
-    ? import('./spotify.js?v=20260830a').catch(error => {
+    ? import('./spotify.js?v=20260831a').catch(error => {
         console.warn('Spotify controls deferred:', error);
         return null;
     })
@@ -127,6 +127,14 @@ let allArtistsConfig = null;
 // pathname network-only, so later release activations remain immediately live.
 const ACTIVE_ARTIST_CATALOG_URL = 'config/artists.json?contract=lyrics-v1';
 
+// Deployments may live at the origin root or below a project path such as
+// GitHub Pages' /Fluency-Next/. Resolve immutable release assets against the
+// app directory instead of assuming either hosting shape.
+const APP_BASE_PATH = new URL('.', window.location.href).pathname.replace(/\/$/, '');
+function appAssetPath(path) {
+    return `${APP_BASE_PATH}/${String(path || '').replace(/^\/+/, '')}`;
+}
+
 function requestedLyricsRelease() {
     const value = new URLSearchParams(window.location.search).get('lyricsRelease') || '';
     return /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value) ? value : '';
@@ -135,7 +143,7 @@ function requestedLyricsRelease() {
 function artistCatalogUrl() {
     const releaseId = requestedLyricsRelease();
     return releaseId
-        ? `/Fluency-Next/releases/lyrics/${encodeURIComponent(releaseId)}/app/config/artists.json`
+        ? appAssetPath(`releases/lyrics/${encodeURIComponent(releaseId)}/app/config/artists.json`)
         : ACTIVE_ARTIST_CATALOG_URL;
 }
 
@@ -143,7 +151,7 @@ function bindArtistCatalogToRelease(catalog, requestedReleaseId = '') {
     for (const artist of Object.values(catalog)) {
         const releaseId = requestedReleaseId || artist.releaseId;
         if (!releaseId) continue;
-        const appBase = `/Fluency-Next/releases/lyrics/${encodeURIComponent(releaseId)}/app/`;
+        const appBase = appAssetPath(`releases/lyrics/${encodeURIComponent(releaseId)}/app/`);
         for (const field of ['indexPath', 'examplesPath', 'masterPath', 'songsPath', 'spotifyPath', 'albumsDictionary', 'defaultAlbumArt', 'pickerImage']) {
             if (typeof artist[field] === 'string' && artist[field]) artist[field] = appBase + artist[field];
         }
@@ -152,8 +160,8 @@ function bindArtistCatalogToRelease(catalog, requestedReleaseId = '') {
                 Object.entries(artist.albumImageMap).map(([album, path]) => [album, appBase + path])
             );
         }
-        artist.releaseManifestPath = `/Fluency-Next/releases/lyrics/${encodeURIComponent(releaseId)}/manifest.json`;
-        artist.releaseCompositionPath = `/Fluency-Next/releases/lyrics/${encodeURIComponent(releaseId)}/composition.json`;
+        artist.releaseManifestPath = appAssetPath(`releases/lyrics/${encodeURIComponent(releaseId)}/manifest.json`);
+        artist.releaseCompositionPath = appAssetPath(`releases/lyrics/${encodeURIComponent(releaseId)}/composition.json`);
     }
     return catalog;
 }
@@ -833,11 +841,11 @@ window.showArtistPicker = showArtistPicker;
 // Standard-mode language adapter: flag pictures + existing hidden language
 // buttons, so all loading/theme/progress behavior stays in ui.js.
 function showLanguagePicker(languages) {
-    const languageOrder = ['spanish', 'swedish', 'italian', 'dutch', 'polish', 'french', 'portuguese', 'russian'];
-    const flags = {
-        spanish: '🇪🇸', swedish: '🇸🇪', italian: '🇮🇹', dutch: '🇳🇱',
-        polish: '🇵🇱', french: '🇫🇷', portuguese: '🇧🇷', russian: '🇷🇺'
-    };
+    const languageOrder = config.languageDisplayOrder || Object.keys(config.languages);
+    // Flags live on each language's own config entry.
+    const flags = Object.fromEntries(
+        Object.entries(languages).map(([key, cfg]) => [key, cfg.flag || ''])
+    );
     const entries = languageOrder.filter(key => languages[key]).map(key => {
         const cfg = languages[key];
         return {
@@ -992,10 +1000,7 @@ function renderFindResults(query) {
         // from search — the whole reason for looking one up. Falls back to the
         // other mode's record, so a word studied only in lyrics reads as known
         // in speech, which is exactly what surface identity restored.
-        const progress = progressData?.[entry.fullId]
-            || (window.getCrossModeId?.(entry.fullId)
-                ? progressData?.[window.getCrossModeId(entry.fullId)]
-                : null);
+        const progress = window.getMergedWordProgress?.(entry.fullId, entry.targetWord);
         const state = window.getProgressState?.(progress) || { status: 'unseen' };
         let doneHTML = '<span class="fw-done fw-done--unseen">Not seen</span>';
         if (state.status === 'learned') {

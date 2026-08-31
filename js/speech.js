@@ -61,7 +61,11 @@ function speakWord(text, useEnglish = false, onComplete = null) {
         .find(lang => /^en(?:-|$)/i.test(lang));
     const langCode = useEnglish
         ? (deviceEnglishLang || 'en-US')
-        : (speechLangCodes[selectedLanguage] || 'es-ES');
+        // config is authoritative: a language declares its own speechLang, so
+        // adding one does not mean editing a second table in state.js.
+        : (config?.languages?.[selectedLanguage]?.speechLang
+           || speechLangCodes[selectedLanguage]
+           || 'es-ES');
     utterance.lang = langCode;
     utterance.rate = 0.9;
 

@@ -380,7 +380,9 @@ function getWordId(item) {
     const lang = LANG_CODES[selectedLanguage] || selectedLanguage.slice(0, 2);
     const mode = activeArtist ? '1' : '0';
     const hex = item.id || Number(item.rank).toString(16).padStart(4, '0');
-    return `${lang}${mode}${hex}`;
+    const fullId = `${lang}${mode}${hex}`;
+    window.registerProgressCardSurface?.(fullId, item.word);
+    return fullId;
 }
 
 /**
@@ -400,13 +402,7 @@ function getCrossModeId(fullId) {
  * counts remain available, but a newer wrong moves the card back to review.
  */
 function isWordKnown(fullId) {
-    const check = (id) => {
-        const p = progressData?.[id];
-        return p && p.language === selectedLanguage && getProgressState(p).learned;
-    };
-    if (check(fullId)) return true;
-    const crossId = getCrossModeId(fullId);
-    return crossId ? check(crossId) : false;
+    return getWordProgressState(fullId).learned;
 }
 
 /**
@@ -439,9 +435,13 @@ async function buildSeenLemmaSet(vocabData) {
     if (!useLemmaMode || !lemmaFieldAvailable || !progressData) return new Set();
 
     const lemmaById = new Map();
+    const lemmaBySurface = new Map();
     const addEntries = entries => {
         for (const entry of entries || []) {
-            if (entry?.id && entry?.lemma) lemmaById.set(entry.id, entry.lemma);
+            if (!entry?.lemma) continue;
+            if (entry.id) lemmaById.set(entry.id, entry.lemma);
+            const surface = window.normalizeProgressSurface?.(entry.word);
+            if (surface) lemmaBySurface.set(surface, entry.lemma);
         }
     };
     addEntries(vocabData);
@@ -457,14 +457,15 @@ async function buildSeenLemmaSet(vocabData) {
     }
 
     const seenLemmas = new Set();
-    const mark = (fullId, state) => {
+    const mark = (fullId, state, word = '') => {
         if (!state?.seen || !fullId) return;
-        const lemma = lemmaById.get(fullId.slice(3));
+        const lemma = lemmaById.get(fullId.slice(3))
+            || lemmaBySurface.get(window.normalizeProgressSurface?.(word));
         if (lemma) seenLemmas.add(lemma);
     };
     for (const [fullId, progress] of Object.entries(progressData)) {
         if (progress?.language === selectedLanguage) {
-            mark(fullId, getProgressState(progress));
+            mark(fullId, getProgressState(progress), progress.word);
         }
     }
     for (const progress of Object.values(itemProgressData || {})) {
@@ -476,8 +477,9 @@ async function buildSeenLemmaSet(vocabData) {
 }
 
 function relatedWordIds(fullId) {
+    const matchedIds = window.getProgressRecordIdsForCard?.(fullId) || [];
     const crossId = getCrossModeId(fullId);
-    return crossId ? [fullId, crossId] : [fullId];
+    return Array.from(new Set([fullId, crossId, ...matchedIds].filter(Boolean)));
 }
 
 function hasRelatedWordProgress(fullId) {

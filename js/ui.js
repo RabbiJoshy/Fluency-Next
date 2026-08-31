@@ -311,21 +311,16 @@ function unmergeStandardProgressFromLanguageStep() {
 function renderLanguageTabs() {
     const tabsContainer = document.getElementById('languageTabs');
 
-    // Define custom language order (Polish before grayed-out French and Russian)
-    const languageOrder = ['spanish', 'swedish', 'italian', 'dutch', 'polish', 'french', 'portuguese', 'russian'];
+    // Order is a product decision (enabled languages before grayed-out ones), so
+    // it is declared once in config.json rather than restated in each file that
+    // renders a language list.
+    const languageOrder = config.languageDisplayOrder || Object.keys(config.languages);
     const languages = languageOrder.filter(lang => config.languages[lang]);
 
-    // Map language keys to 2-letter codes
-    const langCodeMap = {
-        'dutch': 'NL',
-        'polish': 'PL',
-        'spanish': 'ES',
-        'italian': 'IT',
-        'french': 'FR',
-        'portuguese': 'BR',
-        'russian': 'RU',
-        'swedish': 'SE'
-    };
+    // Short codes live on each language's own config entry.
+    const langCodeMap = Object.fromEntries(
+        Object.entries(config.languages).map(([key, cfg]) => [key, cfg.shortCode || key.slice(0, 2).toUpperCase()])
+    );
 
     // Generate language tabs dynamically - no active state initially
     const tabsHTML = languages.map((langKey, index) => {
@@ -1822,15 +1817,9 @@ function getSetupLearningState(item, { seenLemmas = new Set(), estimatedIds = nu
     if (!currentUser || currentUser.isGuest || !progressData) return false;
 
     const wordId = getWordId(item);
-    const crossModeId = getCrossModeId(wordId);
-    const relatedIds = crossModeId ? [wordId, crossModeId] : [wordId];
-    const recordedStates = relatedIds.map(id => getWordProgressState(id));
-    const recorded = recordedStates.find(state => state?.needsReview)
-        || recordedStates.find(state => state?.seen)
-        || recordedStates[0];
-    const reviewInfo = relatedIds
-        .map(id => getWordKnowledgeReviewInfo(id))
-        .find(info => info?.needsReview);
+    const relatedIds = window.getProgressRecordIdsForCard?.(wordId, item.word) || [wordId];
+    const recorded = getWordProgressState(wordId, item.word);
+    const reviewInfo = getWordKnowledgeReviewInfo(wordId);
 
     // A real answer is more specific than the estimated starting level;
     // in particular, a later wrong must remain reviewable. Setup and deck
@@ -2459,19 +2448,9 @@ async function showTotalStatsModal() {
 
     // Check if a word is currently understood (most recent answer was correct)
     // across both modes, using timestamps. Falls back to correct > 0 if no timestamps.
-    const isCurrentlyUnderstood = (id) => {
-        const crossId = getCrossModeId(id);
-        const entries = [progressData[id], crossId ? progressData[crossId] : null].filter(Boolean);
-        let bestLc = 0, bestLw = 0;
-        for (const p of entries) {
-            if (p.language !== selectedLanguage) continue;
-            const lc = p.lastCorrect ? new Date(p.lastCorrect).getTime() : 0;
-            const lw = p.lastWrong ? new Date(p.lastWrong).getTime() : 0;
-            if (lc > bestLc) bestLc = lc;
-            if (lw > bestLw) bestLw = lw;
-        }
-        if (bestLc > 0 || bestLw > 0) return bestLc >= bestLw;
-        return isWordKnown(id);
+    const isCurrentlyUnderstood = (id, word) => {
+        const merged = getMergedWordProgress(id, word);
+        return merged ? getProgressState(merged).known : false;
     };
 
     if (vocab && vocab.length > 0 && progressData) {
@@ -2480,7 +2459,7 @@ async function showTotalStatsModal() {
             const freq = item.corpus_count || 1;
             totalFreq += freq;
             const id = getWordId(item);
-            if (isCurrentlyUnderstood(id)) {
+            if (isCurrentlyUnderstood(id, item.word)) {
                 coveredFreq += freq;
                 coveredCount++;
             }
@@ -2504,21 +2483,20 @@ async function showTotalStatsModal() {
 
     // Correct / Incorrect: all-time totals across both modes, deduped
     let totalCorrect = 0, totalIncorrect = 0;
-    const activeScopeIds = activeArtist && vocab
-        ? new Set(vocab.map(item => getWordId(item)))
-        : null;
-    if (progressData) {
+    if (vocab) {
         const counted = new Set();
-        for (const [id, data] of Object.entries(progressData)) {
+        for (const item of vocab) {
+            const surface = normalizeProgressSurface(item.word);
+            if (!surface || counted.has(surface)) continue;
+            counted.add(surface);
+            const data = getMergedWordProgress(getWordId(item), item.word);
+            if (!data) continue;
+            totalCorrect += Number(data.correct) || 0;
+            totalIncorrect += Number(data.wrong) || 0;
+        }
+    } else if (progressData) {
+        for (const data of Object.values(progressData)) {
             if (data.language !== selectedLanguage) continue;
-            if (activeScopeIds) {
-                const crossId = getCrossModeId(id);
-                if (!activeScopeIds.has(id) && !(crossId && activeScopeIds.has(crossId))) continue;
-            }
-            const baseId = id.length >= 4 && id[2] === '1'
-                ? id.slice(0, 2) + '0' + id.slice(3) : id;
-            if (counted.has(baseId)) continue;
-            counted.add(baseId);
             totalCorrect += Number(data.correct) || 0;
             totalIncorrect += Number(data.wrong) || 0;
         }
@@ -2687,17 +2665,24 @@ function renderActiveSetProgress() {
         const modeIds = [{ id: fullId, label: activeArtist ? 'Lyrics card' : 'Speech card' }];
         const crossModeId = getCrossModeId(fullId);
         if (crossModeId) modeIds.push({ id: crossModeId, label: activeArtist ? 'Speech card' : 'Lyrics card' });
-        const savedRecords = modeIds.filter(({ id }) => progressData?.[id]);
+        const savedRecords = getProgressRecordsForCard(fullId, w.word).map(({ id, progress }) => ({
+            id,
+            progress,
+            label: id[2] === '1' ? 'Lyrics card' : 'Speech card'
+        }));
         const savedSection = _studyProgressEl('section', 'active-set-history-section');
         savedSection.appendChild(_studyProgressEl('h4', '', 'Saved card progress'));
         if (savedRecords.length) {
-            savedRecords.forEach(({ id, label }) => _appendSavedProgressRecord(savedSection, label, progressData[id]));
+            savedRecords.forEach(({ label, progress }) => _appendSavedProgressRecord(savedSection, label, progress));
         } else {
             savedSection.appendChild(_studyProgressEl('p', 'active-set-history-empty', 'No saved card history yet.'));
         }
         body.appendChild(savedSection);
 
-        const parentIds = new Set(modeIds.map(({ id }) => id));
+        const parentIds = new Set([
+            ...modeIds.map(({ id }) => id),
+            ...savedRecords.map(({ id }) => id)
+        ]);
         const savedItems = Object.values(itemProgressData || {})
             .filter(item => parentIds.has(item?.parentWordId))
             .sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));

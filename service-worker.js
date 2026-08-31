@@ -5,10 +5,12 @@
 // Bump CACHE_NAME alongside any change to ASSET_VERSION below — old caches
 // are deleted in the activate handler, so a bump forces the new pre-cache
 // list to be rebuilt on next install.
-const CACHE_NAME = 'flashcards-v312';
+const CACHE_NAME = 'flashcards-v313';
 const SHELL_CACHE_PREFIX = 'flashcards-v';
 const CONTENT_CACHE_PREFIX = 'fluency-content-';
 const CONTENT_STAGING_PREFIX = `${CONTENT_CACHE_PREFIX}staging-`;
+const SCOPE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, '');
+const scopedPath = path => `${SCOPE_PATH}${path}`;
 
 // Single source of truth for the module/CSS version tags. Must match
 // js/main.js's import URLs and index.html's modulepreload links. When you
@@ -22,41 +24,42 @@ const ASSET_VERSION = '20260825ak';
 // With pre-cache, visit 2 hits the SW with a fully-warm cache and the app
 // boots offline-fast even on first reload after install.
 const urlsToCache = [
-  '/Fluency-Next/',
-  '/Fluency-Next/index.html',
-  '/Fluency-Next/css/style.css?v=20260824c',
-  '/Fluency-Next/css/light-theme.css?v=20260828a',
-  '/Fluency-Next/config/config.json',
-  '/Fluency-Next/config/cefr_levels.json',
-  '/Fluency-Next/config/offline-content-manifest.json',
-  '/Fluency-Next/js/main.js?v=20260830a',
-  `/Fluency-Next/js/theme.js?v=${ASSET_VERSION}`,
-  `/Fluency-Next/js/state.js?v=${ASSET_VERSION}`,
-  `/Fluency-Next/js/data-contracts.js?v=${ASSET_VERSION}`,
-  `/Fluency-Next/js/offline-db.js?v=${ASSET_VERSION}`,
-  `/Fluency-Next/js/sync-queue.js?v=${ASSET_VERSION}`,
-  `/Fluency-Next/js/offline-content.js?v=${ASSET_VERSION}`,
-  '/Fluency-Next/js/speech.js?v=20260824d',
-  `/Fluency-Next/js/artist-ui.js?v=${ASSET_VERSION}`,
-  '/Fluency-Next/js/auth.js?v=20260827a',
-  `/Fluency-Next/js/about-example.js?v=${ASSET_VERSION}`,
-  '/Fluency-Next/js/spotify.js?v=20260830a',
-  `/Fluency-Next/js/estimation.js?v=${ASSET_VERSION}`,
-  '/Fluency-Next/js/config.js?v=20260827a',
-  `/Fluency-Next/js/progress.js?v=${ASSET_VERSION}`,
-  `/Fluency-Next/js/knowledge.js?v=${ASSET_VERSION}`,
-  '/Fluency-Next/js/ui.js?v=20260825ak',
-  '/Fluency-Next/js/vocab.js?v=20260825ak',
-  `/Fluency-Next/js/song-sets-core.js?v=${ASSET_VERSION}`,
-  '/Fluency-Next/js/song-sets.js?v=20260823ae',
-  `/Fluency-Next/js/vocabulary-import-core.js?v=${ASSET_VERSION}`,
-  `/Fluency-Next/js/vocabulary-import.js?v=${ASSET_VERSION}`,
-  `/Fluency-Next/js/spanishdict-usage.js?v=${ASSET_VERSION}`,
-  `/Fluency-Next/js/reverse-cues.js?v=${ASSET_VERSION}`,
-  '/Fluency-Next/js/flashcards.js?v=20260824b',
-  `/Fluency-Next/js/example-personalisation.js?v=${ASSET_VERSION}`,
-  `/Fluency-Next/js/flashcards-modals.js?v=${ASSET_VERSION}`,
-  `/Fluency-Next/js/flashcards-conj.js?v=${ASSET_VERSION}`
+  '/',
+  '/index.html',
+  '/css/style.css?v=20260831a',
+  '/css/light-theme.css?v=20260828a',
+  '/config/config.json',
+  '/config/cefr_levels.json',
+  '/config/offline-content-manifest.json',
+  '/js/main.js?v=20260831b',
+  `/js/theme.js?v=${ASSET_VERSION}`,
+  `/js/state.js?v=${ASSET_VERSION}`,
+  `/js/data-contracts.js?v=${ASSET_VERSION}`,
+  `/js/offline-db.js?v=${ASSET_VERSION}`,
+  `/js/sync-queue.js?v=${ASSET_VERSION}`,
+  `/js/offline-content.js?v=${ASSET_VERSION}`,
+  '/js/speech.js?v=20260824d',
+  `/js/artist-ui.js?v=${ASSET_VERSION}`,
+  '/js/auth.js?v=20260827a',
+  `/js/about-example.js?v=${ASSET_VERSION}`,
+  '/js/spotify.js?v=20260831a',
+  `/js/estimation.js?v=${ASSET_VERSION}`,
+  '/js/config.js?v=20260827a',
+  '/js/progress.js?v=20260831a',
+  '/js/progress-identity.js?v=20260831a',
+  '/js/knowledge.js?v=20260831a',
+  '/js/ui.js?v=20260831a',
+  '/js/vocab.js?v=20260831a',
+  `/js/song-sets-core.js?v=${ASSET_VERSION}`,
+  '/js/song-sets.js?v=20260823ae',
+  `/js/vocabulary-import-core.js?v=${ASSET_VERSION}`,
+  `/js/vocabulary-import.js?v=${ASSET_VERSION}`,
+  `/js/spanishdict-usage.js?v=${ASSET_VERSION}`,
+  `/js/reverse-cues.js?v=${ASSET_VERSION}`,
+  '/js/flashcards.js?v=20260824b',
+  `/js/example-personalisation.js?v=${ASSET_VERSION}`,
+  `/js/flashcards-modals.js?v=${ASSET_VERSION}`,
+  `/js/flashcards-conj.js?v=${ASSET_VERSION}`
 ];
 
 self.addEventListener('install', event => {
@@ -67,7 +70,7 @@ self.addEventListener('install', event => {
   // a version tag — index.html, the config JSONs, and (until now) style.css.
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(
-      urlsToCache.map(url => new Request(url, { cache: 'reload' }))
+      urlsToCache.map(url => new Request(scopedPath(url), { cache: 'reload' }))
     )).then(() => {
       // Development tabs change rapidly and mixing yesterday's controller
       // with today's HTML produces controls that visibly exist but cannot
@@ -89,7 +92,7 @@ let retainedContentIndexPromise = null;
 
 async function buildRetainedContentIndex() {
   const shell = await caches.open(CACHE_NAME);
-  const manifestResponse = await shell.match('/Fluency-Next/config/offline-content-manifest.json');
+  const manifestResponse = await shell.match(scopedPath('/config/offline-content-manifest.json'));
   if (!manifestResponse) return new Map();
 
   const manifest = await manifestResponse.json();
@@ -112,7 +115,7 @@ async function buildRetainedContentIndex() {
     }
     if (!cacheName) continue;
     for (const file of source.files || []) {
-      const pathname = new URL(file.path, self.location.origin).pathname;
+      const pathname = new URL(file.path, self.registration.scope).pathname;
       if (!index.has(pathname)) index.set(pathname, cacheName);
     }
   }
@@ -137,7 +140,10 @@ async function matchInstalledLyricsCatalog() {
   });
   const index = await retainedContentIndexPromise;
   for (const [pathname, cacheName] of index.entries()) {
-    if (!/^\/Fluency-Next\/releases\/lyrics\/[^/]+\/app\/config\/artists\.json$/u.test(pathname)) continue;
+    const appPathname = SCOPE_PATH && pathname.startsWith(`${SCOPE_PATH}/`)
+      ? pathname.slice(SCOPE_PATH.length)
+      : pathname;
+    if (!/^\/releases\/lyrics\/[^/]+\/app\/config\/artists\.json$/u.test(appPathname)) continue;
     const response = await (await caches.open(cacheName)).match(pathname);
     if (response) return response;
   }
@@ -163,7 +169,10 @@ self.addEventListener('fetch', event => {
   // vocabulary or examples. Offline releases can later use release-versioned
   // URLs rather than this mutable compatibility boundary.
   const pathname = new URL(request.url).pathname;
-  if (pathname === '/Fluency-Next/config/artists.json') {
+  const appPathname = SCOPE_PATH && pathname.startsWith(`${SCOPE_PATH}/`)
+    ? pathname.slice(SCOPE_PATH.length)
+    : pathname;
+  if (appPathname === '/config/artists.json') {
     event.respondWith(
       fetch(request, { cache: 'no-store' }).catch(async error => {
         // The active alias remains network-authoritative and is never cached.
@@ -177,11 +186,11 @@ self.addEventListener('fetch', event => {
     );
     return;
   }
-  if (pathname.startsWith('/Fluency-Next/Artists/')) {
+  if (appPathname.startsWith('/Artists/')) {
     event.respondWith(fetch(request, { cache: 'no-store' }));
     return;
   }
-  if (/^\/Fluency-Next\/Data\/[^/]+\/(?:vocabulary\.(?:index|examples)|study-structure|release-(?:manifest|composition)|conjugations)\.json$/u.test(pathname)) {
+  if (/^\/Data\/[^/]+\/(?:vocabulary\.(?:index|examples)|study-structure|release-(?:manifest|composition)|conjugations)\.json$/u.test(appPathname)) {
     event.respondWith(fetch(request, { cache: 'no-store' }));
     return;
   }
@@ -195,12 +204,14 @@ self.addEventListener('fetch', event => {
       fetch(request).then(response => {
         if (response && response.status === 200 && response.type === 'basic') {
           return caches.open(CACHE_NAME)
-            .then(cache => cache.put('/Fluency-Next/index.html', response.clone()))
+            .then(cache => cache.put(scopedPath('/index.html'), response.clone()))
             .then(() => response);
         }
         return response;
       }).catch(() => caches.open(CACHE_NAME).then(cache =>
-        cache.match(request).then(cached => cached || cache.match('/Fluency-Next/index.html') || cache.match('/Fluency-Next/'))
+        cache.match(request).then(cached => cached
+          || cache.match(scopedPath('/index.html'))
+          || cache.match(scopedPath('/')))
       ))
     );
     return;

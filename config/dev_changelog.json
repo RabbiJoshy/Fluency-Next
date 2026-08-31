@@ -2,6 +2,16 @@
   "_readme": "User-visible changes in the replacement app, newest first.",
   "entries": [
     {
+      "date": "2026-08-31",
+      "commit": "497ea45",
+      "summary": "Speech and Lyrics now share saved progress, with an honest Spotify indicator",
+      "detail": [
+        "Equivalent Speech and Lyrics cards now share historical progress by language and displayed word, while preserving existing saved records.",
+        "New answers use the latest review state and continue syncing through the deployed progress service across desktop and mobile.",
+        "Spotify shows a circular music visualizer only after playback is confirmed; a button press or pending mobile handoff no longer looks like audio is already playing."
+      ]
+    },
+    {
       "date": "2026-08-30",
       "commit": "2220eb1",
       "summary": "Mobile Spotify playback no longer depends on an already-playing phone app",

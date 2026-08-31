@@ -1,4 +1,10 @@
 import './state.js?v=20260825ak';
+import {
+    crossModeProgressId,
+    matchingProgressRecords,
+    mergeProgressRecords,
+    normalizeProgressSurface
+} from './progress-identity.js?v=20260831a';
 
 const SRS_DAY_MS = 24 * 60 * 60 * 1000;
 const SRS_INTERVAL_DAYS = [1, 3, 7, 14, 30, 60, 120];
@@ -101,8 +107,61 @@ function getProgressState(progress, now = Date.now()) {
     };
 }
 
-function getWordProgressState(fullId) {
-    return getProgressState(progressData?.[fullId]);
+const progressSurfaceById = new Map();
+let indexedProgressSource = null;
+let indexedProgressSize = -1;
+let progressIdsBySurface = new Map();
+
+function registerProgressCardSurface(fullId, surface) {
+    const normalized = normalizeProgressSurface(surface);
+    if (fullId && normalized) progressSurfaceById.set(fullId, normalized);
+    return fullId;
+}
+
+function getProgressRecordsForCard(fullId, surface = '') {
+    const source = progressData || {};
+    const sourceSize = Object.keys(source).length;
+    if (indexedProgressSource !== source || indexedProgressSize !== sourceSize) {
+        progressIdsBySurface = new Map();
+        for (const [id, row] of Object.entries(source)) {
+            const normalized = normalizeProgressSurface(row?.word);
+            if (!normalized || !row?.language) continue;
+            const key = `${row.language}|${normalized}`;
+            if (!progressIdsBySurface.has(key)) progressIdsBySurface.set(key, []);
+            progressIdsBySurface.get(key).push(id);
+        }
+        indexedProgressSource = source;
+        indexedProgressSize = sourceSize;
+    }
+
+    const normalizedSurface = normalizeProgressSurface(
+        surface || progressSurfaceById.get(fullId)
+    );
+    const indexedIds = normalizedSurface
+        ? (progressIdsBySurface.get(`${selectedLanguage}|${normalizedSurface}`) || [])
+        : [];
+    const candidates = {};
+    for (const id of [fullId, crossModeProgressId(fullId), ...indexedIds]) {
+        if (id && source[id]) candidates[id] = source[id];
+    }
+    return matchingProgressRecords(candidates, {
+        fullId,
+        surface,
+        language: selectedLanguage,
+        surfaceById: progressSurfaceById
+    });
+}
+
+function getProgressRecordIdsForCard(fullId, surface = '') {
+    return getProgressRecordsForCard(fullId, surface).map(record => record.id);
+}
+
+function getMergedWordProgress(fullId, surface = '') {
+    return mergeProgressRecords(getProgressRecordsForCard(fullId, surface));
+}
+
+function getWordProgressState(fullId, surface = '') {
+    return getProgressState(getMergedWordProgress(fullId, surface));
 }
 
 function calculateCoveragePercent() {
@@ -119,6 +178,7 @@ function calculateCoveragePercent() {
         if (entry.id) {
             if (hideSingleOccurrence && entry.ppm <= 1) continue;
             const compositeId = `${lang}${mode}${entry.id}`;
+            registerProgressCardSurface(compositeId, entry.word);
             idToPpm[compositeId] = entry;
             totalWords++;
         }
@@ -126,25 +186,10 @@ function calculateCoveragePercent() {
 
     let coveredPpm = 0;
     let wordsCovered = 0;
-    const coveredIds = new Set(); // track already-counted IDs to avoid double-counting cross-mode
-    for (const [wordId, data] of Object.entries(progressData)) {
-        if (data.language === selectedLanguage && getProgressState(data).known) {
-            // Check direct match first, then cross-mode match
-            let ppmEntry = idToPpm[wordId];
-            let matchedId = wordId;
-            if (!ppmEntry) {
-                const crossId = getCrossModeId(wordId);
-                if (crossId) {
-                    ppmEntry = idToPpm[crossId];
-                    matchedId = crossId;
-                }
-            }
-            if (ppmEntry && !coveredIds.has(matchedId)) {
-                coveredPpm += ppmEntry.ppm;
-                wordsCovered++;
-                coveredIds.add(matchedId);
-            }
-        }
+    for (const [fullId, ppmEntry] of Object.entries(idToPpm)) {
+        if (!getWordProgressState(fullId, ppmEntry.word).known) continue;
+        coveredPpm += ppmEntry.ppm;
+        wordsCovered++;
     }
 
     const pct = totalPpm > 0 ? (coveredPpm / totalPpm) * 100 : 0;
@@ -253,7 +298,7 @@ function updatePersonalCoverage(filteredVocab) {
         totalFreq += freq;
         const fullId = getWordId(item);
         // Check progress in both current mode and cross-mode
-        const progress = progressData[fullId] || (getCrossModeId(fullId) ? progressData[getCrossModeId(fullId)] : null);
+        const progress = getMergedWordProgress(fullId, item.word);
         if (progress && progress.language === selectedLanguage) {
             const lastCorrect = progress.lastCorrect ? new Date(progress.lastCorrect).getTime() : 0;
             const lastWrong = progress.lastWrong ? new Date(progress.lastWrong).getTime() : 0;
@@ -313,6 +358,11 @@ window.getSrsStage = getSrsStage;
 window.getSrsIntervalDays = getSrsIntervalDays;
 window.advanceSrsStage = advanceSrsStage;
 window.getProgressState = getProgressState;
+window.normalizeProgressSurface = normalizeProgressSurface;
+window.registerProgressCardSurface = registerProgressCardSurface;
+window.getProgressRecordsForCard = getProgressRecordsForCard;
+window.getProgressRecordIdsForCard = getProgressRecordIdsForCard;
+window.getMergedWordProgress = getMergedWordProgress;
 window.getWordProgressState = getWordProgressState;
 window.updateExclusionBars = updateExclusionBars;
 window.updatePersonalCoverage = updatePersonalCoverage;
