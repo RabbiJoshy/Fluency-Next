@@ -5,6 +5,22 @@ import './state.js?v=20260825ak';
 const GLOBAL_STUDY_DEFAULTS_KEY = 'fluency_global_study_defaults_v1';
 let _setupLevelSelectionWasManual = false;
 
+// Per-render memo for getSetupLearningState. Building the setup screen walks
+// every card twice — findFirstIncompleteLevelBtn scans all levels to pick an
+// actionable one, then renderRangeSelector scans the chosen level again per
+// set — and each call reaches through progress, granular knowledge, lemma
+// inheritance and the estimate. The inputs cannot change while one render is
+// in flight, so the second walk is pure repetition.
+//
+// Scoped to a single render on purpose: progressData is mutated in place when
+// a card is answered, so a longer-lived cache keyed on object identity would
+// go stale without any way to notice.
+let _setupStateMemo = null;
+
+function resetSetupStateMemo() {
+    _setupStateMemo = new Map();
+}
+
 function readGlobalStudyDefaults() {
     try {
         const saved = JSON.parse(localStorage.getItem(GLOBAL_STUDY_DEFAULTS_KEY) || 'null');
@@ -688,6 +704,7 @@ async function findFirstIncompleteLevelBtn(language, buttons) {
 }
 
 async function renderLevelSelector(language, { preferActionable = false } = {}) {
+    resetSetupStateMemo();
     const container = document.getElementById('levelSelector');
     if (preferActionable) _setupLevelSelectionWasManual = false;
 
@@ -1817,6 +1834,11 @@ function getSetupLearningState(item, { seenLemmas = new Set(), estimatedIds = nu
     if (!currentUser || currentUser.isGuest || !progressData) return false;
 
     const wordId = getWordId(item);
+    if (_setupStateMemo?.has(wordId)) return _setupStateMemo.get(wordId);
+    const memoise = value => {
+        _setupStateMemo?.set(wordId, value);
+        return value;
+    };
     const relatedIds = window.getProgressRecordIdsForCard?.(wordId, item.word) || [wordId];
     const recorded = getWordProgressState(wordId, item.word);
     const reviewInfo = getWordKnowledgeReviewInfo(wordId);
@@ -1830,35 +1852,35 @@ function getSetupLearningState(item, { seenLemmas = new Set(), estimatedIds = nu
     // reported seen + needsReview and the setup screen showed 0 known and
     // 0 unseen for the whole deck.
     if (reviewInfo?.needsReview) {
-        return {
+        return memoise({
             ...recorded,
             seen: true,
             needsReview: true,
             learned: false,
             reviewReason: reviewInfo.reason,
             reviewAt: reviewInfo.reviewAt
-        };
+        });
     }
-    if (recorded?.seen) return recorded;
+    if (recorded?.seen) return memoise(recorded);
     if (relatedIds.some(id => wordHasKnowledgeProgress(id))) {
-        return { ...recorded, seen: true };
+        return memoise({ ...recorded, seen: true });
     }
 
     // Merge Lemmas treats progress on any surface form as progress on the
     // shared lemma. This is the same set used by Learn New during deck build,
     // so the button count cannot advertise cards that will then be removed.
     if (seenLemmas.has(item.lemma)) {
-        return { ...recorded, seen: true, needsReview: false, learned: true, inheritedLemma: true };
+        return memoise({ ...recorded, seen: true, needsReview: false, learned: true, inheritedLemma: true });
     }
 
     if (activeArtist) {
         if (item.id && estimatedIds?.has(item.id)) {
-            return { seen: true, needsReview: false, learned: true, estimated: true };
+            return memoise({ seen: true, needsReview: false, learned: true, estimated: true });
         }
     } else if (item.rank <= estimate) {
-        return { seen: true, needsReview: false, learned: true, estimated: true };
+        return memoise({ seen: true, needsReview: false, learned: true, estimated: true });
     }
-    return recorded;
+    return memoise(recorded);
 }
 
 async function renderRangeSelector() {
