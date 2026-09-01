@@ -5,6 +5,30 @@ import './state.js?v=20260825ak';
 const GLOBAL_STUDY_DEFAULTS_KEY = 'fluency_global_study_defaults_v1';
 let _setupLevelSelectionWasManual = false;
 
+// Timing instrument for the return-to-menu path. Returning to setup rebuilds
+// the level selector and has been reported as taking seconds; the obvious
+// suspects (vocabulary fetch, progress lookups, knowledge lookups) all turned
+// out to be cached or indexed already, so this measures instead of guessing
+// again. Phases print as a table on every setup render.
+const _setupTimings = [];
+
+async function timePhase(label, fn) {
+    const started = performance.now();
+    try {
+        return await fn();
+    } finally {
+        _setupTimings.push({ phase: label, ms: +(performance.now() - started).toFixed(1) });
+    }
+}
+
+function reportSetupTimings(total) {
+    if (!_setupTimings.length) return;
+    const rows = [..._setupTimings, { phase: 'TOTAL', ms: +total.toFixed(1) }];
+    console.table(rows);
+    window.__lastSetupTimings = rows;
+    _setupTimings.length = 0;
+}
+
 // Per-render memo for getSetupLearningState. Building the setup screen walks
 // every card twice — findFirstIncompleteLevelBtn scans all levels to pick an
 // actionable one, then renderRangeSelector scans the chosen level again per
@@ -1043,15 +1067,19 @@ async function renderExtraCategorySelector(container, language, { preferActionab
     }
     if ((!selectedLevel || preferActionable) && !_setupLevelSelectionWasManual) {
         try {
-            const actionable = await findFirstIncompleteLevelBtn(language, hiddenButtons);
+            const actionable = await timePhase('findFirstIncompleteLevelBtn',
+                () => findFirstIncompleteLevelBtn(language, hiddenButtons));
             const actionableIndex = hiddenButtons.indexOf(actionable);
             if (actionableIndex >= 0) initialIndex = actionableIndex;
         } catch (error) {
             console.warn('Extra category auto-pick failed, using first', error);
         }
     }
+    const renderStarted = performance.now();
     hiddenButtons[initialIndex].click();
-    await hiddenButtons[initialIndex]._rangeRenderPromise;
+    await timePhase('renderRangeSelector (set dots)',
+        () => hiddenButtons[initialIndex]._rangeRenderPromise);
+    reportSetupTimings(performance.now() - renderStarted + (window.__setupPhaseOffset || 0));
 }
 
 // Smart-range cache: computed snap points for the active source baseline.

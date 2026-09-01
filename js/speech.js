@@ -81,7 +81,39 @@ function scoreVoice(voice, preferredLang) {
     return score;
 }
 
+// A manual override beats every heuristic. Scoring cannot know which enhanced
+// voices a given machine has actually downloaded, so window.setVoice() lets the
+// choice be made on the device that can hear it, per language, and persists.
+const VOICE_PREF_KEY = 'fluencyVoicePref';
+
+function readVoicePrefs() {
+    try { return JSON.parse(localStorage.getItem(VOICE_PREF_KEY) || '{}'); }
+    catch (_) { return {}; }
+}
+
+function setVoice(nameFragment, langPrefix = 'en') {
+    const prefs = readVoicePrefs();
+    if (nameFragment) prefs[langPrefix] = String(nameFragment);
+    else delete prefs[langPrefix];
+    localStorage.setItem(VOICE_PREF_KEY, JSON.stringify(prefs));
+    const chosen = selectVoice(window.speechSynthesis?.getVoices() || [],
+                              langPrefix === 'en' ? 'en-US' : langPrefix);
+    console.log(nameFragment
+        ? `Voice for "${langPrefix}" pinned to something matching "${nameFragment}" — now: ${chosen?.name}`
+        : `Voice override for "${langPrefix}" cleared — now: ${chosen?.name}`);
+    return chosen?.name || null;
+}
+
 function selectVoice(voices, preferredLang) {
+    const langPrefix = String(preferredLang || '').toLowerCase().split('-')[0];
+    const pinned = readVoicePrefs()[langPrefix];
+    if (pinned) {
+        const needle = pinned.toLowerCase();
+        const match = voices.find(voice =>
+            voiceIdentity(voice).includes(needle)
+            && String(voice.lang || '').toLowerCase().startsWith(langPrefix));
+        if (match) return match;
+    }
     return voices
         .map((voice, index) => ({ voice, index, score: scoreVoice(voice, preferredLang) }))
         .filter(entry => entry.score !== null)
@@ -163,3 +195,4 @@ if (window.speechSynthesis) {
 
 window.speakWord = speakWord;
 window.listVoices = listVoices;
+window.setVoice = setVoice;
