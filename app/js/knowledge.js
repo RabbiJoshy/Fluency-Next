@@ -296,7 +296,8 @@ function getCardKnowledgeSummary(card) {
 
 function getItemProgressForParent(parentWordId) {
     const source = itemProgressData || {};
-    const sourceSize = Object.keys(source).length;
+    // O(1) staleness check — see the note on window.bumpProgressEpoch.
+    const sourceSize = window.__progressEpoch || 0;
     if (indexedItemProgressSource !== source || indexedItemProgressSize !== sourceSize) {
         itemProgressByParent = new Map();
         for (const item of Object.values(source)) {
@@ -458,6 +459,7 @@ async function saveKnowledgeProgress(card, items, isCorrect) {
         existing.lastSeen = timestamp;
         existing.label = item.label;
         itemProgressData[item.itemId] = existing;
+        window.bumpProgressEpoch?.();
 
         sendOrQueue({
             action: 'saveItem',

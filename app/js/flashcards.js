@@ -2398,7 +2398,14 @@ async function goBackToSetup() {
     // on screen first, and show progress while the rest runs.
     const levelSelectorEl = document.getElementById('levelSelector');
     if (levelSelectorEl) levelSelectorEl.setAttribute('aria-busy', 'true');
-    await new Promise(resolve => requestAnimationFrame(resolve));
+    // Yield once so the panel paints before the rebuild blocks. requestAnimationFrame
+    // alone is not safe here: a hidden or backgrounded tab never fires it, so
+    // switching away mid-navigation left this awaiting forever with the loading
+    // overlay stuck on screen. The timeout guarantees the yield ends either way.
+    await new Promise(resolve => {
+        requestAnimationFrame(resolve);
+        setTimeout(resolve, 50);
+    });
 
     // Always load PPM data if available (needed for coverage bar even in CEFR mode)
     const ppmStarted = performance.now();

@@ -235,8 +235,8 @@ function logout() {
     // Clean the legacy sessionStorage guest marker too, in case it's lingering.
     sessionStorage.removeItem('flashcardGuestSession');
     currentUser = null;
-    progressData = {};
-    itemProgressData = {};
+    progressData = {}; window.bumpProgressEpoch?.();
+    itemProgressData = {}; window.bumpProgressEpoch?.();
     levelEstimates = {};
     markedDoneLevels = {};
     document.getElementById('userInfo').classList.add('hidden');
@@ -530,7 +530,7 @@ async function loadLegacyProgress(cacheKey, cached) {
     }
 
     const previousUiState = getProgressUiFingerprint();
-    progressData = {};
+    progressData = {}; window.bumpProgressEpoch?.();
     const mergeWords = result => {
         if (!result?.success || !Array.isArray(result.data?.progress)) return;
         result.data.progress.forEach(item => {
@@ -549,7 +549,7 @@ async function loadLegacyProgress(cacheKey, cached) {
     mergeWords(normalResult);
     mergeWords(artistResult);
     if (itemResult?.success && Array.isArray(itemResult.data?.items)) {
-        itemProgressData = {};
+        itemProgressData = {}; window.bumpProgressEpoch?.();
         itemResult.data.items.forEach(item => {
             itemProgressData[item.itemId] = { ...item };
         });
@@ -620,8 +620,8 @@ async function loadUserProgressFromSheet() {
         try {
             const { progress, itemProgress, estimates, doneLevels, backendSchema } =
                 typeof raw === 'string' ? JSON.parse(raw) : raw;
-            progressData = progress || {};
-            itemProgressData = itemProgress || {};
+            progressData = progress || {}; window.bumpProgressEpoch?.();
+            itemProgressData = itemProgress || {}; window.bumpProgressEpoch?.();
             levelEstimates = estimates || {};
             markedDoneLevels = doneLevels || {};
             progressBackendSchemaVersion = Number(backendSchema) >= 4 ? Number(backendSchema) : 0;
@@ -702,7 +702,7 @@ async function loadUserProgressFromSheet() {
         }
 
         const previousUiState = getProgressUiFingerprint();
-        progressData = {};
+        progressData = {}; window.bumpProgressEpoch?.();
 
         if (progressResult?.success && Array.isArray(progressResult.data?.progress)) {
             progressResult.data.progress.forEach(item => {
@@ -721,7 +721,7 @@ async function loadUserProgressFromSheet() {
         }
 
         if (itemResult?.success && Array.isArray(itemResult.data?.items)) {
-            itemProgressData = {};
+            itemProgressData = {}; window.bumpProgressEpoch?.();
             itemResult.data.items.forEach(item => {
                 itemProgressData[item.itemId] = {
                     itemId: item.itemId,
@@ -833,6 +833,9 @@ async function saveWordProgress(card, isCorrect) {
     progressData[wordId].lastSeen = timestamp;
     progressData[wordId].word = word;
     progressData[wordId].language = language;
+    // Invalidate the progress/knowledge indexes: they no longer count keys to
+    // detect this, so an answer has to say so.
+    window.bumpProgressEpoch?.();
 
     // Coalesce whole-state cache snapshots outside the answer interaction.
     // The per-answer sync operation below is still durably queued immediately.

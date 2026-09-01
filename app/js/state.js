@@ -202,3 +202,12 @@ for (const key of Object.keys(state)) {
 // Expose constants on globalThis as read-only
 globalThis.percentageLevels = percentageLevels;
 globalThis.speechLangCodes  = speechLangCodes;
+
+// Progress mutation counter. The progress and knowledge indexes used to check
+// whether they were stale with Object.keys(source).length — an O(n) scan on
+// every lookup, purely to validate a cache. During a setup render that ran
+// 15,776 times over 6,169 progress rows and 3,341 knowledge rows, costing
+// ~2.2s of the ~3.5s rebuild and doing no useful work. Bumping a counter when
+// progress actually changes makes the same check O(1).
+window.__progressEpoch = 0;
+window.bumpProgressEpoch = () => { window.__progressEpoch = (window.__progressEpoch || 0) + 1; };
