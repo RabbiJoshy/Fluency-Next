@@ -1,39 +1,111 @@
 import './state.js?v=20260825ak';
 
-// Apple exposes several English variants with the same friendly name, while
-// voiceURI is often the only place that distinguishes a downloaded premium or
-// enhanced voice from its noticeably flatter compact counterpart. Rank both
-// fields together for English; other languages retain their established
-// selection order below.
-function selectAppleEnglishVoice(voices, preferredLang = 'en-US') {
-    const preferredLocale = preferredLang.toLowerCase();
-    const preferredNames = preferredLocale === 'en-gb'
-        ? ['serena', 'daniel', 'oliver', 'ava', 'zoe', 'samantha', 'alex']
-        : ['ava', 'zoe', 'samantha', 'nathan', 'tom', 'alex', 'allison', 'daniel'];
+// One scorer for every language. English used to have its own selector that
+// scored premium/enhanced/siri/apple but had no rule for Google or Microsoft
+// voices at all, while the other languages explicitly preferred Google. On
+// Chrome that left every en-US voice tied on the same score and the winner
+// decided by list order — which is how a 90s-robot Eloquence voice could come
+// out on top. Divergent paths were the bug; there is now one.
 
+// Never acceptable. Apple's novelty set plus the Eloquence family (macOS 26),
+// which is the DECtalk-style robot voice. Matched against name AND voiceURI,
+// because the URI is sometimes the only place the family shows up.
+const REJECTED_VOICES = new RegExp([
+    // novelty
+    'albert', 'bad news', 'bahh', 'bells', 'boing', 'bubbles', 'cellos',
+    'good news', 'jester', 'organ', 'superstar', 'trinoids', 'whisper',
+    'wobble', 'zarvox', 'fred', 'junior', 'ralph', 'kathy', 'princess',
+    // eloquence — the robot ones
+    'eloquence', 'eddy', 'flo', 'grandma', 'grandpa', 'reed', 'rocko',
+    'sandy', 'shelley',
+    // low-quality open-source fallbacks on Linux/Android
+    'espeak', 'pico'
+].join('|'), 'i');
+
+// Per-language preferred voices, best first. Names only — quality tiers below
+// outrank these, so a "Premium" voice still wins over a plain named one.
+const PREFERRED_VOICE_NAMES = {
+    'en-gb': ['serena', 'daniel', 'kate', 'oliver', 'stephanie', 'ava', 'samantha'],
+    'en': ['samantha', 'ava', 'allison', 'susan', 'zoe', 'evan', 'nathan', 'tom', 'alex'],
+    'es': ['mónica', 'monica', 'paulina', 'marisol', 'jorge', 'juan', 'diego'],
+    'fr': ['audrey', 'aurelie', 'thomas', 'amelie'],
+    'nl': ['xander', 'ellen', 'claire'],
+    'it': ['alice', 'luca', 'federica'],
+    'pt': ['luciana', 'joana', 'catarina'],
+    'pl': ['zosia', 'krzysztof', 'ewa'],
+    'sv': ['alva', 'klara', 'oskar']
+};
+
+function voiceIdentity(voice) {
+    return `${voice.name || ''} ${voice.voiceURI || ''}`.toLowerCase();
+}
+
+/**
+ * Score a voice for a target locale. Higher is better; null means unusable.
+ * The quality tiers matter far more than the name list: a "Google UK English"
+ * or an "Enhanced" system voice beats a preferred-by-name compact one.
+ */
+function scoreVoice(voice, preferredLang) {
+    const identity = voiceIdentity(voice);
+    if (REJECTED_VOICES.test(identity)) return null;
+
+    const locale = String(voice.lang || '').toLowerCase().replace('_', '-');
+    const preferredLocale = String(preferredLang || '').toLowerCase().replace('_', '-');
+    const langPrefix = preferredLocale.split('-')[0];
+    if (!locale.startsWith(langPrefix)) return null;
+
+    let score = 0;
+    if (locale === preferredLocale) score += 30;
+
+    // Quality tiers, in the order they actually sound.
+    if (identity.includes('premium')) score += 140;
+    else if (identity.includes('enhanced')) score += 125;
+    else if (identity.includes('neural')) score += 120;
+    else if (identity.includes('natural')) score += 118;
+    else if (identity.includes('siri')) score += 110;
+    // Chrome's bundled voices are consistently good and were the missing rule.
+    else if (identity.includes('google')) score += 100;
+    else if (identity.includes('microsoft')) score += 70;
+
+    const names = PREFERRED_VOICE_NAMES[preferredLocale]
+        || PREFERRED_VOICE_NAMES[langPrefix] || [];
+    const nameIndex = names.findIndex(name => identity.includes(name));
+    if (nameIndex >= 0) score += 40 - nameIndex;
+
+    // Compact/low-quality variants are a last resort: iOS exposes only these
+    // until a fuller system voice has been downloaded.
+    if (identity.includes('compact')) score -= 90;
+    if (voice.localService === false) score += 5;   // network voices are usually newer
+    if (voice.default) score += 3;
+
+    return score;
+}
+
+function selectVoice(voices, preferredLang) {
     return voices
-        .map((voice, index) => {
-            const identity = `${voice.name || ''} ${voice.voiceURI || ''}`.toLowerCase();
-            const locale = String(voice.lang || '').toLowerCase();
-            let score = 0;
-
-            if (locale === preferredLocale) score += 24;
-            if (identity.includes('premium')) score += 140;
-            if (identity.includes('enhanced')) score += 125;
-            if (identity.includes('siri')) score += 115;
-            if (identity.includes('natural')) score += 105;
-            if (identity.includes('apple')) score += 12;
-
-            const nameIndex = preferredNames.findIndex(name => identity.includes(name));
-            if (nameIndex >= 0) score += 50 - nameIndex;
-
-            // Keep compact voices as a last resort: iOS may expose only these
-            // until a higher-quality system voice has been downloaded.
-            if (identity.includes('compact')) score -= 90;
-
-            return { voice, score, index };
-        })
+        .map((voice, index) => ({ voice, index, score: scoreVoice(voice, preferredLang) }))
+        .filter(entry => entry.score !== null)
         .sort((a, b) => b.score - a.score || a.index - b.index)[0]?.voice || null;
+}
+
+/**
+ * Console helper: window.listVoices() prints every voice the device offers
+ * with the score this module gives it, so a bad pick can be diagnosed from the
+ * machine that has the bad voice rather than guessed at.
+ */
+function listVoices(preferredLang = 'en-US') {
+    const voices = window.speechSynthesis?.getVoices() || [];
+    const scored = voices.map(voice => ({
+        name: voice.name,
+        lang: voice.lang,
+        local: voice.localService,
+        score: scoreVoice(voice, preferredLang),
+        uri: voice.voiceURI
+    })).sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+    console.table(scored);
+    console.log(`${voices.length} voices; winner for ${preferredLang}:`,
+                selectVoice(voices, preferredLang)?.name || '(none)');
+    return scored;
 }
 
 // Speak a word in the target language. The optional completion callback lets
@@ -71,26 +143,7 @@ function speakWord(text, useEnglish = false, onComplete = null) {
 
     const voices = window.speechSynthesis.getVoices();
     if (voices.length > 0) {
-        const langPrefix = langCode.split('-')[0];
-        // Exclude novelty and character voices that sound bad
-        const badVoices = /Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Fred|Good News|Jester|Junior|Organ|Ralph|Superstar|Trinoids|Whisper|Wobble|Zarvox|Eddy|Flo|Grandma|Grandpa|Rocko|Reed|Sandy|Shelley/;
-        const matchingVoices = voices.filter(v => v.lang.startsWith(langPrefix) && !badVoices.test(v.name));
-
-        // Tier 1: Premium voices (Natural/Siri/Enhanced)
-        // Tier 2: Google voices (Chrome)
-        // Tier 3: Best named voices in preference order
-        const findByName = (name) => matchingVoices.find(v => v.name.includes(name));
-        const preferredVoice = useEnglish
-            ? selectAppleEnglishVoice(matchingVoices, langCode)
-            : findByName('Natural') || findByName('Premium') || findByName('Siri')
-                || findByName('Enhanced')
-                || findByName('Google')
-                || findByName('Samantha') || findByName('Ava') || findByName('Paulina')
-                || findByName('Mónica') || findByName('Kathy') || findByName('Moira')
-                || findByName('Karen') || findByName('Tessa')
-                || findByName('Daniel') || findByName('Rishi')
-                || matchingVoices[0];
-
+        const preferredVoice = selectVoice(voices, langCode);
         if (preferredVoice) {
             utterance.voice = preferredVoice;
             utterance.lang = preferredVoice.lang;
@@ -109,3 +162,4 @@ if (window.speechSynthesis) {
 }
 
 window.speakWord = speakWord;
+window.listVoices = listVoices;
