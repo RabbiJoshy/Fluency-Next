@@ -1969,7 +1969,14 @@ async function renderRangeSelector() {
             reviewEndPct: words.length > 0 ? 100 * (knownCount + reviewCount) / words.length : 100
         });
     }
-    const firstIncomplete = ranges.findIndex(range => range.available && range.pct < 100);
+    // Land on the first set that actually has something new, then fall back to
+    // one that has cards due. Testing the rounded percentage instead meant a
+    // large set with a single unseen card rounded to 100 and was skipped, so
+    // that card could never be reached from the setup screen.
+    const firstUnseen = ranges.findIndex(range => range.available && range.unseenCount > 0);
+    const firstIncomplete = firstUnseen >= 0
+        ? firstUnseen
+        : ranges.findIndex(range => range.available && range.reviewCount > 0);
     const lastAvailable = ranges.reduce((last, range, index) => range.available ? index : last, -1);
     const initialIndex = firstIncomplete >= 0 ? firstIncomplete : Math.max(0, lastAvailable);
     const completedCount = ranges.filter(range => range.available && range.pct === 100).length;
@@ -1986,6 +1993,7 @@ async function renderRangeSelector() {
         return `<button type="button" class="${classes}"
                     data-index="${index}" data-range="${range.range}"
                     data-rank-basis="${rankBasis}" data-pct="${range.pct}"
+                    data-unseen="${range.unseenCount}" data-review="${range.reviewCount}"
                     style="--set-known-end: ${range.knownPct}%; --set-review-end: ${range.reviewEndPct}%"
                     role="radio" aria-checked="${index === initialIndex ? 'true' : 'false'}"
                     aria-label="Set ${index + 1}: ${range.knownCount} known, ${range.reviewCount} to review, ${range.unseenCount} unseen"
@@ -2062,14 +2070,28 @@ async function renderRangeSelector() {
         document.getElementById('studySetCurrentMeta').textContent =
             `${positionLabel} · ${range.knownCount} known · ${range.reviewCount} review · ${range.unseenCount} unseen`;
         const startBtn = document.getElementById('studySetStartBtn');
-        startBtn.textContent = range.unseenCount > 0
-            ? `Learn ${range.unseenCount} new card${range.unseenCount === 1 ? '' : 's'}`
-            : `Study Set ${index + 1} Again`;
+        // Three distinct states, because collapsing the last two is what made
+        // finished sets hand back every card in them. studyMode 'all' keeps no
+        // filter at all, so a set whose new cards were done re-served the
+        // twenty already known — the schedule said nothing was due, but the
+        // button started them anyway. 'all' is now only reached when there is
+        // genuinely nothing new and nothing due, and the label says so.
+        if (range.unseenCount > 0) {
+            startBtn.textContent =
+                `Learn ${range.unseenCount} new card${range.unseenCount === 1 ? '' : 's'}`;
+            startBtn.dataset.studyMode = 'new';
+        } else if (range.reviewCount > 0) {
+            startBtn.textContent =
+                `Review ${range.reviewCount} card${range.reviewCount === 1 ? '' : 's'}`;
+            startBtn.dataset.studyMode = 'review';
+        } else {
+            startBtn.textContent = `Study Set ${index + 1} again`;
+            startBtn.dataset.studyMode = 'all';
+        }
         startBtn.dataset.range = range.range;
         startBtn.dataset.rankBasis = rankBasis;
         startBtn.dataset.setNumber = String(index + 1);
         startBtn.dataset.levelSetCount = String(ranges.length);
-        startBtn.dataset.studyMode = range.unseenCount > 0 ? 'new' : 'all';
     };
     container.querySelectorAll('.study-set-dot').forEach(dot => {
         dot.addEventListener('click', () => {
@@ -2151,8 +2173,12 @@ function getNextStudySetMeta(rangeString) {
     const dots = Array.from(document.querySelectorAll('#rangeSelector .study-set-dot'));
     const currentIndex = dots.findIndex(dot => dot.dataset.range === rangeString);
     if (currentIndex < 0) return null;
-    const next = dots.slice(currentIndex + 1).find(dot =>
-        !dot.disabled && Number(dot.dataset.pct) < 100);
+    // Advance to a set that has something new, not merely one whose rounded
+    // percentage is under 100 — a large set with one unseen card rounds to 100
+    // and used to be skipped past.
+    const remaining = dots.slice(currentIndex + 1).filter(dot => !dot.disabled);
+    const next = remaining.find(dot => Number(dot.dataset.unseen || 0) > 0)
+        || remaining.find(dot => Number(dot.dataset.review || 0) > 0);
     if (!next) return null;
     return {
         range: next.dataset.range,
@@ -2229,7 +2255,8 @@ async function startNextStudyLevelFirstSet() {
         await next._rangeRenderPromise;
         const setDots = Array.from(document.querySelectorAll('#rangeSelector .study-set-dot'));
         const firstUnseenSet = setDots.find(dot =>
-            !dot.disabled && Number(dot.dataset.pct || 0) < 100);
+            !dot.disabled && (Number(dot.dataset.unseen || 0) > 0
+                              || Number(dot.dataset.review || 0) > 0));
         if (!firstUnseenSet) continue;
 
         await loadVocabularyData(firstUnseenSet.dataset.range, {
