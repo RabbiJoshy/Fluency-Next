@@ -120,7 +120,10 @@ function registerProgressCardSurface(fullId, surface) {
 
 function getProgressRecordsForCard(fullId, surface = '') {
     const source = progressData || {};
-    const sourceSize = Object.keys(source).length;
+    // O(1) staleness check: object identity catches a wholesale replacement,
+    // the epoch catches in-place writes. Counting keys here was the single
+    // biggest cost in rebuilding the setup screen.
+    const sourceSize = window.__progressEpoch || 0;
     if (indexedProgressSource !== source || indexedProgressSize !== sourceSize) {
         progressIdsBySurface = new Map();
         for (const [id, row] of Object.entries(source)) {
