@@ -2339,6 +2339,11 @@ function showFloatingBtns(show) {
 }
 
 async function goBackToSetup() {
+    // Rebuilding the level selector takes long enough to notice, and every
+    // other transition in the app announces itself. Without this the tap read
+    // as the app stalling rather than working — the same overlay Learn New and
+    // Review already use.
+    window.showAppLoading?.('Main menu', 'Updating your levels…');
     stopExampleAutoplay(true);
     // Hide app content, show setup
     const appContent = document.getElementById('appContent');
@@ -2425,6 +2430,7 @@ async function goBackToSetup() {
         total: 0,
         cardStats: {}
     };
+    window.hideAppLoading?.();
 }
 
 function foldSurfaceForm(value) {
