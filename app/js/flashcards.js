@@ -2396,9 +2396,11 @@ async function goBackToSetup() {
     await new Promise(resolve => requestAnimationFrame(resolve));
 
     // Always load PPM data if available (needed for coverage bar even in CEFR mode)
+    const ppmStarted = performance.now();
     if (!ppmData || ppmData.length === 0) {
         await loadPpmData(selectedLanguage);
     }
+    window.__setupPhaseOffset = performance.now() - ppmStarted;
 
     // Main-menu return is a fresh suggestion decision, not restoration of the
     // level that owned the set we just left. Route past levels whose available
