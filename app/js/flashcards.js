@@ -4268,14 +4268,10 @@ function updateCard({ announceHeadword = false } = {}) {
                     ? `<span class="pos-pill-pct sense-percentage">${Math.round(g.pct * 100)}%</span>` : '';
                 const assignmentState = !g.hasAssignedEvidence
                     ? '<span class="pos-pill-unassigned">Unassigned</span>' : '';
-                // Whether this reading is known. Recorded per (POS, headword),
-                // which is the granularity that survives this classifier's
-                // errors — they are near-misses inside one pill.
-                const kItem = window.knowledgeItemForPill?.(card, g.pos, g.headword);
-                const kState = kItem ? window.getKnowledgeItemState?.(card, kItem) : null;
-                const known = kState && (kState.status === 'known' || kState.known
-                    || kState.status === 'learned');
-                const mark = known ? '<span class="pos-pill-known">✓</span>' : '';
+                // No known-tick here. A check mark on this row read as "you
+                // answered this", which is what the tick means everywhere else
+                // on the card; here it meant something narrower and only added
+                // a third symbol to an already dense line.
                 return `
                 <section class="meaning-pos-section pos-collapsible${open ? ' is-open' : ''}"
                          data-pos="${pos}" data-group-key="${escapeCardText(key.replace(/\u0000/g, '~~'))}" style="${accent}">
@@ -4285,7 +4281,7 @@ function updateCard({ announceHeadword = false } = {}) {
                         <span class="pos-section-label">${escapeCardText(pos)}</span>
                         ${hw}
                         <span class="pos-section-summary">${summaryHTML}${extra}</span>
-                        ${assignmentState}${pct}${mark}
+                        ${assignmentState}${pct}
                         <span class="pos-section-chevron">${open ? '\u25BE' : '\u25B8'}</span>
                     </button>
                     <div class="meaning-pos-rows">${rows.join('')}</div>
@@ -4405,7 +4401,10 @@ function updateCard({ announceHeadword = false } = {}) {
             if (m.exampleOnly) return;
             const isSelected = idx === currentMeaningIndex;
             const rowStateClasses = isSelected ? ' is-current-sense' : '';
-            const bgColor = 'rgba(var(--sense-match-rgb), 0.08)';
+            // One flat fill for every row, matching the POS header above them
+            // and the active row below. Activeness is the outline, not a
+            // different shade.
+            const bgColor = 'rgba(var(--sense-match-rgb), 0.10)';
             const textColor = isSelected ? 'var(--text-primary)' : 'var(--text-primary)';
             const borderStyle = '';
             const isMWE = m.pos === 'MWE';
