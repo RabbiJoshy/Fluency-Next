@@ -8,6 +8,12 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 APP_ROOT = REPOSITORY_ROOT / "app"
 
 
+# The service worker's cache name, pinned so that bumping an asset version
+# without bumping the cache fails here rather than silently serving a stale
+# shell. Update alongside app/service-worker.js.
+EXPECTED_CACHE_NAME = "flashcards-v324"
+
+
 class ProductShellTests(unittest.TestCase):
     def test_existing_fluency_entrypoint_and_core_surfaces_are_present(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
@@ -311,7 +317,7 @@ class ProductShellTests(unittest.TestCase):
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
         self.assertIn("/js/main.js?v=20260831b", worker)
-        self.assertIn("const CACHE_NAME = 'flashcards-v313'", worker)
+        self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
         config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))
@@ -321,7 +327,16 @@ class ProductShellTests(unittest.TestCase):
         worker = (APP_ROOT / "service-worker.js").read_text(encoding="utf-8")
 
         sync_url = config["publicServices"]["progressSyncUrl"]
-        self.assertRegex(sync_url, r"^https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec$")
+        # The guarantee is that the shipped config points at a real, public,
+        # deployable endpoint over TLS — not a localhost rig, a placeholder, or
+        # anything requiring a secret the static build cannot carry. It pinned
+        # the Apps Script URL shape until progress moved to the Cloudflare
+        # Worker; both remain acceptable so a rollback does not fail the suite.
+        self.assertRegex(
+            sync_url,
+            r"^https://(?:script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec"
+            r"|[A-Za-z0-9-]+\.[A-Za-z0-9-]+\.workers\.dev)$",
+        )
         self.assertIn("config?.publicServices?.progressSyncUrl", auth)
         self.assertIn("secrets.googleScriptUrl || GOOGLE_SCRIPT_URL", auth)
         self.assertIn('js/auth.js?v=20260827a', html)
@@ -365,7 +380,7 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("spotify-playing-amplitude", css)
         self.assertNotIn("spotify-playing-ripple", css)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("const CACHE_NAME = 'flashcards-v313'", worker)
+        self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_audit_accounts_and_flags_use_release_provenance(self) -> None:
         auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")

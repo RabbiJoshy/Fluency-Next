@@ -324,7 +324,18 @@ def build_inactive_run_candidate(
                     "source_reference": "mwe-merged/v1",
                     "source": "mwe-merged",
                     "assignment_status": "assigned",
-                    "context": "multiword expression",
+                    # No context. It used to carry MULTIWORD_DEFINITION, which
+                    # is the literal string "multiword expression" — the same
+                    # thing part_of_speech already says two lines up. It filled
+                    # the slot rather than describing usage, and rendered on
+                    # every one of these cards as a second, smaller label
+                    # repeating the first. Genuine contexts come from
+                    # SpanishDict; none of these did.
+                    #
+                    # The constant stays in wsd/multiword.py: there it is the
+                    # sense definition the matcher embeds ("de nuevo" (PHRASE):
+                    # again — multiword expression), which is load-bearing and
+                    # covered by tests. Only the copy into the deck is dropped.
                     "metadata": {
                         "source_adapter": "mwe-merged/v1",
                         "multiword_expression": expression,
@@ -362,7 +373,7 @@ def build_inactive_run_candidate(
             }
             computed = computed_here.get(sentence_id)
             if computed is not None:
-                example_metadata["wsd"] = {
+                wsd_metadata = {
                     "selection_projection": wsd_selection_projection,
                     "publication_projection": wsd_publication_projection,
                     "supported_level": computed.get("emitted_level"),
@@ -375,6 +386,12 @@ def build_inactive_run_candidate(
                         "selected_tuple": computed["selected_tuple"],
                     },
                 }
+                recommendation = (computed.get("evidence") or {}).get(
+                    "gemini_recommendation"
+                )
+                if isinstance(recommendation, dict):
+                    wsd_metadata["gemini_recommendation"] = dict(recommendation)
+                example_metadata["wsd"] = wsd_metadata
             title_id = str((sentence["source"].get("document") or {}).get("title_id") or "")
             if title_id and title_id in source_titles:
                 example_metadata["source_title"] = source_titles[title_id]
