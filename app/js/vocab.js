@@ -2126,11 +2126,19 @@ async function loadVocabularyData(rangeString, opts = {}) {
         }
 
         if (flashcards.length === 0) {
-            alert(studyMode === 'review'
-                ? 'No current meanings or expressions remain in this review.'
-                : 'No flashcards could be built for this set.');
+            // Report rather than dead-end. The auto-continue path passes
+            // silentIfEmpty because it has somewhere else to go: a set that
+            // looked incomplete when the dots were rendered can be finished by
+            // the time the current set ends (lemma merging marks siblings seen
+            // across sets), and alerting there stranded the learner on an
+            // empty deck with the completion modal already dismissed.
+            if (!opts.silentIfEmpty) {
+                alert(studyMode === 'review'
+                    ? 'No current meanings or expressions remain in this review.'
+                    : 'No flashcards could be built for this set.');
+            }
             document.getElementById('loadingMessage').style.display = 'none';
-            return;
+            return false;
         }
 
         // New-card decks report how many cards in the stable set were already

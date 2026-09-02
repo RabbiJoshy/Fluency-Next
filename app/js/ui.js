@@ -2309,12 +2309,18 @@ async function startNextStudyLevelFirstSet() {
                               || Number(dot.dataset.review || 0) > 0));
         if (!firstUnseenSet) continue;
 
-        await loadVocabularyData(firstUnseenSet.dataset.range, {
+        // Same staleness applies here: the dot said this set had cards, but
+        // the deck build applies lemma merging and the estimate on top and can
+        // still come back empty. Keep walking to the next level rather than
+        // alerting and abandoning the search mid-way.
+        const built = await loadVocabularyData(firstUnseenSet.dataset.range, {
             rankBasis: firstUnseenSet.dataset.rankBasis || 'stable',
             setNumber: Number(firstUnseenSet.dataset.index) + 1,
             levelSetCount: setDots.length,
-            levelNumber: nextMeta.levelNumber
+            levelNumber: nextMeta.levelNumber,
+            silentIfEmpty: true
         });
+        if (built === false) continue;
         return;
     }
 }
