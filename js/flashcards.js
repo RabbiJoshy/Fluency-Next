@@ -1707,22 +1707,38 @@ function initializeApp() {
         window.showAppLoading?.(loadingTitle, 'Preparing your next cards…');
         hideDeckCompleteModal();
         try {
+            // The set dots were counted when setup last rendered, which can be
+            // several sets ago: lemma merging marks siblings seen across sets,
+            // so the set queued as "next" may have finished in the meantime.
+            // loadVocabularyData reports that with false rather than alerting,
+            // and we walk on to the next level instead of stranding the
+            // learner on an empty deck with the modal already dismissed.
+            let advanced = false;
             if (action === 'next-set' && nextRange) {
-                await loadVocabularyData(nextRange, {
+                advanced = await loadVocabularyData(nextRange, {
                     rankBasis: nextRankBasis,
                     setNumber: nextSetNumber,
-                    levelSetCount
-                });
-            } else if (action === 'next-level') {
+                    levelSetCount,
+                    silentIfEmpty: true
+                }) !== false;
+            }
+            if (!advanced) {
                 await window.startNextStudyLevelFirstSet?.();
             }
         } catch (error) {
             console.error('Could not continue from completed set:', error);
-            // Reopen as a stable error state. Automatically retrying here
-            // would create a loop when the next level genuinely cannot load.
+            // Reopen as a stable state. Retrying automatically would loop when
+            // there genuinely is nothing left, so distinguish "finished
+            // everything" from a real failure and say which.
             await window.showEndOfDeckOptions?.({ autoContinue: false });
             const message = document.getElementById('completeMessage');
-            if (message) message.textContent = 'Could not open the next level. Please try again.';
+            const exhausted = /no next study level|distinct next study level/i
+                .test(String(error && error.message));
+            if (message) {
+                message.textContent = exhausted
+                    ? 'Nothing left to study here — pick another level from the main menu.'
+                    : 'Could not open the next level. Please try again.';
+            }
         } finally {
             this.dataset.loading = 'false';
             this.disabled = false;
@@ -2543,6 +2559,15 @@ function condenseSenseContext(raw) {
     if (!text) return '';
     // The row's POS pill already reads PHRASE; repeating it as a context adds
     // a line of text to 343 rows and distinguishes none of them.
+    //
+    // TODO(pipeline): this belongs upstream, not here. The string is a
+    // hardcoded placeholder from our own pipeline, not editorial content —
+    // MULTIWORD_DEFINITION in src/fluency/wsd/multiword.py, written out by
+    // release/run_candidate.py alongside part_of_speech: "PHRASE". Checked
+    // against the shipped decks: all 343 come from source "mwe-merged" and
+    // all 3,046 real contexts come from "spanishdict". Stop emitting it there
+    // and this branch can go; deferred so it lands with a deck rebuild rather
+    // than mid-session.
     if (text.toLowerCase() === 'multiword expression') return '';
     for (const [pattern, replacement] of SENSE_CONTEXT_RULES) {
         if (pattern.test(text)) return text.replace(pattern, replacement).trim();
