@@ -4004,13 +4004,15 @@ function updateCard({ announceHeadword = false } = {}) {
                 stacked ? (pos === activeDisplayPos ? 'is-active' : 'is-inactive') : ''
             )
         ).join('');
-        frontPOSEl.style.display = allPOS.length > 0 ? 'grid' : 'none';
+        // Flex, not grid: the legend is a run of text now rather than a
+        // row of boxes, and it centres under the headword.
+        frontPOSEl.style.display = allPOS.length > 0 ? 'flex' : 'none';
     } else if (card.partOfSpeech) {
         frontPOSEl.innerHTML = renderFrontPosUnit(
             card.partOfSpeech,
             isVerbPos(card.partOfSpeech)
         );
-        frontPOSEl.style.display = 'grid';
+        frontPOSEl.style.display = 'flex';
     } else {
         frontPOSEl.style.display = 'none';
     }
@@ -5871,6 +5873,13 @@ function selectPartOfSpeech(event, meaningIndex, pos) {
     currentExampleIndex = 0;
     currentMWEIndex = 0;
     _explicitMeaningSelectionKey = meaningSelectionKey(card, meaningIndex);
+    // Choosing a part of speech expands that section and collapses the rest,
+    // rather than adding to whatever was already open. Only one set of senses
+    // is ever on screen, which is what pays for the legend's own line above —
+    // and it makes the legend a real chooser rather than a filter that
+    // accumulates.
+    card._expandedPos = new Set([lemmaPosGroupKeyForMeaning(card.meanings[meaningIndex])]);
+    card._backSectionsManuallySet = true;
     updateCard();
 }
 
