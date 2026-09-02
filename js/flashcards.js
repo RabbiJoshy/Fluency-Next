@@ -2502,6 +2502,54 @@ function escapeCardText(value) {
     })[character]);
 }
 
+/**
+ * Condense a sense context for display. The stored text is untouched; this is
+ * only how it reads on the card.
+ *
+ * Measured over the Spanish speech and Bad Bunny lyrics decks — 3,389 contexts,
+ * 1,524 distinct — two families account for nearly all the bulk while the
+ * median context is already only 12 characters:
+ *
+ *   343 (10%)  exactly "multiword expression", every one of them on a row
+ *              whose POS is already PHRASE, so it repeats the row's own label
+ *   221 (7%)   open "used to …" / "used in …", averaging ~30 characters
+ *
+ * On a card where every context is a usage note, "used to" is a frame that
+ * says nothing: "used to indicate origin" carries no more than "indicates
+ * origin". Rewriting to the plain verb keeps the relation that "origin" alone
+ * would lose. Together these cut context text by ~17%.
+ */
+const SENSE_CONTEXT_RULES = [
+    [/^used to indicate\s+/i, 'indicates '],
+    [/^used to express\s+/i, 'expresses '],
+    [/^used to talk about\s+/i, 'about '],
+    [/^used to ask for\s+/i, 'asks for '],
+    [/^used to ask\s+/i, 'asks '],
+    [/^used to introduce\s+/i, 'introduces '],
+    [/^used to describe\s+/i, 'describes '],
+    [/^used to refer to\s+/i, 'refers to '],
+    [/^used to define\s+/i, 'defines '],
+    [/^used to elicit\s+/i, 'elicits '],
+    [/^used to give\s+/i, 'gives '],
+    [/^used to make\s+/i, 'makes '],
+    [/^used to call\s+/i, 'calls '],
+    [/^used in\s+/i, 'in '],
+    [/^used with\s+/i, 'with '],
+    [/^used\s+/i, '']
+];
+
+function condenseSenseContext(raw) {
+    const text = String(raw || '').trim();
+    if (!text) return '';
+    // The row's POS pill already reads PHRASE; repeating it as a context adds
+    // a line of text to 343 rows and distinguishes none of them.
+    if (text.toLowerCase() === 'multiword expression') return '';
+    for (const [pattern, replacement] of SENSE_CONTEXT_RULES) {
+        if (pattern.test(text)) return text.replace(pattern, replacement).trim();
+    }
+    return text;
+}
+
 function renderSenseContextHTML(context, { leadingDot = true } = {}) {
     const raw = String(context || '').trim();
     if (!raw) return '';
@@ -2509,11 +2557,16 @@ function renderSenseContextHTML(context, { leadingDot = true } = {}) {
         ? parseSpanishDictUsageContext(raw)
         : null;
     if (!usage) {
-        return `<span class="meaning-context">${leadingDot ? '· ' : ''}${escapeCardText(raw)}</span>`;
+        // Condense after the usage parse, so the SpanishDict matcher still
+        // sees the original wording.
+        const shown = condenseSenseContext(raw);
+        if (!shown) return '';
+        return `<span class="meaning-context">${leadingDot ? '· ' : ''}${escapeCardText(shown)}</span>`;
     }
 
-    const detail = usage.detail
-        ? `<span class="meaning-context">${leadingDot ? '· ' : ''}${escapeCardText(usage.detail)}</span> `
+    const shownDetail = condenseSenseContext(usage.detail);
+    const detail = shownDetail
+        ? `<span class="meaning-context">${leadingDot ? '· ' : ''}${escapeCardText(shownDetail)}</span> `
         : '';
     const title = escapeCardText(`SpanishDict usage note: ${usage.raw}`);
     const label = escapeCardText(usage.label);
