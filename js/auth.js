@@ -425,6 +425,15 @@ let progressCacheTimer = null;
 let progressCacheIdleHandle = null;
 let progressCacheWrite = Promise.resolve();
 
+// Progress changes rarely between sessions, but the client refetched all of it
+// on every startup — ~9,500 rows and 1.4MB — to re-learn what it already had
+// cached. These track how current the cache is so a startup can ask only for
+// what changed. A periodic full sync still runs, because a delta cannot report
+// rows that were deleted.
+let progressSyncVersion = '';
+let progressLastFullSyncAt = 0;
+const FULL_SYNC_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000;
+
 function flushProgressCache() {
     if (progressCacheTimer !== null) clearTimeout(progressCacheTimer);
     if (progressCacheIdleHandle !== null && window.cancelIdleCallback) {
@@ -440,6 +449,10 @@ function flushProgressCache() {
         estimates: levelEstimates,
         doneLevels: markedDoneLevels,
         backendSchema: progressBackendSchemaVersion >= 4 ? progressBackendSchemaVersion : 0,
+        // Watermark for incremental sync: the newest updated_at the backend has
+        // sent us. Next startup asks only for rows changed after this.
+        syncVersion: progressSyncVersion,
+        lastFullSyncAt: progressLastFullSyncAt,
         updatedAt: Date.now()
     };
     // Serialize once per answer burst, outside the tap/swipe handler. IndexedDB
@@ -452,7 +465,8 @@ function flushProgressCache() {
         localStorage.setItem(`progress_cache_${currentUser.initials}`, JSON.stringify({
             progress: record.progress, itemProgress: record.itemProgress,
             estimates: record.estimates, doneLevels: record.doneLevels,
-            backendSchema: record.backendSchema
+            backendSchema: record.backendSchema,
+            syncVersion: record.syncVersion, lastFullSyncAt: record.lastFullSyncAt
         }));
     } catch (_) {
         // Cache is best-effort; the durable queue still owns remote writes.
@@ -618,8 +632,11 @@ async function loadUserProgressFromSheet() {
     const applyCachedProgress = raw => {
         if (!raw) return false;
         try {
-            const { progress, itemProgress, estimates, doneLevels, backendSchema } =
+            const { progress, itemProgress, estimates, doneLevels, backendSchema,
+                    syncVersion, lastFullSyncAt } =
                 typeof raw === 'string' ? JSON.parse(raw) : raw;
+            progressSyncVersion = typeof syncVersion === 'string' ? syncVersion : '';
+            progressLastFullSyncAt = Number(lastFullSyncAt) || 0;
             progressData = progress || {}; window.bumpProgressEpoch?.();
             itemProgressData = itemProgress || {}; window.bumpProgressEpoch?.();
             levelEstimates = estimates || {};
@@ -667,6 +684,12 @@ async function loadUserProgressFromSheet() {
     // 2. Fetch fresh data from the single Progress tab. Word IDs still carry
     // the normal/artist bit, so one all-mode load preserves the old sharing.
     try {
+        // Ask only for what changed when the cache carries a watermark. A
+        // delta cannot report deletions, so a full sync still runs
+        // periodically and whenever there is nothing cached to build on.
+        const fullSyncDue = !progressSyncVersion
+            || (Date.now() - progressLastFullSyncAt) > FULL_SYNC_INTERVAL_MS;
+        const since = fullSyncDue ? null : progressSyncVersion;
         const [progressResult, itemResult] = await Promise.all([
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
@@ -674,7 +697,8 @@ async function loadUserProgressFromSheet() {
                     action: 'load',
                     sheet: 'Progress',
                     mode: 'all',
-                    user: currentUser.initials
+                    user: currentUser.initials,
+                    ...(since ? { since } : {})
                 })
             }).then(r => r.json()).catch(() => null),
             fetch(GOOGLE_SCRIPT_URL, {
@@ -683,7 +707,8 @@ async function loadUserProgressFromSheet() {
                     action: 'loadItems',
                     sheet: 'Progress',
                     mode: 'all',
-                    user: currentUser.initials
+                    user: currentUser.initials,
+                    ...(since ? { since } : {})
                 })
             }).then(r => r.json()).catch(() => null)
         ]);
@@ -702,7 +727,10 @@ async function loadUserProgressFromSheet() {
         }
 
         const previousUiState = getProgressUiFingerprint();
-        progressData = {}; window.bumpProgressEpoch?.();
+        // A delta reply describes only what changed, so the cached rows must
+        // survive. Only a full reply is authoritative enough to replace them.
+        const gotDelta = progressResult?.data?.delta === true;
+        if (!gotDelta) { progressData = {}; window.bumpProgressEpoch?.(); }
 
         if (progressResult?.success && Array.isArray(progressResult.data?.progress)) {
             progressResult.data.progress.forEach(item => {
@@ -721,7 +749,9 @@ async function loadUserProgressFromSheet() {
         }
 
         if (itemResult?.success && Array.isArray(itemResult.data?.items)) {
-            itemProgressData = {}; window.bumpProgressEpoch?.();
+            if (itemResult.data.delta !== true) {
+                itemProgressData = {}; window.bumpProgressEpoch?.();
+            }
             itemResult.data.items.forEach(item => {
                 itemProgressData[item.itemId] = {
                     itemId: item.itemId,
@@ -758,8 +788,18 @@ async function loadUserProgressFromSheet() {
         updateIncorrectButtonVisibility();
         updateTotalStatsButtonVisibility();
 
+        // Advance the watermark to the newest row either reply carried. On a
+        // full sync also stamp the time, so the next periodic full sync — the
+        // only thing that can notice a deleted row — is scheduled from here.
+        const newest = [progressResult?.data?.version, itemResult?.data?.version]
+            .filter(v => typeof v === 'string' && v)
+            .reduce((a, b) => (a > b ? a : b), progressSyncVersion || '');
+        if (newest) progressSyncVersion = newest;
+        if (!gotDelta) progressLastFullSyncAt = Date.now();
+        window.bumpProgressEpoch?.();
+
         // 3. Update cache
-        cacheProgressLocally();
+        cacheProgressLocally({ immediate: true });
 
         // Existing rows change far more often than rows are added. Returning
         // the full state comparison lets setup refresh its Known/Review/Unseen
