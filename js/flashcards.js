@@ -4004,15 +4004,13 @@ function updateCard({ announceHeadword = false } = {}) {
                 stacked ? (pos === activeDisplayPos ? 'is-active' : 'is-inactive') : ''
             )
         ).join('');
-        // Flex, not grid: the legend is a run of text now rather than a
-        // row of boxes, and it centres under the headword.
-        frontPOSEl.style.display = allPOS.length > 0 ? 'flex' : 'none';
+        frontPOSEl.style.display = allPOS.length > 0 ? 'grid' : 'none';
     } else if (card.partOfSpeech) {
         frontPOSEl.innerHTML = renderFrontPosUnit(
             card.partOfSpeech,
             isVerbPos(card.partOfSpeech)
         );
-        frontPOSEl.style.display = 'flex';
+        frontPOSEl.style.display = 'grid';
     } else {
         frontPOSEl.style.display = 'none';
     }
