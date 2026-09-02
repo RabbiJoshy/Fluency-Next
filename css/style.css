@@ -2561,7 +2561,7 @@
             flex-shrink: 0;
             color: rgb(var(--sense-match-rgb));
             font-family: var(--font-emphasis);
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 800;
             letter-spacing: 0.04em;
         }
@@ -2578,7 +2578,13 @@
             white-space: nowrap;
             color: var(--text-primary);
             font-family: var(--font-reading);
-            font-size: 16px;
+            /* Its own size, not --row-primary-size: that variable is set per
+               row by the content-aware tiers (.row-text-xl … -sm), so a header
+               sitting outside those containers only ever got the 17px
+               fallback while the rows it heads rendered at up to 22px. The
+               parent line then read as the smallest thing in its own group.
+               Fixed instead, since sub-row sizes vary with their content. */
+            font-size: 19px;
             font-weight: 650;
             line-height: 1.2;
         }
@@ -2631,9 +2637,11 @@
            header and the individual evidence values in its expanded rows. */
         .sense-percentage {
             color: rgb(var(--sense-match-rgb));
-            font-family: var(--font-data);
+            /* Ordinary text rather than the tabular data face: at 12px the
+               heavier figures drew more attention than a supporting number
+               deserves. Size still separates it. */
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 500;
             font-variant-numeric: tabular-nums;
             line-height: 1;
             white-space: nowrap;
@@ -2780,7 +2788,12 @@
 
         .meaning-pos-section .meaning-row {
             min-height: 48px;
-            background: #1b232e !important;
+            /* The same tint as the POS header above and the active row below.
+               This was an opaque #1b232e, which — with the header at 0.10 and
+               the active row at its own shade — meant an unselected sub-row
+               read as a third kind of element rather than a sibling of the
+               two. The border is what distinguishes active from inactive. */
+            background: rgba(var(--sense-match-rgb), 0.10) !important;
             border: 1px solid rgba(255, 255, 255, 0.16);
             transition: background 160ms ease, border-color 160ms ease,
                         box-shadow 160ms ease, transform 160ms ease;
@@ -2798,9 +2811,12 @@
         }
 
         .meaning-row.is-current-sense {
-            /* POS-tinted flat fill, not a fixed color — a verb-selected row
-               reads teal, an adjective-selected row reads amber, etc. */
-            background: rgba(var(--sense-match-rgb), 0.18) !important;
+            /* Same flat fill as every other row and as the POS header above
+               them. There used to be three different fills — 0.10 on the
+               header, 0.08 unselected, 0.18 selected — so an unselected
+               sub-row read as a third kind of thing rather than a sibling.
+               The 2px outline below is what marks the active row. */
+            background: rgba(var(--sense-match-rgb), 0.10) !important;
             border: 2px solid rgb(var(--sense-match-rgb));
             box-shadow: none;
             transform: none;
@@ -3005,8 +3021,11 @@
         .meaning-context {
             font-size: 13px;
             font-weight: 400;
-            opacity: 0.6;
-            font-style: italic;
+            /* Was dimmed to 0.6 and italic, which made it the hardest text on
+               the card to read. The leading separator dot and the smaller size
+               already mark it as secondary. */
+            opacity: 1;
+            font-style: normal;
             /* Italic glyphs lean past their advance width, but every box that
                clips this text is measured from that advance width: the 3-line
                `-webkit-box` clamp on .meaning-row-translation (overflow:hidden),

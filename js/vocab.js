@@ -2186,7 +2186,13 @@ async function loadVocabularyData(rangeString, opts = {}) {
         // Swap the completed deck into view immediately. Callers that need a
         // transition keep the app-level loading screen above this atomic DOM
         // update, so the previous card never flashes between sets.
-        await new Promise(resolve => requestAnimationFrame(resolve));
+        // Race a timeout: requestAnimationFrame never fires while the tab is
+        // hidden, so starting a set and switching away left this awaiting
+        // forever with the deck half-swapped and the loading screen up.
+        await new Promise(resolve => {
+            requestAnimationFrame(resolve);
+            setTimeout(resolve, 50);
+        });
         updateResumeLoading('Opening the card where you stopped…');
         document.getElementById('setupPanel').classList.add('hidden');
         document.getElementById('appContent').classList.remove('hidden');
