@@ -3272,17 +3272,15 @@
         }
         @media (max-width: 767px) {
             .card-pos-list {
-                top: 18px;
-                left: 0;
-                right: 0;
-                width: auto;
-                min-height: 0;
-                padding: 0 14px;
+                top: 20px;
+                right: 16px;
+                width: 176px;
+                min-height: 64px;
             }
             .back-pos-legend {
-                flex-basis: auto;
-                width: auto;
-                min-height: 0;
+                flex-basis: 176px;
+                width: 176px;
+                min-height: 64px;
             }
             .card-pos-list .card-pos,
             .back-pos-legend .card-pos,
@@ -3597,155 +3595,6 @@
         .pos-suffix { background: rgba(74, 222, 128, 0.45); border-color: rgba(74, 222, 128, 0.6); color: #a7f3d0; }
         .pos-contraction { background: rgba(248, 113, 113, 0.45); border-color: rgba(248, 113, 113, 0.6); color: #fecaca; }
         .pos-other { background: rgba(148, 163, 184, 0.45); border-color: rgba(148, 163, 184, 0.6); color: #cbd5e1; }
-
-
-        /* ------------------------------------------------------------------
-           POS legend as text rather than pills (both faces).
-
-           The pills sat on the headword's line and fitBackHeadword capped the
-           word against whatever width they left, so the headword shrank to pay
-           for chrome. Across the Bad Bunny deck 74.3% of cards carry a single
-           part of speech and 97.9% carry one or two — the four-pill layout
-           every card was sized around occurs on 21 cards out of 10,687.
-
-           Only the presentation changes. These are still the same buttons, so
-           the POS tabs keep filtering senses and the verb pill keeps opening
-           morphology; the colour classes still supply each POS its own hue,
-           and the active one is distinguished by weight and full opacity
-           instead of a filled box. A middle dot separates them.
-           ------------------------------------------------------------------ */
-        .card-pos-list .card-pos,
-        .back-pos-legend .card-pos {
-            background: none;
-            border: 0;
-            border-radius: 0;
-            padding: 0;
-            margin: 0;
-            font-family: var(--font-reading);
-            font-size: 15px;
-            font-weight: 500;
-            line-height: 1.2;
-            text-transform: none;
-            letter-spacing: 0;
-            box-shadow: none;
-            display: inline;
-        }
-        /* The dot inside each pill was a bullet against a filled ground. With
-           no ground it reads as a stray mark, and the separator below does
-           the same job between items. */
-        .card-pos-list .back-pos-dot,
-        .back-pos-legend .back-pos-dot { display: none; }
-
-        .card-pos-list,
-        .back-pos-legend {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: baseline;
-            gap: 0;
-            background: none;
-            border: 0;
-            padding: 0;
-        }
-        /* The back legend reserved a fixed 206px two-column box beside the
-           headword — the shape four pills needed. As text it should size to
-           its words and stay on one line, so the headword keeps the rest. */
-        .back-pos-legend {
-            flex: 0 1 auto;
-            width: auto;
-            min-height: 0;
-            grid-template-columns: none;
-            flex-wrap: nowrap;
-            white-space: nowrap;
-            margin: 0 0 0 auto;
-        }
-        .back-pos-legend.pos-count-3 > :last-child,
-        .back-pos-legend.pos-count-1 .card-pos {
-            grid-column: auto;
-            width: auto;
-            min-width: 0;
-            justify-self: auto;
-        }
-        /* Centred across the top of the front, not boxed into the corner.
-           The corner box was 206px wide with a two-column grid, which is what
-           wrapped three parts of speech onto two lines and left them
-           right-aligned. As a text run there is no reason to reserve a corner:
-           it spans the card and centres, and the headword below keeps its full
-           width either way. */
-        .card-front .card-pos-list,
-        .card-pos-list {
-            position: absolute;
-            top: 22px;
-            left: 0;
-            right: 0;
-            width: auto;
-            min-height: 0;
-            grid-template-columns: none;
-            place-content: initial;
-            justify-content: center;
-            padding: 0 18px;
-            gap: 0;
-        }
-
-        /* Undo the pill-grid geometry these containers still carry: each item
-           was a full-width grid cell, and with three parts of speech the last
-           one was given `width: calc(50% - 2.5px)` and its own row. As text
-           the items size to their words. */
-        .card-pos-list > *,
-        .back-pos-legend > * {
-            width: auto;
-            min-width: 0;
-            grid-column: auto;
-            justify-self: auto;
-        }
-        .card-pos-list .card-pos,
-        .back-pos-legend .card-pos { width: auto; min-width: 0; }
-        /* Matched selector-for-selector against the pill-grid rules above,
-           because `.card-pos-list > *` alone loses to
-           `.card-pos-list.pos-count-3 > :last-child` on specificity and the
-           third part of speech kept its own full-width row. */
-        .card-pos-list.pos-count-3 > :last-child {
-            grid-column: auto;
-            width: auto;
-            justify-self: auto;
-        }
-        .card-pos-list.pos-count-1 .card-pos { min-width: 0; width: auto; }
-
-        /* The separator hangs off the label itself, not the wrapper. Each
-           front item is a flex container (it can hold a morphology popover),
-           and a ::before on that wrapper computes but never lays out — it
-           reported content "·" while contributing zero width. The label is
-           inline, so its own ::before behaves. `gap` guarantees the spacing
-           either way. */
-        .card-pos-list, .back-pos-legend { gap: 0 3px; }
-        .card-pos-list > * + * .card-pos::before,
-        .card-pos-list > * + *.card-pos::before,
-        .back-pos-legend > * + * .card-pos::before,
-        .back-pos-legend > * + *.card-pos::before {
-            content: "·";
-            color: #6b7688;
-            padding-right: 9px;
-            margin-left: 2px;
-            font-weight: 400;
-            opacity: 1;
-            display: inline;
-        }
-
-        /* Active is the one the senses below are showing: full colour and a
-           heavier weight. The rest stay legible but recede. */
-        .card-pos-list .is-inactive .card-pos,
-        .back-pos-legend .is-inactive,
-        .back-pos-legend .card-pos.is-inactive { opacity: 0.55; font-weight: 500; }
-        .card-pos-list .is-active .card-pos,
-        .back-pos-legend .is-active,
-        .back-pos-legend .card-pos.is-active { opacity: 1; font-weight: 700; }
-
-        /* A single POS has nothing to contrast against, so it should not look
-           dimmed by default. */
-        .card-pos-list > :only-child .card-pos,
-        .back-pos-legend > :only-child { opacity: 1; }
-
-        .back-pos-legend .back-pos-tab { cursor: pointer; }
-        .back-pos-legend .back-pos-tab:hover { opacity: 1; }
 
         /* POS info popover — shown when the POS pill on a sense row is
            tapped. The backdrop dismisses it while the popover remains a
