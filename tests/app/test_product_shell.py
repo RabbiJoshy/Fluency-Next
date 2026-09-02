@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v324"
+EXPECTED_CACHE_NAME = "flashcards-v325"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -102,6 +102,12 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertFalse((APP_ROOT / "Data").exists())
         self.assertFalse((APP_ROOT / "Artists").exists())
+
+    def test_speech_release_can_be_previewed_without_activation(self) -> None:
+        config_js = (APP_ROOT / "js" / "config.js").read_text(encoding="utf-8")
+        self.assertIn("params.get('speechRelease')", config_js)
+        self.assertIn("releases/${code}/speech/${encodeURIComponent(releaseId)}", config_js)
+        self.assertIn("languageConfig.releaseManifestPath = `${base}/manifest.json`", config_js)
 
     def test_merge_lemma_control_is_capability_gated(self) -> None:
         ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")

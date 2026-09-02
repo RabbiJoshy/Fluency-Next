@@ -560,6 +560,17 @@ function shrinkToFit(el, minPx) {
     const prevWS = el.style.whiteSpace;
     // Disable wrapping to expose intrinsic content width via scrollWidth.
     el.style.whiteSpace = 'nowrap';
+    // A zero client width means the element is not laid out yet — an ancestor
+    // is still hidden, or this ran before the card reached the screen. There
+    // is nothing to measure against, and the loop below compares scrollWidth
+    // against 0, which is always greater, so it would step all the way to the
+    // floor and leave a two-letter word at 18px. That is the "randomly tiny
+    // headword": it tracked when the measurement happened, not how long the
+    // word was. Keep the CSS baseline instead.
+    if (!el.clientWidth) {
+        el.style.whiteSpace = prevWS;
+        return;
+    }
     let size = maxPx;
     // scrollWidth is the content's ideal width; clientWidth is the
     // constrained element width (capped by max-width: 100% of parent).
@@ -569,6 +580,34 @@ function shrinkToFit(el, minPx) {
         el.style.fontSize = size + 'px';
     }
     el.style.whiteSpace = prevWS;
+}
+
+/**
+ * Keep the lemma visually subordinate to the word it belongs to.
+ *
+ * The two are shrunk independently — the word from a 70px ceiling, the lemma
+ * from 35px — and nothing related the results. A long surface form such as
+ * "atiendes" steps a long way down from 70 to fit the card, while its lemma
+ * "atender" already fits at 35 and never moves, so the inflected word the card
+ * is actually asking about ended up smaller than the dictionary form beneath
+ * it. Which word shrank had no visible logic from the outside: it depended
+ * purely on how far each had to travel from its own starting size.
+ *
+ * Cap the lemma against the word's *final* size instead, then let it shrink
+ * further if it still overflows.
+ */
+const LEMMA_MAX_SHARE_OF_WORD = 0.62;
+
+function fitLemmaUnderWord(wordEl, lemmaEl, minPx) {
+    if (!wordEl || !lemmaEl || !lemmaEl.textContent) return;
+    const wordSize = parseFloat(getComputedStyle(wordEl).fontSize);
+    if (!wordSize) return;
+    const baseline = parseFloat(getComputedStyle(lemmaEl).fontSize);
+    const capped = Math.max(minPx, Math.min(baseline || wordSize, wordSize * LEMMA_MAX_SHARE_OF_WORD));
+    lemmaEl.style.fontSize = capped + 'px';
+    // Re-measure from the capped size: a long lemma may still need to step
+    // down, and shrinkToFit reads its starting point from the computed style.
+    shrinkToFit(lemmaEl, minPx);
 }
 
 // The back headword shares its line with the POS pill(s) in the top right.
@@ -3984,9 +4023,9 @@ function updateCard({ announceHeadword = false } = {}) {
         frontLemmaEl.dataset.formNote = formNote;
         frontLemmaEl.classList.toggle('has-form-note', Boolean(formNote));
         frontLemmaEl.style.display = 'block';
-        // Same measured shrink as the main word — rare, but e.g. the lemma
-        // of a long derived form can exceed the card width at 32px.
-        shrinkToFit(frontLemmaEl, 18);
+        // Sized against the word's final size, not its own ceiling, so the
+        // lemma can never come out larger than the form being asked about.
+        fitLemmaUnderWord(frontWordEl, frontLemmaEl, 18);
     } else {
         frontLemmaEl.textContent = '';
         frontLemmaEl.dataset.formNote = '';
