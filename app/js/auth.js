@@ -1004,7 +1004,7 @@ async function flagWord(card, fieldPath, fieldValue, fields = null) {
 
 // Minimal Markdown → HTML renderer. Handles headings (##/###), paragraphs,
 // unordered lists, bold/italic, inline code, links, and images. Enough for
-// the About copy at docs/about.md without a runtime dependency.
+// the About copy at content/about.md without a runtime dependency.
 function renderMarkdown(md) {
     const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -1213,7 +1213,7 @@ async function openAboutProjectModal() {
         return;
     }
     try {
-        const resp = await fetch('docs/about.md');
+        const resp = await fetch('content/about.md');
         if (!resp.ok) throw new Error('Failed to load about.md');
         const md = await resp.text();
         _aboutMarkdownCache = renderMarkdown(md);
