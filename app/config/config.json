@@ -500,6 +500,75 @@
       "flag": "🇧🇷",
       "shortCode": "BR",
       "speechLang": "pt-BR"
+    },
+    "czech": {
+      "name": "Czech",
+      "shortCode": "CZ",
+      "flag": "🇨🇿",
+      "speechLang": "cs-CZ",
+      "hasData": false,
+      "fileFormat": "json",
+      "capabilities": {
+        "lyrics": false,
+        "speech": true
+      },
+      "colorTheme": {
+        "primary": "#11457E",
+        "secondary": "#D7141A"
+      },
+      "conjugationsPath": null,
+      "exampleTargetField": "example_czech",
+      "exampleEnglishField": "example_english",
+      "cefrLevels": [
+        {
+          "level": "A1",
+          "description": "Beginner",
+          "comprehension": "~65% of spoken language",
+          "wordCount": "1-800"
+        },
+        {
+          "level": "A2",
+          "description": "Elementary",
+          "comprehension": "~75% of spoken language",
+          "wordCount": "800-1500"
+        },
+        {
+          "level": "B1",
+          "description": "Intermediate",
+          "comprehension": "~85% of spoken language",
+          "wordCount": "1500-2500"
+        },
+        {
+          "level": "B2",
+          "description": "Upper Intermediate",
+          "comprehension": "~90% of spoken language",
+          "wordCount": "2500-3000"
+        },
+        {
+          "level": "C1",
+          "description": "Advanced",
+          "comprehension": "~95% of spoken language",
+          "wordCount": "3000-4500"
+        },
+        {
+          "level": "C2",
+          "description": "Proficient",
+          "comprehension": "~98% of spoken language",
+          "wordCount": "4500-6000"
+        }
+      ],
+      "cefrLevelsNote": "Copied from Spanish as a placeholder; not measured for Czech.",
+      "referenceLinks": {
+        "reverso": "https://context.reverso.net/translation/czech-english/{word}",
+        "wordReference": "https://en.wiktionary.org/wiki/{word}#Czech",
+        "conjugation": "https://en.wiktionary.org/wiki/{word}#Czech"
+      },
+      "indexPath": "",
+      "examplesPath": "",
+      "studyStructurePath": "",
+      "releaseManifestPath": "",
+      "releaseCompositionPath": "",
+      "hasDataNote": "Flipped to true together with the release paths, once the Czech deck is built and validated."
     }
   },
   "languageDisplayOrder": [
@@ -510,6 +579,7 @@
     "polish",
     "french",
     "portuguese",
+    "czech",
     "russian"
   ]
 }

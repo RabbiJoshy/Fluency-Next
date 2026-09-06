@@ -8,14 +8,14 @@ import './artist-ui.js?v=20260825ak';
 import './auth.js?v=20260827a';
 import './about-example.js?v=20260825ak';
 import './estimation.js?v=20260825ak';
-import './config.js?v=20260827a';
+import './config.js?v=20260901a';
 import './progress.js?v=20260831a';
 import './knowledge.js?v=20260831a';
 import './ui.js?v=20260831a';
-import './vocab.js?v=20260831a';
+import './vocab.js?v=20260904b';
 import './song-sets.js?v=20260823ae';
 import './vocabulary-import.js?v=20260825ak';
-import './flashcards.js?v=20260824b';
+import './flashcards.js?v=20260904a';
 import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import
@@ -695,15 +695,39 @@ function showRadialPicker({ id, ariaLabel, hubHTML, entries, className = '', clo
     hub.innerHTML = `<span class="artist-radial-hub-title">${hubHTML}</span>${closeLabel ? `<span class="artist-radial-close-label">${closeLabel}</span>` : ''}`;
     stage.appendChild(hub);
 
-    // Radius as a fraction of the stage half-size. Thumbs sit on this ring.
-    const ringPct = 38; // percent from center toward the edge
-    // Start at the top (12 o'clock) and go clockwise.
-    const startAngle = -90;
+    // One ring divided by however many entries there are stops working as a list
+    // grows: eight languages already crowd the circle and every new one makes
+    // the thumbs smaller and closer. Capacity belongs to the circumference, so
+    // entries fill a ring, then the next ring out. A ring's capacity grows with
+    // its radius, so k rings hold roughly k times more than one ever could.
+    const startAngle = -90; // top of the circle (12 o'clock), going clockwise
+    const innerPct = 24;    // radius of the first ring, percent toward the edge
+    const ringStepPct = 13; // spacing between rings
+    const maxRingPct = 44;  // keep the outermost thumbs inside the stage
+    const arcPerThumbPct = 26; // circumference each thumb needs, same units
+
+    const rings = [];
+    for (let placed = 0; placed < n; ) {
+        const radius = Math.min(innerPct + rings.length * ringStepPct, maxRingPct);
+        // The outermost ring absorbs whatever is left rather than spilling past
+        // the stage: a crowded outer ring is recoverable, an invisible one is not.
+        const atMaxRadius = radius >= maxRingPct;
+        const capacity = Math.max(1, Math.round((2 * Math.PI * radius) / arcPerThumbPct));
+        const take = atMaxRadius ? n - placed : Math.min(n - placed, capacity);
+        rings.push({ radius, count: take, offset: placed });
+        placed += take;
+    }
+    const ringOf = index => rings.find(r => index < r.offset + r.count) || rings[rings.length - 1];
 
     entries.forEach((entry, i) => {
-        const angle = (startAngle + (360 / n) * i) * (Math.PI / 180);
-        const x = 50 + ringPct * Math.cos(angle);
-        const y = 50 + ringPct * Math.sin(angle);
+        const ring = ringOf(i);
+        // Offset alternate rings by half a step so thumbs do not line up
+        // radially and read as spokes rather than as a ring.
+        const seat = i - ring.offset;
+        const stagger = (rings.indexOf(ring) % 2) * (180 / ring.count);
+        const angle = (startAngle + (360 / ring.count) * seat + stagger) * (Math.PI / 180);
+        const x = 50 + ring.radius * Math.cos(angle);
+        const y = 50 + ring.radius * Math.sin(angle);
 
         const thumb = document.createElement('button');
         thumb.className = 'artist-radial-thumb';
@@ -846,7 +870,13 @@ function showLanguagePicker(languages) {
     const flags = Object.fromEntries(
         Object.entries(languages).map(([key, cfg]) => [key, cfg.flag || ''])
     );
-    const entries = languageOrder.filter(key => languages[key]).map(key => {
+    // Languages with no data yet go last, whatever order config declares. It was
+    // declared order alone before, which meant every new language had to be
+    // hand-placed ahead of the "soon" ones or it landed among them. Ready
+    // languages keep their declared order relative to each other.
+    const ready = key => languages[key].hasData !== false;
+    const ordered = languageOrder.filter(key => languages[key]);
+    const entries = [...ordered.filter(ready), ...ordered.filter(key => !ready(key))].map(key => {
         const cfg = languages[key];
         return {
             label: cfg.name,
