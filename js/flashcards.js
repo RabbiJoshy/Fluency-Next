@@ -4004,15 +4004,13 @@ function updateCard({ announceHeadword = false } = {}) {
                 stacked ? (pos === activeDisplayPos ? 'is-active' : 'is-inactive') : ''
             )
         ).join('');
-        // Flex, not grid: the legend is a run of text now rather than a
-        // row of boxes, and it centres under the headword.
-        frontPOSEl.style.display = allPOS.length > 0 ? 'flex' : 'none';
+        frontPOSEl.style.display = allPOS.length > 0 ? 'grid' : 'none';
     } else if (card.partOfSpeech) {
         frontPOSEl.innerHTML = renderFrontPosUnit(
             card.partOfSpeech,
             isVerbPos(card.partOfSpeech)
         );
-        frontPOSEl.style.display = 'flex';
+        frontPOSEl.style.display = 'grid';
     } else {
         frontPOSEl.style.display = 'none';
     }
@@ -4228,7 +4226,15 @@ function updateCard({ announceHeadword = false } = {}) {
                     ${renderMorphPopover()}
                 </span>`;
             });
-            if (!hideRedundantSingleBackPos) {
+            // The back carries no POS legend. Every part of speech already has
+            // its own section below, whose header holds the same POS plus the
+            // lemma it belongs to, its glosses and its share — a stronger link
+            // than a detached legend, and one row per POS rather than a
+            // parallel list. The codebase already made this argument for a
+            // single POS ("repeating one inert POS in the top-right corner
+            // adds no information"); it holds just as well for three.
+            const suppressBackPosLegend = true;
+            if (!suppressBackPosLegend && !hideRedundantSingleBackPos) {
                 backPosLegendHTML = `<div class="back-pos-legend${hasBackPosTabs ? ' has-tabs' : ''} pos-count-${Math.min(posItems.length, 4)}"${hasBackPosTabs ? ' role="tablist"' : ''} aria-label="Filter senses by part of speech">${posPills.join('')}</div>`;
             }
         }
@@ -4397,7 +4403,7 @@ function updateCard({ announceHeadword = false } = {}) {
                     <button type="button" class="pos-section-head"
                             aria-label="${escapeCardText(`${pos} ${g.headword}: ${summarySenses.join('; ')}`)}"
                             onclick="selectLemmaPosGroup(event, '${key.replace(/\u0000/g, '~~')}', ${g.firstMeaningIndex})">
-                        <span class="pos-section-label">${escapeCardText(pos)}</span>
+                        <span class="pos-section-label">${escapeCardText(posDisplayName(pos))}</span>
                         ${hw}
                         <span class="pos-section-summary">${summaryHTML}${extra}</span>
                         ${assignmentState}${pct}
@@ -5822,6 +5828,18 @@ function cycleMWEBackward(event) {
 
 function selectMeaning(index) {
     stopExampleAutoplay(true);
+    // Picking a sense collapses whichever other part of speech was open, the
+    // same way choosing from a section header does. Without this, selecting
+    // through the rows left every previously visited section expanded and the
+    // back grew a screen at a time.
+    const selecting = flashcards[currentIndex];
+    if (selecting?.meanings?.[index] && !selecting.isChainChild) {
+        const key = lemmaPosGroupKeyForMeaning(selecting.meanings[index]);
+        if (key) {
+            selecting._expandedPos = new Set([key]);
+            selecting._backSectionsManuallySet = true;
+        }
+    }
     if (index === currentMeaningIndex && !currentGroupSelection) {
         // Already selected — cycle if this is a cycling pill (MWE/clitic/sense cycle)
         const card = flashcards[currentIndex];
