@@ -18,6 +18,7 @@ from fluency.pipeline.budget import (
     BudgetError,
     check_wsd_budget,
     display_examples_per_card,
+    projected_display_examples,
     wsd_budget_per_card,
 )
 from fluency.core.io import json_bytes
@@ -331,7 +332,7 @@ def _acceptance(stage: str, *, surfaces: int, examples: int) -> list[str]:
 
 def _stage_contract(profile: dict[str, Any], stage: str, ordinal: int) -> dict[str, Any]:
     surfaces = profile["scope"]["surface_limit"]
-    examples = surfaces * display_examples_per_card(profile["scope"])
+    examples = projected_display_examples(profile["scope"], surfaces)
     output_name, output_schema = STAGE_OUTPUTS[stage]
     contract: dict[str, Any] = {
         "contract_version": CONTRACT_VERSION,
@@ -398,6 +399,9 @@ def create_pipeline_plan(
         "targets": {
             "surface_cards": profile["scope"]["surface_limit"],
             "examples_per_surface": display_examples_per_card(profile["scope"]),
+            "display_example_total": projected_display_examples(
+                profile["scope"], profile["scope"]["surface_limit"]
+            ),
             "total_examples": (
                 profile["scope"]["surface_limit"]
                 * display_examples_per_card(profile["scope"])

@@ -1,6 +1,6 @@
 {
   "profile_version": "speech-pipeline-profile/v1",
-  "profile_id": "czech_speech_v7_3000x5",
+  "profile_id": "czech_speech_v7_3000_tiered",
   "language": "cs",
   "locale": "cs-CZ",
   "mode": "speech",
@@ -18,7 +18,16 @@
   "scope": {
     "surface_limit": 3000,
     "shortfall_policy": "publish_explicit",
-    "display_examples_per_card": 5
+    "display_examples_per_card": [
+      {
+        "through_rank": 1000,
+        "examples": 5
+      },
+      {
+        "through_rank": 3000,
+        "examples": 3
+      }
+    ]
   },
   "inventory": {
     "source_adapter": "published-surface-frequency-list/v1",

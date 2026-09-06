@@ -55,16 +55,74 @@ def wsd_budget_per_card(harvest: dict[str, Any]) -> int:
     )
 
 
-def display_examples_per_card(scope: dict[str, Any]) -> int:
-    """Return the per-card display limit, accepting the legacy key name."""
+def display_example_tiers(scope: dict[str, Any]) -> list[tuple[int, int]]:
+    """Return [(through_rank, examples), ...] ascending by rank.
+
+    The commonest words carry a learner's whole early experience, so they are
+    worth more examples than the long tail; a flat number either starves the
+    top of the deck or pays for depth nobody reads at rank 2,900. A plain
+    integer still means "this many for every card" and is returned as a single
+    tier covering all ranks, so every existing profile keeps its meaning.
+    """
 
     for key in (DISPLAY_LIMIT_KEY, LEGACY_DISPLAY_LIMIT_KEY):
         value = scope.get(key)
         if isinstance(value, int) and not isinstance(value, bool):
-            return value
+            return [(2**31, value)]
+        if isinstance(value, list) and value:
+            tiers: list[tuple[int, int]] = []
+            for entry in value:
+                if not isinstance(entry, dict):
+                    raise BudgetError(f"each {key} tier must be an object")
+                rank, count = entry.get("through_rank"), entry.get("examples")
+                if not isinstance(rank, int) or isinstance(rank, bool) or rank < 1:
+                    raise BudgetError(f"each {key} tier needs a positive through_rank")
+                if not isinstance(count, int) or isinstance(count, bool) or count < 1:
+                    raise BudgetError(f"each {key} tier needs a positive examples count")
+                tiers.append((rank, count))
+            tiers.sort()
+            if len({rank for rank, _ in tiers}) != len(tiers):
+                raise BudgetError(f"{key} tiers must not repeat a through_rank")
+            return tiers
     raise BudgetError(
         f"a Speech profile must state {DISPLAY_LIMIT_KEY} (or legacy {LEGACY_DISPLAY_LIMIT_KEY})"
     )
+
+
+def display_examples_for_rank(scope: dict[str, Any], rank: int) -> int:
+    """How many examples the card at this frequency rank shows."""
+
+    tiers = display_example_tiers(scope)
+    for through_rank, count in tiers:
+        if rank <= through_rank:
+            return count
+    return tiers[-1][1]
+
+
+def display_examples_per_card(scope: dict[str, Any]) -> int:
+    """The largest per-card display limit any tier asks for.
+
+    Kept for callers that bound or budget the deck rather than build one card:
+    the ceiling is what those need. Per-card selection must use
+    ``display_examples_for_rank``.
+    """
+
+    return max(count for _, count in display_example_tiers(scope))
+
+
+def projected_display_examples(scope: dict[str, Any], surfaces: int) -> int:
+    """Total examples the finished deck will carry across all tiers."""
+
+    total = 0
+    previous = 0
+    for through_rank, count in display_example_tiers(scope):
+        upper = min(through_rank, surfaces)
+        if upper > previous:
+            total += (upper - previous) * count
+            previous = upper
+    if surfaces > previous:
+        total += (surfaces - previous) * display_example_tiers(scope)[-1][1]
+    return total
 
 
 def execution_cap_per_card(profile: dict[str, Any]) -> int:

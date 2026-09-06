@@ -1,6 +1,6 @@
 {
   "profile_version": "speech-pipeline-profile/v1",
-  "profile_id": "portuguese_speech_v7_3000x5",
+  "profile_id": "portuguese_speech_v7_3000_tiered",
   "language": "pt",
   "locale": "pt-PT",
   "mode": "speech",
@@ -18,7 +18,16 @@
   "scope": {
     "surface_limit": 3000,
     "shortfall_policy": "publish_explicit",
-    "display_examples_per_card": 5
+    "display_examples_per_card": [
+      {
+        "through_rank": 1000,
+        "examples": 5
+      },
+      {
+        "through_rank": 3000,
+        "examples": 3
+      }
+    ]
   },
   "inventory": {
     "source_adapter": "published-surface-frequency-list/v1",
@@ -67,8 +76,9 @@
       "gloss.model_revision": "gemini-embedding-001",
       "occurrence_pos.model_revision": "pt_core_news_lg@3.8.0"
     },
-    "max_wsd_units_per_run": 25000,
-    "execution_cap_per_card": 10
+    "max_wsd_units_per_run": 32000,
+    "execution_cap_per_card": 10,
+    "max_wsd_units_per_run_note": "3000 surfaces x execution cap 10 = 30,000 units. Raised from 25,000 deliberately for the 3000-word scope; the 1000 surfaces beyond the existing 2000-card deck have never been embedded, so they are genuinely new spend rather than re-embedding."
   },
   "release": {
     "activation": "manual",

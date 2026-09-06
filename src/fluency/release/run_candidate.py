@@ -29,7 +29,7 @@ from fluency.release.composition import compose_release
 from fluency.core.io import atomic_write, json_bytes
 from fluency.release.study_structure import build_study_structure
 from fluency.release.validation import SPEECH_DECK_VERSION
-from fluency.pipeline.budget import display_examples_per_card
+from fluency.pipeline.budget import display_examples_for_rank
 from fluency.projections import (
     PUBLICATION_PROJECTIONS,
     SELECTION_PROJECTIONS,
@@ -209,7 +209,7 @@ def build_inactive_run_candidate(
         )
     menu_by_card = {card["card_id"]: card for card in menus.get("cards", [])}
     candidates_by_card = {card["card_id"]: card for card in candidates.get("cards", [])}
-    limit = display_examples_per_card(profile["scope"])
+    scope = profile["scope"]
     menu_adapter = str(menus.get("source_adapter", ""))
     menu_provider = "spanishdict" if menu_adapter.startswith("spanishdict-") else "wiktionary"
 
@@ -222,6 +222,7 @@ def build_inactive_run_candidate(
         menu_card = menu_by_card.get(card_id)
         if candidate_card is None or menu_card is None:
             raise RunCandidateError(f"run layers do not cover card {card_id}")
+        limit = display_examples_for_rank(scope, card["rank"])
         ranked = sorted(
             candidate_card.get("candidates", []),
             key=lambda item: (item["metrics"]["score"], item["sentence_id"]),

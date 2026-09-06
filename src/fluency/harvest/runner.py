@@ -15,7 +15,7 @@ from fluency.core.canonical_json import canonical_json
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
-from fluency.pipeline.budget import display_examples_per_card, wsd_budget_per_card
+from fluency.pipeline.budget import display_examples_for_rank, wsd_budget_per_card
 from fluency.harvest.config import load_harvest_policies
 from fluency.harvest.inventory import load_frequency_ranks, load_harvest_inventory
 from fluency.harvest.matching import (
@@ -273,8 +273,9 @@ def harvest_run_stage(
     }
     candidate_cards: list[dict[str, Any]] = []
     per_surface: list[dict[str, Any]] = []
-    final_target = display_examples_per_card(profile["scope"])
+    scope = profile["scope"]
     for card in cards:
+        final_target = display_examples_for_rank(scope, card["rank"])
         retained = sorted(
             candidates[card["card_id"]].values(),
             key=lambda item: (item["metrics"]["score"], item["sentence_id"]),
