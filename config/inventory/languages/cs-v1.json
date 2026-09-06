@@ -1,0 +1,7 @@
+{
+  "config_version": "inventory-language-policy/v1",
+  "policy_id": "cs-v1",
+  "language": "cs",
+  "surface_exclusions": {},
+  "exclusion_note": "Empty on the first Czech run. Exclusions are derived by cross-referencing the frequency list against the Czech Wiktionary once a harvest exists -- given names, English loans and abbreviations are what the Portuguese list needed. Declaring the key empty rather than omitting it states that no exclusions have been decided yet, not that none are needed."
+}
