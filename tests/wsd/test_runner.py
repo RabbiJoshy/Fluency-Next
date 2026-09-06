@@ -1,9 +1,11 @@
 import unittest
+from dataclasses import replace
 
 from fluency.core.hashing import content_id
 from fluency.core.identity import create_card_record
 from fluency.harvest.records import build_sentence_id
 from fluency.wsd.alignment import AlignmentCorrection
+from fluency.wsd.commit import CommitPolicy
 from fluency.wsd.contracts import WSDAssignment
 from fluency.wsd.disposition import DispositionPolicy
 from fluency.wsd.gloss_scoring import LeafScore
@@ -166,6 +168,36 @@ class WSDRunnerTests(unittest.TestCase):
                 WSDComponents(FrenchWSDAdapter(), FakeGloss(self.scores)),
             )
 
+    def test_rank_agreement_keeps_forced_leaf_but_publishes_less(self):
+        profile = WSDExecutionProfile(
+            token_tuple_vote=False,
+            tuple_vote_minimum_margin=0.0,
+            calibration=False,
+            alignment=False,
+            generative_escalation=False,
+            disposition=DispositionPolicy(None, "retain"),
+            commit=CommitPolicy(strategy="rank_agreement"),
+        )
+        assignment = ClosedMenuWSDRunner(
+            profile,
+            WSDComponents(FrenchWSDAdapter(), FakeGloss(self.scores)),
+        ).assign(self.request)
+
+        self.assertEqual(assignment.selected_sense_id, "vow")
+        self.assertEqual(assignment.emitted_level, "unresolved")
+        self.assertTrue(
+            assignment.evidence["gemini_recommendation"]["recommended"]
+        )
+        self.assertFalse(
+            assignment.evidence["gemini_recommendation"]["gemini_called"]
+        )
+        self.assertEqual(
+            assignment.evidence["commit"]["rank_agreement"]["provider_order"]
+            ["sense_id"],
+            "want",
+        )
+        self.assertEqual(assignment.decision_path[-1], "commit")
+
     def test_tuple_vote_selects_exact_analysis_and_leaf_inside_it(self):
         profile = WSDExecutionProfile(
             token_tuple_vote=True,
@@ -276,6 +308,81 @@ class WSDRunnerTests(unittest.TestCase):
         self.assertEqual(
             WSDAssignment.from_dict(assignment.to_dict()).selection_projections,
             assignment.selection_projections,
+        )
+
+    def test_multiword_candidate_must_cover_the_target_occurrence(self):
+        multiword_index = index_multiword_senses(
+            {
+                "mwes": {
+                    "je veux": {
+                        "translations": ["I want"],
+                        "attach_words": ["veux"],
+                        "corpus_freq": 12,
+                        "sources": ["fixture"],
+                        "id": "mwe-je-veux",
+                    }
+                }
+            }
+        )
+        request = replace(
+            self.request,
+            sentence="je veux, puis veux",
+            target_span=(14, 18),
+            target_observed_form="veux",
+        )
+        runner = ClosedMenuWSDRunner(
+            WSDExecutionProfile(
+                token_tuple_vote=False,
+                tuple_vote_minimum_margin=0.0,
+                calibration=False,
+                alignment=False,
+                generative_escalation=False,
+                disposition=DispositionPolicy(None, "retain"),
+                multiword_candidates=True,
+            ),
+            WSDComponents(
+                FrenchWSDAdapter(),
+                FakeGloss(self.scores),
+                multiword_index=multiword_index,
+                multiword_inventory_content_id=content_id(b"multiword inventory"),
+            ),
+        )
+
+        assignment = runner.assign(request)
+
+        self.assertNotIn("mwe_augmented", assignment.selection_projections)
+        self.assertNotIn("multiword_candidates", assignment.evidence)
+
+    def test_alignment_can_correct_provider_projection_with_multiword_present(self):
+        multiword_index = index_multiword_senses({
+            "mwes": {
+                "je veux": {
+                    "translations": ["I want"], "attach_words": ["veux"],
+                    "corpus_freq": 12, "sources": ["fixture"], "id": "mwe-je-veux",
+                }
+            }
+        })
+        profile = WSDExecutionProfile(
+            token_tuple_vote=False, tuple_vote_minimum_margin=0.0,
+            calibration=False, alignment=True, generative_escalation=False,
+            disposition=DispositionPolicy(None, "retain"), multiword_candidates=True,
+        )
+        runner = ClosedMenuWSDRunner(
+            profile,
+            WSDComponents(
+                FrenchWSDAdapter(), CountingMultiwordGloss(),
+                aligner=FakeAligner(self.want.menu_analysis_id, "try"),
+                multiword_index=multiword_index,
+                multiword_inventory_content_id=content_id(b"multiword inventory"),
+            ),
+        )
+
+        assignment = runner.assign(self.request)
+
+        self.assertEqual(assignment.selected_sense_id, "try")
+        self.assertEqual(
+            assignment.selection_projections["mwe_augmented"].selected_sense_id,
+            "mwe-je-veux",
         )
 
     def test_persisted_span_can_bind_an_elided_observed_form_to_canonical_surface(self):

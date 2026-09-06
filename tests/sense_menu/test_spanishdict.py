@@ -88,16 +88,25 @@ class SpanishDictSenseMenuTests(unittest.TestCase):
                         ],
                     }
                 ]
-            }
+            },
+            "oír": {
+                "dictionary_analyses": [
+                    {
+                        "headword": "oír",
+                        "senses": [sense("VERB", "to hear")],
+                    }
+                ]
+            },
         }
         payloads = {
             "surface_cache.json": surface_cache,
             "headword_cache.json": headword_cache,
             "spanish_forms.json": {
-                "cura": {}, "estar": {}, "usted": {}, "ustedes": {}
+                "cura": {}, "estar": {}, "oír": {}, "usted": {}, "ustedes": {}
             },
             "conjugation_reverse.json": {
                 "está": [{"lemma": "estar"}],
+                "oí": [{"lemma": "oír"}],
             },
         }
         content_files = []
@@ -187,9 +196,23 @@ class SpanishDictSenseMenuTests(unittest.TestCase):
             ("register", "Mexico"),
             {(item["family"], item["value"]) for item in features},
         )
-        construction = [item for item in features if item["family"] == "construction"]
-        self.assertEqual(len(construction), 1)
-        self.assertIn('used with "por"', construction[0]["embedding_text"])
+        companion = [item for item in features if item["family"] == "companion"]
+        self.assertEqual(len(companion), 1)
+        self.assertEqual(companion[0]["value"], "por")
+
+    def test_reverse_conjugation_resolves_surface_absent_from_surface_cache(self):
+        cards = [{**create_card_record("es", "oi").to_dict(), "rank": 1}]
+        menu, report = self.adapter().build(cards, snapshot_id="fixture-2026-08")
+        analyses = menu["cards"][0]["analyses"]
+        self.assertEqual(
+            {(item["headword"], item["part_of_speech"]) for item in analyses},
+            {("oír", "VERB")},
+        )
+        self.assertEqual(
+            analyses[0]["provider_metadata"]["spanishdict"]["resolution"],
+            "conjugation",
+        )
+        self.assertEqual(report["cards_without_menu"], 0)
 
     def test_complete_normalized_menu_fills_surfaces_absent_from_raw_cache(self):
         retained_path = self.snapshot / "normalized_menu.json"
@@ -234,6 +257,46 @@ class SpanishDictSenseMenuTests(unittest.TestCase):
         )
         self.assertEqual(report["cards_ready"], 1)
         self.assertEqual(report["cards_without_menu"], 0)
+
+    def test_complete_normalized_menu_still_runs_conjugation_repairs(self):
+        retained_path = self.snapshot / "normalized_menu.json"
+        retained_path.write_text(
+            json.dumps(
+                {
+                    "está": [
+                        {
+                            "headword": "está",
+                            "senses": [sense("PHRASE", "he's")],
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        manifest_path = self.snapshot / "artifact.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["content_files"].append(
+            {
+                "path": "normalized_menu.json",
+                "sha256": file_content_id(retained_path).removeprefix("sha256:"),
+                "bytes": retained_path.stat().st_size,
+            }
+        )
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        menu, _ = self.adapter().build(
+            [{**create_card_record("es", "está").to_dict(), "rank": 1}],
+            snapshot_id="fixture-2026-08",
+        )
+
+        self.assertEqual(
+            {
+                (item["headword"], item["part_of_speech"])
+                for item in menu["cards"][0]["analyses"]
+            },
+            {("estar", "VERB")},
+        )
 
     def test_snapshot_hash_change_is_rejected(self):
         (self.snapshot / "surface_cache.json").write_text("{}", encoding="utf-8")

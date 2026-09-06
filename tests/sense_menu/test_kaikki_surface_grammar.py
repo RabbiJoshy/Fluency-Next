@@ -2,8 +2,9 @@
 
 `_semantic_senses` drops form-of senses because they carry no meaning. The
 analysis inside them -- diz is the third-person singular present indicative of
-dizer -- is a fact about the surface, not about any sense, so it belongs on the
-MenuAnalysis rather than on a leaf.
+dizer -- is a fact about the occurrence. The adapter attaches that normalized
+fact to every semantic leaf under the resolved analysis so the candidate gate
+can consume it without understanding Wiktionary metadata.
 """
 
 import unittest

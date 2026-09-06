@@ -1,6 +1,8 @@
 import unittest
+from dataclasses import replace
 
 from fluency.core.identity import create_card_record
+from fluency.features import SpecialistFeature
 from fluency.wsd.gloss_scoring import LeafScore
 from fluency.wsd.languages.spanish import (
     SpanishV5CandidatePolicy,
@@ -55,10 +57,23 @@ class SpanishV5CandidatePolicyTests(unittest.TestCase):
         self.assertTrue(sense_compatible_bridged("ADJ", "DET"))
         self.assertFalse(sense_compatible_bridged("VERB", "DET"))
 
+    def test_tagset_bridge_preserves_spanishdict_contractions_for_adpositions(self):
+        self.assertTrue(sense_compatible_bridged("CONTRACTION", "ADP"))
+        self.assertTrue(sense_compatible_bridged("ADP", "ADP"))
+
     def test_se_only_gate_is_conservative(self):
         self.assertTrue(se_reflexive_evidence("casa", "Se casa hoy"))
         self.assertFalse(se_reflexive_evidence("casa", "Casa a la pareja"))
         self.assertIsNone(se_reflexive_evidence("casa", "Me casa hoy"))
+        self.assertTrue(se_reflexive_evidence("diviértanse", "Diviértanse mucho"))
+        self.assertFalse(se_reflexive_evidence("pensé", "Nunca pensé sobre ella"))
+        self.assertFalse(
+            se_reflexive_evidence(
+                "quise", "No quise decir eso", {"mood": "indicative"}
+            )
+        )
+        self.assertFalse(se_reflexive_evidence("diga", "Que se lo diga"))
+        self.assertFalse(se_reflexive_evidence("tuvo", "Se tuvo que ir"))
 
     def test_pos_and_clitic_constraints_are_evidence_not_destructive_filters(self):
         prepared = self.policy.prepare(
@@ -123,6 +138,16 @@ class SpanishV5CandidatePolicyTests(unittest.TestCase):
         self.assertEqual(prepared.analyses, (haber,))
         self.assertFalse(prepared.evidence["se_reflexive_evidence"])
 
+    def test_non_spanish_profile_can_disable_the_legacy_se_gate(self):
+        prepared = SpanishV5CandidatePolicy(
+            constraint_mode="filter", clitic_gate=False
+        ).prepare(
+            sentence="Se casa hoje", surface_form="casa", observed_pos="VERB",
+            analyses=(self.verb, self.reflexive),
+        )
+        self.assertEqual(prepared.analyses, (self.verb, self.reflexive))
+        self.assertIsNone(prepared.evidence["se_reflexive_evidence"])
+
     def test_menu_prior_and_leaf_repair_match_v5_order(self):
         scores = (
             LeafScore(self.verb.menu_analysis_id, "marry", 0.50),
@@ -137,6 +162,119 @@ class SpanishV5CandidatePolicyTests(unittest.TestCase):
         )
         self.assertEqual(repaired.sense_id, "marry")
 
+    def test_normalized_grammar_and_companion_features_filter_leaves(self):
+        plain, needs_de = self.verb.senses
+        marked = replace(
+            self.verb,
+            senses=(
+                replace(
+                    plain,
+                    specialist_features=(
+                        SpecialistFeature(
+                            "grammar", "sense_mark", "mood=indicative", "indicative"
+                        ),
+                    ),
+                ),
+                replace(
+                    needs_de,
+                    translation="to marry off",
+                    specialist_features=(
+                        SpecialistFeature("companion", "required_word", "de", "de"),
+                    ),
+                ),
+            ),
+        )
+        prepared = SpanishV5CandidatePolicy(
+            constraint_mode="filter", normalized_leaf_gates=True
+        ).prepare(
+            sentence="Casa a la pareja",
+            surface_form="casa",
+            observed_pos="VERB",
+            observed_grammar={"mood": "subjunctive"},
+            analyses=(marked,),
+        )
+
+        self.assertEqual(len(prepared.analyses[0].senses), 1)
+        # The companion leaf is rejected first; rejecting the remaining grammar
+        # leaf would empty the set, so the conservative grammar gate declines.
+        self.assertEqual(prepared.analyses[0].senses[0].sense_id, "marry")
+        self.assertEqual(
+            prepared.evidence["companion_rejected_leaf_refs"][0]["sense_id"],
+            "empty",
+        )
+
+    def test_normalized_grammar_filters_when_a_compatible_sibling_survives(self):
+        first, second = self.verb.senses
+        marked = replace(
+            self.verb,
+            senses=(
+                replace(
+                    first,
+                    specialist_features=(
+                        SpecialistFeature(
+                            "grammar", "sense_mark", "mood=indicative", "indicative"
+                        ),
+                    ),
+                ),
+                replace(
+                    second,
+                    translation="to wed",
+                    specialist_features=(
+                        SpecialistFeature(
+                            "grammar", "sense_mark", "mood=subjunctive", "subjunctive"
+                        ),
+                    ),
+                ),
+            ),
+        )
+        prepared = SpanishV5CandidatePolicy(
+            constraint_mode="filter", normalized_leaf_gates=True
+        ).prepare(
+            sentence="Quizá se case",
+            surface_form="case",
+            observed_pos="VERB",
+            observed_grammar={"mood": "subjunctive"},
+            analyses=(marked,),
+        )
+
+        self.assertEqual(
+            [sense.sense_id for sense in prepared.analyses[0].senses],
+            ["empty"],
+        )
+        self.assertEqual(
+            prepared.evidence["grammar_rejected_leaf_refs"][0]["sense_id"],
+            "marry",
+        )
+
+    def test_unvalidated_normalized_leaf_gates_are_evidence_only_by_default(self):
+        plain, needs_de = self.verb.senses
+        marked = replace(
+            self.verb,
+            senses=(
+                plain,
+                replace(
+                    needs_de,
+                    specialist_features=(
+                        SpecialistFeature("companion", "required_word", "de", "de"),
+                    ),
+                ),
+            ),
+        )
+        prepared = SpanishV5CandidatePolicy(constraint_mode="filter").prepare(
+            sentence="Casa a la pareja",
+            surface_form="casa",
+            observed_pos="VERB",
+            analyses=(marked,),
+        )
+
+        self.assertEqual(prepared.analyses, (marked,))
+        self.assertEqual(
+            prepared.evidence["normalized_leaf_gate_policy"], "evidence_only"
+        )
+        self.assertEqual(
+            prepared.evidence["companion_rejected_leaf_refs"][0]["sense_id"],
+            "empty",
+        )
 
 if __name__ == "__main__":
     unittest.main()

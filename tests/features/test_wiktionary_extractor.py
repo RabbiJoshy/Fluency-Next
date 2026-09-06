@@ -54,8 +54,15 @@ class WiktionaryExtractorTests(unittest.TestCase):
         out = extract({}, tags=["archaic", "reflexive"], policy={})
         self.assertEqual(families(out), [
             ("register", "usage_tag", "archaic"),
-            ("construction", "grammar_tag", "reflexive"),
+            ("grammar", "sense_mark", "reflexive=true"),
         ])
+
+    def test_functional_gloss_is_not_misfiled_as_construction(self) -> None:
+        out = extract({"glosses": ["used to indicate direction"]}, policy=PT)
+        self.assertEqual(
+            families(out),
+            [("functional", "usage_note", "used to indicate direction")],
+        )
 
     def test_parenthetical_must_precede_real_text(self) -> None:
         self.assertEqual(extract({"raw_glosses": ["(alone)"]}, policy=PT), ())

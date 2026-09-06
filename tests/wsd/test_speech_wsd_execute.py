@@ -3,14 +3,21 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from fluency.speech.wsd_execute import SPACY_POS_MODEL, occurrence_pos_tags
+from fluency.speech.wsd_execute import (
+    ExactTextGlossScorer,
+    SPACY_POS_MODEL,
+    _attached_companions,
+    occurrence_pos_tags,
+)
+from fluency.wsd.menus import MenuAnalysis, SenseLeaf, build_analysis_id
 
 
 class FakeToken:
-    def __init__(self, text, idx, pos):
+    def __init__(self, text, idx, pos, morph=None):
         self.text = text
         self.idx = idx
         self.pos_ = pos
+        self.morph = SimpleNamespace(to_dict=lambda: dict(morph or {}))
 
 
 class FakeModel:
@@ -48,6 +55,58 @@ def work_item(
 
 
 class SpeechOccurrencePOSTests(unittest.TestCase):
+    def test_one_leaf_menu_does_not_require_embeddings(self):
+        card_id = "card_pt_" + "b" * 32
+        source_adapter = "wiktionary-sense-menu/v1"
+        source_analysis_key = "pt:olá:interjection:0"
+        analysis = MenuAnalysis(
+            menu_analysis_id=build_analysis_id(
+                card_id=card_id,
+                source_adapter=source_adapter,
+                source_analysis_key=source_analysis_key,
+            ),
+            card_id=card_id,
+            surface_form="olá",
+            headword="olá",
+            part_of_speech="interjection",
+            source_adapter=source_adapter,
+            source_analysis_key=source_analysis_key,
+            provider_metadata={},
+            senses=(
+                SenseLeaf(
+                    sense_id="hello",
+                    translation="hello",
+                    definition="greeting",
+                    source_reference="kaikki:hello",
+                    provider_metadata={},
+                ),
+            ),
+        )
+
+        scores = ExactTextGlossScorer({}).score("Olá!", (analysis,))
+
+        self.assertEqual(len(scores), 1)
+        self.assertEqual(scores[0].sense_id, "hello")
+
+    def test_companion_must_belong_to_the_target_occurrence(self):
+        target = FakeToken("estaba", 0, "AUX")
+        talking = FakeToken("hablando", 7, "VERB")
+        de = FakeToken("de", 16, "ADP")
+        topic = FakeToken("política", 19, "NOUN")
+        target.dep_, target.head = "aux", talking
+        talking.dep_, talking.head = "ROOT", talking
+        de.dep_, de.head = "case", topic
+        topic.dep_, topic.head = "obj", talking
+        self.assertNotIn("de", _attached_companions((target, talking, de, topic), target))
+
+        copula = FakeToken("estaba", 0, "AUX")
+        de2 = FakeToken("de", 7, "ADP")
+        holiday = FakeToken("vacaciones", 10, "NOUN")
+        copula.dep_, copula.head = "cop", holiday
+        holiday.dep_, holiday.head = "ROOT", holiday
+        de2.dep_, de2.head = "case", holiday
+        self.assertIn("de", _attached_companions((copula, de2, holiday), copula))
+
     def test_unpinned_installed_model_revision_is_rejected(self):
         model = FakeModel({})
         model.meta = {"version": "9.9.9"}
@@ -101,6 +160,27 @@ class SpeechOccurrencePOSTests(unittest.TestCase):
         self.assertIsNone(observed[key])
         self.assertEqual(evidence[key]["status"], "ambiguous_repeated_occurrence")
         self.assertEqual(evidence[key]["occurrence_tags"], ["SCONJ", "VERB"])
+
+    def test_person_number_and_mood_are_normalized_for_the_grammar_gate(self):
+        sentence = "Ven aquí."
+        model = FakeModel({
+            sentence: (
+                FakeToken(
+                    "Ven", 0, "VERB",
+                    {"Mood": "Imp", "Number": "Sing", "Person": "2"},
+                ),
+                FakeToken("aquí", 4, "ADV"),
+            )
+        })
+        key = ("card_es_" + "e" * 32, "sentence_" + "5" * 32)
+
+        _observed, evidence = occurrence_pos_tags(
+            (work_item(key[0], "ven", key[1], sentence),), model=model
+        )
+
+        self.assertEqual(evidence[key]["observed_grammar"], {
+            "mood": "imperative", "number": "singular", "person": "2",
+        })
 
     def test_persisted_span_tags_an_elision_under_its_canonical_surface(self):
         sentence = "Voy pa' casa."

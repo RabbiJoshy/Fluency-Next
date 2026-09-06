@@ -110,6 +110,14 @@ def quality_rejection(
     minimum_ratio = quality.get("minimum_distinct_ratio", 0.0)
     if minimum_ratio and target_tokens and distinct_tokens / len(target_tokens) < minimum_ratio:
         return "echoed_target"
+    # A subtitle cut mid-thought is not an example. "Isso nao e o que eu..."
+    # is grammatical, survives every other rule, and teaches nothing, because
+    # the clause the target word belongs to was never finished. Leading and
+    # trailing ellipsis are the marker OpenSubtitles uses for the cut.
+    if quality.get("reject_truncated_fragments"):
+        stripped = target.strip()
+        if stripped.startswith(("...", "\u2026")) or stripped.endswith(("...", "\u2026")):
+            return "truncated_fragment"
     if quality["reject_identical_sides"] and matcher.normalize(target) == matcher.normalize(translation):
         return "identical_sides"
     if quality["reject_all_caps"] and target.isupper() and any(char.isalpha() for char in target):

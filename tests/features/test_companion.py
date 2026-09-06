@@ -52,6 +52,16 @@ class BothProvidersEmitTheSameFamilyTests(unittest.TestCase):
         got = families(spanishdict_extract({"context": "used with an infinitive"}))
         self.assertEqual(got[0][0], "construction")
 
+    def test_a_grammatical_category_is_not_a_literal_companion(self) -> None:
+        got = families(spanishdict_extract({"context": "used with quantities"}))
+        self.assertEqual(got[0][0], "construction")
+
+    def test_optional_companion_is_not_turned_into_a_hard_requirement(self) -> None:
+        got = families(spanishdict_extract({"context": "often used with de"}))
+        self.assertEqual(got, [
+            ("construction", "optional_companion", "often used with de")
+        ])
+
     def test_wiktionary_form_notes_are_construction_too(self) -> None:
         sense = {"info_templates": [{"name": "+obj", "expansion": "[with adjective]"}]}
         self.assertEqual(families(wiktionary_extract(sense))[0][0], "construction")
@@ -62,6 +72,20 @@ class GateTests(unittest.TestCase):
 
     def test_present_companion_is_satisfied(self) -> None:
         self.assertTrue(companion_satisfied(self.DE, "Vou afastar-me de aqui"))
+
+    def test_a_companion_elsewhere_does_not_satisfy_a_known_relationship(self) -> None:
+        self.assertFalse(companion_satisfied(
+            self.DE,
+            "De eso es de lo que estaba hablando",
+            attached_companions=(),
+        ))
+
+    def test_a_companion_attached_to_the_target_satisfies_the_leaf(self) -> None:
+        self.assertTrue(companion_satisfied(
+            self.DE,
+            "Estaba de vacaciones",
+            attached_companions=("de",),
+        ))
 
     def test_absent_companion_is_not(self) -> None:
         self.assertFalse(companion_satisfied(self.DE, "Vou embora agora"))
@@ -77,6 +101,15 @@ class GateTests(unittest.TestCase):
     def test_accents_and_case_do_not_break_matching(self) -> None:
         feature = [SpecialistFeature("companion", "required_word", "à", "à")]
         self.assertTrue(companion_satisfied(feature, "Vou À praia"))
+
+    def test_romance_contractions_satisfy_their_contained_preposition(self) -> None:
+        self.assertTrue(companion_satisfied(self.DE, "Vou sair do carro"))
+
+    def test_fused_pronouns_and_colloquial_contractions_are_preserved(self) -> None:
+        com = [SpecialistFeature("companion", "required_word", "com", "com")]
+        para = [SpecialistFeature("companion", "required_word", "para", "para")]
+        self.assertTrue(companion_satisfied(com, "Vem comigo"))
+        self.assertTrue(companion_satisfied(para, "Vou pra casa"))
 
     def test_the_gate_never_empties_the_candidate_set(self) -> None:
         """An empty set is what turned the POS filter into a silent no-op."""

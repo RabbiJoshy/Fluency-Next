@@ -15,7 +15,7 @@ def form_sense(base, sense_id):
     return {
         "id": sense_id,
         "glosses": [f"inflection of {base}"],
-        "tags": ["form-of", "present"],
+        "tags": ["form-of", "indicative", "present"],
         "form_of": [{"word": base}],
     }
 
@@ -174,6 +174,12 @@ class KaikkiSenseMenuTests(unittest.TestCase):
         self.assertTrue(
             all(item["provider_metadata"]["resolution"] == "structured_form_of" for item in suis)
         )
+        etre = next(item for item in suis if item["headword"] == "être")
+        surface_features = {
+            (feature["family"], feature["kind"], feature["value"])
+            for feature in etre["senses"][0]["specialist_features"]
+        }
+        self.assertIn(("grammar", "surface_mark", "mood=indicative"), surface_features)
         self.assertEqual(report["fallbacks"], [])
         self.assertEqual(report["cards_without_menu"], 0)
 

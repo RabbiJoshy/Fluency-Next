@@ -155,3 +155,18 @@ class EasinessDegeneracyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TruncatedFragmentTests(unittest.TestCase):
+    """A subtitle cut mid-thought is grammatical and teaches nothing."""
+
+    def test_a_line_cut_mid_thought_is_rejected(self) -> None:
+        self.assertEqual(reject("Isso não é o que eu..."), "truncated_fragment")
+
+    def test_a_complete_sentence_survives(self) -> None:
+        self.assertIsNone(reject("Não, isto é a minha casa."))
+
+    def test_the_rule_is_declared_not_hardcoded(self) -> None:
+        policy = json.loads(json.dumps(SHARED))
+        policy["quality"]["reject_truncated_fragments"] = False
+        self.assertIsNone(reject("Isso não é o que eu...", policy=policy))

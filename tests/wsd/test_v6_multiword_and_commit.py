@@ -176,6 +176,43 @@ class Commit(unittest.TestCase):
     def test_defaults_are_not_enabled(self):
         self.assertFalse(CommitPolicy().enabled)
         self.assertTrue(CommitPolicy(glosskey_minimum=0.2).enabled)
+        self.assertTrue(CommitPolicy(strategy="rank_agreement").enabled)
+
+    def test_rank_agreement_emits_leaf_only_when_choices_match(self):
+        scores = self.scores()
+        first = (NUEVO[0].menu_analysis_id, "n1")
+        second = (NUEVO[0].menu_analysis_id, "n2")
+        policy = CommitPolicy(strategy="rank_agreement")
+
+        exact = decide(
+            scores, NUEVO, policy, rank_agreement_refs=(first, first, first)
+        )
+        different_glosses = decide(
+            scores, NUEVO, policy, rank_agreement_refs=(first, second, first)
+        )
+
+        self.assertEqual(exact.level, "leaf")
+        self.assertEqual(different_glosses.level, "tuple")
+
+    def test_rank_agreement_can_keep_a_shared_gloss_without_a_leaf(self):
+        same_gloss = (
+            analysis("nuevo", "ADJ", (("n1", "new"), ("n2", "new"))),
+        )
+        scores = (
+            LeafScore(same_gloss[0].menu_analysis_id, "n1", 0.9),
+            LeafScore(same_gloss[0].menu_analysis_id, "n2", 0.8),
+        )
+        decision = decide(
+            scores,
+            same_gloss,
+            CommitPolicy(strategy="rank_agreement"),
+            rank_agreement_refs=(
+                (same_gloss[0].menu_analysis_id, "n1"),
+                (same_gloss[0].menu_analysis_id, "n2"),
+            ),
+        )
+
+        self.assertEqual(decision.level, "glosskey")
 
     def test_a_weak_gloss_margin_publishes_less_without_escalating(self):
         decision = decide(self.scores(0.5, 0.5), NUEVO, CommitPolicy(leaf_minimum=0.9))
