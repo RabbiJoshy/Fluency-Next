@@ -127,15 +127,19 @@ def handle_pipeline(args: argparse.Namespace) -> int:
     if args.pipeline_command == "plan":
         profile = load_pipeline_profile(args.profile)
         run_directory = create_pipeline_plan(workspace, profile)
-        target = (
-            profile["scope"]["surface_limit"]
-            * display_examples_per_card(profile["scope"])
+        surfaces = profile["scope"]["surface_limit"]
+        # Summing the tiers, not multiplying by the largest: a plan that
+        # overstates what it will build is the same class of error as a run
+        # recording what it did not verify.
+        target = projected_display_examples(profile["scope"], surfaces)
+        tiers = display_example_tiers(profile["scope"])
+        shape = (
+            f"{tiers[0][1]} examples each"
+            if len(tiers) == 1
+            else ", ".join(f"{count} to rank {rank:,}" for rank, count in tiers)
         )
         print(f"Created fresh pipeline skeleton: {run_directory}")
-        print(
-            f"Audit target: {profile['scope']['surface_limit']} surface cards, "
-            f"{display_examples_per_card(profile['scope'])} examples each ({target} total)"
-        )
+        print(f"Audit target: {surfaces} surface cards, {shape} ({target:,} examples total)")
         budget = check_wsd_budget(profile)
         # Report the cap that actually binds. Naming the harvest budget here
         # while multiplying by the execution cap is how the old six-fold

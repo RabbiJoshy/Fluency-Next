@@ -65,6 +65,8 @@ from fluency.harvest.pools import (
 from fluency.pipeline.budget import (
     check_wsd_budget,
     display_examples_per_card,
+    display_example_tiers,
+    projected_display_examples,
     wsd_budget_per_card,
 )
 from fluency.pipeline.planning import create_pipeline_plan, load_pipeline_profile
