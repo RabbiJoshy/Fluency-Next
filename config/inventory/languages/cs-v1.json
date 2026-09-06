@@ -2,6 +2,19 @@
   "config_version": "inventory-language-policy/v1",
   "policy_id": "cs-v1",
   "language": "cs",
-  "surface_exclusions": {},
-  "exclusion_note": "Empty on the first Czech run. Exclusions are derived by cross-referencing the frequency list against the Czech Wiktionary once a harvest exists -- given names, English loans and abbreviations are what the Portuguese list needed. Declaring the key empty rather than omitting it states that no exclusions have been decided yet, not that none are needed."
+  "surface_exclusions": {
+    "alphahff": {
+      "reason": "subtitle release-group tag from a credit line; zero usable sentences",
+      "decision": "exclude_without_redirect"
+    },
+    "gr": {
+      "reason": "subtitle credit fragment; zero usable sentences",
+      "decision": "exclude_without_redirect"
+    },
+    "whoa": {
+      "reason": "English interjection carried untranslated into Czech subtitles",
+      "decision": "exclude_without_redirect"
+    }
+  },
+  "exclusion_note": "Derived from the first Czech 3000-surface harvest. Only three surfaces needed excluding: two subtitle release-group tags that retained zero usable sentences, and one English interjection. This list is deliberately tiny. 911 of 3000 Czech cards have no Wiktionary menu, but almost all are ordinary inflected Czech -- 'vstavej' is an imperative, not junk -- because English Wiktionary indexes lemmas while the frequency list is inflected forms. Excluding them would delete the language, not clean it. The menu gap is closed by lemma-aware lookup, not by exclusion."
 }

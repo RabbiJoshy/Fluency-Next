@@ -29,6 +29,8 @@ from fluency.nlp.embeddings import ensure_embeddings, load_cache
 from fluency.nlp.pos import load_pinned
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.wsd.commit import CommitPolicy
+from fluency.wsd.companion_gate import CONTRACTION_PARTS
+from fluency.wsd.alignment import LiteralGlossAlignmentCorrector, SimAlignWordAligner
 from fluency.wsd.contracts import SelectedTuple, SelectionProjection, WSDAssignment
 from fluency.wsd.features import SpecialistFeature
 from fluency.wsd.disposition import DispositionPolicy
@@ -63,7 +65,91 @@ SUPPORTED_PROFILE_CONSTRAINT_MODES = {
     # the run's language, not from this id. The id is provenance -- a bundle
     # must not claim it ran a Spanish profile.
     "pt-v7-1": "filter",
+    "es-v9-1": "filter",
+    "es-v9-2": "filter",
+    "es-v10-1": "filter",
+    "pt-v9-1": "filter",
+    "pt-v10-1": "filter",
+    "es-v8-english-1": "filter",
+    "pt-v8-english-1": "filter",
+    # Czech declares no POS model, so the gate its binding returns admits every
+    # sense; the mode is still "filter" because that is what the executor does
+    # with whatever gate it is handed, and the id is provenance.
+    "cs-v10-1": "filter",
 }
+PROFILE_LANGUAGES = {
+    "es-v6-1": "es", "es-v7-1": "es", "pt-v7-1": "pt",
+    "es-v9-1": "es", "es-v9-2": "es", "es-v10-1": "es",
+    "pt-v9-1": "pt", "pt-v10-1": "pt",
+    "es-v8-english-1": "es", "pt-v8-english-1": "pt",
+    "cs-v10-1": "cs",
+}
+ALIGNMENT_PROFILES = frozenset({"es-v8-english-1", "pt-v8-english-1"})
+RANK_AGREEMENT_PROFILES = frozenset(
+    {"es-v9-1", "es-v9-2", "es-v10-1", "pt-v9-1", "pt-v10-1", "cs-v10-1"}
+)
+EVIDENCE_GUARD_PROFILES = frozenset({"es-v10-1", "pt-v10-1", "cs-v10-1"})
+
+MORPH_VALUE_MAP = {
+    ("Number", "Sing"): ("number", "singular"),
+    ("Number", "Plur"): ("number", "plural"),
+    ("Mood", "Imp"): ("mood", "imperative"),
+    ("Mood", "Ind"): ("mood", "indicative"),
+    ("Mood", "Sub"): ("mood", "subjunctive"),
+    ("Reflex", "Yes"): ("reflexive", "true"),
+}
+
+
+def _canonical_grammar(token: Any) -> dict[str, str]:
+    morph = getattr(token, "morph", None)
+    values = morph.to_dict() if morph is not None and hasattr(morph, "to_dict") else {}
+    grammar: dict[str, str] = {}
+    person = values.get("Person")
+    if person in {"1", "2", "3"}:
+        grammar["person"] = person
+    for source, raw_value in values.items():
+        normalized = MORPH_VALUE_MAP.get((source, raw_value))
+        if normalized is not None:
+            grammar[normalized[0]] = normalized[1]
+    return grammar
+
+
+def _attached_companions(document: Any, target: Any) -> set[str]:
+    """Words structurally belonging to this exact target occurrence."""
+
+    if not hasattr(target, "head") or not hasattr(target, "dep_"):
+        return set()
+    anchors = {target}
+    if target.dep_ == "cop" and target.head is not target:
+        anchors.add(target.head)
+    attached: set[str] = set()
+    for token in document:
+        if token == target or not hasattr(token, "head"):
+            continue
+        word = str(getattr(token, "text", "")).casefold()
+        forms = {word, *CONTRACTION_PARTS.get(word, ())}
+        if token.head in anchors:
+            attached.update(forms)
+            continue
+        if str(getattr(token, "dep_", "")) not in {"case", "mark"}:
+            continue
+        node = token.head
+        if token.dep_ == "mark" and str(getattr(node, "pos_", "")) in {"VERB", "AUX"}:
+            if getattr(node, "head", None) in anchors:
+                attached.update(forms)
+            continue
+        visited: set[int] = set()
+        while node not in anchors and id(node) not in visited:
+            visited.add(id(node))
+            if str(getattr(node, "pos_", "")) in {"VERB", "AUX"}:
+                break
+            parent = getattr(node, "head", node)
+            if parent is node:
+                break
+            node = parent
+        if node in anchors:
+            attached.update(forms)
+    return attached
 
 
 def load_json(path: Path) -> Any:
@@ -203,6 +289,8 @@ def occurrence_pos_tags(
                     TargetOccurrence(observed_text, surface.casefold(), start, end),
                 )
             tags: list[str] = []
+            grammar_marks: list[dict[str, str]] = []
+            companion_marks: list[set[str]] = []
             for occurrence in occurrences:
                 overlapping = [
                     token
@@ -212,8 +300,23 @@ def occurrence_pos_tags(
                 ]
                 if overlapping:
                     tags.append(overlapping[0].pos_)
+                    grammar_marks.append(_canonical_grammar(overlapping[0]))
+                    if hasattr(overlapping[0], "head") and hasattr(overlapping[0], "dep_"):
+                        companion_marks.append(
+                            _attached_companions(document, overlapping[0])
+                        )
             unique = sorted(set(tags))
             value = unique[0] if len(unique) == 1 else None
+            shared_grammar: dict[str, str] = {}
+            if grammar_marks:
+                for axis in set.intersection(*(set(mark) for mark in grammar_marks)):
+                    axis_values = {mark[axis] for mark in grammar_marks}
+                    if len(axis_values) == 1:
+                        shared_grammar[axis] = next(iter(axis_values))
+            if companion_marks:
+                shared_grammar["attached_companions"] = ",".join(
+                    sorted(set.intersection(*companion_marks))
+                )
             status = (
                 "observed"
                 if len(unique) == 1
@@ -226,6 +329,7 @@ def occurrence_pos_tags(
                 "status": status,
                 "observed_pos": value,
                 "occurrence_tags": tags,
+                "observed_grammar": shared_grammar,
                 "canonicalized_target_for_model": normalized_for_model,
                 "model_revision": model_pin,
             }
@@ -247,6 +351,17 @@ class ExactTextGlossScorer:
 
     def score(self, sentence: str, analyses: tuple[MenuAnalysis, ...]) -> Sequence[LeafScore]:
         import numpy as np
+
+        leaves = [
+            (analysis.menu_analysis_id, leaf.sense_id)
+            for analysis in analyses
+            for leaf in analysis.senses
+        ]
+        # A one-leaf menu still passes through the v10 POS, grammar and
+        # companion checks, but semantic comparison cannot change its forced
+        # choice. Do not require paid vectors merely to compare it with itself.
+        if len(leaves) == 1:
+            return (LeafScore(leaves[0][0], leaves[0][1], 0.0),)
 
         query = self.vectors.get(sentence)
         scores: list[LeafScore] = []
@@ -345,6 +460,11 @@ def main() -> None:
         help="max occurrences per surface card that reach WSD (default: the "
              "mature historical 10). Separate from the study-example cap.",
     )
+    parser.add_argument(
+        "--offline-only",
+        action="store_true",
+        help="use only the existing local embedding cache and fail on any miss",
+    )
     args = parser.parse_args()
 
     # The run states its own language. Counting directory levels is how
@@ -354,8 +474,27 @@ def main() -> None:
         (args.run_dir / "profile.json").read_text(encoding="utf-8")
     )["language"]
     binding = binding_for(run_language)
+    if PROFILE_LANGUAGES[args.profile_id] != run_language:
+        raise SystemExit(
+            f"profile {args.profile_id} is for {PROFILE_LANGUAGES[args.profile_id]}, "
+            f"not run language {run_language}"
+        )
     sense_compatible, pos_is_orthogonal = pos_gate_for(run_language)
-    pos_pin = pin(binding.pos_model_role)
+    # A language may declare it has no POS model. The pin is then the stated
+    # absence, not a model name, and it is recorded in provenance as such so a
+    # reader can tell "no tagger existed" from "a tagger ran".
+    pos_pin = pin(binding.pos_model_role) if binding.pos_model_role else "none@no-pos-model-declared"
+    alignment_enabled = args.profile_id in ALIGNMENT_PROFILES
+    aligner = (
+        LiteralGlossAlignmentCorrector(SimAlignWordAligner())
+        if alignment_enabled
+        else None
+    )
+    run_model_revisions = {
+        "gloss": EMBED_MODEL,
+        "occurrence_pos": pos_pin,
+        **({"alignment": aligner.model_revision} if aligner is not None else {}),
+    }
 
     stages = args.run_dir / "stages"
     inventory_path = stages / "01_inventory/output/inventory.json"
@@ -387,18 +526,26 @@ def main() -> None:
         token_tuple_vote=False,
         tuple_vote_minimum_margin=0.0,
         calibration=False,
-        alignment=False,
+        alignment=alignment_enabled,
         generative_escalation=False,
         disposition=DispositionPolicy(minimum_confidence=None, weak="retain"),
         candidate_preparation=True,
         multiword_candidates=multiword_index is not None,
-        commit=CommitPolicy(),
+        commit=CommitPolicy(
+            strategy=(
+                "rank_agreement"
+                if args.profile_id in RANK_AGREEMENT_PROFILES
+                else "margin"
+            ),
+            evidence_guards=args.profile_id in EVIDENCE_GUARD_PROFILES,
+        ),
     )
 
     # --- gather every exact text the run needs, then embed the misses ---
     policy = OccurrenceSamplingPolicy(cap_per_surface=args.execution_cap)
     needed: set[str] = set()
     work: list[tuple[dict[str, Any], dict[str, Any], str, str, str]] = []
+    embedding_scored_cards: set[str] = set()
     capped: list[tuple[dict[str, Any], dict[str, Any], str]] = []
     deterministic: list[tuple[dict[str, Any], dict[str, Any], str]] = []
     selections = []
@@ -435,7 +582,11 @@ def main() -> None:
                 )
                 is not None
             )
-            if only is not None and not has_multiword_alternative:
+            if (
+                only is not None
+                and not has_multiword_alternative
+                and args.profile_id not in EVIDENCE_GUARD_PROFILES
+            ):
                 # A one-sense menu is not disambiguation. Assign it without any
                 # contextual model and mark it as a default, so the auditor can
                 # tell it apart from a genuine multi-option decision.
@@ -443,7 +594,10 @@ def main() -> None:
                 continue
             translation = (row.get("translation") or {}).get("text") or ""
             work.append((card, menu_card, sentence_id, text, translation))
-            needed.add(text)
+            leaf_count = sum(len(analysis.senses) for analysis in analyses)
+            if leaf_count > 1 or has_multiword_alternative:
+                needed.add(text)
+                embedding_scored_cards.add(card_id)
     report = sampling_report(selections, policy)
     print(
         f"sampling: cap {policy.cap_per_surface}/surface -> "
@@ -453,18 +607,26 @@ def main() -> None:
     )
     print(f"  deterministic single-option (no model): {len(deterministic):,}")
     print(f"  model-scored provider/MWE assignments:  {len(work):,}")
-    print(
-        f"Tagging occurrence POS with {pos_pin} "
-        f"(batch size {args.pos_batch_size}, {len(work):,} occurrences)...",
-        flush=True,
-    )
-    observed_pos, observed_pos_evidence = occurrence_pos_tags(
-        work,
-        model_name=args.spacy_model or pos_pin.split("@", 1)[0],
-        model_pin=pos_pin,
-        adapter=binding.adapter_factory(),
-        batch_size=args.pos_batch_size,
-    )
+    if binding.pos_model_role is None:
+        print(
+            f"No POS model is declared for {run_language}; every sense stays eligible "
+            f"and the embedding decides ({len(work):,} occurrences).",
+            flush=True,
+        )
+        observed_pos, observed_pos_evidence = {}, {}
+    else:
+        print(
+            f"Tagging occurrence POS with {pos_pin} "
+            f"(batch size {args.pos_batch_size}, {len(work):,} occurrences)...",
+            flush=True,
+        )
+        observed_pos, observed_pos_evidence = occurrence_pos_tags(
+            work,
+            model_name=args.spacy_model or pos_pin.split("@", 1)[0],
+            model_pin=pos_pin,
+            adapter=binding.adapter_factory(),
+            batch_size=args.pos_batch_size,
+        )
     if multiword_index is not None:
         for card, menu_card, _sentence_id, text, _translation in work:
             for analysis, _entry, _span in multiword_analyses(
@@ -472,9 +634,8 @@ def main() -> None:
                 sentence=text, index=multiword_index,
             ):
                 needed.add(analysis.senses[0].gloss_text)
-    scored_cards = {card["card_id"] for card, _menu, _sid, _t, _tr in work}
     for card in menu["cards"]:
-        if card["card_id"] not in scored_cards:
+        if card["card_id"] not in embedding_scored_cards:
             continue
         for analysis in card["analyses"]:
             for leaf in analysis["senses"]:
@@ -507,10 +668,20 @@ def main() -> None:
             if line.startswith("GEMINI_API_KEY"):
                 api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
 
-    cached_before = len(load_cache(cache_path))
-    # Shared store, resumable writer: an interrupted embed keeps every vector
-    # already paid for instead of starting the run again from nothing.
-    vectors = ensure_embeddings(cache_path, needed, api_key=api_key or None)
+    cached_vectors = load_cache(cache_path)
+    cached_before = len(cached_vectors)
+    uncached = sorted(needed - set(cached_vectors))
+    if args.offline_only:
+        if uncached:
+            raise SystemExit(
+                f"offline-only mode: {len(uncached):,} exact texts are absent "
+                "from the local embedding cache"
+            )
+        vectors = cached_vectors
+    else:
+        # Shared store, resumable writer: an interrupted embed keeps every
+        # vector already paid for instead of starting the run again from nothing.
+        vectors = ensure_embeddings(cache_path, needed, api_key=api_key or None)
     missing = [text for text in needed if text not in vectors]
     if missing:
         raise SystemExit(f"{len(missing):,} exact-text embeddings could not be created")
@@ -526,7 +697,10 @@ def main() -> None:
             # The POS gate follows the dictionary, not the language.
             sense_compatible=sense_compatible,
             pos_is_orthogonal=pos_is_orthogonal,
+            clitic_gate=run_language == "es",
+            normalized_leaf_gates=args.profile_id in EVIDENCE_GUARD_PROFILES,
         ),
+        aligner=aligner,
         multiword_index=multiword_index,
         multiword_inventory_content_id=multiword_content_id,
         context_model_revisions={"occurrence_pos": pos_pin},
@@ -552,6 +726,10 @@ def main() -> None:
             analyses=analyses,
             observed_pos=observed_pos.get(request_key),
             observed_pos_evidence=observed_pos_evidence.get(request_key),
+            target_span=(
+                tuple(card["target_span"]) if card.get("target_span") is not None else None
+            ),
+            target_observed_form=card.get("target_observed_form"),
         )
         assignment = runner.assign(request)
         counts[assignment.status] = counts.get(assignment.status, 0) + 1
@@ -576,10 +754,7 @@ def main() -> None:
                           "cap_per_surface": policy.cap_per_surface} if has_menu
                          else {"reason": "no_candidate_analysis"},
                 confidence=None,
-                model_revisions={
-                    "gloss": EMBED_MODEL,
-                    "occurrence_pos": pos_pin,
-                } if has_menu else {},
+                model_revisions=run_model_revisions if has_menu else {},
             ).to_dict()
         )
         counts["not_evaluated_example_cap" if has_menu else "no_menu"] = counts.get(
@@ -617,12 +792,16 @@ def main() -> None:
                         "axis_confidences": {"leaf": None, "glosskey": None, "tuple": None},
                         "calibration": {"status": "deterministic", "artifact_content_id": None},
                     },
+                    "gemini_recommendation": {
+                        "recommended": False,
+                        "reason": "only_one_leaf_available",
+                        "deepest_shared_level": "leaf",
+                        "gemini_called": False,
+                        "independent_of_publication_projection": True
+                    },
                 },
                 confidence=None,
-                model_revisions={
-                    "gloss": EMBED_MODEL,
-                    "occurrence_pos": pos_pin,
-                },
+                model_revisions=run_model_revisions,
                 emitted_level="leaf",
                 decision_kind="deterministic_default",
                 selection_projections={
@@ -660,12 +839,14 @@ def main() -> None:
         "coverage": "complete_candidate_pool",
         "method": {
             "profile_id": args.profile_id,
-            "implementation_version": "fluency.speech.wsd_execute/v7",
+            "implementation_version": (
+                "fluency.speech.wsd_execute/v8" if alignment_enabled
+                else "fluency.speech.wsd_execute/v9"
+                if args.profile_id in RANK_AGREEMENT_PROFILES
+                else "fluency.speech.wsd_execute/v7"
+            ),
             "implementation_content_id": file_content_id(Path(__file__)),
-            "model_revisions": {
-                "gloss": EMBED_MODEL,
-                "occurrence_pos": pos_pin,
-            },
+            "model_revisions": run_model_revisions,
             "constraint_mode": SUPPORTED_PROFILE_CONSTRAINT_MODES[args.profile_id],
             "random_seed": 0,
         },
