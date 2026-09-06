@@ -25,6 +25,9 @@ ROOT = Path(__file__).resolve().parents[2]
 SHARED = json.loads((ROOT / "config/harvest/shared/speech-v1.json").read_text())
 PT = json.loads((ROOT / "config/harvest/languages/pt-v1.json").read_text())
 TRANSLATION = "a translation long enough to pass the ratio gate"
+# Every word here is ranked: in a real run the commonest words always are, and
+# leaving one out silently makes it look rare enough to dominate the score.
+RANKS = {"não": 4, "e": 8, "sei": 300, "o": 2, "que": 1, "é": 6}
 
 # Rejected by the count gate alone: five distinct tokens, none repeated.
 TOO_FEW_WORDS = "Não sei o que é."
@@ -101,17 +104,53 @@ class EchoRatioTests(unittest.TestCase):
 
 
 class EasinessDegeneracyTests(unittest.TestCase):
-    def test_pure_repetition_scores_perfectly(self) -> None:
-        """The reason the gates are needed, pinned so it is not mistaken for a bug."""
+    """Burden and length are measured on the same basis: distinct words.
+
+    Burden always counted each distinct word once, but length counted raw
+    tokens. Repetition therefore added nothing to burden while padding a
+    sentence past the short-sentence penalty -- it was not merely free, it was
+    rewarded, and "Nao, nao, nao, nao, nao, nao" scored a perfect 0.0 and won
+    every ranking. This is the defect the gates were compensating for.
+    """
+
+    def _score(self, sentence: str) -> float:
+        matcher = SurfaceMatcher([{"card_id": "c", "display_form": "não"}], PT)
+        return easiness_metrics(
+            sentence, {"display_form": "não", "rank": 4},
+            matcher=matcher, frequency_ranks=RANKS,
+            shared_policy=SHARED,
+        )["score"]
+
+    def test_repetition_no_longer_scores_perfectly(self) -> None:
+        self.assertGreater(self._score("Não, não, não, não, não, não."), 0.0)
+
+    def test_repetition_loses_to_a_real_sentence(self) -> None:
+        """The ranking itself now prefers the example that teaches something."""
+
+        self.assertGreater(
+            self._score("Não, não, não, não, não, não."),
+            self._score("E não sei o que é."),
+        )
+
+    def test_a_sentence_without_repetition_is_scored_as_before(self) -> None:
+        """The fix must not re-rank the sentences that were already fine.
+
+        Distinct and raw length are equal when nothing repeats, so a
+        non-repetitive example keeps its exact previous score. That is what
+        keeps an existing embedding cache valid: only repetitive sentences move.
+        """
 
         matcher = SurfaceMatcher([{"card_id": "c", "display_form": "não"}], PT)
-        card = {"display_form": "não", "rank": 4}
+        sentence = "E não sei o que é."
+        tokens = matcher.tokens(sentence)
+        self.assertEqual(len(tokens), len(dict.fromkeys(tokens)))
         metrics = easiness_metrics(
-            "Não, não, não, não, não, não.", card,
-            matcher=matcher, frequency_ranks={"não": 4}, shared_policy=SHARED,
+            sentence, {"display_form": "não", "rank": 4},
+            matcher=matcher, frequency_ranks=RANKS, shared_policy=SHARED,
         )
-        self.assertEqual(metrics["score"], 0.0)
-        self.assertEqual(metrics["harder_tokens"], 0)
+        # target_tokens is the length the penalty is computed from; for a
+        # sentence with no repeats it still equals the raw token count.
+        self.assertEqual(metrics["target_tokens"], len(tokens))
 
 
 if __name__ == "__main__":

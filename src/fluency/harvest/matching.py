@@ -57,6 +57,22 @@ class SurfaceMatcher:
         return [self.normalize(token) for token in self.token_re.findall(text)]
 
 
+def example_identity(text: str) -> str:
+    """What makes two sentences the same example.
+
+    A corpus row is not an example. Subtitles carry the same line in many films
+    and repeat it with a speaker dash, an ellipsis, or different terminal
+    punctuation; those are one example seen several times, not several examples.
+    Identity is the sequence of words, ignoring case, accent form, and
+    everything that is not a word. Accents are preserved: pais and pais are
+    distinct Portuguese words and must never merge.
+    """
+
+    return " ".join(
+        re.findall(r"[^\W\d_]+", unicodedata.normalize("NFC", text).casefold(), re.UNICODE)
+    )
+
+
 def quality_rejection(
     target: str,
     translation: str,
@@ -135,7 +151,12 @@ def easiness_metrics(
     burden = 0.0
     if costs:
         burden = policy["first_new_word_discount"] * costs[0] + sum(costs[1:])
-    length = len(tokens)
+    # Burden counts each distinct word once, so length must too. Measuring
+    # length over raw tokens made repetition free AND rewarded: a repeated word
+    # added nothing to burden while padding the sentence past the short-sentence
+    # penalty, so "Nao, nao, nao, nao, nao, nao" scored a perfect 0.0 and won
+    # every ranking. A sentence's substance is how many different words it uses.
+    length = len(dict.fromkeys(tokens))
     length_penalty = (
         policy["short_penalty_weight"] * max(0, policy["preferred_minimum_tokens"] - length)
         + policy["long_penalty_weight"] * max(0, length - policy["preferred_maximum_tokens"])

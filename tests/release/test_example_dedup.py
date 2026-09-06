@@ -7,7 +7,7 @@ adjacent and fill every display slot on exactly the cards a learner opens first.
 
 import unittest
 
-from fluency.release.run_candidate import _example_identity
+from fluency.harvest.matching import example_identity
 
 
 class ExampleIdentityTests(unittest.TestCase):
@@ -18,24 +18,24 @@ class ExampleIdentityTests(unittest.TestCase):
             "Não o que está a fazer?",
             "não o QUE está a fazer",
         ]
-        self.assertEqual(len({_example_identity(v) for v in variants}), 1)
+        self.assertEqual(len({example_identity(v) for v in variants}), 1)
 
     def test_a_leading_dash_alone_does_not_make_a_new_example(self) -> None:
         self.assertEqual(
-            _example_identity("Está bem. O que é isso?"),
-            _example_identity("- Está bem. O que é isso?"),
+            example_identity("Está bem. O que é isso?"),
+            example_identity("- Está bem. O que é isso?"),
         )
 
     def test_different_sentences_stay_different(self) -> None:
         self.assertNotEqual(
-            _example_identity("Está tudo bem, eu estou aqui."),
-            _example_identity("Como é que está tudo bem?"),
+            example_identity("Está tudo bem, eu estou aqui."),
+            example_identity("Como é que está tudo bem?"),
         )
 
     def test_accents_are_not_stripped(self) -> None:
         """país and pais are distinct Portuguese words, never merged."""
 
-        self.assertNotEqual(_example_identity("o país"), _example_identity("o pais"))
+        self.assertNotEqual(example_identity("o país"), example_identity("o pais"))
 
 
 if __name__ == "__main__":

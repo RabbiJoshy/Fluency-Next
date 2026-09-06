@@ -18,7 +18,12 @@ from fluency.core.workspace import Workspace
 from fluency.pipeline.budget import display_examples_per_card, wsd_budget_per_card
 from fluency.harvest.config import load_harvest_policies
 from fluency.harvest.inventory import load_frequency_ranks, load_harvest_inventory
-from fluency.harvest.matching import SurfaceMatcher, easiness_metrics, quality_rejection
+from fluency.harvest.matching import (
+    SurfaceMatcher,
+    easiness_metrics,
+    example_identity,
+    quality_rejection,
+)
 from fluency.harvest.records import HarvestRecordError, validate_parallel_sentence
 from fluency.harvest.sources import (
     CorpusAdapter,
@@ -86,14 +91,14 @@ def _trim_candidates(
     *,
     cap: int,
 ) -> None:
-    for card_id, by_sentence in candidates.items():
-        if len(by_sentence) <= cap:
+    for card_id, by_identity in candidates.items():
+        if len(by_identity) <= cap:
             continue
         retained = sorted(
-            by_sentence.values(),
-            key=lambda item: (item["metrics"]["score"], item["sentence_id"]),
+            by_identity.items(),
+            key=lambda entry: (entry[1]["metrics"]["score"], entry[1]["sentence_id"]),
         )[:cap]
-        candidates[card_id] = {item["sentence_id"]: item for item in retained}
+        candidates[card_id] = dict(retained)
 
 
 def _adapter_for(
@@ -239,18 +244,28 @@ def harvest_run_stage(
                     "metrics": metrics,
                 }
                 card_candidates = candidates[card["card_id"]]
-                if record["sentence_id"] not in card_candidates:
-                    card_candidates[record["sentence_id"]] = candidate
+                # A card's candidates are distinct EXAMPLES, not corpus rows.
+                # Keyed by sentence_id, the same subtitle line appearing in many
+                # films entered the pool many times: `que` retained 60
+                # candidates that were only 4 distinct sentences, so every
+                # display slot showed one line four ways. Identical text scores
+                # identically, so the lowest sentence_id wins deterministically.
+                identity = example_identity(record["target"]["text"])
+                held = card_candidates.get(identity)
+                if held is None:
+                    card_candidates[identity] = candidate
                     accepted_matches += 1
                     matched_per_card[card["card_id"]] += 1
+                elif candidate["sentence_id"] < held["sentence_id"]:
+                    card_candidates[identity] = candidate
                 if len(card_candidates) > cap * 2:
                     _trim_candidates(candidates, cap=cap)
 
     _trim_candidates(candidates, cap=cap)
     live_sentence_ids = {
-        sentence_id
-        for by_sentence in candidates.values()
-        for sentence_id in by_sentence
+        item["sentence_id"]
+        for by_identity in candidates.values()
+        for item in by_identity.values()
     }
     sentence_records = {
         sentence_id: sentence_records[sentence_id]

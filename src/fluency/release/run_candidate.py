@@ -24,6 +24,7 @@ from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
 from fluency.pipeline.planning import validate_pipeline_profile
+from fluency.harvest.matching import example_identity
 from fluency.release.composition import compose_release
 from fluency.core.io import atomic_write, json_bytes
 from fluency.release.study_structure import build_study_structure
@@ -43,7 +44,7 @@ POLICY_VERSION = "harvest-easiness-order/v1"
 _WORDS = re.compile(r"[^\W\d_]+", re.UNICODE)
 
 
-def _example_identity(text: str) -> str:
+def example_identity(text: str) -> str:
     """What makes two displayed examples the same example to a learner.
 
     Subtitles carry the same line many times over, differing only in a speaker
@@ -231,7 +232,7 @@ def build_inactive_run_candidate(
         seen: set[str] = set()
         for item in ranked:
             sentence = sentences.get(item["sentence_id"])
-            identity = _example_identity(sentence["target"]["text"]) if sentence else item["sentence_id"]
+            identity = example_identity(sentence["target"]["text"]) if sentence else item["sentence_id"]
             if identity in seen:
                 continue
             seen.add(identity)
@@ -391,6 +392,12 @@ def build_inactive_run_candidate(
                 )
                 if isinstance(recommendation, dict):
                     wsd_metadata["gemini_recommendation"] = dict(recommendation)
+                commit_evidence = (computed.get("evidence") or {}).get("commit") or {}
+                confidence_reasons = commit_evidence.get("evidence_guards")
+                if isinstance(confidence_reasons, list) and confidence_reasons:
+                    wsd_metadata["confidence_reasons"] = list(confidence_reasons)
+                if computed.get("confidence") is not None:
+                    wsd_metadata["confidence"] = computed["confidence"]
                 example_metadata["wsd"] = wsd_metadata
             title_id = str((sentence["source"].get("document") or {}).get("title_id") or "")
             if title_id and title_id in source_titles:
