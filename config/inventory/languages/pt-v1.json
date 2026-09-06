@@ -310,7 +310,347 @@
     "will": {
       "reason": "English, not Portuguese: subtitle files leak untranslated lines",
       "decision": "exclude_without_redirect"
+    },
+    "abby": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "andrew": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "andy": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "annie": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "barry": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "bruce": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "carl": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "charlotte": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "chloe": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "dave": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "dean": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "derek": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "donna": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "ed": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "elizabeth": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "emma": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "fred": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "gary": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "grace": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "greg": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "hank": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "harvey": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "howard": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "jackie": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "jeff": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "jenny": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "jesse": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "joey": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "josh": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "julia": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "julie": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "karen": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "katie": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "kelly": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "kyle": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "larry": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "lily": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "lois": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "louis": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "lucy": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "maggie": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "molly": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "oliver": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "patrick": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "phil": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "rebecca": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "rick": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "robin": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "roger": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "rose": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "roy": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "sally": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "sean": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "simon": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "stan": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "susan": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "ted": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "tyler": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "vincent": {
+      "reason": "English given name; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "jackson": {
+      "reason": "English surname; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "johnson": {
+      "reason": "English surname; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "jones": {
+      "reason": "English surname; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "morgan": {
+      "reason": "English surname; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "smith": {
+      "reason": "English surname; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "wilson": {
+      "reason": "English surname; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "angeles": {
+      "reason": "English place name or its parts; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "city": {
+      "reason": "English place name or its parts; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "king": {
+      "reason": "English place name or its parts; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "park": {
+      "reason": "English place name or its parts; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "san": {
+      "reason": "English place name or its parts; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "st": {
+      "reason": "English place name or its parts; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "street": {
+      "reason": "English place name or its parts; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "vegas": {
+      "reason": "English place name or its parts; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "york": {
+      "reason": "English place name or its parts; no Portuguese Wiktionary entry",
+      "decision": "exclude_without_redirect"
+    },
+    "and": {
+      "reason": "English word appearing in untranslated lines; not Portuguese",
+      "decision": "exclude_without_redirect"
+    },
+    "new": {
+      "reason": "English word appearing in untranslated lines; not Portuguese",
+      "decision": "exclude_without_redirect"
+    },
+    "of": {
+      "reason": "English word appearing in untranslated lines; not Portuguese",
+      "decision": "exclude_without_redirect"
+    },
+    "red": {
+      "reason": "English word appearing in untranslated lines; not Portuguese",
+      "decision": "exclude_without_redirect"
+    },
+    "to": {
+      "reason": "English word appearing in untranslated lines; not Portuguese",
+      "decision": "exclude_without_redirect"
+    },
+    "you": {
+      "reason": "English word appearing in untranslated lines; not Portuguese",
+      "decision": "exclude_without_redirect"
+    },
+    "sr": {
+      "reason": "abbreviation, not a spoken word",
+      "decision": "exclude_without_redirect"
+    },
+    "srta": {
+      "reason": "abbreviation, not a spoken word",
+      "decision": "exclude_without_redirect"
+    },
+    "legendagem": {
+      "reason": "subtitling credit line, not vocabulary a learner meets in dialogue",
+      "decision": "exclude_without_redirect"
+    },
+    "pt-subs": {
+      "reason": "subtitle release-group domain from a credit line",
+      "decision": "exclude_without_redirect"
+    },
+    "voce": {
+      "reason": "'voce' without its circumflex; the word is 'voce' with a diacritic and the bare form is an unaccented-corpus artifact",
+      "decision": "exclude_without_redirect"
     }
   },
-  "exclusion_note": "Derived by cross-referencing the top 2,000 European surfaces against the Portuguese Wiktionary extract: a surface with no Portuguese entry, or filed only as a name, is not vocabulary. Hyphenated clitics (da-me, ve-lo) are deliberately NOT excluded despite lacking entries -- they are exactly the European constructions this deck exists to teach. See the note in docs/reference/portuguese-v7-baseline.md."
+  "exclusion_note": "Derived by cross-referencing the top 2,000 European surfaces against the Portuguese Wiktionary extract: a surface with no Portuguese entry, or filed only as a name, is not vocabulary. Hyphenated clitics (da-me, ve-lo) are deliberately NOT excluded despite lacking entries -- they are exactly the European constructions this deck exists to teach. See the note in docs/reference/portuguese-v7-baseline.md. Extended for the 3000-surface scope: ranks 2001-3000 introduced 88 menu-less non-clitic surfaces, almost all English names and place names from untranslated credit lines, plus the subtitle-credit words 'legendagem' and 'pt-subs' (which retained a single usable sentence). 'convidados' and 'poucas' were deliberately NOT excluded: they are ordinary Portuguese whose menu is missing only because Wiktionary indexes the singular, and excluding them would delete real vocabulary. Hyphenated clitics stay in."
 }

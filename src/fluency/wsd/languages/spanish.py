@@ -13,7 +13,13 @@ import re
 import unicodedata
 from typing import Callable, Sequence
 
+from fluency.wsd.companion_gate import (
+    companion_satisfied as normalized_companion_satisfied,
+    filter_by_companion,
+    required_companions,
+)
 from fluency.wsd.candidate_policy import CandidatePreparation
+from fluency.wsd.grammar_gate import filter_by_grammar
 from fluency.wsd.gloss_scoring import LeafScore
 from fluency.wsd.languages.base import TargetOccurrence
 from fluency.wsd.menus import MenuAnalysis, SenseLeaf, require_analysis
@@ -21,7 +27,7 @@ from fluency.wsd.menus import MenuAnalysis, SenseLeaf, require_analysis
 
 WORD_RE = re.compile(r"[a-záéíóúüñ0-9]+")
 CLITICS = frozenset({"me", "te", "se", "nos", "os", "lo", "la", "le", "los", "las", "les"})
-ORTHOGONAL_POS = frozenset({"PHRASE", "CONTRACTION"})
+ORTHOGONAL_POS = frozenset({"PHRASE"})
 TRUSTED_POS = frozenset({"VERB", "NOUN", "ADJ", "ADV", "INTJ"})
 POS_BRIDGE = {
     "DET": frozenset({"ADJ", "DET", "PRON"}),
@@ -31,6 +37,9 @@ POS_BRIDGE = {
     "PROPN": frozenset({"PROPN", "NOUN"}),
     "ADV": frozenset({"ADV", "PRON", "ADJ"}),
     "AUX": frozenset({"VERB", "AUX", "PHRASE"}),
+    # spaCy tags Spanish contractions such as ``al`` and ``del`` as ADP while
+    # SpanishDict files their ordinary analyses as CONTRACTION.
+    "ADP": frozenset({"ADP", "CONTRACTION"}),
 }
 # AUX is the same UD/SpanishDict mismatch as DET and was missed when DET was
 # bridged. SpanishDict has no AUX category and files every auxiliary and modal
@@ -45,21 +54,6 @@ POS_BRIDGE = {
 # deck-wide value is proportionally smaller; the bug is real, its headline size
 # is inflated. It measures -1 on the older, easier 144-item panel, which is why
 # it read as noise there.
-TOKEN_RE = re.compile(r"[a-záéíóúüñ0-9']+")
-SOFT_COMPANION = re.compile(
-    r"\b(?:often|sometimes|usually|frequently|typically|generally|normally|"
-    r"commonly|may be|can be)\s+used with",
-    re.I,
-)
-COMPANION = re.compile(r'used with\s+"([^"]+)"|used with\s+([a-záéíóúüñ]+)', re.I)
-FUSED = {
-    "al": ("a", "el"), "del": ("de", "el"), "conmigo": ("con",),
-    "contigo": ("con",), "consigo": ("con",), "'e": ("de",),
-    "e'": ("de",), "pa": ("para",), "pa'": ("para",),
-    "p'": ("para",), "po'": ("por",),
-}
-
-
 def _deaccent(value: str) -> str:
     return "".join(
         character
@@ -83,44 +77,76 @@ def sense_compatible_bridged(sense_pos: str, observed_pos: str) -> bool:
     return sense_pos not in TRUSTED_POS
 
 
-def se_reflexive_evidence(surface_form: str, sentence: str) -> bool | None:
+def _feature_signature(leaf: SenseLeaf) -> tuple[tuple[str, str, str], ...]:
+    return tuple(sorted(
+        (str(feature.family), str(feature.kind), str(feature.value))
+        for feature in leaf.specialist_features
+    ))
+
+
+def _indistinguishable_leaf_refs(
+    analyses: Sequence[MenuAnalysis],
+) -> list[dict[str, str]]:
+    """Leaves whose Spanish-side descriptions provide no way to separate them."""
+
+    refs: list[dict[str, str]] = []
+    for analysis in analyses:
+        groups: dict[tuple[str, tuple[tuple[str, str, str], ...]], list[SenseLeaf]] = {}
+        for leaf in analysis.senses:
+            signature = (leaf.definition.casefold().strip(), _feature_signature(leaf))
+            groups.setdefault(signature, []).append(leaf)
+        for siblings in groups.values():
+            translations = {leaf.translation.casefold().strip() for leaf in siblings}
+            if len(siblings) < 2 or len(translations) < 2:
+                continue
+            refs.extend(
+                {
+                    "menu_analysis_id": analysis.menu_analysis_id,
+                    "sense_id": leaf.sense_id,
+                }
+                for leaf in siblings
+            )
+    return refs
+
+
+def se_reflexive_evidence(
+    surface_form: str,
+    sentence: str,
+    observed_grammar: dict[str, str] | None = None,
+) -> bool | None:
     """Return the exact conservative v5 ``se-only`` gate evidence."""
 
+    raw_surface = surface_form.casefold()
     surface = _deaccent(surface_form)
     # Speech inventories can contain an enclitic surface (``diviértanse``).
     # Looking only to the left mislabels it as non-reflexive even though the
     # clitic is fused into the observed token.
-    if surface.endswith("se") and len(surface) > 2:
+    # Check before removing accents. ``pensé`` becomes ``pense`` after accent
+    # removal and was therefore mistaken for an enclitic reflexive.
+    if (
+        raw_surface.endswith("se")
+        and len(raw_surface) > 2
+        and (observed_grammar or {}).get("mood") not in {"indicative", "subjunctive"}
+    ):
         return True
     tokens = WORD_RE.findall(_deaccent(sentence))
     try:
-        index = tokens.index(surface)
+        target_index = tokens.index(surface)
     except ValueError:
         return None
+    index = target_index
     cluster: list[str] = []
     index -= 1
     while index >= 0 and tokens[index] in CLITICS:
         cluster.append(tokens[index])
         index -= 1
     if "se" in cluster:
+        if any(item in cluster for item in ("lo", "la", "los", "las")):
+            return False
+        if target_index + 1 < len(tokens) and tokens[target_index + 1] == "que":
+            return False
         return True
     return False if not cluster else None
-
-
-def _leaf_context(leaf: SenseLeaf) -> str:
-    context = leaf.provider_metadata.get("context")
-    return context if isinstance(context, str) else leaf.definition
-
-
-def _hard_companion(leaf: SenseLeaf) -> str | None:
-    context = _leaf_context(leaf)
-    if SOFT_COMPANION.search(context):
-        return None
-    match = COMPANION.search(context)
-    if match is None:
-        return None
-    value = (match.group(1) or match.group(2) or "").strip().casefold()
-    return value or None
 
 
 def leaf_renderable(leaf: SenseLeaf) -> bool:
@@ -128,14 +154,7 @@ def leaf_renderable(leaf: SenseLeaf) -> bool:
 
 
 def companion_satisfied(leaf: SenseLeaf, sentence: str) -> bool:
-    companion = _hard_companion(leaf)
-    if companion is None:
-        return True
-    tokens = TOKEN_RE.findall(sentence.casefold())
-    expanded = set(tokens)
-    for token in tokens:
-        expanded.update(FUSED.get(token, ()))
-    return all(part in expanded for part in companion.split())
+    return normalized_companion_satisfied(leaf.specialist_features, sentence)
 
 
 class SpanishV5CandidatePolicy:
@@ -149,6 +168,8 @@ class SpanishV5CandidatePolicy:
         constraint_mode: str = "filter",
         sense_compatible: Callable[[str, str], bool] | None = None,
         pos_is_orthogonal: Callable[[str], bool] | None = None,
+        clitic_gate: bool = True,
+        normalized_leaf_gates: bool = False,
     ) -> None:
         # The POS gate is a property of the DICTIONARY, not the language: the
         # bridge below reconciles a tagger's UD tags with SpanishDict's tagset.
@@ -166,6 +187,8 @@ class SpanishV5CandidatePolicy:
         self.menu_prior = menu_prior
         self.menu_prior_decay = menu_prior_decay
         self.constraint_mode = constraint_mode
+        self.clitic_gate = clitic_gate
+        self.normalized_leaf_gates = normalized_leaf_gates
 
     def prepare(
         self,
@@ -173,11 +196,27 @@ class SpanishV5CandidatePolicy:
         sentence: str,
         surface_form: str,
         observed_pos: str | None,
+        observed_grammar: dict[str, str] | None = None,
         analyses: tuple[MenuAnalysis, ...],
     ) -> CandidatePreparation:
         keep_ids = {analysis.menu_analysis_id for analysis in analyses}
         pos_removed: list[str] = []
+        pos_match_status = "not_observed"
+        pos_match_kind = "not_observed"
         if observed_pos:
+            def phrase_matches_imperative(analysis: MenuAnalysis) -> bool:
+                return (
+                    analysis.part_of_speech == "PHRASE"
+                    and observed_pos == "VERB"
+                    and (observed_grammar or {}).get("mood") == "imperative"
+                    and any(
+                        feature.family == "grammar"
+                        and feature.value == "mood=imperative"
+                        for leaf in analysis.senses
+                        for feature in leaf.specialist_features
+                    )
+                )
+
             compatible = {
                 analysis.menu_analysis_id
                 for analysis in analyses
@@ -185,19 +224,37 @@ class SpanishV5CandidatePolicy:
                 # provider gate. A SpanishDict PHRASE row is therefore not an
                 # orthogonal MWE candidate: treating it as one is what allowed
                 # renderings such as ``está`` -> "he's" to beat the verb menu.
-                if not self._pos_is_orthogonal(analysis.part_of_speech)
-                and self._sense_compatible(analysis.part_of_speech, observed_pos)
+                if phrase_matches_imperative(analysis)
+                or (
+                    not self._pos_is_orthogonal(analysis.part_of_speech)
+                    and self._sense_compatible(analysis.part_of_speech, observed_pos)
+                )
             }
             if compatible:
+                pos_match_status = "matched"
+                exact = {
+                    analysis.menu_analysis_id
+                    for analysis in analyses
+                    if str(analysis.part_of_speech or "").upper()
+                    == str(observed_pos).upper()
+                }
+                pos_match_kind = "exact" if compatible & exact else "bridged_only"
                 pos_removed = sorted(keep_ids - compatible)
                 keep_ids &= compatible
+            else:
+                pos_match_status = "no_compatible_analysis"
+                pos_match_kind = "none"
 
-        evidence = se_reflexive_evidence(surface_form, sentence)
+        evidence = (
+            se_reflexive_evidence(surface_form, sentence, observed_grammar)
+            if self.clitic_gate
+            else None
+        )
         # In ``se ha ido`` / ``se está haciendo``, ``se`` belongs to the main
         # predicate, not to a lexical ``haberse`` / ``estarse`` reading of the
         # auxiliary. Once the occurrence tag says AUX, the non-reflexive
         # dictionary analysis is the only compatible side of that ambiguity.
-        if str(observed_pos or "").upper() == "AUX":
+        if self.clitic_gate and str(observed_pos or "").upper() == "AUX":
             evidence = False
         headwords = {analysis.headword.casefold() for analysis in analyses}
         reflexive_ambiguous = any(
@@ -216,27 +273,107 @@ class SpanishV5CandidatePolicy:
                 clitic_removed = sorted(keep_ids - compatible)
                 keep_ids &= compatible
 
+        structurally_kept = tuple(
+            analysis for analysis in analyses if analysis.menu_analysis_id in keep_ids
+        )
+        leaf_candidates = tuple(
+            (analysis, leaf)
+            for analysis in structurally_kept
+            for leaf in analysis.senses
+        )
+        attached_value = (observed_grammar or {}).get("attached_companions")
+        attached_companions = (
+            None
+            if attached_value is None
+            else tuple(value for value in str(attached_value).split(",") if value)
+        )
+        companion_kept, companion_rejected = filter_by_companion(
+            leaf_candidates,
+            sentence,
+            features_of=lambda item: item[1].specialist_features,
+            attached_companions=attached_companions,
+        )
+        companion_rejected_evidence = tuple(
+            (analysis, leaf)
+            for analysis, leaf in leaf_candidates
+            if required_companions(leaf.specialist_features)
+            and not normalized_companion_satisfied(
+                leaf.specialist_features,
+                sentence,
+                attached_companions=attached_companions,
+            )
+        )
+        companion_matched = tuple(
+            (analysis, leaf)
+            for analysis, leaf in leaf_candidates
+            if required_companions(leaf.specialist_features)
+            and normalized_companion_satisfied(
+                leaf.specialist_features,
+                sentence,
+                attached_companions=attached_companions,
+            )
+        )
+        grammar_kept, grammar_rejected = filter_by_grammar(
+            companion_kept,
+            observed_grammar or {},
+            features_of=lambda item: item[1].specialist_features,
+        )
+        kept_leaf_refs = {
+            (analysis.menu_analysis_id, leaf.sense_id)
+            for analysis, leaf in grammar_kept
+        }
+        filtered_analyses = tuple(
+            replace(
+                analysis,
+                senses=tuple(
+                    leaf
+                    for leaf in analysis.senses
+                    if (analysis.menu_analysis_id, leaf.sense_id) in kept_leaf_refs
+                ),
+            )
+            for analysis in structurally_kept
+            if any(
+                ref[0] == analysis.menu_analysis_id for ref in kept_leaf_refs
+            )
+        )
         selected_analyses = (
             analyses
             if self.constraint_mode == "evidence_only"
-            else tuple(
-                analysis
-                for analysis in analyses
-                if analysis.menu_analysis_id in keep_ids
-            )
+            else filtered_analyses
+            if self.normalized_leaf_gates
+            else structurally_kept
         )
+
+        def refs(items):
+            return [
+                {"menu_analysis_id": analysis.menu_analysis_id, "sense_id": leaf.sense_id}
+                for analysis, leaf in items
+            ]
         return CandidatePreparation(
             analyses=selected_analyses,
             evidence={
                 "method_id": self.method_id,
                 "policy": self.constraint_mode,
+                "normalized_leaf_gate_policy": (
+                    "filter" if self.normalized_leaf_gates else "evidence_only"
+                ),
                 "observed_pos": observed_pos,
+                "pos_match_status": pos_match_status,
+                "pos_match_kind": pos_match_kind,
+                "observed_grammar": dict(observed_grammar or {}),
                 "pos_removed_analysis_ids": pos_removed,
                 "se_reflexive_evidence": evidence,
                 "clitic_removed_analysis_ids": clitic_removed,
                 "constraint_supported_analysis_ids": sorted(keep_ids),
                 "constraint_rejected_analysis_ids": sorted(
                     {analysis.menu_analysis_id for analysis in analyses} - keep_ids
+                ),
+                "companion_rejected_leaf_refs": refs(companion_rejected_evidence),
+                "companion_matched_leaf_refs": refs(companion_matched),
+                "grammar_rejected_leaf_refs": refs(grammar_rejected),
+                "constraint_supported_leaf_refs": refs(grammar_kept),
+                "indistinguishable_leaf_refs": _indistinguishable_leaf_refs(
+                    structurally_kept
                 ),
             },
         )
@@ -253,7 +390,13 @@ class SpanishV5CandidatePolicy:
             )
         }
         adjusted = [
-            replace(score, score=score.score + self.menu_prior * self.menu_prior_decay ** order[(score.menu_analysis_id, score.sense_id)])
+            replace(
+                score,
+                score=score.score
+                + self.menu_prior
+                * self.menu_prior_decay
+                ** order[(score.menu_analysis_id, score.sense_id)],
+            )
             for score in scores
         ]
         return tuple(sorted(adjusted, key=lambda item: (-item.score, item.menu_analysis_id, item.sense_id)))

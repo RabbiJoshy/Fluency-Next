@@ -21,7 +21,14 @@ from typing import Any, Callable
 class LanguageBinding:
     language: str
     adapter_factory: Callable[[], Any]
-    pos_model_role: str
+    # None means this language HAS no POS model, stated rather than approximated.
+    # spaCy publishes no Czech pipeline, and a POS gate is only ever subtractive:
+    # it removes senses the observed tag rules out, while the embedding does the
+    # choosing. An uncalibrated gate is therefore not neutral but destructive --
+    # unbridged filtering deleted every sense on 34% of real Portuguese
+    # occurrences. Declaring the absence runs Czech with no gate at all, which
+    # can only widen the candidate set, never silently empty it.
+    pos_model_role: str | None
     menu_provider: str
 
 
@@ -44,6 +51,12 @@ def _portuguese() -> Any:
     return PortugueseWSDAdapter()
 
 
+def _czech() -> Any:
+    from fluency.wsd.languages.czech import CzechWSDAdapter
+
+    return CzechWSDAdapter()
+
+
 def _french() -> Any:
     from fluency.wsd.languages.french import FrenchWSDAdapter
 
@@ -53,6 +66,7 @@ def _french() -> Any:
 _BINDINGS["es"] = LanguageBinding("es", _spanish, "occurrence-pos", "spanishdict")
 _BINDINGS["pt"] = LanguageBinding("pt", _portuguese, "occurrence-pos-pt", "wiktionary")
 _BINDINGS["fr"] = LanguageBinding("fr", _french, "occurrence-pos-fr", "wiktionary")
+_BINDINGS["cs"] = LanguageBinding("cs", _czech, None, "wiktionary")
 
 
 def binding_for(language: str) -> LanguageBinding:
@@ -71,7 +85,15 @@ def pos_gate_for(language: str) -> tuple[Callable[[str, str], bool], Callable[[s
     gets the bridge that absorbs `contraction` and the absent `aux`.
     """
 
-    provider = binding_for(language).menu_provider
+    binding = binding_for(language)
+    if binding.pos_model_role is None:
+        # No tagger, so nothing is observed to filter on. Admit every sense and
+        # let the embedding decide; measured on Czech, 78% of the cards needing
+        # disambiguation carry senses of a single part of speech, where a gate
+        # could not have discriminated anyway.
+        return (lambda sense_pos, observed_pos: True, lambda sense_pos: False)
+
+    provider = binding.menu_provider
     if provider == "spanishdict":
         from fluency.wsd.languages.spanish import ORTHOGONAL_POS, sense_compatible_bridged
 

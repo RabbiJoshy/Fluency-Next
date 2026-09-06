@@ -98,6 +98,22 @@ def _score_for(
     )
 
 
+def _provider_order_scores(
+    scores: Sequence[LeafScore], analyses: Sequence[MenuAnalysis]
+) -> tuple[LeafScore, ...]:
+    """Return scored leaves in provider order rather than score order."""
+
+    by_ref = {
+        (item.menu_analysis_id, item.sense_id): item
+        for item in scores
+    }
+    return tuple(
+        by_ref[(analysis.menu_analysis_id, sense.sense_id)]
+        for analysis in analyses
+        for sense in analysis.senses
+    )
+
+
 def _selection_projection(
     *,
     selected: LeafScore,
@@ -171,10 +187,10 @@ class ClosedMenuWSDRunner:
                 "specialist components were supplied but are not enabled by the exact profile"
             )
         if profile.multiword_candidates and (
-            profile.token_tuple_vote or profile.calibration or profile.alignment
+            profile.token_tuple_vote or profile.calibration
         ):
             raise WSDConfigurationError(
-                "dual multiword projections are validated only for the gloss-only speech path"
+                "dual multiword projections are incompatible with tuple voting or calibration"
             )
         if not components.gloss.model_revision:
             raise WSDConfigurationError("gloss model revision must be pinned")
@@ -255,6 +271,11 @@ class ClosedMenuWSDRunner:
                 sentence=request.sentence,
                 surface_form=request.surface_form,
                 observed_pos=request.observed_pos,
+                observed_grammar=(
+                    request.observed_pos_evidence.get("observed_grammar")
+                    if request.observed_pos_evidence is not None
+                    else None
+                ),
                 analyses=provider_analyses,
             )
             provider_analyses = prepared.analyses
@@ -276,6 +297,14 @@ class ClosedMenuWSDRunner:
                 sentence=request.sentence,
                 index=self.components.multiword_index,
             ):
+                # The expression must cover the occurrence being classified.
+                # Merely appearing elsewhere in the same subtitle line is not
+                # evidence for this card occurrence.
+                if not any(
+                    span[0] <= occurrence.start and occurrence.end <= span[1]
+                    for occurrence in occurrences
+                ):
+                    continue
                 combined_analyses = combined_analyses + (analysis,)
                 multiword_records.append(
                     multiword_evidence(
@@ -300,6 +329,9 @@ class ClosedMenuWSDRunner:
         provider_ids = {analysis.menu_analysis_id for analysis in provider_analyses}
         provider_ranked = tuple(
             item for item in combined_ranked if item.menu_analysis_id in provider_ids
+        )
+        raw_provider_ranked = tuple(
+            item for item in raw_combined_ranked if item.menu_analysis_id in provider_ids
         )
         selected_score = provider_ranked[0]
         augmented_selected_score = combined_ranked[0]
@@ -466,6 +498,11 @@ class ClosedMenuWSDRunner:
                 analyses=provider_analyses,
                 current_analysis_id=selected_analysis.menu_analysis_id,
                 current_sense_id=selected_sense.sense_id,
+                target_span=(
+                    (occurrences[0].start, occurrences[0].end)
+                    if len(occurrences) == 1
+                    else None
+                ),
             )
             evidence["alignment"] = None
             if correction is not None:
@@ -480,6 +517,9 @@ class ClosedMenuWSDRunner:
                     "to_sense_id": correction.sense_id,
                     "aligned_target": correction.aligned_target,
                     "aligned_translation": correction.aligned_translation,
+                    "cue": correction.cue,
+                    "method": correction.method,
+                    "alignment_pairs": [list(pair) for pair in correction.alignment_pairs],
                 }
                 if (
                     correction.menu_analysis_id != selected_analysis.menu_analysis_id
@@ -505,10 +545,85 @@ class ClosedMenuWSDRunner:
         decision_kind = (
             "deterministic_default" if candidate_leaf_count <= 1 else "disambiguated"
         )
+        rank_agreement_choices: tuple[LeafScore, ...] = ()
+        if self.profile.commit.strategy == "rank_agreement":
+            provider_order_ranked = _provider_order_scores(
+                raw_provider_ranked, provider_analyses
+            )
+            provider_order_choice = provider_order_ranked[0]
+            raw_gloss_choice = raw_provider_ranked[0]
+            if self.components.candidate_policy is not None:
+                provider_order_choice = self.components.candidate_policy.repair_leaf(
+                    sentence=request.sentence,
+                    analyses=provider_analyses,
+                    selected=provider_order_choice,
+                    ranked_scores=provider_order_ranked,
+                )
+                raw_gloss_choice = self.components.candidate_policy.repair_leaf(
+                    sentence=request.sentence,
+                    analyses=provider_analyses,
+                    selected=raw_gloss_choice,
+                    ranked_scores=raw_provider_ranked,
+                )
+            rank_agreement_choices = (
+                provider_order_choice,
+                raw_gloss_choice,
+                selected_score,
+            )
         commit_decision = commit_decide(
-            provider_ranked, provider_analyses, self.profile.commit
+            provider_ranked,
+            provider_analyses,
+            self.profile.commit,
+            rank_agreement_refs=tuple(
+                (item.menu_analysis_id, item.sense_id)
+                for item in rank_agreement_choices
+            ),
         )
         emitted_level = commit_decision.level
+        evidence_guard_reasons: list[str] = []
+        if self.profile.commit.evidence_guards and preparation_evidence is not None:
+            selected_ref = (selected_analysis.menu_analysis_id, selected_sense.sense_id)
+            grammar_rejected_refs = {
+                (item["menu_analysis_id"], item["sense_id"])
+                for item in preparation_evidence.get("grammar_rejected_leaf_refs", ())
+            }
+            companion_rejected_refs = {
+                (item["menu_analysis_id"], item["sense_id"])
+                for item in preparation_evidence.get("companion_rejected_leaf_refs", ())
+            }
+            companion_matched_refs = {
+                (item["menu_analysis_id"], item["sense_id"])
+                for item in preparation_evidence.get("companion_matched_leaf_refs", ())
+            }
+            indistinguishable_refs = {
+                (item["menu_analysis_id"], item["sense_id"])
+                for item in preparation_evidence.get("indistinguishable_leaf_refs", ())
+            }
+            if preparation_evidence.get("pos_match_status") == "no_compatible_analysis":
+                emitted_level = "unresolved"
+                evidence_guard_reasons.append("dictionary_has_no_matching_part_of_speech")
+            elif (
+                preparation_evidence.get("pos_match_kind") == "bridged_only"
+                and str(preparation_evidence.get("observed_pos") or "").upper() == "PRON"
+                and str(selected_analysis.part_of_speech or "").upper() in {"ADJ", "DET"}
+            ):
+                emitted_level = "unresolved"
+                evidence_guard_reasons.append("pronoun_only_matches_possessive_bridge")
+            elif selected_ref in grammar_rejected_refs:
+                emitted_level = "tuple"
+                evidence_guard_reasons.append("selected_leaf_contradicts_observed_grammar")
+            elif selected_ref in companion_rejected_refs:
+                emitted_level = "tuple"
+                evidence_guard_reasons.append("selected_leaf_missing_required_companion")
+            elif any(
+                analysis_id == selected_ref[0]
+                for analysis_id, _sense_id in companion_matched_refs
+            ) and selected_ref not in companion_matched_refs:
+                emitted_level = "tuple"
+                evidence_guard_reasons.append("selected_leaf_ignores_matching_companion")
+            elif selected_ref in indistinguishable_refs:
+                emitted_level = "tuple"
+                evidence_guard_reasons.append("dictionary_does_not_distinguish_sibling_leaves")
         evidence["commit"] = {
             "selected_ref": {
                 "menu_analysis_id": selected_analysis.menu_analysis_id,
@@ -523,11 +638,39 @@ class ClosedMenuWSDRunner:
             "candidate_leaf_count": candidate_leaf_count,
             "decision_kind": decision_kind,
             "policy": {
+                "strategy": self.profile.commit.strategy,
                 "leaf_minimum": self.profile.commit.leaf_minimum,
                 "glosskey_minimum": self.profile.commit.glosskey_minimum,
                 "tuple_minimum": self.profile.commit.tuple_minimum,
+                "evidence_guards": self.profile.commit.evidence_guards,
             },
         }
+        if evidence_guard_reasons:
+            evidence["commit"]["evidence_guards"] = evidence_guard_reasons
+        if rank_agreement_choices:
+            evidence["commit"]["rank_agreement"] = {
+                label: {
+                    "menu_analysis_id": choice.menu_analysis_id,
+                    "sense_id": choice.sense_id,
+                }
+                for label, choice in zip(
+                    ("provider_order", "raw_gloss", "forced_selection"),
+                    rank_agreement_choices,
+                )
+            }
+            evidence["gemini_recommendation"] = {
+                "recommended": emitted_level != "leaf",
+                "reason": (
+                    "machine_readable_contradiction"
+                    if evidence_guard_reasons
+                    else "cheap_leaf_choices_disagree"
+                    if emitted_level != "leaf"
+                    else "cheap_leaf_choices_agree"
+                ),
+                "deepest_shared_level": emitted_level,
+                "gemini_called": False,
+                "independent_of_publication_projection": True,
+            }
         if self.profile.commit.enabled:
             decision_path.append("commit")
         evidence["selected_multiword"] = None
@@ -546,8 +689,40 @@ class ClosedMenuWSDRunner:
             augmented_analysis = require_analysis(
                 combined_analyses, augmented_selected_score.menu_analysis_id
             )
+            if self.profile.commit.strategy == "rank_agreement":
+                raw_augmented_choice = raw_combined_ranked[0]
+                combined_order_ranked = _provider_order_scores(
+                    raw_combined_ranked, combined_analyses
+                )
+                combined_order_choice = combined_order_ranked[0]
+                if self.components.candidate_policy is not None:
+                    raw_augmented_choice = self.components.candidate_policy.repair_leaf(
+                        sentence=request.sentence,
+                        analyses=combined_analyses,
+                        selected=raw_augmented_choice,
+                        ranked_scores=raw_combined_ranked,
+                    )
+                    combined_order_choice = self.components.candidate_policy.repair_leaf(
+                        sentence=request.sentence,
+                        analyses=combined_analyses,
+                        selected=combined_order_choice,
+                        ranked_scores=combined_order_ranked,
+                    )
+                augmented_refs = tuple(
+                    (item.menu_analysis_id, item.sense_id)
+                    for item in (
+                        combined_order_choice,
+                        raw_augmented_choice,
+                        augmented_selected_score,
+                    )
+                )
+            else:
+                augmented_refs = ()
             augmented_commit = commit_decide(
-                combined_ranked, combined_analyses, self.profile.commit
+                combined_ranked,
+                combined_analyses,
+                self.profile.commit,
+                rank_agreement_refs=augmented_refs,
             )
             projections["mwe_augmented"] = _selection_projection(
                 selected=augmented_selected_score,

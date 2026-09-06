@@ -29,6 +29,7 @@ class CandidatePolicy(Protocol):
         sentence: str,
         surface_form: str,
         observed_pos: str | None,
+        observed_grammar: Mapping[str, str] | None = None,
         analyses: tuple[MenuAnalysis, ...],
     ) -> CandidatePreparation: ...
 

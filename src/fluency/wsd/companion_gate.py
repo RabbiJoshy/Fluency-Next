@@ -22,9 +22,36 @@ import unicodedata
 from typing import Any, Iterable, Sequence
 
 
+CONTRACTION_PARTS = {
+    # Spanish
+    "al": ("a", "el"), "del": ("de", "el"),
+    "conmigo": ("con",), "contigo": ("con",), "consigo": ("con",),
+    "pa": ("para",), "po": ("por",),
+    # Portuguese
+    "ao": ("a", "o"), "aos": ("a", "os"),
+    "à": ("a", "a"), "às": ("a", "as"),
+    "do": ("de", "o"), "da": ("de", "a"), "dos": ("de", "os"), "das": ("de", "as"),
+    "dum": ("de", "um"), "duma": ("de", "uma"),
+    "duns": ("de", "uns"), "dumas": ("de", "umas"),
+    "dele": ("de", "ele"), "dela": ("de", "ela"),
+    "deles": ("de", "eles"), "delas": ("de", "elas"),
+    "no": ("em", "o"), "na": ("em", "a"), "nos": ("em", "os"), "nas": ("em", "as"),
+    "num": ("em", "um"), "numa": ("em", "uma"),
+    "nuns": ("em", "uns"), "numas": ("em", "umas"),
+    "nele": ("em", "ele"), "nela": ("em", "ela"),
+    "neles": ("em", "eles"), "nelas": ("em", "elas"),
+    "pelo": ("por", "o"), "pela": ("por", "a"),
+    "pelos": ("por", "os"), "pelas": ("por", "as"),
+    "comigo": ("com",), "pra": ("para",), "pro": ("para",),
+}
+
+
 def _words(text: str) -> set[str]:
     folded = unicodedata.normalize("NFC", text or "").casefold()
-    return set(re.findall(r"[^\W\d_]+", folded, flags=re.UNICODE))
+    words = set(re.findall(r"[^\W\d_]+", folded, flags=re.UNICODE))
+    for word in tuple(words):
+        words.update(CONTRACTION_PARTS.get(word, ()))
+    return words
 
 
 def required_companions(features: Iterable[Any]) -> tuple[str, ...]:
@@ -45,7 +72,12 @@ def required_companions(features: Iterable[Any]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(found))
 
 
-def companion_satisfied(features: Iterable[Any], sentence: str) -> bool:
+def companion_satisfied(
+    features: Iterable[Any],
+    sentence: str,
+    *,
+    attached_companions: Iterable[str] | None = None,
+) -> bool:
     """Return whether a sense's companion requirement is met by the line.
 
     True when no companion is declared: an absent requirement is not a failed
@@ -55,7 +87,11 @@ def companion_satisfied(features: Iterable[Any], sentence: str) -> bool:
     companions = required_companions(features)
     if not companions:
         return True
-    present = _words(sentence)
+    present = (
+        {str(value).casefold() for value in attached_companions}
+        if attached_companions is not None
+        else _words(sentence)
+    )
     return any(companion in present for companion in companions)
 
 
@@ -64,12 +100,17 @@ def filter_by_companion(
     sentence: str,
     *,
     features_of,
+    attached_companions: Iterable[str] | None = None,
 ) -> tuple[Sequence[Any], tuple[Any, ...]]:
     """Return (kept, rejected), declining to act if it would keep nothing."""
 
     kept, rejected = [], []
     for candidate in candidates:
-        if companion_satisfied(features_of(candidate), sentence):
+        if companion_satisfied(
+            features_of(candidate),
+            sentence,
+            attached_companions=attached_companions,
+        ):
             kept.append(candidate)
         else:
             rejected.append(candidate)

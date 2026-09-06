@@ -72,12 +72,20 @@ EMIT_LEVELS: tuple[EmitLevel, ...] = ("leaf", "glosskey", "tuple", "unresolved")
 
 @dataclass(frozen=True, slots=True)
 class CommitPolicy:
-    """Thresholds on the top-two margin of each axis. Zero disables a level."""
+    """How much of the forced selection may be published.
+
+    ``margin`` preserves the original v7 behavior. ``rank_agreement`` publishes
+    only the deepest level shared by the dictionary-order choice and the raw
+    sentence/gloss choice. It has no fitted threshold and never changes the
+    forced selection.
+    """
 
     leaf_minimum: float = 0.0
     glosskey_minimum: float = 0.0
     tuple_minimum: float = 0.0
     temperature: float = 0.02
+    strategy: Literal["margin", "rank_agreement"] = "margin"
+    evidence_guards: bool = False
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -89,10 +97,12 @@ class CommitPolicy:
                 raise ValueError(f"{name} must be a margin between zero and one")
         if self.temperature <= 0:
             raise ValueError("temperature must be positive")
+        if self.strategy not in {"margin", "rank_agreement"}:
+            raise ValueError("unsupported commit strategy")
 
     @property
     def enabled(self) -> bool:
-        return any(
+        return self.strategy != "margin" or any(
             value > 0
             for value in (self.leaf_minimum, self.glosskey_minimum, self.tuple_minimum)
         )
@@ -169,10 +179,37 @@ def decide(
     scores: Sequence[LeafScore],
     analyses: Sequence[MenuAnalysis],
     policy: CommitPolicy,
+    *,
+    rank_agreement_refs: Sequence[tuple[str, str]] = (),
 ) -> CommitDecision:
     """Most specific level the scores support, plus which axis is weak."""
 
     margins = axis_margins(scores, analyses, temperature=policy.temperature)
+    if policy.strategy == "rank_agreement":
+        if len(rank_agreement_refs) < 2:
+            raise ValueError("rank-agreement commit requires at least two choices")
+        leaves = []
+        glosskeys = []
+        tuples = []
+        for menu_analysis_id, sense_id in rank_agreement_refs:
+            analysis = require_analysis(analyses, menu_analysis_id)
+            sense = analysis.sense(sense_id)
+            leaves.append((menu_analysis_id, sense_id))
+            glosskeys.append(
+                (
+                    analysis.part_of_speech,
+                    analysis.headword.casefold(),
+                    sense.translation or "<EMPTY>",
+                )
+            )
+            tuples.append((analysis.part_of_speech, analysis.headword.casefold()))
+        if len(set(leaves)) == 1:
+            return CommitDecision("leaf", "none", margins, False)
+        if len(set(glosskeys)) == 1:
+            return CommitDecision("glosskey", "gloss", margins, False)
+        if len(set(tuples)) == 1:
+            return CommitDecision("tuple", "gloss", margins, False)
+        return CommitDecision("unresolved", "tuple", margins, True)
     if margins["tuple"] < policy.tuple_minimum:
         return CommitDecision(
             level="unresolved", uncertain_axis="tuple", margins=margins, escalate=True
