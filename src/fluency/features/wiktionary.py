@@ -83,6 +83,7 @@ def extract(
 
     features: list[SpecialistFeature] = []
     seen: set[tuple[str, str]] = set()
+    topic_labels: set[str] = set()
 
     def add(family: str, kind: str, value: str) -> None:
         key = (family, value.lower())
@@ -93,7 +94,9 @@ def extract(
 
     for topic in sense.get("topics", []) or []:
         if isinstance(topic, str) and topic.strip():
-            add("domain", "topic", topic.strip())
+            clean_topic = topic.strip()
+            topic_labels.add(clean_topic.casefold().replace("-", " "))
+            add("domain", "topic", clean_topic)
 
     for tag in sorted(tags):
         if tag in register:
@@ -126,6 +129,11 @@ def extract(
         lowered = part.lower()
         if part in regions:
             add("register", "region", part)
+        elif lowered.replace("-", " ") in topic_labels:
+            # Kaikki repeats structured topics in the display parenthetical,
+            # sometimes changing hyphens to spaces ("card-games" / "card games").
+            # The structured field is authoritative; do not retype it as prose.
+            continue
         elif lowered in register:
             add("register", "gloss_note", part)
         elif lowered in construction:

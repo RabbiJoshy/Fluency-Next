@@ -21,6 +21,16 @@ class WiktionaryExtractorTests(unittest.TestCase):
         out = extract({"topics": ["finance"]}, policy=PT)
         self.assertEqual(families(out), [("domain", "topic", "finance")])
 
+    def test_topic_repeated_in_parenthetical_is_not_construction_prose(self) -> None:
+        sense = {
+            "topics": ["card-games"],
+            "raw_glosses": ["(card games, transitive) to deal"],
+        }
+        self.assertEqual(families(extract(sense, policy=PT)), [
+            ("domain", "topic", "card-games"),
+            ("construction", "gloss_note", "transitive"),
+        ])
+
     def test_tags_split_by_declared_vocabulary(self) -> None:
         out = extract({}, tags=["informal", "intransitive"], policy=PT)
         self.assertEqual(families(out), [
