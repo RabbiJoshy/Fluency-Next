@@ -162,6 +162,28 @@ def _iter_rows(path: Path, *, language_code: str) -> Iterator[dict[str, Any]]:
 
 
 _PARENTHETICAL = re.compile(r"^\((?P<context>[^)]{2,60})\)\s*\S")
+_SEE_REFERENCE = re.compile(r"^See (?P<targets>[^.]+)\.$")
+
+
+def _cross_references(sense: dict[str, Any]) -> list[dict[str, str]]:
+    """Extract only Wiktionary's explicit ``See …`` sense redirects.
+
+    These glosses are semantic links, not definitions. Keeping the match
+    deliberately strict prevents ordinary glosses containing the verb “see”
+    from becoming navigation controls in the app.
+    """
+
+    glosses = _glosses(sense)
+    if len(glosses) != 1:
+        return []
+    match = _SEE_REFERENCE.fullmatch(glosses[0])
+    if not match:
+        return []
+    return [
+        {"relation": "see", "target": target.strip()}
+        for target in match.group("targets").split(",")
+        if target.strip()
+    ]
 
 
 def _context(sense: dict[str, Any]) -> str:
@@ -292,6 +314,9 @@ def _metadata(
     examples = sense.get("examples")
     if isinstance(examples, list):
         metadata["examples"] = [item for item in examples if isinstance(item, dict)]
+    cross_references = _cross_references(sense)
+    if cross_references:
+        metadata["cross_references"] = cross_references
     for field in ("etymology_number", "etymology_text"):
         value = row.get(field)
         if isinstance(value, (str, int)) and value != "":

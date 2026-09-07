@@ -2562,6 +2562,72 @@ function escapeCardText(value) {
     })[character]);
 }
 
+function senseCrossReferenceTargets(meaning) {
+    const metadata = meaning?.metadata || {};
+    const candidates = [
+        metadata.cross_references,
+        metadata.sense_provider_metadata?.cross_references,
+    ];
+    const targets = [];
+    for (const references of candidates) {
+        if (!Array.isArray(references)) continue;
+        for (const reference of references) {
+            if (reference?.relation !== 'see') continue;
+            const target = String(reference.target || '').trim();
+            if (target && !targets.includes(target)) targets.push(target);
+        }
+    }
+    if (targets.length) return targets;
+
+    // Current releases predate the structured field. Keep their behaviour
+    // correct with the same deliberately narrow shape used by the parser.
+    const fallback = /^See ([^.]+)\.$/.exec(String(meaning?.meaning || '').trim());
+    return fallback
+        ? fallback[1].split(',').map(value => value.trim()).filter(Boolean)
+        : [];
+}
+
+function senseCrossReferenceHTML(meaning, fallbackText) {
+    const targets = senseCrossReferenceTargets(meaning);
+    if (!targets.length) return fallbackText;
+    const links = targets.map(target => {
+        const encoded = encodeURIComponent(target);
+        return `<button type="button" class="sense-cross-reference" data-reference-target="${encoded}" onclick="openSenseCrossReference(event, decodeURIComponent(this.dataset.referenceTarget))" title="Open ${escapeCardText(target)}">${escapeCardText(target)}</button>`;
+    }).join('<span class="sense-cross-reference-separator">,</span> ');
+    return `<span class="sense-cross-reference-prefix">See</span> ${links}`;
+}
+
+async function openSenseCrossReference(event, target) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const cleanTarget = String(target || '').trim();
+    const preferredSource = (activeArtist && window._cachedMergedIndex)
+        ? window._cachedMergedIndex
+        : window._cachedJoinedIndex;
+    const vocabSource = [preferredSource, window._cachedJoinedIndex]
+        .filter(Array.isArray)
+        .flat();
+    if (!cleanTarget || !Array.isArray(vocabSource)) return;
+
+    const foldedTarget = foldSurfaceForm(cleanTarget);
+    const exactEntry = vocabSource.find(entry => foldSurfaceForm(entry?.word) === foldedTarget)
+        || vocabSource.find(entry => foldSurfaceForm(entry?.lemma) === foldedTarget);
+    const phraseOwner = vocabSource.find(entry =>
+        Array.isArray(entry?.mwe_memberships)
+        && entry.mwe_memberships.some(mwe => foldSurfaceForm(mwe?.expression) === foldedTarget));
+    const headword = cleanTarget.split(/\s+/u)[0];
+    const foldedHeadword = foldSurfaceForm(headword);
+    const headwordEntry = vocabSource.find(entry => foldSurfaceForm(entry?.word) === foldedHeadword)
+        || vocabSource.find(entry => foldSurfaceForm(entry?.lemma) === foldedHeadword);
+    const entry = exactEntry || phraseOwner || headwordEntry;
+    if (!entry?.id || !window.popupFoundWord) return;
+
+    await window.popupFoundWord(
+        { id: entry.id, sourceEntry: entry },
+        { reopenSearchOnBack: false, startFlipped: true, focusExpression: cleanTarget }
+    );
+}
+
 /**
  * Condense a sense context for display. The stored text is untouched; this is
  * only how it reads on the card.
@@ -4571,6 +4637,9 @@ function updateCard({ announceHeadword = false } = {}) {
             const displayMeaning = isMWE
                 ? (cleanMweMeaning || '<span style="font-style: italic; opacity: 0.5;">Translation unavailable</span>')
                 : (getProductionEnglishCue(card, m) || m.meaning);
+            const displayMeaningHTML = isMWE
+                ? displayMeaning
+                : senseCrossReferenceHTML(m, displayMeaning);
             if (isMWE) {
                 if (compactKnowledgeView && !isSelected) return;
                 // Expression row: plain bold expression (left), translation
@@ -4753,6 +4822,9 @@ function updateCard({ announceHeadword = false } = {}) {
                     const sharedText = isTransAxis
                         ? displayMeaning
                         : String(m.context || '').replace(/"/g, '&quot;');
+                    const sharedTextHTML = isTransAxis
+                        ? displayMeaningHTML
+                        : sharedText;
                     const groupedTextClass = adaptiveRowTextClass(
                         sharedText,
                         orderedMembers.map(memberIdx => {
@@ -4805,7 +4877,7 @@ function updateCard({ announceHeadword = false } = {}) {
                         } else {
                             const transRaw = getProductionEnglishCue(card, mm) || mm.meaning || '';
                             const transSafe = String(transRaw).replace(/"/g, '&quot;');
-                            varyingHtml = `<span class="row-adaptive-text" style="font-weight: 600; color: var(--text-primary); line-height: 1.25; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${transSafe}${modelProposalMarkerHTML(mm)}</span>`;
+                            varyingHtml = `<span class="row-adaptive-text" style="font-weight: 600; color: var(--text-primary); line-height: 1.25; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${senseCrossReferenceHTML(mm, transSafe)}${modelProposalMarkerHTML(mm)}</span>`;
                         }
                         const varyingCol = isTransAxis ? 2 : 1;
                         const varyingCell = `<div onclick="event.stopPropagation(); selectMeaning(${memberIdx})" style="${baseCell} grid-column: ${varyingCol}; min-width: 0; overflow: hidden;">${varyingHtml}</div>`;
@@ -4829,7 +4901,7 @@ function updateCard({ announceHeadword = false } = {}) {
                     const sharedCol = isTransAxis ? 1 : 2;
                     const sharedSpan = `grid-column: ${sharedCol}; grid-row: 1 / span ${orderedMembers.length}; align-self: center;`;
                     const sharedCellHtml = isTransAxis
-                        ? `<div class="group-card-shared row-adaptive-text" style="${sharedSpan} font-weight: 600; color: var(--text-primary); text-align: center; line-height: 1.25; min-width: 0; word-break: break-word;">${sharedText}${modelProposalMarkerHTML(orderedMembers.some(memberIdx => card.meanings[memberIdx].modelProposed) ? { modelProposed: true } : null)}</div>`
+                        ? `<div class="group-card-shared row-adaptive-text" style="${sharedSpan} font-weight: 600; color: var(--text-primary); text-align: center; line-height: 1.25; min-width: 0; word-break: break-word;">${sharedTextHTML}${modelProposalMarkerHTML(orderedMembers.some(memberIdx => card.meanings[memberIdx].modelProposed) ? { modelProposed: true } : null)}</div>`
                         : `<div class="group-card-shared" style="${sharedSpan} text-align: center; line-height: 1.25; min-width: 0; word-break: break-word;">${renderSenseContextHTML(m.context, { leadingDot: false })}</div>`;
 
                     // Body grid: shared + varying. The pct column lives in the
@@ -4875,7 +4947,7 @@ function updateCard({ announceHeadword = false } = {}) {
                     <div class="meaning-row meaning-row-regular ${singletonTextClass}${isSelected ? ' selected' : ''}${rowStateClasses}" style="position: relative; display: grid; grid-template-columns: 1fr; align-items: center; padding: 1px 2px; margin-bottom: 4px; background: ${bgColor}; ${borderStyle} border-radius: 8px; cursor: pointer; min-height: 39px;" onclick="selectMeaning(${idx})">
                         ${renderRowCheckSlot(isSelected)}
                         <div class="meaning-row-body" style="display: flex; flex-direction: column; align-items: stretch; justify-content: center; min-width: 0; padding: 0 ${!m.unassigned && prominenceText ? '86px' : (!m.unassigned && pctVal < 100 ? '42px' : '8px')} 0 8px;">
-                            <span class="meaning-row-translation row-adaptive-text" style="font-weight: ${isSelected ? 700 : 500}; color: ${textColor}; text-align: center; width: 100%;">${displayMeaning}${contextInline}</span>
+                            <span class="meaning-row-translation row-adaptive-text" style="font-weight: ${isSelected ? 700 : 500}; color: ${textColor}; text-align: center; width: 100%;">${displayMeaningHTML}${contextInline}</span>
                         </div>
                         ${pctTail}
                     </div>
@@ -6884,7 +6956,7 @@ document.addEventListener('click', (e) => {
 // result cards and conjugation; a stale URL here can keep running an old modal
 // implementation even after the eagerly loaded app has updated.
 const ASSET_VERSION = '20260825ak';
-const MODALS_ASSET_VERSION = '20260823w';
+const MODALS_ASSET_VERSION = '20260907a';
 
 let _modalsModulePromise = null;
 const lazyModals = () => _modalsModulePromise || (_modalsModulePromise =
@@ -6930,3 +7002,4 @@ const stubFor = (name, loader) => {
     .forEach(name => stubFor(name, lazyConj));
 
 window.describeCliticForm = describeCliticForm;
+window.openSenseCrossReference = openSenseCrossReference;

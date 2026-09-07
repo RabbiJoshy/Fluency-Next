@@ -5,7 +5,12 @@ import unittest
 
 from fluency.core.identity import create_card_record
 from fluency.sense_menu.config import load_sense_menu_language_policy
-from fluency.sense_menu.kaikki import ADAPTER_ID, KaikkiSenseMenuAdapter
+from fluency.sense_menu.kaikki import (
+    ADAPTER_ID,
+    KaikkiSenseMenuAdapter,
+    _cross_references,
+    _metadata,
+)
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -150,6 +155,23 @@ class KaikkiSenseMenuTests(unittest.TestCase):
 
     def tearDown(self):
         self.temporary.cleanup()
+
+    def test_only_explicit_see_glosses_become_cross_references(self):
+        self.assertEqual(
+            _cross_references({"glosses": ["See ter de, ter que."]}),
+            [
+                {"relation": "see", "target": "ter de"},
+                {"relation": "see", "target": "ter que"},
+            ],
+        )
+        self.assertEqual(
+            _cross_references({"glosses": ["to see you tomorrow"]}),
+            [],
+        )
+        self.assertEqual(
+            _metadata({}, {"glosses": ["See haver de."]})["cross_references"],
+            [{"relation": "see", "target": "haver de"}],
+        )
 
     def test_form_of_targets_become_explicit_headword_pos_tuples(self):
         cards = [

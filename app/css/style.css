@@ -3001,6 +3001,36 @@
             max-width: 100%;
         }
 
+        .sense-cross-reference {
+            appearance: none;
+            border: 0;
+            border-bottom: 1px solid currentColor;
+            border-radius: 0;
+            padding: 0;
+            background: transparent;
+            color: rgb(var(--sense-match-rgb));
+            font: inherit;
+            font-weight: 650;
+            line-height: inherit;
+            cursor: pointer;
+        }
+
+        .sense-cross-reference:hover,
+        .sense-cross-reference:focus-visible {
+            color: var(--text-primary);
+            border-bottom-color: rgb(var(--sense-match-rgb));
+        }
+
+        .sense-cross-reference:focus-visible {
+            outline: 2px solid rgb(var(--sense-match-rgb));
+            outline-offset: 3px;
+        }
+
+        .sense-cross-reference-prefix,
+        .sense-cross-reference-separator {
+            opacity: 0.72;
+        }
+
         .meaning-row .meaning-context {
             font-size: var(--row-context-size, 13px);
         }

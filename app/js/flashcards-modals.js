@@ -632,6 +632,7 @@ async function popupFoundWord(entry, opts) {
             if (m.assignment_method) meaning.assignment_method = m.assignment_method;
             if (m.source) meaning.source = m.source;
             if (m.context) meaning.context = m.context;
+            if (m.metadata) meaning.metadata = m.metadata;
             if (m.allSenses) meaning.allSenses = m.allSenses;
             if (m.cycle_pos) meaning.cycle_pos = m.cycle_pos;
             return meaning;
@@ -688,6 +689,30 @@ async function popupFoundWord(entry, opts) {
             window.synthesizeSpecialMeanings(vocabEntry, meanings);
         }
 
+        let focusedMeaningIndex = 0;
+        let focusedMWEIndex = 0;
+        const focusExpression = String(opts.focusExpression || '').trim();
+        if (focusExpression) {
+            const foldedFocus = focusExpression.normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLocaleLowerCase('es')
+                .trim();
+            const mweMeaningIndex = meanings.findIndex(meaning =>
+                Array.isArray(meaning.allMWEs)
+                && meaning.allMWEs.some(item => String(item.expression || '').normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .toLocaleLowerCase('es')
+                    .trim() === foldedFocus));
+            if (mweMeaningIndex >= 0) {
+                focusedMeaningIndex = mweMeaningIndex;
+                focusedMWEIndex = meanings[mweMeaningIndex].allMWEs.findIndex(item =>
+                    String(item.expression || '').normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '')
+                        .toLocaleLowerCase('es')
+                        .trim() === foldedFocus);
+            }
+        }
+
         const firstExample = meanings.length > 0
             ? { targetSentence: meanings[0].targetSentence, englishSentence: meanings[0].englishSentence }
             : { targetSentence: '', englishSentence: '' };
@@ -732,9 +757,9 @@ async function popupFoundWord(entry, opts) {
             flashcards.length = 0;
             flashcards.push(tempCard);
             currentIndex = 0;
-            currentMeaningIndex = 0;
+            currentMeaningIndex = focusedMeaningIndex;
             currentExampleIndex = 0;
-            currentMWEIndex = 0;
+            currentMWEIndex = focusedMWEIndex;
             document.getElementById('setupPanel').classList.add('hidden');
             document.getElementById('appContent').classList.remove('hidden');
             window.showFloatingBtns(true);
@@ -756,9 +781,9 @@ async function popupFoundWord(entry, opts) {
             flashcards.push(tempCard);
             cardNavStack.push(restore);
             currentIndex = tempIndex;
-            currentMeaningIndex = 0;
+            currentMeaningIndex = focusedMeaningIndex;
             currentExampleIndex = 0;
-            currentMWEIndex = 0;
+            currentMWEIndex = focusedMWEIndex;
             const fc = document.getElementById('flashcard');
             if (startFlipped) fc.classList.add('flipped'); else fc.classList.remove('flipped');
             try {
