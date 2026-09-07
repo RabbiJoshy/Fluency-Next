@@ -18,6 +18,7 @@ from fluency.languages.surfaces import (
 )
 from fluency.features import SpecialistFeature
 from fluency.features.wiktionary import extract as extract_wiktionary_features
+from fluency.features.wiktionary_gloss import project_gloss
 from fluency.menus import MenuAnalysis, SenseLeaf, build_analysis_id
 
 
@@ -177,13 +178,22 @@ def _cross_references(sense: dict[str, Any]) -> list[dict[str, str]]:
     if len(glosses) != 1:
         return []
     match = _SEE_REFERENCE.fullmatch(glosses[0])
-    if not match:
-        return []
+    if match:
+        return [
+            {"relation": "see", "target": target.strip()}
+            for target in match.group("targets").split(",")
+            if target.strip()
+        ]
+    projection = project_gloss(glosses[0])
     return [
-        {"relation": "see", "target": target.strip()}
-        for target in match.group("targets").split(",")
-        if target.strip()
+        {"relation": reference.relation, "target": reference.target}
+        for reference in projection.cross_references
     ]
+
+
+def _display_gloss(sense: dict[str, Any]) -> str:
+    glosses = _glosses(sense)
+    return project_gloss(glosses[0]).display_text if glosses else ""
 
 
 def _context(sense: dict[str, Any]) -> str:
@@ -342,9 +352,14 @@ def _specialist_features(
     language policy rather than code.
     """
 
-    return extract_wiktionary_features(
-        sense, tags=sorted(_sense_tags(sense)), policy=policy
-    )
+    glosses = _glosses(sense)
+    inline = project_gloss(glosses[0]).specialist_features if glosses else ()
+    return tuple(dict.fromkeys((
+        *extract_wiktionary_features(
+            sense, tags=sorted(_sense_tags(sense)), policy=policy
+        ),
+        *inline,
+    )))
 
 
 class KaikkiSenseMenuAdapter:
@@ -543,7 +558,7 @@ class KaikkiSenseMenuAdapter:
                     )
                     leaf = SenseLeaf(
                         sense_id=sense_id,
-                        translation=glosses[0],
+                        translation=_display_gloss(sense),
                         definition=_context(sense),
                         source_reference=source_reference,
                         provider_metadata=_metadata(row, sense, self.language_policy),

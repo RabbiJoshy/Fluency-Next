@@ -9,6 +9,7 @@ from fluency.sense_menu.kaikki import (
     ADAPTER_ID,
     KaikkiSenseMenuAdapter,
     _cross_references,
+    _display_gloss,
     _metadata,
 )
 
@@ -172,6 +173,19 @@ class KaikkiSenseMenuTests(unittest.TestCase):
             _metadata({}, {"glosses": ["See haver de."]})["cross_references"],
             [{"relation": "see", "target": "haver de"}],
         )
+
+    def test_object_pronoun_gloss_exposes_typed_card_references(self):
+        sense = {
+            "glosses": [
+                "him, it (as a direct object; as an indirect object, see lhe; "
+                "after prepositions, see ele)"
+            ]
+        }
+        self.assertEqual(_display_gloss(sense), "him, it")
+        self.assertEqual(_cross_references(sense), [
+            {"relation": "indirect_object", "target": "lhe"},
+            {"relation": "after_prepositions", "target": "ele"},
+        ])
 
     def test_form_of_targets_become_explicit_headword_pos_tuples(self):
         cards = [

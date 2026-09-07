@@ -2562,39 +2562,57 @@ function escapeCardText(value) {
     })[character]);
 }
 
-function senseCrossReferenceTargets(meaning) {
+function senseCrossReferences(meaning) {
     const metadata = meaning?.metadata || {};
     const candidates = [
         metadata.cross_references,
         metadata.sense_provider_metadata?.cross_references,
     ];
-    const targets = [];
+    const referencesOut = [];
+    const seen = new Set();
     for (const references of candidates) {
         if (!Array.isArray(references)) continue;
         for (const reference of references) {
-            if (reference?.relation !== 'see') continue;
-            const target = String(reference.target || '').trim();
-            if (target && !targets.includes(target)) targets.push(target);
+            const relation = String(reference?.relation || '').trim();
+            const target = String(reference?.target || '').trim();
+            if (!['see', 'indirect_object', 'after_prepositions'].includes(relation) || !target) continue;
+            const key = `${relation}\u0000${target.toLocaleLowerCase('en')}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            referencesOut.push({ relation, target });
         }
     }
-    if (targets.length) return targets;
+    if (referencesOut.length) return referencesOut;
 
     // Current releases predate the structured field. Keep their behaviour
     // correct with the same deliberately narrow shape used by the parser.
     const fallback = /^See ([^.]+)\.$/.exec(String(meaning?.meaning || '').trim());
     return fallback
         ? fallback[1].split(',').map(value => value.trim()).filter(Boolean)
+            .map(target => ({ relation: 'see', target }))
         : [];
 }
 
 function senseCrossReferenceHTML(meaning, fallbackText) {
-    const targets = senseCrossReferenceTargets(meaning);
-    if (!targets.length) return fallbackText;
-    const links = targets.map(target => {
+    const references = senseCrossReferences(meaning);
+    if (!references.length) return fallbackText;
+    const link = ({ target }) => {
         const encoded = encodeURIComponent(target);
         return `<button type="button" class="sense-cross-reference" data-reference-target="${encoded}" onclick="openSenseCrossReference(event, decodeURIComponent(this.dataset.referenceTarget))" title="Open ${escapeCardText(target)}">${escapeCardText(target)}</button>`;
-    }).join('<span class="sense-cross-reference-separator">,</span> ');
-    return `<span class="sense-cross-reference-prefix">See</span> ${links}`;
+    };
+    if (references.every(reference => reference.relation === 'see')) {
+        const links = references.map(link).join('<span class="sense-cross-reference-separator">,</span> ');
+        return `<span class="sense-cross-reference-prefix">See</span> ${links}`;
+    }
+    const labels = {
+        indirect_object: 'indirect',
+        after_prepositions: 'after prep.',
+        see: 'see',
+    };
+    const related = references.map(reference => (
+        `<span class="sense-cross-reference-prefix">${labels[reference.relation]} →</span> ${link(reference)}`
+    )).join(' <span class="sense-cross-reference-separator">·</span> ');
+    return `${fallbackText} <span class="sense-cross-reference-related">${related}</span>`;
 }
 
 async function openSenseCrossReference(event, target) {
