@@ -151,7 +151,7 @@
         }
 
         .card-container {
-            --study-card-max-width: 500px;
+            --study-card-max-width: 540px;
             perspective: 1000px;
             display: flex;
             align-items: center;
@@ -478,7 +478,7 @@
             .deck-ghost-prev,
             .deck-ghost-next {
                 position: absolute;
-                width: min(480px, calc(100% - 40px));
+                width: min(var(--study-card-max-width), calc(100% - 40px));
                 top: 50%;
                 border-radius: 16px;
                 background: var(--bg-card);
@@ -536,9 +536,8 @@
             /* #deckProgressTrack is retired everywhere (see base rules);
                .card-back-scrubber sits above the card in its place — same
                order:-1 flex-item trick. Width matches .card's own
-               max-width:480px exactly (not the wider 540px the old rail
-               used, which didn't line up with the card and instead
-               spanned closer to the ghost-card staircase behind it). */
+               configured width exactly, so the rail and card continue to
+               line up as the study surface is tuned. */
             .card-back-scrubber {
                 position: relative;
                 order: -1;
@@ -1869,7 +1868,7 @@
             justify-content: center;
             align-items: center;
             background: var(--bg-card);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.4), 0 0 1px rgba(255, 107, 53, 0.1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
             overflow: hidden;
         }
 
@@ -1898,8 +1897,8 @@
 
         .card-back {
             transform: rotateY(180deg);
-            padding-left: 10px;
-            padding-right: 10px;
+            padding-left: 4px;
+            padding-right: 4px;
             /* Override .card-face's justify-content: center so the back's
                content anchors to the top and the scrollable meanings region
                takes the middle. Prevents the whole layout from shifting as
@@ -2684,8 +2683,8 @@
         }
         .pos-collapsible.is-open .meaning-pos-rows {
             display: block;
-            margin: 5px 0 2px 10px;
-            padding-left: 8px;
+            margin: 5px 0 2px 6px;
+            padding-left: 6px;
             border-left: 1px solid rgba(var(--sense-match-rgb), 0.38);
         }
 
