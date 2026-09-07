@@ -8,14 +8,14 @@ import './artist-ui.js?v=20260825ak';
 import './auth.js?v=20260827a';
 import './about-example.js?v=20260825ak';
 import './estimation.js?v=20260825ak';
-import './config.js?v=20260901a';
+import './config.js?v=20260907a';
 import './progress.js?v=20260831a';
 import './knowledge.js?v=20260831a';
 import './ui.js?v=20260831a';
-import './vocab.js?v=20260904b';
+import './vocab.js?v=20260907a';
 import './song-sets.js?v=20260823ae';
 import './vocabulary-import.js?v=20260825ak';
-import './flashcards.js?v=20260904a';
+import './flashcards.js?v=20260907a';
 import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import
