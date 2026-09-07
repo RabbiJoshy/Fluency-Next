@@ -5867,6 +5867,90 @@ function updateCard({ announceHeadword = false } = {}) {
     window.saveStudySessionSnapshot?.();
 }
 
+const CARD_WALKTHROUGH_PROMPT_KEY = 'fluencyCardWalkthroughPromptV1';
+let _cardWalkthroughPromptHandled = false;
+
+function rememberCardWalkthroughPrompt() {
+    _cardWalkthroughPromptHandled = true;
+    try { localStorage.setItem(CARD_WALKTHROUGH_PROMPT_KEY, '1'); } catch (_) {}
+}
+
+function hasHandledCardWalkthroughPrompt() {
+    if (_cardWalkthroughPromptHandled) return true;
+    try { return localStorage.getItem(CARD_WALKTHROUGH_PROMPT_KEY) === '1'; } catch (_) { return false; }
+}
+
+function _cardWalkthroughPromptKeydown(event) {
+    if (event.key !== 'Escape') return;
+    event.stopPropagation();
+    closeCardWalkthroughPrompt();
+}
+
+function closeCardWalkthroughPrompt({ immediate = false } = {}) {
+    const modal = document.getElementById('cardWalkthroughPrompt');
+    if (!modal) return;
+    document.removeEventListener('keydown', _cardWalkthroughPromptKeydown, true);
+    if (immediate || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+        modal.hidden = true;
+        modal.classList.remove('is-closing');
+        return;
+    }
+    modal.classList.add('is-closing');
+    setTimeout(() => {
+        modal.hidden = true;
+        modal.classList.remove('is-closing');
+    }, 180);
+}
+
+function ensureCardWalkthroughPrompt() {
+    let modal = document.getElementById('cardWalkthroughPrompt');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'cardWalkthroughPrompt';
+    modal.className = 'knowledge-overview-modal syn-leave-modal';
+    modal.hidden = true;
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'cardWalkthroughPromptTitle');
+    modal.innerHTML = `
+        <div class="knowledge-overview-sheet syn-leave-sheet">
+            <div class="knowledge-overview-header">
+                <div>
+                    <span class="knowledge-overview-kicker">Quick card tour</span>
+                    <h2 id="cardWalkthroughPromptTitle">Want to see how the back works?</h2>
+                </div>
+            </div>
+            <p class="syn-leave-body">The walkthrough explains sense rows, example sentences, percentages, and the controls you can tap.</p>
+            <div class="syn-leave-actions">
+                <button type="button" class="auth-cancel-btn" data-card-walkthrough="dismiss">Not now</button>
+                <button type="button" class="auth-submit-btn" data-card-walkthrough="show">Show me</button>
+            </div>
+        </div>`;
+    modal.addEventListener('click', event => {
+        event.stopPropagation();
+        const action = event.target.closest('[data-card-walkthrough]')?.dataset.cardWalkthrough;
+        if (action === 'show') {
+            closeCardWalkthroughPrompt({ immediate: true });
+            window.openAboutExample?.(activeArtist ? 0 : 1);
+        } else if (action === 'dismiss') {
+            closeCardWalkthroughPrompt();
+        }
+    });
+    document.body.appendChild(modal);
+    return modal;
+}
+
+function maybeShowCardWalkthroughPrompt() {
+    if (hasHandledCardWalkthroughPrompt()) return;
+    // Do not stack onboarding over a dialog the learner opened during the flip.
+    if (document.querySelector('.modal:not(.hidden), .knowledge-overview-modal:not([hidden])')) return;
+    const modal = ensureCardWalkthroughPrompt();
+    rememberCardWalkthroughPrompt();
+    modal.hidden = false;
+    document.addEventListener('keydown', _cardWalkthroughPromptKeydown, true);
+    modal.querySelector('[data-card-walkthrough="show"]')?.focus();
+}
+
 function flipCard() {
     // Chain children are back-only: there is no front content, so every flip
     // route (tap, keyboard, control button) is a no-op rather than a turn
@@ -5903,6 +5987,7 @@ function flipCard() {
             speakWord(getDisplayedTargetHeadword(card), false);
         }
     }
+    if (!wasFlipped && isNowFlipped) setTimeout(maybeShowCardWalkthroughPrompt, 650);
     window.saveStudySessionSnapshot?.();
 }
 
