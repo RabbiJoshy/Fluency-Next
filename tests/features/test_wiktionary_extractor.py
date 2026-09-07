@@ -8,6 +8,7 @@ from fluency.features.wiktionary import extract
 PT = {
     "register_tags": ["informal", "poetic"],
     "construction_tags": ["intransitive", "transitive"],
+    "region_tags": ["Brazil", "Portugal"],
 }
 
 
@@ -56,6 +57,13 @@ class WiktionaryExtractorTests(unittest.TestCase):
                 "transitive (Portugal) or intransitive (Brazil)",
             ),
             ("register", "gloss_note", "poetic"),
+        ])
+
+    def test_region_is_a_register_feature_not_construction_prose(self) -> None:
+        sense = {"raw_glosses": ["(Brazil, transitive) to score"]}
+        self.assertEqual(families(extract(sense, policy=PT)), [
+            ("register", "region", "Brazil"),
+            ("construction", "gloss_note", "transitive"),
         ])
 
     def test_a_mark_stated_twice_is_emitted_once(self) -> None:

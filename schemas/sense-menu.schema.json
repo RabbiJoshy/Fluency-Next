@@ -55,7 +55,7 @@
                           "additionalProperties": false,
                           "required": ["family", "kind", "value", "embedding_text"],
                           "properties": {
-                            "family": {"enum": ["domain", "register", "construction"]},
+                            "family": {"enum": ["domain", "register", "construction", "companion", "grammar", "functional"]},
                             "kind": {"type": "string", "minLength": 1},
                             "value": {"type": "string", "minLength": 1},
                             "embedding_text": {"type": "string", "minLength": 1}

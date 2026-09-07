@@ -79,6 +79,7 @@ def extract(
 
     register = _vocabulary(policy, "register_tags", DEFAULT_REGISTER_TAGS)
     construction = _vocabulary(policy, "construction_tags", DEFAULT_CONSTRUCTION_TAGS)
+    regions = _vocabulary(policy, "region_tags", frozenset())
 
     features: list[SpecialistFeature] = []
     seen: set[tuple[str, str]] = set()
@@ -123,7 +124,9 @@ def extract(
 
     for part in _split_parenthetical(sense):
         lowered = part.lower()
-        if lowered in register:
+        if part in regions:
+            add("register", "region", part)
+        elif lowered in register:
             add("register", "gloss_note", part)
         elif lowered in construction:
             add("construction", "gloss_note", part)
