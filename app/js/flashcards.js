@@ -2562,6 +2562,26 @@ function escapeCardText(value) {
     })[character]);
 }
 
+function legacyObjectPronounProjection(value) {
+    const text = String(value || '').trim();
+    const patterns = [
+        /^(.+?) \(as a direct object; as an indirect object, see ([\p{L}\p{M}-]+); after prepositions, see ([\p{L}\p{M}-]+)\)$/iu,
+        /^(.+?) \(as a direct object; the corresponding indirect object is ([\p{L}\p{M}-]+); the form used after prepositions is ([\p{L}\p{M}-]+)\)$/iu,
+    ];
+    for (const pattern of patterns) {
+        const match = pattern.exec(text);
+        if (!match) continue;
+        return {
+            display: match[1],
+            references: [
+                { relation: 'indirect_object', target: match[2] },
+                { relation: 'after_prepositions', target: match[3] },
+            ],
+        };
+    }
+    return null;
+}
+
 function senseCrossReferences(meaning) {
     const metadata = meaning?.metadata || {};
     const candidates = [
@@ -2587,10 +2607,11 @@ function senseCrossReferences(meaning) {
     // Current releases predate the structured field. Keep their behaviour
     // correct with the same deliberately narrow shape used by the parser.
     const fallback = /^See ([^.]+)\.$/.exec(String(meaning?.meaning || '').trim());
-    return fallback
-        ? fallback[1].split(',').map(value => value.trim()).filter(Boolean)
-            .map(target => ({ relation: 'see', target }))
-        : [];
+    if (fallback) {
+        return fallback[1].split(',').map(value => value.trim()).filter(Boolean)
+            .map(target => ({ relation: 'see', target }));
+    }
+    return legacyObjectPronounProjection(meaning?.meaning || meaning?.translation)?.references || [];
 }
 
 function senseCrossReferenceHTML(meaning, fallbackText) {
@@ -2612,7 +2633,8 @@ function senseCrossReferenceHTML(meaning, fallbackText) {
     const related = references.map(reference => (
         `<span class="sense-cross-reference-prefix">${labels[reference.relation]} →</span> ${link(reference)}`
     )).join(' <span class="sense-cross-reference-separator">·</span> ');
-    return `${fallbackText} <span class="sense-cross-reference-related">${related}</span>`;
+    const projected = legacyObjectPronounProjection(meaning?.meaning || meaning?.translation);
+    return `${projected?.display || fallbackText} <span class="sense-cross-reference-related">${related}</span>`;
 }
 
 async function openSenseCrossReference(event, target) {
@@ -2827,6 +2849,9 @@ function senseMetadataItems(meaning) {
     // release boundary. Restrict this fallback to Wiktionary and to phrases
     // with an unmistakable grammatical frame.
     if (metadata.source_adapter === 'wiktionary-sense-menu/v1') {
+        if (legacyObjectPronounProjection(meaning?.meaning || meaning?.translation)) {
+            add('construction', 'object_role', 'direct object');
+        }
         for (const clause of splitSenseMetadataClauses(provider.context || meaning?.context)) {
             if (/^(?:with\s|followed by\s|takes?\s|only (?:in|with)\s)/i.test(clause)) {
                 add('construction', 'context_phrase', clause);
@@ -4595,7 +4620,8 @@ function updateCard({ announceHeadword = false } = {}) {
                 g.pct += Number(m.percentage || 0);
                 g.hasAssignedEvidence = true;
             }
-            const text = String(getProductionEnglishCue(card, m) || m.meaning || '').trim();
+            const rawText = String(getProductionEnglishCue(card, m) || m.meaning || '').trim();
+            const text = legacyObjectPronounProjection(rawText)?.display || rawText;
             // Main senses only. Two rows sharing a translation are one meaning
             // seen in two contexts; the contexts belong in the expanded view.
             if (text && !g.senses.includes(text)) g.senses.push(text);
@@ -4610,9 +4636,11 @@ function updateCard({ announceHeadword = false } = {}) {
             card._expandedPos = new Set(cur ? [cur] : []);
         }
         const activeLemmaPosKey = lemmaPosGroupKeyForMeaning(currentMeaning);
-        const activeGroupSense = String(
+        const activeGroupSenseRaw = String(
             getProductionEnglishCue(card, currentMeaning) || currentMeaning?.meaning || ''
         ).trim();
+        const activeGroupSense = legacyObjectPronounProjection(activeGroupSenseRaw)?.display
+            || activeGroupSenseRaw;
 
         const renderSections = (sections) => Array.from(sections)
             .map(([key, rows]) => {
