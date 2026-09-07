@@ -151,6 +151,7 @@
         }
 
         .card-container {
+            --study-card-max-width: 540px;
             perspective: 1000px;
             display: flex;
             align-items: center;
@@ -352,7 +353,7 @@
         @media (min-width: 768px) {
             .card {
                 height: calc(100vh - 120px);
-                max-width: 480px;
+                max-width: var(--study-card-max-width);
                 margin: 0 auto;
             }
 
@@ -477,7 +478,7 @@
             .deck-ghost-prev,
             .deck-ghost-next {
                 position: absolute;
-                width: min(480px, calc(100% - 40px));
+                width: min(var(--study-card-max-width), calc(100% - 40px));
                 top: 50%;
                 border-radius: 16px;
                 background: var(--bg-card);
@@ -535,14 +536,13 @@
             /* #deckProgressTrack is retired everywhere (see base rules);
                .card-back-scrubber sits above the card in its place — same
                order:-1 flex-item trick. Width matches .card's own
-               max-width:480px exactly (not the wider 540px the old rail
-               used, which didn't line up with the card and instead
-               spanned closer to the ghost-card staircase behind it). */
+               configured width exactly, so the rail and card continue to
+               line up as the study surface is tuned. */
             .card-back-scrubber {
                 position: relative;
                 order: -1;
                 flex: 0 0 auto;
-                width: min(480px, 100%);
+                width: min(var(--study-card-max-width), 100%);
                 pointer-events: auto;
             }
             .card-container {
@@ -566,7 +566,7 @@
                 position: absolute;
                 top: 0;
                 bottom: 0;
-                width: calc((100% - 480px) / 2);
+                width: calc((100% - var(--study-card-max-width)) / 2);
                 background: transparent;
                 border: none;
                 cursor: pointer;
@@ -1868,7 +1868,7 @@
             justify-content: center;
             align-items: center;
             background: var(--bg-card);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.4), 0 0 1px rgba(255, 107, 53, 0.1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
             overflow: hidden;
         }
 
@@ -1884,6 +1884,9 @@
             mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             mask-composite: exclude;
             pointer-events: none;
+            /* Temporary product switch: keep the accent rim available without
+               showing it. Set this custom property to 1 to restore it. */
+            opacity: var(--card-accent-border-opacity, 0);
         }
 
         @media (max-width: 767px) {
@@ -1894,8 +1897,8 @@
 
         .card-back {
             transform: rotateY(180deg);
-            padding-left: 15px;
-            padding-right: 15px;
+            padding-left: 4px;
+            padding-right: 4px;
             /* Override .card-face's justify-content: center so the back's
                content anchors to the top and the scrollable meanings region
                takes the middle. Prevents the whole layout from shifting as
@@ -2062,7 +2065,7 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            font: 700 13px/1 var(--font-data);
+            font: 700 13px/1 var(--font-reading);
             color: transparent;
             transition: all 170ms cubic-bezier(0.2, 0.85, 0.25, 1.25);
         }
@@ -2179,6 +2182,13 @@
             align-items: center;
             gap: 8px 10px;
             position: relative;
+        }
+
+        /* The back no longer renders a POS control beside the surface form.
+           Centre the word while preserving the old layout if that control is
+           re-enabled later. */
+        .back-headword-row:not(:has(.back-pos-legend)) {
+            justify-content: center;
         }
 
         /* `flex: 0 1 auto` lets the scroll region take its natural height
@@ -2673,8 +2683,8 @@
         }
         .pos-collapsible.is-open .meaning-pos-rows {
             display: block;
-            margin: 5px 0 2px 10px;
-            padding-left: 8px;
+            margin: 5px 0 2px 6px;
+            padding-left: 6px;
             border-left: 1px solid rgba(var(--sense-match-rgb), 0.38);
         }
 
@@ -2989,6 +2999,85 @@
             overflow-wrap: anywhere;
             word-break: break-word;
             max-width: 100%;
+        }
+
+        .sense-cross-reference {
+            appearance: none;
+            border: 0;
+            border-bottom: 1px solid currentColor;
+            border-radius: 0;
+            padding: 0;
+            background: transparent;
+            color: rgb(var(--sense-match-rgb));
+            font: inherit;
+            font-weight: 650;
+            line-height: inherit;
+            cursor: pointer;
+        }
+
+        .sense-cross-reference:hover,
+        .sense-cross-reference:focus-visible {
+            color: var(--text-primary);
+            border-bottom-color: rgb(var(--sense-match-rgb));
+        }
+
+        .sense-cross-reference:focus-visible {
+            outline: 2px solid rgb(var(--sense-match-rgb));
+            outline-offset: 3px;
+        }
+
+        .sense-cross-reference-prefix,
+        .sense-cross-reference-separator {
+            opacity: 0.72;
+        }
+
+        .sense-metadata-list {
+            display: inline-flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 3px;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+
+        .sense-metadata-chip {
+            appearance: none;
+            border: 1px solid rgba(var(--sense-match-rgb), 0.38);
+            border-radius: 999px;
+            padding: 1px 5px;
+            background: rgba(var(--sense-match-rgb), 0.09);
+            color: var(--text-secondary);
+            font: inherit;
+            font-size: 10px;
+            font-style: normal;
+            font-weight: 650;
+            line-height: 1.25;
+            white-space: normal;
+        }
+
+        button.sense-metadata-chip {
+            cursor: pointer;
+        }
+
+        button.sense-metadata-chip::after {
+            content: '›';
+            display: inline-block;
+            margin-left: 3px;
+            opacity: 0.65;
+        }
+
+        button.sense-metadata-chip[aria-expanded="true"]::after {
+            transform: rotate(90deg);
+        }
+
+        .sense-metadata-chip[data-family="register"] {
+            border-color: rgba(245, 158, 11, 0.42);
+            background: rgba(245, 158, 11, 0.09);
+        }
+
+        .sense-metadata-chip[data-family="domain"] {
+            border-color: rgba(96, 165, 250, 0.4);
+            background: rgba(96, 165, 250, 0.08);
         }
 
         .meaning-row .meaning-context {
@@ -4284,6 +4373,19 @@
             display: inline-flex;
             align-items: center;
             gap: 2px;
+        }
+
+        .compact-example-counter {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 24px;
+            padding: 2px 5px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+            font: 600 12px/1 var(--font-reading);
+            font-variant-numeric: tabular-nums;
         }
 
         .example-autoplay-fallback {

@@ -1321,6 +1321,12 @@ function dedupeExamples(examples) {
     });
 }
 
+function compactCounterHTML(current, total, label = 'example') {
+    if (total < 2) return '';
+    const text = `${current + 1}\u2044${total}`;
+    return `<span class="compact-example-counter" aria-label="${escapeCardText(`${label} ${current + 1} of ${total}`)}">${text}</span>`;
+}
+
 function initializeApp() {
     updateCard({ announceHeadword: true });
     updateStats();
@@ -1365,8 +1371,7 @@ function initializeApp() {
         window.showRadialPicker({
             id: 'studyRadialPicker',
             ariaLabel: 'Study options',
-            hubHTML: 'Study<br>options',
-            closeLabel: 'Tap to close',
+            hubHTML: 'Study options',
             className: 'study-radial-picker',
             entries
         });
@@ -2557,6 +2562,112 @@ function escapeCardText(value) {
     })[character]);
 }
 
+function legacyObjectPronounProjection(value) {
+    const text = String(value || '').trim();
+    const patterns = [
+        /^(.+?) \(as a direct object; as an indirect object, see ([\p{L}\p{M}-]+); after prepositions, see ([\p{L}\p{M}-]+)\)$/iu,
+        /^(.+?) \(as a direct object; the corresponding indirect object is ([\p{L}\p{M}-]+); the form used after prepositions is ([\p{L}\p{M}-]+)\)$/iu,
+    ];
+    for (const pattern of patterns) {
+        const match = pattern.exec(text);
+        if (!match) continue;
+        return {
+            display: match[1],
+            references: [
+                { relation: 'indirect_object', target: match[2] },
+                { relation: 'after_prepositions', target: match[3] },
+            ],
+        };
+    }
+    return null;
+}
+
+function senseCrossReferences(meaning) {
+    const metadata = meaning?.metadata || {};
+    const candidates = [
+        metadata.cross_references,
+        metadata.sense_provider_metadata?.cross_references,
+    ];
+    const referencesOut = [];
+    const seen = new Set();
+    for (const references of candidates) {
+        if (!Array.isArray(references)) continue;
+        for (const reference of references) {
+            const relation = String(reference?.relation || '').trim();
+            const target = String(reference?.target || '').trim();
+            if (!['see', 'indirect_object', 'after_prepositions'].includes(relation) || !target) continue;
+            const key = `${relation}\u0000${target.toLocaleLowerCase('en')}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            referencesOut.push({ relation, target });
+        }
+    }
+    if (referencesOut.length) return referencesOut;
+
+    // Current releases predate the structured field. Keep their behaviour
+    // correct with the same deliberately narrow shape used by the parser.
+    const fallback = /^See ([^.]+)\.$/.exec(String(meaning?.meaning || '').trim());
+    if (fallback) {
+        return fallback[1].split(',').map(value => value.trim()).filter(Boolean)
+            .map(target => ({ relation: 'see', target }));
+    }
+    return legacyObjectPronounProjection(meaning?.meaning || meaning?.translation)?.references || [];
+}
+
+function senseCrossReferenceHTML(meaning, fallbackText) {
+    const references = senseCrossReferences(meaning);
+    if (!references.length) return fallbackText;
+    const link = ({ target }) => {
+        const encoded = encodeURIComponent(target);
+        return `<button type="button" class="sense-cross-reference" data-reference-target="${encoded}" onclick="openSenseCrossReference(event, decodeURIComponent(this.dataset.referenceTarget))" title="Open ${escapeCardText(target)}">${escapeCardText(target)}</button>`;
+    };
+    if (references.every(reference => reference.relation === 'see')) {
+        const links = references.map(link).join('<span class="sense-cross-reference-separator">,</span> ');
+        return `<span class="sense-cross-reference-prefix">See</span> ${links}`;
+    }
+    const labels = {
+        indirect_object: 'indirect',
+        after_prepositions: 'after prep.',
+        see: 'see',
+    };
+    const related = references.map(reference => (
+        `<span class="sense-cross-reference-prefix">${labels[reference.relation]} →</span> ${link(reference)}`
+    )).join(' <span class="sense-cross-reference-separator">·</span> ');
+    const projected = legacyObjectPronounProjection(meaning?.meaning || meaning?.translation);
+    return `${projected?.display || fallbackText} <span class="sense-cross-reference-related">${related}</span>`;
+}
+
+async function openSenseCrossReference(event, target) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const cleanTarget = String(target || '').trim();
+    const preferredSource = (activeArtist && window._cachedMergedIndex)
+        ? window._cachedMergedIndex
+        : window._cachedJoinedIndex;
+    const vocabSource = [preferredSource, window._cachedJoinedIndex]
+        .filter(Array.isArray)
+        .flat();
+    if (!cleanTarget || !Array.isArray(vocabSource)) return;
+
+    const foldedTarget = foldSurfaceForm(cleanTarget);
+    const exactEntry = vocabSource.find(entry => foldSurfaceForm(entry?.word) === foldedTarget)
+        || vocabSource.find(entry => foldSurfaceForm(entry?.lemma) === foldedTarget);
+    const phraseOwner = vocabSource.find(entry =>
+        Array.isArray(entry?.mwe_memberships)
+        && entry.mwe_memberships.some(mwe => foldSurfaceForm(mwe?.expression) === foldedTarget));
+    const headword = cleanTarget.split(/\s+/u)[0];
+    const foldedHeadword = foldSurfaceForm(headword);
+    const headwordEntry = vocabSource.find(entry => foldSurfaceForm(entry?.word) === foldedHeadword)
+        || vocabSource.find(entry => foldSurfaceForm(entry?.lemma) === foldedHeadword);
+    const entry = exactEntry || phraseOwner || headwordEntry;
+    if (!entry?.id || !window.popupFoundWord) return;
+
+    await window.popupFoundWord(
+        { id: entry.id, sourceEntry: entry },
+        { reopenSearchOnBack: false, startFlipped: true, focusExpression: cleanTarget }
+    );
+}
+
 /**
  * Condense a sense context for display. The stored text is untouched; this is
  * only how it reads on the card.
@@ -2635,6 +2746,173 @@ function renderSenseContextHTML(context, { leadingDot = true } = {}) {
     const title = escapeCardText(`SpanishDict usage note: ${usage.raw}`);
     const label = escapeCardText(usage.label);
     return `${detail}<span class="meaning-usage-pill" data-source="spanishdict" title="${title}" aria-label="${title}"><span class="meaning-usage-source">SpanishDict</span><span class="meaning-usage-label">${label}</span></span>`;
+}
+
+const SENSE_CONSTRUCTION_TAGS = new Set([
+    'auxiliary', 'copulative', 'ditransitive', 'impersonal', 'intransitive',
+    'pronominal', 'reflexive', 'transitive'
+]);
+const SENSE_REGISTER_TAGS = new Set([
+    'archaic', 'colloquial', 'dated', 'euphemistic', 'formal', 'informal',
+    'obsolete', 'offensive', 'poetic', 'slang', 'vulgar'
+]);
+const SENSE_CONSTRUCTION_SHORT = {
+    auxiliary: 'aux.',
+    copulative: 'cop.',
+    ditransitive: 'ditr.',
+    impersonal: 'impers.',
+    intransitive: 'intr.',
+    pronominal: 'pronom.',
+    reflexive: 'refl.',
+    transitive: 'tr.'
+};
+
+function splitSenseMetadataClauses(value) {
+    const text = String(value || '');
+    const parts = [];
+    let depth = 0;
+    let start = 0;
+    for (let index = 0; index < text.length; index++) {
+        const character = text[index];
+        if ('([{'.includes(character)) depth++;
+        else if (')]}'.includes(character) && depth) depth--;
+        else if (character === ',' && depth === 0) {
+            const part = text.slice(start, index).trim();
+            if (part) parts.push(part);
+            start = index + 1;
+        }
+    }
+    const final = text.slice(start).trim();
+    if (final) parts.push(final);
+    return parts;
+}
+
+function compactConstructionMetadata(value) {
+    const full = String(value || '').trim().replace(/^\[|\]$/g, '');
+    const exact = SENSE_CONSTRUCTION_SHORT[full.toLowerCase()];
+    if (exact) return { short: exact, full };
+    let short = full
+        .replace(/^with\s+/i, '+ ')
+        .replace(/\bdirect object\b/gi, 'direct obj.')
+        .replace(/\bindirect object\b/gi, 'indirect obj.')
+        .replace(/\balong with\b/gi, '+')
+        .replace(/[‘“][^’”]*[’”]/gu, '')
+        .replace(/\s+or\s+/gi, '/')
+        .replace(/\s+/g, ' ')
+        .replace(/\s+([,;)])/g, '$1')
+        .replace(/,\s*\+/g, ' +')
+        .trim();
+    if (short.length > 32) short = `${short.slice(0, 31).trimEnd()}…`;
+    return { short: short || full, full };
+}
+
+function senseMetadataItems(meaning) {
+    const metadata = meaning?.metadata || {};
+    const provider = metadata.sense_provider_metadata || {};
+    const items = [];
+    const seen = new Set();
+    const add = (family, kind, value) => {
+        const clean = String(value || '').trim();
+        if (!clean || (family === 'grammar' && kind === 'surface_mark')) return;
+        const key = `${family}\u0000${clean.toLocaleLowerCase('en')}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        items.push({ family, kind, value: clean });
+    };
+
+    const normalizedFeatures = [
+        ...(Array.isArray(meaning?.specialist_features) ? meaning.specialist_features : []),
+        ...(Array.isArray(metadata.specialist_features) ? metadata.specialist_features : []),
+    ];
+    for (const feature of normalizedFeatures) {
+        if (!feature || typeof feature !== 'object') continue;
+        if (feature.family === 'register' || feature.family === 'domain'
+            || feature.family === 'companion'
+            || feature.family === 'construction' || feature.family === 'grammar') {
+            add(feature.family, feature.kind || '', feature.value);
+        }
+    }
+    for (const region of provider.regions || []) {
+        const label = region && typeof region === 'object'
+            ? (region.name || region.label || region.region)
+            : region;
+        add('register', 'region', label);
+    }
+    for (const topic of provider.topics || []) add('domain', 'topic', topic);
+    for (const tag of provider.tags || []) {
+        const lowered = String(tag || '').toLowerCase();
+        if (SENSE_REGISTER_TAGS.has(lowered)) add('register', 'usage_tag', tag);
+        else if (SENSE_CONSTRUCTION_TAGS.has(lowered)) add('construction', 'grammar_tag', tag);
+    }
+
+    // Compatibility for releases made before specialist_features crossed the
+    // release boundary. Restrict this fallback to Wiktionary and to phrases
+    // with an unmistakable grammatical frame.
+    if (metadata.source_adapter === 'wiktionary-sense-menu/v1') {
+        if (legacyObjectPronounProjection(meaning?.meaning || meaning?.translation)) {
+            add('construction', 'object_role', 'direct object');
+        }
+        for (const clause of splitSenseMetadataClauses(provider.context || meaning?.context)) {
+            if (/^(?:with\s|followed by\s|takes?\s|only (?:in|with)\s)/i.test(clause)) {
+                add('construction', 'context_phrase', clause);
+            }
+        }
+    }
+    return items;
+}
+
+function senseMetadataDisplay(item) {
+    if (item.family === 'companion') {
+        return { short: `+ ${item.value}`, full: `used with ${item.value}` };
+    }
+    if (item.family === 'construction') return compactConstructionMetadata(item.value);
+    if (item.family === 'grammar') {
+        const label = ({
+            'reflexive=true': 'refl.',
+            'person=1': '1st person',
+            'person=2': '2nd person',
+            'person=3': '3rd person',
+            'number=singular': 'singular',
+            'number=plural': 'plural',
+        })[item.value] || item.value;
+        return { short: label, full: item.value };
+    }
+    return {
+        short: item.value.replace(/-/g, ' '),
+        full: item.value.replace(/-/g, ' '),
+    };
+}
+
+function senseMetadataHTML(meaning, active) {
+    if (!active) return '';
+    const chips = senseMetadataItems(meaning).map(item => {
+        const display = senseMetadataDisplay(item);
+        const family = escapeCardText(item.family);
+        if (display.short === display.full) {
+            return `<span class="sense-metadata-chip" data-family="${family}">${escapeCardText(display.short)}</span>`;
+        }
+        return `<button type="button" class="sense-metadata-chip is-expandable" data-family="${family}" data-short="${encodeURIComponent(display.short)}" data-full="${encodeURIComponent(display.full)}" aria-expanded="false" onclick="toggleSenseMetadataChip(event, this)">${escapeCardText(display.short)}</button>`;
+    }).join('');
+    return chips ? `<span class="sense-metadata-list">${chips}</span>` : '';
+}
+
+function contextWithoutSenseMetadata(meaning, active) {
+    const context = String(meaning?.context || '').trim();
+    if (!active || !context) return context;
+    const represented = new Set(senseMetadataItems(meaning).map(item =>
+        item.value.toLocaleLowerCase('en')));
+    return splitSenseMetadataClauses(context)
+        .filter(clause => !represented.has(clause.toLocaleLowerCase('en')))
+        .join(', ');
+}
+
+function toggleSenseMetadataChip(event, chip) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    if (!chip) return;
+    const expanded = chip.getAttribute('aria-expanded') === 'true';
+    chip.textContent = decodeURIComponent(expanded ? chip.dataset.short : chip.dataset.full);
+    chip.setAttribute('aria-expanded', String(!expanded));
 }
 
 function highlightPossibleSpanishDictUsage(sentenceHTML, usage, targetWord = '') {
@@ -3027,9 +3305,10 @@ function selectLemmaPosGroup(event, key, meaningIndex) {
     const meaning = card?.meanings?.[meaningIndex];
     if (!card || !meaning) return;
     const real = String(key).replace(/~~/g, '\u0000');
-    if (!card._expandedPos) card._expandedPos = new Set();
     card._backSectionsManuallySet = true;
-    card._expandedPos.add(real);
+    // Keep only the active group's sub-senses on screen. Leaving previously
+    // visited groups expanded weakens the visual link to the sentence below.
+    card._expandedPos = new Set([real]);
 
     const alreadyActive = lemmaPosGroupKeyForMeaning(card.meanings[currentMeaningIndex]) === real
         && !currentGroupSelection;
@@ -3676,8 +3955,10 @@ function updateCard({ announceHeadword = false } = {}) {
 
     // Get the current meaning for multi-meaning cards
     const currentMeaning = card.isMultiMeaning ? card.meanings[currentMeaningIndex] : null;
-    if (currentMeaning && card._expandedPos) {
-        card._expandedPos.add(lemmaPosGroupKeyForMeaning(currentMeaning));
+    if (currentMeaning) {
+        // The sentence belongs to one active lemma/POS group. Keeping only
+        // that group's detail rows visible makes the relationship explicit.
+        card._expandedPos = new Set([lemmaPosGroupKeyForMeaning(currentMeaning)]);
     }
     // Keep the lemma in the header synchronized with the selected group. This
     // is especially important for homographic surfaces such as fue (ser/ir):
@@ -4339,7 +4620,8 @@ function updateCard({ announceHeadword = false } = {}) {
                 g.pct += Number(m.percentage || 0);
                 g.hasAssignedEvidence = true;
             }
-            const text = String(getProductionEnglishCue(card, m) || m.meaning || '').trim();
+            const rawText = String(getProductionEnglishCue(card, m) || m.meaning || '').trim();
+            const text = legacyObjectPronounProjection(rawText)?.display || rawText;
             // Main senses only. Two rows sharing a translation are one meaning
             // seen in two contexts; the contexts belong in the expanded view.
             if (text && !g.senses.includes(text)) g.senses.push(text);
@@ -4354,9 +4636,11 @@ function updateCard({ announceHeadword = false } = {}) {
             card._expandedPos = new Set(cur ? [cur] : []);
         }
         const activeLemmaPosKey = lemmaPosGroupKeyForMeaning(currentMeaning);
-        const activeGroupSense = String(
+        const activeGroupSenseRaw = String(
             getProductionEnglishCue(card, currentMeaning) || currentMeaning?.meaning || ''
         ).trim();
+        const activeGroupSense = legacyObjectPronounProjection(activeGroupSenseRaw)?.display
+            || activeGroupSenseRaw;
 
         const renderSections = (sections) => Array.from(sections)
             .map(([key, rows]) => {
@@ -4370,10 +4654,11 @@ function updateCard({ announceHeadword = false } = {}) {
                 </section>`;
                 }
                 const open = card._expandedPos.has(key);
-                // Always state the lemma. Apart from making the grouping model
-                // inspectable, this prevents a POS/group switch from looking
-                // like it changed only the colour while retaining the old word.
+                // The surface form already identifies an identical lemma in
+                // the centred card header; repeat the lemma only when it adds
+                // information (for example, an inflected surface).
                 const hw = g.headword
+                    && foldSurfaceForm(g.headword) !== foldSurfaceForm(card.targetWord)
                     ? `<span class="pos-pill-lemma">${escapeCardText(g.headword)}</span>` : '';
                 const summarySense = key === activeLemmaPosKey && activeGroupSense
                     ? activeGroupSense
@@ -4552,16 +4837,19 @@ function updateCard({ announceHeadword = false } = {}) {
             const mweExpr = isMWE && m.allMWEs ? m.allMWEs[mweIdx].expression : m.expression;
             const mweMeaning = isMWE && m.allMWEs ? m.allMWEs[mweIdx].translation : m.meaning;
             const mweCount = isMWE && m.allMWEs ? m.allMWEs.length : 0;
-            const mweCounter = (isMWE && mweCount > 1) ? ` <span class="example-counter-group"><button class="mwe-cycle-btn" onclick="cycleMWEBackward(event)" title="Previous expression">‹</button><span style="font-family: var(--font-data); font-size: 14px; min-width: 32px; text-align: center; display: inline-block;">${mweIdx + 1}/${mweCount}</span><button class="mwe-cycle-btn" onclick="cycleMWEForward(event)" title="Next expression">›</button></span>` : '';
+            const mweCounter = (isMWE && mweCount > 1) ? ` <span class="example-counter-group"><button class="mwe-cycle-btn" onclick="cycleMWEBackward(event)" title="Previous expression">‹</button>${compactCounterHTML(mweIdx, mweCount, 'expression')}<button class="mwe-cycle-btn" onclick="cycleMWEForward(event)" title="Next expression">›</button></span>` : '';
             // For Clitic pill, reuse MWE cycling with allClitics
             const cliticIdx = (isClitic && isSelected) ? currentMWEIndex % (m.allClitics ? m.allClitics.length : 1) : 0;
             const cliticForm = isClitic && m.allClitics ? m.allClitics[cliticIdx].form : '';
             const cliticCount = isClitic && m.allClitics ? m.allClitics.length : 0;
-            const cliticCounter = (isClitic && cliticCount > 1) ? ` <span class="example-counter-group"><button class="mwe-cycle-btn" onclick="cycleMWEBackward(event)" title="Previous form">‹</button><span style="font-family: var(--font-data); font-size: 14px; min-width: 32px; text-align: center; display: inline-block;">${cliticIdx + 1}/${cliticCount}</span><button class="mwe-cycle-btn" onclick="cycleMWEForward(event)" title="Next form">›</button></span>` : '';
+            const cliticCounter = (isClitic && cliticCount > 1) ? ` <span class="example-counter-group"><button class="mwe-cycle-btn" onclick="cycleMWEBackward(event)" title="Previous form">‹</button>${compactCounterHTML(cliticIdx, cliticCount, 'form')}<button class="mwe-cycle-btn" onclick="cycleMWEForward(event)" title="Next form">›</button></span>` : '';
             const cleanMweMeaning = isMWE ? mweMeaning.replace(/\s*\(elided\)/gi, '') : '';
             const displayMeaning = isMWE
                 ? (cleanMweMeaning || '<span style="font-style: italic; opacity: 0.5;">Translation unavailable</span>')
                 : (getProductionEnglishCue(card, m) || m.meaning);
+            const displayMeaningHTML = isMWE
+                ? displayMeaning
+                : senseCrossReferenceHTML(m, displayMeaning);
             if (isMWE) {
                 if (compactKnowledgeView && !isSelected) return;
                 // Expression row: plain bold expression (left), translation
@@ -4744,6 +5032,9 @@ function updateCard({ announceHeadword = false } = {}) {
                     const sharedText = isTransAxis
                         ? displayMeaning
                         : String(m.context || '').replace(/"/g, '&quot;');
+                    const sharedTextHTML = isTransAxis
+                        ? displayMeaningHTML
+                        : sharedText;
                     const groupedTextClass = adaptiveRowTextClass(
                         sharedText,
                         orderedMembers.map(memberIdx => {
@@ -4789,14 +5080,15 @@ function updateCard({ announceHeadword = false } = {}) {
                         // Varying cell.
                         let varyingHtml;
                         if (isTransAxis) {
-                            const ctxRaw = mm.context || '';
-                            varyingHtml = ctxRaw
-                                ? `<span class="meaning-context-cell" style="line-height: 1.3; min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderSenseContextHTML(ctxRaw, { leadingDot: false })}</span>`
+                            const ctxRaw = contextWithoutSenseMetadata(mm, isMemberSelected);
+                            const metadataHTML = senseMetadataHTML(mm, isMemberSelected);
+                            varyingHtml = ctxRaw || metadataHTML
+                                ? `<span class="meaning-context-cell" style="line-height: 1.3; min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderSenseContextHTML(ctxRaw, { leadingDot: false })}${metadataHTML}</span>`
                                 : `<span style="opacity: 0.4; font-style: italic; font-size: 12px;">—</span>`;
                         } else {
                             const transRaw = getProductionEnglishCue(card, mm) || mm.meaning || '';
                             const transSafe = String(transRaw).replace(/"/g, '&quot;');
-                            varyingHtml = `<span class="row-adaptive-text" style="font-weight: 600; color: var(--text-primary); line-height: 1.25; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${transSafe}${modelProposalMarkerHTML(mm)}</span>`;
+                            varyingHtml = `<span class="row-adaptive-text" style="font-weight: 600; color: var(--text-primary); line-height: 1.25; min-width: 0; overflow: hidden; text-overflow: ellipsis;">${senseCrossReferenceHTML(mm, transSafe)}${senseMetadataHTML(mm, isMemberSelected)}${modelProposalMarkerHTML(mm)}</span>`;
                         }
                         const varyingCol = isTransAxis ? 2 : 1;
                         const varyingCell = `<div onclick="event.stopPropagation(); selectMeaning(${memberIdx})" style="${baseCell} grid-column: ${varyingCol}; min-width: 0; overflow: hidden;">${varyingHtml}</div>`;
@@ -4820,7 +5112,7 @@ function updateCard({ announceHeadword = false } = {}) {
                     const sharedCol = isTransAxis ? 1 : 2;
                     const sharedSpan = `grid-column: ${sharedCol}; grid-row: 1 / span ${orderedMembers.length}; align-self: center;`;
                     const sharedCellHtml = isTransAxis
-                        ? `<div class="group-card-shared row-adaptive-text" style="${sharedSpan} font-weight: 600; color: var(--text-primary); text-align: center; line-height: 1.25; min-width: 0; word-break: break-word;">${sharedText}${modelProposalMarkerHTML(orderedMembers.some(memberIdx => card.meanings[memberIdx].modelProposed) ? { modelProposed: true } : null)}</div>`
+                        ? `<div class="group-card-shared row-adaptive-text" style="${sharedSpan} font-weight: 600; color: var(--text-primary); text-align: center; line-height: 1.25; min-width: 0; word-break: break-word;">${sharedTextHTML}${modelProposalMarkerHTML(orderedMembers.some(memberIdx => card.meanings[memberIdx].modelProposed) ? { modelProposed: true } : null)}</div>`
                         : `<div class="group-card-shared" style="${sharedSpan} text-align: center; line-height: 1.25; min-width: 0; word-break: break-word;">${renderSenseContextHTML(m.context, { leadingDot: false })}</div>`;
 
                     // Body grid: shared + varying. The pct column lives in the
@@ -4846,9 +5138,11 @@ function updateCard({ announceHeadword = false } = {}) {
                     // Singleton: centred translation with optional inline
                     // context. POS is represented by the header legend and tint.
                     let contextInline = '';
-                    if (m.context) {
-                        contextInline = ` ${renderSenseContextHTML(m.context)}`;
+                    const compactContext = contextWithoutSenseMetadata(m, isSelected);
+                    if (compactContext) {
+                        contextInline = ` ${renderSenseContextHTML(compactContext)}`;
                     }
+                    contextInline += senseMetadataHTML(m, isSelected);
                     contextInline += registerTagHTML(m);
                     contextInline += modelProposalMarkerHTML(m);
                     const singletonTextClass = adaptiveRowTextClass(displayMeaning, m.context || '');
@@ -4866,7 +5160,7 @@ function updateCard({ announceHeadword = false } = {}) {
                     <div class="meaning-row meaning-row-regular ${singletonTextClass}${isSelected ? ' selected' : ''}${rowStateClasses}" style="position: relative; display: grid; grid-template-columns: 1fr; align-items: center; padding: 1px 2px; margin-bottom: 4px; background: ${bgColor}; ${borderStyle} border-radius: 8px; cursor: pointer; min-height: 39px;" onclick="selectMeaning(${idx})">
                         ${renderRowCheckSlot(isSelected)}
                         <div class="meaning-row-body" style="display: flex; flex-direction: column; align-items: stretch; justify-content: center; min-width: 0; padding: 0 ${!m.unassigned && prominenceText ? '86px' : (!m.unassigned && pctVal < 100 ? '42px' : '8px')} 0 8px;">
-                            <span class="meaning-row-translation row-adaptive-text" style="font-weight: ${isSelected ? 700 : 500}; color: ${textColor}; text-align: center; width: 100%;">${displayMeaning}${contextInline}</span>
+                            <span class="meaning-row-translation row-adaptive-text" style="font-weight: ${isSelected ? 700 : 500}; color: ${textColor}; text-align: center; width: 100%;">${displayMeaningHTML}${contextInline}</span>
                         </div>
                         ${pctTail}
                     </div>
@@ -4911,67 +5205,13 @@ function updateCard({ announceHeadword = false } = {}) {
 
         if (currentMeaning && currentMeaning.targetSentence && cycleHasExamples) {
             // For MWE senses, get examples from the current MWE expression's own array
-            let activeExamples;
             let activeMweIdx = 0;
             if (currentMeaning.allMWEs) {
                 activeMweIdx = currentMWEIndex % currentMeaning.allMWEs.length;
-                activeExamples = dedupeExamples(currentMeaning.allMWEs[activeMweIdx].examples || []);
             } else if (currentMeaning.allClitics) {
                 activeMweIdx = currentMWEIndex % currentMeaning.allClitics.length;
-                activeExamples = dedupeExamples(currentMeaning.allClitics[activeMweIdx].examples || []);
-            } else if (currentGroupSelection && currentGroupSelection.members) {
-                // Group selected: union of every member's allExamples,
-                // deduped to avoid the same sentence repeating across senses.
-                const merged = [];
-                for (const mi of currentGroupSelection.members) {
-                    const mm = card.meanings[mi];
-                    if (mm && mm.allExamples) merged.push(...mm.allExamples);
-                }
-                activeExamples = dedupeExamples(merged);
-            } else {
-                activeExamples = dedupeExamples(currentMeaning.allExamples || []);
             }
-
-            // Dynamic re-sort: boost examples with deck/recently-wrong word overlap
-            if (activeExamples.length > 1) {
-                activeExamples = sortExamplesByRelevance(activeExamples);
-            }
-
-            // For MWE / Clitic rows, examples whose sentence doesn't actually
-            // display the expression are useless for this row — they used to
-            // render in the box without the accent border, which read as a
-            // visual artefact rather than a teaching moment. Filter them out
-            // so the cycle only steps through sentences that actually show
-            // the expression; when that leaves nothing, the whole sentence
-            // block is suppressed further down (the row simply waits until
-            // the user moves to an expression whose examples carry it).
-            // Regular senses and SENSE_CYCLE remainder rows are unchanged:
-            // they keep their non-bordered fallback sentences per the
-            // existing sense-cycle behaviour.
-            if (currentMeaning.allMWEs) {
-                const activeMwe = currentMeaning.allMWEs[activeMweIdx];
-                if (activeMwe?.expression) {
-                    activeExamples = activeExamples.filter(ex => {
-                        const target = ex.target || ex.spanish || '';
-                        return Boolean(_matchedMweForm(
-                            activeMwe, target, ex.matched_surface || ex.matched_variant));
-                    });
-                }
-            } else if (currentMeaning.allClitics) {
-                const cliticForm = currentMeaning.allClitics[activeMweIdx].form;
-                if (cliticForm) {
-                    const escaped = cliticForm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    try {
-                        const re = _cachedRegex('(?<![\\p{L}])' + escaped + '(?![\\p{L}])', 'iu');
-                        activeExamples = activeExamples.filter(ex => {
-                            const target = ex.target || ex.spanish || '';
-                            return re.test(target);
-                        });
-                    } catch (_) {
-                        // Older browsers without \p{...} support — skip filter
-                    }
-                }
-            }
+            const activeExamples = getCyclableExamples(card, currentMeaning);
 
             // Nothing left to show? Skip emitting the sentence box below.
             // Same effect as `cycleHasExamples=false`: the row sits in the
@@ -5003,10 +5243,12 @@ function updateCard({ announceHeadword = false } = {}) {
                 currentExample = example;
                 exampleSourceLabel = example.personalised
                     ? `Personalised practice · ${example.reinforcement_word}`
-                    : (example.source_mode === 'speech'
+                    : (example.source === 'wiktionary'
+                        ? 'Wiktionary example'
+                        : (example.source_mode === 'speech'
                         ? 'Speech example'
                         : (example.source === 'spanishdict' ? 'SpanishDict example'
-                            : exampleProvenanceHTML(example)));
+                            : exampleProvenanceHTML(example))));
                 window._currentDisplayedExample = example;
                 const exTarget = example.target || example.spanish || '';
                 const exEnglish = example.english || '';
@@ -5150,7 +5392,7 @@ function updateCard({ announceHeadword = false } = {}) {
                 const exIdx = currentExampleIndex % exampleCount;
                 // No prev/next buttons — tapping the sentence itself already
                 // cycles through examples (see the .sentence onclick below).
-                exampleCounter = `<span class="example-counter-group"><span style="font-family: var(--font-data); font-size: 14px; min-width: 32px; text-align: center; display: inline-block;">${exIdx + 1}/${exampleCount}</span></span>`;
+                exampleCounter = `<span class="example-counter-group">${compactCounterHTML(exIdx, exampleCount)}</span>`;
             }
             // Breakdown button removed — English translation is now clickable instead
             const spotifySvg = `<svg width="44" height="44" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>`;
@@ -5461,34 +5703,8 @@ function updateCard({ announceHeadword = false } = {}) {
 
             const scroll = backEl.querySelector('.meanings-scroll');
             if (scroll) {
-                // Clear any prior cap so the default-open decision sees every
-                // row's natural height. Multi-POS cards initially retain the
-                // active group only; if all groups fit in the real remaining
-                // card space, promote that sparse layout to all-open.
+                // Clear any prior cap before measuring the active group.
                 scroll.style.maxHeight = '';
-                const sections = Array.from(
-                    scroll.querySelectorAll('.pos-collapsible[data-group-key]'));
-                const layoutKey = `${backEl.clientWidth}x${backEl.clientHeight}`;
-                if (sections.length > 1
-                    && !card._backSectionsManuallySet
-                    && card._backSectionsAutoLayout !== layoutKey) {
-                    const priorOpen = sections.map(section => section.classList.contains('is-open'));
-                    for (const section of sections) section.classList.add('is-open');
-                    const availableForScroll = availableHeightForMeaningScroll(backEl, scroll);
-                    if (availableForScroll > 0
-                        && scroll.scrollHeight <= availableForScroll + 1) {
-                        card._expandedPos = new Set(sections.map(section =>
-                            String(section.dataset.groupKey || '').replace(/~~/g, '\u0000')));
-                        for (const section of sections) {
-                            const chevron = section.querySelector('.pos-section-chevron');
-                            if (chevron) chevron.textContent = '\u25BE';
-                        }
-                    } else {
-                        sections.forEach((section, index) =>
-                            section.classList.toggle('is-open', priorOpen[index]));
-                    }
-                    card._backSectionsAutoLayout = layoutKey;
-                }
             }
 
             // Two-phase: collect overflowing rows in a read-only pass, then
@@ -5697,6 +5913,90 @@ function updateCard({ announceHeadword = false } = {}) {
     window.saveStudySessionSnapshot?.();
 }
 
+const CARD_WALKTHROUGH_PROMPT_KEY = 'fluencyCardWalkthroughPromptV1';
+let _cardWalkthroughPromptHandled = false;
+
+function rememberCardWalkthroughPrompt() {
+    _cardWalkthroughPromptHandled = true;
+    try { localStorage.setItem(CARD_WALKTHROUGH_PROMPT_KEY, '1'); } catch (_) {}
+}
+
+function hasHandledCardWalkthroughPrompt() {
+    if (_cardWalkthroughPromptHandled) return true;
+    try { return localStorage.getItem(CARD_WALKTHROUGH_PROMPT_KEY) === '1'; } catch (_) { return false; }
+}
+
+function _cardWalkthroughPromptKeydown(event) {
+    if (event.key !== 'Escape') return;
+    event.stopPropagation();
+    closeCardWalkthroughPrompt();
+}
+
+function closeCardWalkthroughPrompt({ immediate = false } = {}) {
+    const modal = document.getElementById('cardWalkthroughPrompt');
+    if (!modal) return;
+    document.removeEventListener('keydown', _cardWalkthroughPromptKeydown, true);
+    if (immediate || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+        modal.hidden = true;
+        modal.classList.remove('is-closing');
+        return;
+    }
+    modal.classList.add('is-closing');
+    setTimeout(() => {
+        modal.hidden = true;
+        modal.classList.remove('is-closing');
+    }, 180);
+}
+
+function ensureCardWalkthroughPrompt() {
+    let modal = document.getElementById('cardWalkthroughPrompt');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'cardWalkthroughPrompt';
+    modal.className = 'knowledge-overview-modal syn-leave-modal';
+    modal.hidden = true;
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'cardWalkthroughPromptTitle');
+    modal.innerHTML = `
+        <div class="knowledge-overview-sheet syn-leave-sheet">
+            <div class="knowledge-overview-header">
+                <div>
+                    <span class="knowledge-overview-kicker">Quick card tour</span>
+                    <h2 id="cardWalkthroughPromptTitle">Want to see how the back works?</h2>
+                </div>
+            </div>
+            <p class="syn-leave-body">The walkthrough explains sense rows, example sentences, percentages, and the controls you can tap.</p>
+            <div class="syn-leave-actions">
+                <button type="button" class="auth-cancel-btn" data-card-walkthrough="dismiss">Not now</button>
+                <button type="button" class="auth-submit-btn" data-card-walkthrough="show">Show me</button>
+            </div>
+        </div>`;
+    modal.addEventListener('click', event => {
+        event.stopPropagation();
+        const action = event.target.closest('[data-card-walkthrough]')?.dataset.cardWalkthrough;
+        if (action === 'show') {
+            closeCardWalkthroughPrompt({ immediate: true });
+            window.openAboutExample?.(activeArtist ? 0 : 1);
+        } else if (action === 'dismiss') {
+            closeCardWalkthroughPrompt();
+        }
+    });
+    document.body.appendChild(modal);
+    return modal;
+}
+
+function maybeShowCardWalkthroughPrompt() {
+    if (hasHandledCardWalkthroughPrompt()) return;
+    // Do not stack onboarding over a dialog the learner opened during the flip.
+    if (document.querySelector('.modal:not(.hidden), .knowledge-overview-modal:not([hidden])')) return;
+    const modal = ensureCardWalkthroughPrompt();
+    rememberCardWalkthroughPrompt();
+    modal.hidden = false;
+    document.addEventListener('keydown', _cardWalkthroughPromptKeydown, true);
+    modal.querySelector('[data-card-walkthrough="show"]')?.focus();
+}
+
 function flipCard() {
     // Chain children are back-only: there is no front content, so every flip
     // route (tap, keyboard, control button) is a no-op rather than a turn
@@ -5733,7 +6033,60 @@ function flipCard() {
             speakWord(getDisplayedTargetHeadword(card), false);
         }
     }
+    if (!wasFlipped && isNowFlipped) setTimeout(maybeShowCardWalkthroughPrompt, 650);
     window.saveStudySessionSnapshot?.();
+}
+
+function getCyclableExamples(card, currentMeaning) {
+    let examples;
+    let activeMweIdx = 0;
+    if (currentMeaning.allMWEs) {
+        activeMweIdx = currentMWEIndex % currentMeaning.allMWEs.length;
+        examples = dedupeExamples(currentMeaning.allMWEs[activeMweIdx].examples || []);
+    } else if (currentMeaning.allClitics) {
+        activeMweIdx = currentMWEIndex % currentMeaning.allClitics.length;
+        examples = dedupeExamples(currentMeaning.allClitics[activeMweIdx].examples || []);
+    } else if (currentGroupSelection?.members) {
+        const merged = [];
+        for (const meaningIndex of currentGroupSelection.members) {
+            const member = card.meanings[meaningIndex];
+            if (member?.allExamples) merged.push(...member.allExamples);
+        }
+        examples = dedupeExamples(merged);
+    } else {
+        examples = dedupeExamples(currentMeaning.allExamples || []);
+    }
+
+    if (examples.length > 1) examples = sortExamplesByRelevance(examples);
+
+    if (currentMeaning.allMWEs) {
+        const activeMwe = currentMeaning.allMWEs[activeMweIdx];
+        if (activeMwe?.expression) {
+            examples = examples.filter(example => {
+                const target = example.target || example.spanish || '';
+                return Boolean(_matchedMweForm(
+                    activeMwe, target, example.matched_surface || example.matched_variant));
+            });
+        }
+    } else if (currentMeaning.allClitics) {
+        const cliticForm = currentMeaning.allClitics[activeMweIdx].form;
+        if (cliticForm) {
+            const escaped = cliticForm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            try {
+                const matcher = _cachedRegex(
+                    `(?<![\\p{L}])${escaped}(?![\\p{L}])`, 'iu');
+                examples = examples.filter(example => {
+                    const target = example.target || example.spanish || '';
+                    return matcher.test(target);
+                });
+            } catch (_) {
+                // Older browsers without Unicode property escapes keep the
+                // unfiltered list, matching the renderer's previous fallback.
+            }
+        }
+    }
+
+    return examples;
 }
 
 function cycleExample(event) {
@@ -5747,14 +6100,7 @@ function cycleExample(event) {
     const currentMeaning = card.meanings[currentMeaningIndex];
     if (!currentMeaning) return;
 
-    // For MWE senses, cycle within the current MWE's examples
-    let examples;
-    if (currentMeaning.allMWEs) {
-        const mweIdx = currentMWEIndex % currentMeaning.allMWEs.length;
-        examples = dedupeExamples(currentMeaning.allMWEs[mweIdx].examples || []);
-    } else {
-        examples = dedupeExamples(currentMeaning.allExamples || []);
-    }
+    const examples = getCyclableExamples(card, currentMeaning);
 
     if (examples.length <= 1) return;
 
@@ -5769,13 +6115,7 @@ function cycleExampleForward(event) {
     if (!card || !card.meanings) return;
     const currentMeaning = card.meanings[currentMeaningIndex];
     if (!currentMeaning) return;
-    let examples;
-    if (currentMeaning.allMWEs) {
-        const mweIdx = currentMWEIndex % currentMeaning.allMWEs.length;
-        examples = dedupeExamples(currentMeaning.allMWEs[mweIdx].examples || []);
-    } else {
-        examples = dedupeExamples(currentMeaning.allExamples || []);
-    }
+    const examples = getCyclableExamples(card, currentMeaning);
     if (examples.length <= 1) return;
     currentExampleIndex = (currentExampleIndex + 1) % examples.length;
     updateCard();
@@ -5788,13 +6128,7 @@ function cycleExampleBackward(event) {
     if (!card || !card.meanings) return;
     const currentMeaning = card.meanings[currentMeaningIndex];
     if (!currentMeaning) return;
-    let examples;
-    if (currentMeaning.allMWEs) {
-        const mweIdx = currentMWEIndex % currentMeaning.allMWEs.length;
-        examples = dedupeExamples(currentMeaning.allMWEs[mweIdx].examples || []);
-    } else {
-        examples = dedupeExamples(currentMeaning.allExamples || []);
-    }
+    const examples = getCyclableExamples(card, currentMeaning);
     if (examples.length <= 1) return;
     currentExampleIndex = (currentExampleIndex - 1 + examples.length) % examples.length;
     updateCard();
@@ -6920,7 +7254,7 @@ document.addEventListener('click', (e) => {
 // result cards and conjugation; a stale URL here can keep running an old modal
 // implementation even after the eagerly loaded app has updated.
 const ASSET_VERSION = '20260825ak';
-const MODALS_ASSET_VERSION = '20260823w';
+const MODALS_ASSET_VERSION = '20260907a';
 
 let _modalsModulePromise = null;
 const lazyModals = () => _modalsModulePromise || (_modalsModulePromise =
@@ -6966,3 +7300,5 @@ const stubFor = (name, loader) => {
     .forEach(name => stubFor(name, lazyConj));
 
 window.describeCliticForm = describeCliticForm;
+window.openSenseCrossReference = openSenseCrossReference;
+window.toggleSenseMetadataChip = toggleSenseMetadataChip;
