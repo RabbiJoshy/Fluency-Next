@@ -1856,7 +1856,10 @@ async function loadVocabularyData(rangeString, opts = {}) {
 
         for (const item of filteredData) {
             const meanings = item.meanings.map(m => {
-                const { targetSentence, englishSentence, allExamples } = getExampleFromMeaning(m, exampleTargetField, exampleEnglishField);
+                const displayMeaning = activeArtist
+                    ? m
+                    : { ...m, examples: mergeReferenceExamples(m.examples || [], m) };
+                const { targetSentence, englishSentence, allExamples } = getExampleFromMeaning(displayMeaning, exampleTargetField, exampleEnglishField);
                 const meaning = {
                     pos: m.pos,
                     meaning: m.translation,
@@ -2303,6 +2306,59 @@ function generateLinks(word, lemma, linkTemplates) {
     }
 
     return links;
+}
+
+// Dictionary examples describe a sense but are not WSD observations. Speech
+// cards can still teach with them as long as they remain visibly sourced and
+// never enter the frequency calculation above. Both providers already survive
+// release composition inside sense_provider_metadata; normalize their two raw
+// shapes here at the final UI boundary.
+function referenceExamplesForMeaning(meaning) {
+    const senses = [meaning, ...(Array.isArray(meaning?.allSenses) ? meaning.allSenses : [])];
+    const examples = [];
+    for (const sense of senses) {
+        const metadata = sense?.metadata?.sense_provider_metadata || {};
+        const spanishDict = metadata?.spanishdict?.examples;
+        if (Array.isArray(spanishDict)) {
+            for (const example of spanishDict) {
+                const target = String(example?.original || '').trim();
+                const english = String(example?.translated || '').trim();
+                if (target) examples.push({
+                    target,
+                    english,
+                    source: 'spanishdict',
+                    source_mode: 'reference',
+                    reference_example: true,
+                });
+            }
+        }
+        if (Array.isArray(metadata?.examples)) {
+            for (const example of metadata.examples) {
+                const target = String(example?.text || '').trim();
+                const english = String(example?.english || example?.translation || '').trim();
+                if (target) examples.push({
+                    target,
+                    english,
+                    source: 'wiktionary',
+                    source_mode: 'reference',
+                    reference_example: true,
+                    reference: String(example?.ref || '').trim() || undefined,
+                });
+            }
+        }
+    }
+    return examples;
+}
+
+function mergeReferenceExamples(corpusExamples, meaning) {
+    const merged = [...corpusExamples, ...referenceExamplesForMeaning(meaning)];
+    const seen = new Set();
+    return merged.filter(example => {
+        const key = `${String(example?.target || example?.spanish || '').trim()}\u0000${String(example?.english || '').trim()}`;
+        if (!key.replace('\u0000', '') || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }
 
 // Helper to extract example sentences from a meaning object

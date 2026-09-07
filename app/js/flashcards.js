@@ -1321,6 +1321,12 @@ function dedupeExamples(examples) {
     });
 }
 
+function compactCounterHTML(current, total, label = 'example') {
+    if (total < 2) return '';
+    const text = `${current + 1}\u2044${total}`;
+    return `<span class="compact-example-counter" aria-label="${escapeCardText(`${label} ${current + 1} of ${total}`)}">${text}</span>`;
+}
+
 function initializeApp() {
     updateCard({ announceHeadword: true });
     updateStats();
@@ -1365,8 +1371,7 @@ function initializeApp() {
         window.showRadialPicker({
             id: 'studyRadialPicker',
             ariaLabel: 'Study options',
-            hubHTML: 'Study<br>options',
-            closeLabel: 'Tap to close',
+            hubHTML: 'Study options',
             className: 'study-radial-picker',
             entries
         });
@@ -3027,9 +3032,10 @@ function selectLemmaPosGroup(event, key, meaningIndex) {
     const meaning = card?.meanings?.[meaningIndex];
     if (!card || !meaning) return;
     const real = String(key).replace(/~~/g, '\u0000');
-    if (!card._expandedPos) card._expandedPos = new Set();
     card._backSectionsManuallySet = true;
-    card._expandedPos.add(real);
+    // Keep only the active group's sub-senses on screen. Leaving previously
+    // visited groups expanded weakens the visual link to the sentence below.
+    card._expandedPos = new Set([real]);
 
     const alreadyActive = lemmaPosGroupKeyForMeaning(card.meanings[currentMeaningIndex]) === real
         && !currentGroupSelection;
@@ -3676,8 +3682,10 @@ function updateCard({ announceHeadword = false } = {}) {
 
     // Get the current meaning for multi-meaning cards
     const currentMeaning = card.isMultiMeaning ? card.meanings[currentMeaningIndex] : null;
-    if (currentMeaning && card._expandedPos) {
-        card._expandedPos.add(lemmaPosGroupKeyForMeaning(currentMeaning));
+    if (currentMeaning) {
+        // The sentence belongs to one active lemma/POS group. Keeping only
+        // that group's detail rows visible makes the relationship explicit.
+        card._expandedPos = new Set([lemmaPosGroupKeyForMeaning(currentMeaning)]);
     }
     // Keep the lemma in the header synchronized with the selected group. This
     // is especially important for homographic surfaces such as fue (ser/ir):
@@ -4370,10 +4378,11 @@ function updateCard({ announceHeadword = false } = {}) {
                 </section>`;
                 }
                 const open = card._expandedPos.has(key);
-                // Always state the lemma. Apart from making the grouping model
-                // inspectable, this prevents a POS/group switch from looking
-                // like it changed only the colour while retaining the old word.
+                // The surface form already identifies an identical lemma in
+                // the centred card header; repeat the lemma only when it adds
+                // information (for example, an inflected surface).
                 const hw = g.headword
+                    && foldSurfaceForm(g.headword) !== foldSurfaceForm(card.targetWord)
                     ? `<span class="pos-pill-lemma">${escapeCardText(g.headword)}</span>` : '';
                 const summarySense = key === activeLemmaPosKey && activeGroupSense
                     ? activeGroupSense
@@ -4552,12 +4561,12 @@ function updateCard({ announceHeadword = false } = {}) {
             const mweExpr = isMWE && m.allMWEs ? m.allMWEs[mweIdx].expression : m.expression;
             const mweMeaning = isMWE && m.allMWEs ? m.allMWEs[mweIdx].translation : m.meaning;
             const mweCount = isMWE && m.allMWEs ? m.allMWEs.length : 0;
-            const mweCounter = (isMWE && mweCount > 1) ? ` <span class="example-counter-group"><button class="mwe-cycle-btn" onclick="cycleMWEBackward(event)" title="Previous expression">‹</button><span style="font-family: var(--font-data); font-size: 14px; min-width: 32px; text-align: center; display: inline-block;">${mweIdx + 1}/${mweCount}</span><button class="mwe-cycle-btn" onclick="cycleMWEForward(event)" title="Next expression">›</button></span>` : '';
+            const mweCounter = (isMWE && mweCount > 1) ? ` <span class="example-counter-group"><button class="mwe-cycle-btn" onclick="cycleMWEBackward(event)" title="Previous expression">‹</button>${compactCounterHTML(mweIdx, mweCount, 'expression')}<button class="mwe-cycle-btn" onclick="cycleMWEForward(event)" title="Next expression">›</button></span>` : '';
             // For Clitic pill, reuse MWE cycling with allClitics
             const cliticIdx = (isClitic && isSelected) ? currentMWEIndex % (m.allClitics ? m.allClitics.length : 1) : 0;
             const cliticForm = isClitic && m.allClitics ? m.allClitics[cliticIdx].form : '';
             const cliticCount = isClitic && m.allClitics ? m.allClitics.length : 0;
-            const cliticCounter = (isClitic && cliticCount > 1) ? ` <span class="example-counter-group"><button class="mwe-cycle-btn" onclick="cycleMWEBackward(event)" title="Previous form">‹</button><span style="font-family: var(--font-data); font-size: 14px; min-width: 32px; text-align: center; display: inline-block;">${cliticIdx + 1}/${cliticCount}</span><button class="mwe-cycle-btn" onclick="cycleMWEForward(event)" title="Next form">›</button></span>` : '';
+            const cliticCounter = (isClitic && cliticCount > 1) ? ` <span class="example-counter-group"><button class="mwe-cycle-btn" onclick="cycleMWEBackward(event)" title="Previous form">‹</button>${compactCounterHTML(cliticIdx, cliticCount, 'form')}<button class="mwe-cycle-btn" onclick="cycleMWEForward(event)" title="Next form">›</button></span>` : '';
             const cleanMweMeaning = isMWE ? mweMeaning.replace(/\s*\(elided\)/gi, '') : '';
             const displayMeaning = isMWE
                 ? (cleanMweMeaning || '<span style="font-style: italic; opacity: 0.5;">Translation unavailable</span>')
@@ -4911,67 +4920,13 @@ function updateCard({ announceHeadword = false } = {}) {
 
         if (currentMeaning && currentMeaning.targetSentence && cycleHasExamples) {
             // For MWE senses, get examples from the current MWE expression's own array
-            let activeExamples;
             let activeMweIdx = 0;
             if (currentMeaning.allMWEs) {
                 activeMweIdx = currentMWEIndex % currentMeaning.allMWEs.length;
-                activeExamples = dedupeExamples(currentMeaning.allMWEs[activeMweIdx].examples || []);
             } else if (currentMeaning.allClitics) {
                 activeMweIdx = currentMWEIndex % currentMeaning.allClitics.length;
-                activeExamples = dedupeExamples(currentMeaning.allClitics[activeMweIdx].examples || []);
-            } else if (currentGroupSelection && currentGroupSelection.members) {
-                // Group selected: union of every member's allExamples,
-                // deduped to avoid the same sentence repeating across senses.
-                const merged = [];
-                for (const mi of currentGroupSelection.members) {
-                    const mm = card.meanings[mi];
-                    if (mm && mm.allExamples) merged.push(...mm.allExamples);
-                }
-                activeExamples = dedupeExamples(merged);
-            } else {
-                activeExamples = dedupeExamples(currentMeaning.allExamples || []);
             }
-
-            // Dynamic re-sort: boost examples with deck/recently-wrong word overlap
-            if (activeExamples.length > 1) {
-                activeExamples = sortExamplesByRelevance(activeExamples);
-            }
-
-            // For MWE / Clitic rows, examples whose sentence doesn't actually
-            // display the expression are useless for this row — they used to
-            // render in the box without the accent border, which read as a
-            // visual artefact rather than a teaching moment. Filter them out
-            // so the cycle only steps through sentences that actually show
-            // the expression; when that leaves nothing, the whole sentence
-            // block is suppressed further down (the row simply waits until
-            // the user moves to an expression whose examples carry it).
-            // Regular senses and SENSE_CYCLE remainder rows are unchanged:
-            // they keep their non-bordered fallback sentences per the
-            // existing sense-cycle behaviour.
-            if (currentMeaning.allMWEs) {
-                const activeMwe = currentMeaning.allMWEs[activeMweIdx];
-                if (activeMwe?.expression) {
-                    activeExamples = activeExamples.filter(ex => {
-                        const target = ex.target || ex.spanish || '';
-                        return Boolean(_matchedMweForm(
-                            activeMwe, target, ex.matched_surface || ex.matched_variant));
-                    });
-                }
-            } else if (currentMeaning.allClitics) {
-                const cliticForm = currentMeaning.allClitics[activeMweIdx].form;
-                if (cliticForm) {
-                    const escaped = cliticForm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    try {
-                        const re = _cachedRegex('(?<![\\p{L}])' + escaped + '(?![\\p{L}])', 'iu');
-                        activeExamples = activeExamples.filter(ex => {
-                            const target = ex.target || ex.spanish || '';
-                            return re.test(target);
-                        });
-                    } catch (_) {
-                        // Older browsers without \p{...} support — skip filter
-                    }
-                }
-            }
+            const activeExamples = getCyclableExamples(card, currentMeaning);
 
             // Nothing left to show? Skip emitting the sentence box below.
             // Same effect as `cycleHasExamples=false`: the row sits in the
@@ -5003,10 +4958,12 @@ function updateCard({ announceHeadword = false } = {}) {
                 currentExample = example;
                 exampleSourceLabel = example.personalised
                     ? `Personalised practice · ${example.reinforcement_word}`
-                    : (example.source_mode === 'speech'
+                    : (example.source === 'wiktionary'
+                        ? 'Wiktionary example'
+                        : (example.source_mode === 'speech'
                         ? 'Speech example'
                         : (example.source === 'spanishdict' ? 'SpanishDict example'
-                            : exampleProvenanceHTML(example)));
+                            : exampleProvenanceHTML(example))));
                 window._currentDisplayedExample = example;
                 const exTarget = example.target || example.spanish || '';
                 const exEnglish = example.english || '';
@@ -5150,7 +5107,7 @@ function updateCard({ announceHeadword = false } = {}) {
                 const exIdx = currentExampleIndex % exampleCount;
                 // No prev/next buttons — tapping the sentence itself already
                 // cycles through examples (see the .sentence onclick below).
-                exampleCounter = `<span class="example-counter-group"><span style="font-family: var(--font-data); font-size: 14px; min-width: 32px; text-align: center; display: inline-block;">${exIdx + 1}/${exampleCount}</span></span>`;
+                exampleCounter = `<span class="example-counter-group">${compactCounterHTML(exIdx, exampleCount)}</span>`;
             }
             // Breakdown button removed — English translation is now clickable instead
             const spotifySvg = `<svg width="44" height="44" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>`;
@@ -5461,34 +5418,8 @@ function updateCard({ announceHeadword = false } = {}) {
 
             const scroll = backEl.querySelector('.meanings-scroll');
             if (scroll) {
-                // Clear any prior cap so the default-open decision sees every
-                // row's natural height. Multi-POS cards initially retain the
-                // active group only; if all groups fit in the real remaining
-                // card space, promote that sparse layout to all-open.
+                // Clear any prior cap before measuring the active group.
                 scroll.style.maxHeight = '';
-                const sections = Array.from(
-                    scroll.querySelectorAll('.pos-collapsible[data-group-key]'));
-                const layoutKey = `${backEl.clientWidth}x${backEl.clientHeight}`;
-                if (sections.length > 1
-                    && !card._backSectionsManuallySet
-                    && card._backSectionsAutoLayout !== layoutKey) {
-                    const priorOpen = sections.map(section => section.classList.contains('is-open'));
-                    for (const section of sections) section.classList.add('is-open');
-                    const availableForScroll = availableHeightForMeaningScroll(backEl, scroll);
-                    if (availableForScroll > 0
-                        && scroll.scrollHeight <= availableForScroll + 1) {
-                        card._expandedPos = new Set(sections.map(section =>
-                            String(section.dataset.groupKey || '').replace(/~~/g, '\u0000')));
-                        for (const section of sections) {
-                            const chevron = section.querySelector('.pos-section-chevron');
-                            if (chevron) chevron.textContent = '\u25BE';
-                        }
-                    } else {
-                        sections.forEach((section, index) =>
-                            section.classList.toggle('is-open', priorOpen[index]));
-                    }
-                    card._backSectionsAutoLayout = layoutKey;
-                }
             }
 
             // Two-phase: collect overflowing rows in a read-only pass, then
@@ -5736,6 +5667,58 @@ function flipCard() {
     window.saveStudySessionSnapshot?.();
 }
 
+function getCyclableExamples(card, currentMeaning) {
+    let examples;
+    let activeMweIdx = 0;
+    if (currentMeaning.allMWEs) {
+        activeMweIdx = currentMWEIndex % currentMeaning.allMWEs.length;
+        examples = dedupeExamples(currentMeaning.allMWEs[activeMweIdx].examples || []);
+    } else if (currentMeaning.allClitics) {
+        activeMweIdx = currentMWEIndex % currentMeaning.allClitics.length;
+        examples = dedupeExamples(currentMeaning.allClitics[activeMweIdx].examples || []);
+    } else if (currentGroupSelection?.members) {
+        const merged = [];
+        for (const meaningIndex of currentGroupSelection.members) {
+            const member = card.meanings[meaningIndex];
+            if (member?.allExamples) merged.push(...member.allExamples);
+        }
+        examples = dedupeExamples(merged);
+    } else {
+        examples = dedupeExamples(currentMeaning.allExamples || []);
+    }
+
+    if (examples.length > 1) examples = sortExamplesByRelevance(examples);
+
+    if (currentMeaning.allMWEs) {
+        const activeMwe = currentMeaning.allMWEs[activeMweIdx];
+        if (activeMwe?.expression) {
+            examples = examples.filter(example => {
+                const target = example.target || example.spanish || '';
+                return Boolean(_matchedMweForm(
+                    activeMwe, target, example.matched_surface || example.matched_variant));
+            });
+        }
+    } else if (currentMeaning.allClitics) {
+        const cliticForm = currentMeaning.allClitics[activeMweIdx].form;
+        if (cliticForm) {
+            const escaped = cliticForm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            try {
+                const matcher = _cachedRegex(
+                    `(?<![\\p{L}])${escaped}(?![\\p{L}])`, 'iu');
+                examples = examples.filter(example => {
+                    const target = example.target || example.spanish || '';
+                    return matcher.test(target);
+                });
+            } catch (_) {
+                // Older browsers without Unicode property escapes keep the
+                // unfiltered list, matching the renderer's previous fallback.
+            }
+        }
+    }
+
+    return examples;
+}
+
 function cycleExample(event) {
     // Don't cycle if tap was on the Spotify button or other interactive elements
     if (event.target.closest('.spotify-btn') || event.target.closest('.example-autoplay-btn')
@@ -5747,14 +5730,7 @@ function cycleExample(event) {
     const currentMeaning = card.meanings[currentMeaningIndex];
     if (!currentMeaning) return;
 
-    // For MWE senses, cycle within the current MWE's examples
-    let examples;
-    if (currentMeaning.allMWEs) {
-        const mweIdx = currentMWEIndex % currentMeaning.allMWEs.length;
-        examples = dedupeExamples(currentMeaning.allMWEs[mweIdx].examples || []);
-    } else {
-        examples = dedupeExamples(currentMeaning.allExamples || []);
-    }
+    const examples = getCyclableExamples(card, currentMeaning);
 
     if (examples.length <= 1) return;
 
@@ -5769,13 +5745,7 @@ function cycleExampleForward(event) {
     if (!card || !card.meanings) return;
     const currentMeaning = card.meanings[currentMeaningIndex];
     if (!currentMeaning) return;
-    let examples;
-    if (currentMeaning.allMWEs) {
-        const mweIdx = currentMWEIndex % currentMeaning.allMWEs.length;
-        examples = dedupeExamples(currentMeaning.allMWEs[mweIdx].examples || []);
-    } else {
-        examples = dedupeExamples(currentMeaning.allExamples || []);
-    }
+    const examples = getCyclableExamples(card, currentMeaning);
     if (examples.length <= 1) return;
     currentExampleIndex = (currentExampleIndex + 1) % examples.length;
     updateCard();
@@ -5788,13 +5758,7 @@ function cycleExampleBackward(event) {
     if (!card || !card.meanings) return;
     const currentMeaning = card.meanings[currentMeaningIndex];
     if (!currentMeaning) return;
-    let examples;
-    if (currentMeaning.allMWEs) {
-        const mweIdx = currentMWEIndex % currentMeaning.allMWEs.length;
-        examples = dedupeExamples(currentMeaning.allMWEs[mweIdx].examples || []);
-    } else {
-        examples = dedupeExamples(currentMeaning.allExamples || []);
-    }
+    const examples = getCyclableExamples(card, currentMeaning);
     if (examples.length <= 1) return;
     currentExampleIndex = (currentExampleIndex - 1 + examples.length) % examples.length;
     updateCard();
