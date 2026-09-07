@@ -356,6 +356,19 @@ loadConfig().then(async () => {
             if (window.openAboutProjectModal) window.openAboutProjectModal();
         });
     }
+    const helpStudyContent = document.querySelector('#helpStudyTabContent .help-content');
+    if (helpStudyContent && !document.getElementById('helpCardWalkthroughBtn')) {
+        const walkthroughAction = document.createElement('p');
+        walkthroughAction.className = 'help-card-walkthrough-action';
+        walkthroughAction.innerHTML = '<button class="help-more-info-btn" id="helpCardWalkthroughBtn" type="button">Show the card walkthrough →</button>';
+        helpStudyContent.appendChild(walkthroughAction);
+        walkthroughAction.querySelector('button').addEventListener('click', () => {
+            document.getElementById('helpModal').classList.add('hidden');
+            // The walkthrough contains one Lyrics and one Speech card. Open on
+            // the card that matches the learner's current source.
+            window.openAboutExample?.(activeArtist ? 0 : 1);
+        });
+    }
     // Hide floating gear — replaced by gear in the top bar
     document.getElementById('gearBtn').style.display = 'none';
 
