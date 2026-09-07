@@ -437,11 +437,11 @@
     },
     "portuguese": {
       "name": "Portuguese",
-      "indexPath": "Data/Portuguese/vocabulary.index.json",
-      "examplesPath": "Data/Portuguese/vocabulary.examples.json",
-      "studyStructurePath": "Data/Portuguese/study-structure.json",
-      "releaseManifestPath": "Data/Portuguese/release-manifest.json",
-      "releaseCompositionPath": "Data/Portuguese/release-composition.json",
+      "indexPath": "releases/pt/speech/pt-speech-european-3000-tiered-20260907/app/vocabulary.index.json",
+      "examplesPath": "releases/pt/speech/pt-speech-european-3000-tiered-20260907/app/vocabulary.examples.json",
+      "studyStructurePath": "releases/pt/speech/pt-speech-european-3000-tiered-20260907/app/study-structure.json",
+      "releaseManifestPath": "releases/pt/speech/pt-speech-european-3000-tiered-20260907/manifest.json",
+      "releaseCompositionPath": "releases/pt/speech/pt-speech-european-3000-tiered-20260907/composition.json",
       "exampleTargetField": "example_portuguese",
       "exampleEnglishField": "example_english",
       "hasData": true,
@@ -506,7 +506,7 @@
       "shortCode": "CZ",
       "flag": "🇨🇿",
       "speechLang": "cs-CZ",
-      "hasData": false,
+      "hasData": true,
       "fileFormat": "json",
       "capabilities": {
         "lyrics": false,
@@ -563,12 +563,11 @@
         "wordReference": "https://en.wiktionary.org/wiki/{word}#Czech",
         "conjugation": "https://en.wiktionary.org/wiki/{word}#Czech"
       },
-      "indexPath": "",
-      "examplesPath": "",
-      "studyStructurePath": "",
-      "releaseManifestPath": "",
-      "releaseCompositionPath": "",
-      "hasDataNote": "Flipped to true together with the release paths, once the Czech deck is built and validated."
+      "indexPath": "releases/cs/speech/cs-speech-3000-tiered-20260907/app/vocabulary.index.json",
+      "examplesPath": "releases/cs/speech/cs-speech-3000-tiered-20260907/app/vocabulary.examples.json",
+      "studyStructurePath": "releases/cs/speech/cs-speech-3000-tiered-20260907/app/study-structure.json",
+      "releaseManifestPath": "releases/cs/speech/cs-speech-3000-tiered-20260907/manifest.json",
+      "releaseCompositionPath": "releases/cs/speech/cs-speech-3000-tiered-20260907/composition.json"
     }
   },
   "languageDisplayOrder": [

@@ -73,7 +73,7 @@ class ProductShellTests(unittest.TestCase):
             key for key, value in config["languages"].items()
             if value.get("hasData", True)
         }
-        self.assertEqual(enabled, {"french", "portuguese", "spanish"})
+        self.assertEqual(enabled, {"czech", "french", "portuguese", "spanish"})
         self.assertEqual(
             config["languages"]["spanish"]["studyStructurePath"],
             "Data/Spanish/study-structure.json",
