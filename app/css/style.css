@@ -3031,6 +3031,55 @@
             opacity: 0.72;
         }
 
+        .sense-metadata-list {
+            display: inline-flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 3px;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+
+        .sense-metadata-chip {
+            appearance: none;
+            border: 1px solid rgba(var(--sense-match-rgb), 0.38);
+            border-radius: 999px;
+            padding: 1px 5px;
+            background: rgba(var(--sense-match-rgb), 0.09);
+            color: var(--text-secondary);
+            font: inherit;
+            font-size: 10px;
+            font-style: normal;
+            font-weight: 650;
+            line-height: 1.25;
+            white-space: normal;
+        }
+
+        button.sense-metadata-chip {
+            cursor: pointer;
+        }
+
+        button.sense-metadata-chip::after {
+            content: '›';
+            display: inline-block;
+            margin-left: 3px;
+            opacity: 0.65;
+        }
+
+        button.sense-metadata-chip[aria-expanded="true"]::after {
+            transform: rotate(90deg);
+        }
+
+        .sense-metadata-chip[data-family="register"] {
+            border-color: rgba(245, 158, 11, 0.42);
+            background: rgba(245, 158, 11, 0.09);
+        }
+
+        .sense-metadata-chip[data-family="domain"] {
+            border-color: rgba(96, 165, 250, 0.4);
+            background: rgba(96, 165, 250, 0.08);
+        }
+
         .meaning-row .meaning-context {
             font-size: var(--row-context-size, 13px);
         }

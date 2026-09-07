@@ -2708,6 +2708,170 @@ function renderSenseContextHTML(context, { leadingDot = true } = {}) {
     return `${detail}<span class="meaning-usage-pill" data-source="spanishdict" title="${title}" aria-label="${title}"><span class="meaning-usage-source">SpanishDict</span><span class="meaning-usage-label">${label}</span></span>`;
 }
 
+const SENSE_CONSTRUCTION_TAGS = new Set([
+    'auxiliary', 'copulative', 'ditransitive', 'impersonal', 'intransitive',
+    'pronominal', 'reflexive', 'transitive'
+]);
+const SENSE_REGISTER_TAGS = new Set([
+    'archaic', 'colloquial', 'dated', 'euphemistic', 'formal', 'informal',
+    'obsolete', 'offensive', 'poetic', 'slang', 'vulgar'
+]);
+const SENSE_CONSTRUCTION_SHORT = {
+    auxiliary: 'aux.',
+    copulative: 'cop.',
+    ditransitive: 'ditr.',
+    impersonal: 'impers.',
+    intransitive: 'intr.',
+    pronominal: 'pronom.',
+    reflexive: 'refl.',
+    transitive: 'tr.'
+};
+
+function splitSenseMetadataClauses(value) {
+    const text = String(value || '');
+    const parts = [];
+    let depth = 0;
+    let start = 0;
+    for (let index = 0; index < text.length; index++) {
+        const character = text[index];
+        if ('([{'.includes(character)) depth++;
+        else if (')]}'.includes(character) && depth) depth--;
+        else if (character === ',' && depth === 0) {
+            const part = text.slice(start, index).trim();
+            if (part) parts.push(part);
+            start = index + 1;
+        }
+    }
+    const final = text.slice(start).trim();
+    if (final) parts.push(final);
+    return parts;
+}
+
+function compactConstructionMetadata(value) {
+    const full = String(value || '').trim().replace(/^\[|\]$/g, '');
+    const exact = SENSE_CONSTRUCTION_SHORT[full.toLowerCase()];
+    if (exact) return { short: exact, full };
+    let short = full
+        .replace(/^with\s+/i, '+ ')
+        .replace(/\bdirect object\b/gi, 'direct obj.')
+        .replace(/\bindirect object\b/gi, 'indirect obj.')
+        .replace(/\balong with\b/gi, '+')
+        .replace(/[‘“][^’”]*[’”]/gu, '')
+        .replace(/\s+or\s+/gi, '/')
+        .replace(/\s+/g, ' ')
+        .replace(/\s+([,;)])/g, '$1')
+        .replace(/,\s*\+/g, ' +')
+        .trim();
+    if (short.length > 32) short = `${short.slice(0, 31).trimEnd()}…`;
+    return { short: short || full, full };
+}
+
+function senseMetadataItems(meaning) {
+    const metadata = meaning?.metadata || {};
+    const provider = metadata.sense_provider_metadata || {};
+    const items = [];
+    const seen = new Set();
+    const add = (family, kind, value) => {
+        const clean = String(value || '').trim();
+        if (!clean || (family === 'grammar' && kind === 'surface_mark')) return;
+        const key = `${family}\u0000${clean.toLocaleLowerCase('en')}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        items.push({ family, kind, value: clean });
+    };
+
+    const normalizedFeatures = [
+        ...(Array.isArray(meaning?.specialist_features) ? meaning.specialist_features : []),
+        ...(Array.isArray(metadata.specialist_features) ? metadata.specialist_features : []),
+    ];
+    for (const feature of normalizedFeatures) {
+        if (!feature || typeof feature !== 'object') continue;
+        if (feature.family === 'register' || feature.family === 'domain'
+            || feature.family === 'companion'
+            || feature.family === 'construction' || feature.family === 'grammar') {
+            add(feature.family, feature.kind || '', feature.value);
+        }
+    }
+    for (const region of provider.regions || []) {
+        const label = region && typeof region === 'object'
+            ? (region.name || region.label || region.region)
+            : region;
+        add('register', 'region', label);
+    }
+    for (const topic of provider.topics || []) add('domain', 'topic', topic);
+    for (const tag of provider.tags || []) {
+        const lowered = String(tag || '').toLowerCase();
+        if (SENSE_REGISTER_TAGS.has(lowered)) add('register', 'usage_tag', tag);
+        else if (SENSE_CONSTRUCTION_TAGS.has(lowered)) add('construction', 'grammar_tag', tag);
+    }
+
+    // Compatibility for releases made before specialist_features crossed the
+    // release boundary. Restrict this fallback to Wiktionary and to phrases
+    // with an unmistakable grammatical frame.
+    if (metadata.source_adapter === 'wiktionary-sense-menu/v1') {
+        for (const clause of splitSenseMetadataClauses(provider.context || meaning?.context)) {
+            if (/^(?:with\s|followed by\s|takes?\s|only (?:in|with)\s)/i.test(clause)) {
+                add('construction', 'context_phrase', clause);
+            }
+        }
+    }
+    return items;
+}
+
+function senseMetadataDisplay(item) {
+    if (item.family === 'companion') {
+        return { short: `+ ${item.value}`, full: `used with ${item.value}` };
+    }
+    if (item.family === 'construction') return compactConstructionMetadata(item.value);
+    if (item.family === 'grammar') {
+        const label = ({
+            'reflexive=true': 'refl.',
+            'person=1': '1st person',
+            'person=2': '2nd person',
+            'person=3': '3rd person',
+            'number=singular': 'singular',
+            'number=plural': 'plural',
+        })[item.value] || item.value;
+        return { short: label, full: item.value };
+    }
+    return {
+        short: item.value.replace(/-/g, ' '),
+        full: item.value.replace(/-/g, ' '),
+    };
+}
+
+function senseMetadataHTML(meaning, active) {
+    if (!active) return '';
+    const chips = senseMetadataItems(meaning).map(item => {
+        const display = senseMetadataDisplay(item);
+        const family = escapeCardText(item.family);
+        if (display.short === display.full) {
+            return `<span class="sense-metadata-chip" data-family="${family}">${escapeCardText(display.short)}</span>`;
+        }
+        return `<button type="button" class="sense-metadata-chip is-expandable" data-family="${family}" data-short="${encodeURIComponent(display.short)}" data-full="${encodeURIComponent(display.full)}" aria-expanded="false" onclick="toggleSenseMetadataChip(event, this)">${escapeCardText(display.short)}</button>`;
+    }).join('');
+    return chips ? `<span class="sense-metadata-list">${chips}</span>` : '';
+}
+
+function contextWithoutSenseMetadata(meaning, active) {
+    const context = String(meaning?.context || '').trim();
+    if (!active || !context) return context;
+    const represented = new Set(senseMetadataItems(meaning).map(item =>
+        item.value.toLocaleLowerCase('en')));
+    return splitSenseMetadataClauses(context)
+        .filter(clause => !represented.has(clause.toLocaleLowerCase('en')))
+        .join(', ');
+}
+
+function toggleSenseMetadataChip(event, chip) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    if (!chip) return;
+    const expanded = chip.getAttribute('aria-expanded') === 'true';
+    chip.textContent = decodeURIComponent(expanded ? chip.dataset.short : chip.dataset.full);
+    chip.setAttribute('aria-expanded', String(!expanded));
+}
+
 function highlightPossibleSpanishDictUsage(sentenceHTML, usage, targetWord = '') {
     const candidates = spanishDictUsageCandidateForms(usage);
     const target = String(targetWord || '').toLocaleLowerCase('es');
@@ -4870,14 +5034,15 @@ function updateCard({ announceHeadword = false } = {}) {
                         // Varying cell.
                         let varyingHtml;
                         if (isTransAxis) {
-                            const ctxRaw = mm.context || '';
-                            varyingHtml = ctxRaw
-                                ? `<span class="meaning-context-cell" style="line-height: 1.3; min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderSenseContextHTML(ctxRaw, { leadingDot: false })}</span>`
+                            const ctxRaw = contextWithoutSenseMetadata(mm, isMemberSelected);
+                            const metadataHTML = senseMetadataHTML(mm, isMemberSelected);
+                            varyingHtml = ctxRaw || metadataHTML
+                                ? `<span class="meaning-context-cell" style="line-height: 1.3; min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderSenseContextHTML(ctxRaw, { leadingDot: false })}${metadataHTML}</span>`
                                 : `<span style="opacity: 0.4; font-style: italic; font-size: 12px;">—</span>`;
                         } else {
                             const transRaw = getProductionEnglishCue(card, mm) || mm.meaning || '';
                             const transSafe = String(transRaw).replace(/"/g, '&quot;');
-                            varyingHtml = `<span class="row-adaptive-text" style="font-weight: 600; color: var(--text-primary); line-height: 1.25; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${senseCrossReferenceHTML(mm, transSafe)}${modelProposalMarkerHTML(mm)}</span>`;
+                            varyingHtml = `<span class="row-adaptive-text" style="font-weight: 600; color: var(--text-primary); line-height: 1.25; min-width: 0; overflow: hidden; text-overflow: ellipsis;">${senseCrossReferenceHTML(mm, transSafe)}${senseMetadataHTML(mm, isMemberSelected)}${modelProposalMarkerHTML(mm)}</span>`;
                         }
                         const varyingCol = isTransAxis ? 2 : 1;
                         const varyingCell = `<div onclick="event.stopPropagation(); selectMeaning(${memberIdx})" style="${baseCell} grid-column: ${varyingCol}; min-width: 0; overflow: hidden;">${varyingHtml}</div>`;
@@ -4927,9 +5092,11 @@ function updateCard({ announceHeadword = false } = {}) {
                     // Singleton: centred translation with optional inline
                     // context. POS is represented by the header legend and tint.
                     let contextInline = '';
-                    if (m.context) {
-                        contextInline = ` ${renderSenseContextHTML(m.context)}`;
+                    const compactContext = contextWithoutSenseMetadata(m, isSelected);
+                    if (compactContext) {
+                        contextInline = ` ${renderSenseContextHTML(compactContext)}`;
                     }
+                    contextInline += senseMetadataHTML(m, isSelected);
                     contextInline += registerTagHTML(m);
                     contextInline += modelProposalMarkerHTML(m);
                     const singletonTextClass = adaptiveRowTextClass(displayMeaning, m.context || '');
@@ -7003,3 +7170,4 @@ const stubFor = (name, loader) => {
 
 window.describeCliticForm = describeCliticForm;
 window.openSenseCrossReference = openSenseCrossReference;
+window.toggleSenseMetadataChip = toggleSenseMetadataChip;
