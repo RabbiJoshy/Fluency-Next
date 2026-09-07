@@ -24,7 +24,7 @@ from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
 from fluency.pipeline.planning import validate_pipeline_profile
-from fluency.harvest.matching import example_identity
+from fluency.harvest.matching import example_identity, sentence_count
 from fluency.release.composition import compose_release
 from fluency.core.io import atomic_write, json_bytes
 from fluency.release.study_structure import build_study_structure
@@ -229,17 +229,37 @@ def build_inactive_run_candidate(
         )
         # Take the best of each distinct example rather than the best `limit`
         # rows, which would spend all three slots on one sentence's variants.
+        # A subtitle row is a unit of display, not of language: it often carries a
+        # whole exchange, and in 93% of those the target word sits in only one
+        # half, so the rest is text the learner reads past to find the word being
+        # taught. Prefer rows that are a single sentence, and fall back to the
+        # rest only if a card cannot fill its quota -- declining, never emptying.
+        def passes(item, single_only: bool) -> bool:
+            if not single_only:
+                return True
+            sentence = sentences.get(item["sentence_id"])
+            return bool(sentence) and sentence_count(sentence["target"]["text"]) <= 1
+
         selected = []
         seen: set[str] = set()
-        for item in ranked:
-            sentence = sentences.get(item["sentence_id"])
-            identity = example_identity(sentence["target"]["text"]) if sentence else item["sentence_id"]
-            if identity in seen:
-                continue
-            seen.add(identity)
-            selected.append(item)
+        for single_only in (True, False):
             if len(selected) == limit:
                 break
+            for item in ranked:
+                if not passes(item, single_only):
+                    continue
+                sentence = sentences.get(item["sentence_id"])
+                identity = (
+                    example_identity(sentence["target"]["text"])
+                    if sentence
+                    else item["sentence_id"]
+                )
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                selected.append(item)
+                if len(selected) == limit:
+                    break
         selected_count += len(selected)
         selection_cards.append(
             {
