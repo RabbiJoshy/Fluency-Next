@@ -1883,6 +1883,7 @@ async function loadVocabularyData(rangeString, opts = {}) {
                 if (m.sense_id_aliases?.length) meaning.senseIdAliases = m.sense_id_aliases;
                 if (m.context) meaning.context = m.context;
                 if (m.headword) meaning.headword = m.headword;
+                if (m.metadata) meaning.metadata = m.metadata;
                 if (Array.isArray(m.regions) && m.regions.length) meaning.regions = [...m.regions];
                 if (m.type) meaning.type = m.type;
                 if (m.allSenses) meaning.allSenses = m.allSenses;

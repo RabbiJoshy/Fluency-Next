@@ -312,6 +312,14 @@ def build_inactive_run_candidate(
                         "sense_provider_metadata": sense.get("provider_metadata", {}),
                     },
                 }
+                # Provider-neutral fields have already been extracted and
+                # typed by the sense-menu adapter. Preserve them for the
+                # learner UI instead of forcing it to parse Wiktionary tags
+                # and parenthetical prose again.
+                if sense.get("specialist_features"):
+                    meaning["metadata"]["specialist_features"] = sense[
+                        "specialist_features"
+                    ]
                 if sense.get("definition"):
                     meaning["context"] = sense["definition"]
                 meanings.append(meaning)
