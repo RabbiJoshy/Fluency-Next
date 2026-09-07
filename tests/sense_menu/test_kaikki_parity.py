@@ -45,6 +45,13 @@ class ContextDerivationTests(unittest.TestCase):
         long = "(" + "x" * 80 + ") word"
         self.assertEqual(_context({"glosses": ["w"], "raw_glosses": [long]}), "")
 
+    def test_nested_parenthetical_is_balanced_not_truncated(self) -> None:
+        sense = {
+            "glosses": ["to score"],
+            "raw_glosses": ["(transitive (Portugal), slang) to score"],
+        }
+        self.assertEqual(_context(sense), "transitive (Portugal), slang")
+
 
 class RegionDerivationTests(unittest.TestCase):
     def test_regional_tags_are_extracted(self) -> None:
@@ -53,6 +60,14 @@ class RegionDerivationTests(unittest.TestCase):
 
     def test_non_regional_tags_are_ignored(self) -> None:
         self.assertEqual(_regions({"tags": ["informal", "slang"]}, PT_POLICY), [])
+
+    def test_regions_inside_a_nested_parenthetical_are_extracted(self) -> None:
+        sense = {
+            "raw_glosses": [
+                "(transitive (Portugal) or intransitive (Brazil), colloquial) to score"
+            ]
+        }
+        self.assertEqual(_regions(sense, PT_POLICY), ["Brazil", "Portugal"])
 
     def test_language_declaring_no_regions_gets_an_empty_list(self) -> None:
         """Empty is a statement, not an absence: the field is always present."""

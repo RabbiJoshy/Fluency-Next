@@ -25,9 +25,9 @@ import re
 from typing import Any, Mapping, Sequence
 
 from fluency.features.contract import GRAMMATICAL_FORMS, SpecialistFeature
+from fluency.features.parenthetical import leading_parenthetical, split_top_level_commas
 
 
-PARENTHETICAL = re.compile(r"^\((?P<context>[^)]{2,60})\)\s*\S")
 # "[with com 'with something']", "[with gerund (Brazil) ...]"
 _WITH_HEAD = re.compile(r"^\[with\s+(?P<word>[^\W\d_]+)", re.UNICODE)
 
@@ -58,9 +58,9 @@ def _split_parenthetical(sense: Mapping[str, Any]) -> list[str]:
     for raw in raw_glosses:
         if not isinstance(raw, str):
             continue
-        match = PARENTHETICAL.match(raw)
-        if match:
-            return [part.strip() for part in match.group("context").split(",") if part.strip()]
+        parenthetical = leading_parenthetical(raw)
+        if parenthetical:
+            return split_top_level_commas(parenthetical)
     return []
 
 

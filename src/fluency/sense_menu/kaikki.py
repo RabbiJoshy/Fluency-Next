@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 from typing import Any, Callable, Iterable, Iterator
 
+from fluency.features.parenthetical import leading_parenthetical
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.languages.surfaces import (
     normalizer_for_language,
@@ -161,7 +162,6 @@ def _iter_rows(path: Path, *, language_code: str) -> Iterator[dict[str, Any]]:
                 yield row
 
 
-_PARENTHETICAL = re.compile(r"^\((?P<context>[^)]{2,60})\)\s*\S")
 _SEE_REFERENCE = re.compile(r"^See (?P<targets>[^.]+)\.$")
 
 
@@ -202,9 +202,9 @@ def _context(sense: dict[str, Any]) -> str:
     if len(glosses) > 1:
         return " | ".join(glosses[1:])
     for raw in _glosses(sense, "raw_glosses"):
-        match = _PARENTHETICAL.match(raw)
-        if match:
-            return match.group("context").strip()
+        parenthetical = leading_parenthetical(raw, max_length=60)
+        if parenthetical:
+            return parenthetical
     topics = [value for value in sense.get("topics", []) if isinstance(value, str)]
     if topics:
         return ", ".join(topics)
@@ -225,8 +225,15 @@ def _regions(sense: dict[str, Any], policy: dict[str, Any]) -> list[str]:
     known = policy.get("region_tags")
     if not isinstance(known, list) or not known:
         return []
-    tags = _sense_tags(sense)
-    return sorted(tag for tag in tags if tag in set(known))
+    regions = {tag for tag in _sense_tags(sense) if tag in set(known)}
+    for raw in _glosses(sense, "raw_glosses"):
+        parenthetical = leading_parenthetical(raw)
+        if not parenthetical:
+            continue
+        for region in known:
+            if re.search(rf"(?<!\w){re.escape(region)}(?!\w)", parenthetical):
+                regions.add(region)
+    return sorted(regions)
 
 
 def _sense_keys(sense: dict[str, Any]) -> tuple[str, ...]:

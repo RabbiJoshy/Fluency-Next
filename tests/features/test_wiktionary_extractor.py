@@ -43,6 +43,21 @@ class WiktionaryExtractorTests(unittest.TestCase):
             ("register", "gloss_note", "poetic"),
         ])
 
+    def test_nested_parenthetical_keeps_regions_and_outer_labels_intact(self) -> None:
+        sense = {
+            "raw_glosses": [
+                "(transitive (Portugal) or intransitive (Brazil), poetic) to score"
+            ]
+        }
+        self.assertEqual(families(extract(sense, policy=PT)), [
+            (
+                "construction",
+                "gloss_phrase",
+                "transitive (Portugal) or intransitive (Brazil)",
+            ),
+            ("register", "gloss_note", "poetic"),
+        ])
+
     def test_a_mark_stated_twice_is_emitted_once(self) -> None:
         """The same mark routinely appears as a tag and in the parenthetical."""
 
