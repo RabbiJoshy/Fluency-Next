@@ -3,6 +3,7 @@
   "policy_id": "fr-v1",
   "language": "fr",
   "provider": "wiktionary",
+  "audit_status": "partial",
   "card_binding": {
     "identity": "surface-card/v1",
     "headword_role": "lookup_metadata_only"

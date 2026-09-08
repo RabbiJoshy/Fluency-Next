@@ -1,0 +1,13 @@
+{
+  "config_version": "sense-menu-language-policy/v1",
+  "policy_id": "sv-v1",
+  "language": "sv",
+  "provider": "wiktionary",
+  "provider_policy_id": "wiktionary-v1",
+  "audit_status": "scaffold",
+  "card_binding": {"identity": "surface-card/v1", "headword_role": "lookup_metadata_only"},
+  "menu_order_role": "provider_prior",
+  "region_tags": [],
+  "register_tags": [],
+  "construction_tags": []
+}

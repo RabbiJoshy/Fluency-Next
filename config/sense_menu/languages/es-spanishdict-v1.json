@@ -3,6 +3,7 @@
   "policy_id": "es-spanishdict-v1",
   "language": "es",
   "provider": "spanishdict",
+  "audit_status": "audited",
   "card_binding": {
     "identity": "surface-card/v1",
     "headword_role": "lookup_metadata_only"

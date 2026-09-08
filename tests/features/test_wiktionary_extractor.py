@@ -2,7 +2,11 @@
 
 import unittest
 
-from fluency.features.wiktionary import extract, extract_surface_grammar
+from fluency.features.wiktionary import (
+    extract,
+    extract_surface_grammar,
+    metadata_accounting,
+)
 
 
 PT = {
@@ -127,6 +131,19 @@ class WiktionaryExtractorTests(unittest.TestCase):
 
     def test_no_signals_yields_no_features(self) -> None:
         self.assertEqual(extract({"glosses": ["a thing"]}, policy=PT), ())
+
+    def test_unknown_tag_and_template_are_accounted_for_not_discarded(self) -> None:
+        accounting = metadata_accounting(
+            {"info_templates": [{"name": "language-specific-template", "args": {}}]},
+            tags=["language-specific-tag", "perfective"],
+            policy=PT,
+        )
+        self.assertEqual(accounting.coverage["info_templates"], "parsed")
+        self.assertEqual(
+            [item["source_field"] for item in accounting.unclassified],
+            ["tags", "info_templates"],
+        )
+        self.assertNotIn("perfective", [item.get("value") for item in accounting.unclassified])
 
 
 if __name__ == "__main__":

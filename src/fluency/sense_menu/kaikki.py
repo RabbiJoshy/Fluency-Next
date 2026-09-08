@@ -16,10 +16,11 @@ from fluency.languages.surfaces import (
     normalizer_for_language,
     typography_canonicalizer_for_language,
 )
-from fluency.features import MetadataAccounting, SpecialistFeature
+from fluency.features import SpecialistFeature
 from fluency.features.wiktionary import (
     extract as extract_wiktionary_features,
     extract_surface_grammar,
+    metadata_accounting,
 )
 from fluency.features.wiktionary_gloss import project_gloss
 from fluency.menus import MenuAnalysis, SenseLeaf, build_analysis_id
@@ -29,15 +30,6 @@ ADAPTER_ID = "wiktionary-sense-menu/v1"
 MENU_VERSION = "sense-menu/v1"
 REPORT_VERSION = "sense-menu-report/v1"
 FORM_TAGS = frozenset({"form-of", "alt-of"})
-WIKTIONARY_METADATA_ACCOUNTING = MetadataAccounting(coverage={
-    "cross_references": "parsed",
-    "etymology": "preserved",
-    "examples": "preserved",
-    "info_templates": "parsed",
-    "raw_glosses": "parsed",
-    "tags": "parsed",
-    "topics": "parsed",
-})
 
 
 class KaikkiMenuError(ValueError):
@@ -335,17 +327,18 @@ def _metadata(
         # an absence of the concept.
         "context": _context(sense),
         "regions": _regions(sense, policy or {}),
+        "examples": [
+            item for item in (sense.get("examples") or []) if isinstance(item, dict)
+        ],
+        "cross_references": _cross_references(sense),
+        "info_templates": [
+            item for item in (sense.get("info_templates") or []) if isinstance(item, dict)
+        ],
     }
     for field in ("qualifier", "sense_index"):
         value = sense.get(field)
         if isinstance(value, (str, int)) and value != "":
             metadata[field] = value
-    examples = sense.get("examples")
-    if isinstance(examples, list):
-        metadata["examples"] = [item for item in examples if isinstance(item, dict)]
-    cross_references = _cross_references(sense)
-    if cross_references:
-        metadata["cross_references"] = cross_references
     for field in ("etymology_number", "etymology_text"):
         value = row.get(field)
         if isinstance(value, (str, int)) and value != "":
@@ -581,7 +574,11 @@ class KaikkiSenseMenuAdapter:
                             *_specialist_features(sense, self.language_policy),
                             *analysis_grammar,
                         ))),
-                        metadata_accounting=WIKTIONARY_METADATA_ACCOUNTING,
+                        metadata_accounting=metadata_accounting(
+                            sense,
+                            tags=sorted(_sense_tags(sense)),
+                            policy=self.language_policy,
+                        ),
                     )
                     previous = leaves.get(sense_id)
                     if previous is not None and previous != leaf:

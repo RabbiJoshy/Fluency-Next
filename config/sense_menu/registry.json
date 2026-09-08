@@ -1,0 +1,15 @@
+{
+  "config_version": "sense-menu-registry/v1",
+  "metadata_contract": "sense-metadata/v1",
+  "languages": {
+    "cs": {"policy_id": "cs-v1", "provider": "wiktionary", "audit_status": "audited"},
+    "es": {"policy_id": "es-spanishdict-v1", "provider": "spanishdict", "audit_status": "audited"},
+    "fr": {"policy_id": "fr-v1", "provider": "wiktionary", "audit_status": "partial"},
+    "it": {"policy_id": "it-v1", "provider": "wiktionary", "audit_status": "scaffold"},
+    "nl": {"policy_id": "nl-v1", "provider": "wiktionary", "audit_status": "scaffold"},
+    "pl": {"policy_id": "pl-v1", "provider": "wiktionary", "audit_status": "scaffold"},
+    "pt": {"policy_id": "pt-v1", "provider": "wiktionary", "audit_status": "audited"},
+    "ru": {"policy_id": "ru-v1", "provider": "wiktionary", "audit_status": "scaffold"},
+    "sv": {"policy_id": "sv-v1", "provider": "wiktionary", "audit_status": "scaffold"}
+  }
+}

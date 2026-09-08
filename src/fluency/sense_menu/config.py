@@ -8,10 +8,47 @@ from typing import Any
 
 
 POLICY_VERSION = "sense-menu-language-policy/v1"
+PROVIDER_POLICY_VERSION = "sense-menu-provider-policy/v1"
+REGISTRY_VERSION = "sense-menu-registry/v1"
+AUDIT_STATUSES = frozenset({"scaffold", "partial", "audited"})
 
 
 class SenseMenuPolicyError(ValueError):
     """Raised when a dictionary-menu language policy is invalid."""
+
+
+def _load_json(path: Path, *, description: str) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise SenseMenuPolicyError(f"{description} does not exist: {path}") from error
+    except json.JSONDecodeError as error:
+        raise SenseMenuPolicyError(f"{description} is not valid JSON: {path}") from error
+    if not isinstance(value, dict):
+        raise SenseMenuPolicyError(f"{description} must contain an object")
+    return value
+
+
+def _inherit_provider_policy(repository_root: Path, policy: dict[str, Any]) -> dict[str, Any]:
+    provider_policy_id = policy.get("provider_policy_id")
+    if provider_policy_id is None:
+        return policy
+    if not isinstance(provider_policy_id, str) or not provider_policy_id:
+        raise SenseMenuPolicyError("provider_policy_id must be a non-empty string")
+    path = (
+        repository_root / "config" / "sense_menu" / "providers"
+        / f"{provider_policy_id}.json"
+    )
+    provider_policy = _load_json(path, description="sense-menu provider policy")
+    if provider_policy.get("config_version") != PROVIDER_POLICY_VERSION:
+        raise SenseMenuPolicyError("unsupported sense-menu provider policy")
+    if provider_policy.get("provider_policy_id") != provider_policy_id:
+        raise SenseMenuPolicyError("sense-menu provider policy identity does not match")
+    if provider_policy.get("provider") != policy.get("provider"):
+        raise SenseMenuPolicyError("language and provider policies name different providers")
+    # Language policy wins at the top level. Nested structures are deliberately
+    # replaced whole so an override can never inherit half of a safety rule.
+    return {**provider_policy, **policy}
 
 
 def load_sense_menu_language_policy(
@@ -21,16 +58,14 @@ def load_sense_menu_language_policy(
     language: str,
 ) -> dict[str, Any]:
     path = repository_root / "config" / "sense_menu" / "languages" / f"{policy_id}.json"
-    try:
-        policy = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError as error:
-        raise SenseMenuPolicyError(f"sense-menu language policy does not exist: {path}") from error
-    except json.JSONDecodeError as error:
-        raise SenseMenuPolicyError(f"sense-menu language policy is not valid JSON: {path}") from error
-    if not isinstance(policy, dict) or policy.get("config_version") != POLICY_VERSION:
+    policy = _load_json(path, description="sense-menu language policy")
+    if policy.get("config_version") != POLICY_VERSION:
         raise SenseMenuPolicyError("unsupported sense-menu language policy")
+    policy = _inherit_provider_policy(repository_root, policy)
     if policy.get("policy_id") != policy_id or policy.get("language") != language:
         raise SenseMenuPolicyError("sense-menu language policy identity does not match the run")
+    if policy.get("audit_status") not in AUDIT_STATUSES:
+        raise SenseMenuPolicyError("sense-menu language policy requires a valid audit_status")
     provider = policy.get("provider")
     if not isinstance(provider, str) or not provider:
         raise SenseMenuPolicyError("sense-menu provider is required")
@@ -77,3 +112,35 @@ def load_sense_menu_language_policy(
         ):
             raise SenseMenuPolicyError(f"redirect target POS list is invalid: {source_pos}")
     return policy
+
+
+def load_sense_menu_registry(repository_root: Path) -> dict[str, Any]:
+    """Load and validate the complete language-to-policy matrix."""
+
+    path = repository_root / "config" / "sense_menu" / "registry.json"
+    registry = _load_json(path, description="sense-menu registry")
+    if registry.get("config_version") != REGISTRY_VERSION:
+        raise SenseMenuPolicyError("unsupported sense-menu registry")
+    if registry.get("metadata_contract") != "sense-metadata/v1":
+        raise SenseMenuPolicyError("sense-menu registry has an unsupported metadata contract")
+    languages = registry.get("languages")
+    if not isinstance(languages, dict) or not languages:
+        raise SenseMenuPolicyError("sense-menu registry requires languages")
+    for language, entry in languages.items():
+        if not isinstance(language, str) or not language or not isinstance(entry, dict):
+            raise SenseMenuPolicyError("sense-menu registry contains an invalid language")
+        policy_id = entry.get("policy_id")
+        provider = entry.get("provider")
+        status = entry.get("audit_status")
+        if not isinstance(policy_id, str) or not policy_id:
+            raise SenseMenuPolicyError(f"registry policy is missing for {language}")
+        if status not in AUDIT_STATUSES:
+            raise SenseMenuPolicyError(f"registry audit status is invalid for {language}")
+        policy = load_sense_menu_language_policy(
+            repository_root, policy_id=policy_id, language=language
+        )
+        if policy.get("provider") != provider:
+            raise SenseMenuPolicyError(f"registry provider disagrees with {policy_id}")
+        if policy.get("audit_status") != status:
+            raise SenseMenuPolicyError(f"registry audit status disagrees with {policy_id}")
+    return registry

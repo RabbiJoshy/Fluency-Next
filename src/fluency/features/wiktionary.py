@@ -25,6 +25,7 @@ import re
 from typing import Any, Mapping, Sequence
 
 from fluency.features.contract import GRAMMATICAL_FORMS, SpecialistFeature
+from fluency.features.metadata import MetadataAccounting
 from fluency.features.parenthetical import leading_parenthetical, split_top_level_commas
 
 
@@ -108,6 +109,67 @@ def _is_construction_tag(tag: str, declared: set[str]) -> bool:
     return lowered in declared or lowered.startswith("with-")
 
 
+def classify_tag(
+    tag: str, *, policy: Mapping[str, Any] | None = None
+) -> SpecialistFeature | None:
+    """Classify one provider tag without pretending unknown tags are empty."""
+
+    register = _vocabulary(policy, "register_tags", DEFAULT_REGISTER_TAGS)
+    construction = _vocabulary(policy, "construction_tags", DEFAULT_CONSTRUCTION_TAGS)
+    if tag in register:
+        return SpecialistFeature("register", "usage_tag", tag, tag)
+    if (grammar_value := _grammar_value(tag)) is not None:
+        return SpecialistFeature("grammar", "sense_mark", grammar_value, tag)
+    if _is_construction_tag(tag, construction):
+        return SpecialistFeature("construction", "grammar_tag", tag, tag)
+    return None
+
+
+def metadata_accounting(
+    sense: Mapping[str, Any],
+    *,
+    tags: Sequence[str] = (),
+    policy: Mapping[str, Any] | None = None,
+) -> MetadataAccounting:
+    """Account for provider metadata not yet represented by typed features."""
+
+    unclassified: list[dict[str, Any]] = []
+    for tag in sorted(set(tags)):
+        if classify_tag(tag, policy=policy) is None:
+            unclassified.append({
+                "source_field": "tags",
+                "value": tag,
+                "reason": "no canonical tag mapping",
+            })
+    for template in sense.get("info_templates", []) or []:
+        if not isinstance(template, Mapping):
+            unclassified.append({
+                "source_field": "info_templates",
+                "value": template,
+                "reason": "template is not an object",
+            })
+            continue
+        name = template.get("name")
+        if name != "+obj":
+            unclassified.append({
+                "source_field": "info_templates",
+                "value": dict(template),
+                "reason": "no canonical template mapping",
+            })
+    return MetadataAccounting(
+        coverage={
+            "cross_references": "parsed",
+            "etymology": "preserved",
+            "examples": "preserved",
+            "info_templates": "parsed",
+            "raw_glosses": "parsed",
+            "tags": "parsed",
+            "topics": "parsed",
+        },
+        unclassified=tuple(unclassified),
+    )
+
+
 def _split_parenthetical(sense: Mapping[str, Any]) -> list[str]:
     """Return comma-separated parts of a leading raw-gloss parenthetical."""
 
@@ -168,12 +230,9 @@ def extract(
             add("domain", "topic", clean_topic)
 
     for tag in sorted(tags):
-        if tag in register:
-            add("register", "usage_tag", tag)
-        elif (grammar_value := _grammar_value(tag)) is not None:
-            add("grammar", "sense_mark", grammar_value)
-        elif _is_construction_tag(tag, construction):
-            add("construction", "grammar_tag", tag)
+        feature = classify_tag(tag, policy=policy)
+        if feature is not None:
+            add(feature.family, feature.kind, feature.value)
 
     # The companion note: SpanishDict writes this as prose in `context`,
     # Wiktionary as a structured +obj template. Both emit the same family so a
