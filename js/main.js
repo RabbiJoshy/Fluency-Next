@@ -893,6 +893,106 @@ function closeRadialPicker(id) {
 window.showRadialPicker = showRadialPicker;
 window.closeRadialPicker = closeRadialPicker;
 
+// Stable choice surfaces for lists that can grow. A radial remains useful for
+// the small, visual artist picker; languages and commands need discoverable
+// scrolling and positions that never move underneath the learner.
+function showChoiceSheet({ id, ariaLabel, title, entries, variant = 'list' }) {
+    const existing = document.getElementById(id);
+    if (existing) { closeChoiceSheet(id); return; }
+    if (!entries.length) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = id;
+    overlay.className = `choice-sheet-overlay choice-sheet-${variant}`;
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', ariaLabel);
+
+    const panel = document.createElement('div');
+    panel.className = 'choice-sheet-panel';
+    const header = document.createElement('div');
+    header.className = 'choice-sheet-header';
+    const heading = document.createElement('h2');
+    heading.textContent = title;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'choice-sheet-close';
+    close.setAttribute('aria-label', `Close ${ariaLabel}`);
+    close.textContent = '×';
+    header.append(heading, close);
+
+    const body = document.createElement('div');
+    body.className = 'choice-sheet-body';
+    entries.forEach(entry => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'choice-sheet-item';
+        item.disabled = !!entry.disabled;
+        item.setAttribute('aria-label', entry.disabled
+            ? `${entry.label} — coming soon`
+            : entry.label);
+        if (entry.selected) item.classList.add('is-selected');
+
+        const icon = document.createElement('span');
+        icon.className = 'choice-sheet-icon';
+        icon.style.setProperty('--choice-accent', entry.accent || 'var(--accent-primary)');
+        if (entry.iconHTML) icon.innerHTML = entry.iconHTML;
+        else icon.textContent = entry.fallbackText || '•';
+
+        const copy = document.createElement('span');
+        copy.className = 'choice-sheet-copy';
+        const label = document.createElement('strong');
+        label.textContent = entry.label;
+        copy.appendChild(label);
+        if (entry.disabled || entry.description) {
+            const detail = document.createElement('small');
+            detail.textContent = entry.disabled ? 'Coming soon' : entry.description;
+            copy.appendChild(detail);
+        }
+
+        const tail = document.createElement('span');
+        tail.className = 'choice-sheet-tail';
+        tail.setAttribute('aria-hidden', 'true');
+        tail.textContent = entry.selected ? '✓' : (entry.disabled ? '' : '›');
+        item.append(icon, copy, tail);
+        item.addEventListener('click', event => {
+            event.stopPropagation();
+            if (entry.disabled) return;
+            closeChoiceSheet(id);
+            entry.onSelect();
+        });
+        body.appendChild(item);
+    });
+
+    panel.append(header, body);
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('is-open'));
+
+    close.addEventListener('click', () => closeChoiceSheet(id));
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) closeChoiceSheet(id);
+    });
+    overlay._choiceSheetKeyHandler = event => {
+        if (event.key === 'Escape') closeChoiceSheet(id);
+    };
+    document.addEventListener('keydown', overlay._choiceSheetKeyHandler);
+    requestAnimationFrame(() => body.querySelector('button:not(:disabled)')?.focus());
+}
+
+function closeChoiceSheet(id) {
+    const overlay = document.getElementById(id);
+    if (!overlay) return;
+    if (overlay._choiceSheetKeyHandler) {
+        document.removeEventListener('keydown', overlay._choiceSheetKeyHandler);
+    }
+    overlay.classList.remove('is-open');
+    setTimeout(() => overlay.remove(), 180);
+}
+
+window.showChoiceSheet = showChoiceSheet;
+window.closeChoiceSheet = closeChoiceSheet;
+
 // Artist adapter: album art around the shared radial component.
 function showArtistPicker(anchorBtn, artists) {
     const pickerLanguage = Object.values(artists)[0]?.language || 'spanish';
@@ -974,16 +1074,17 @@ function showLanguagePicker(languages) {
         return {
             label: cfg.name,
             fallbackText: flags[key] || '🌐',
-            discClass: 'language-radial-disc',
             accent: (cfg.colorTheme && cfg.colorTheme.primary) || 'var(--accent-primary)',
             disabled: cfg.hasData === false,
+            selected: key === selectedLanguage,
             onSelect: () => document.querySelector(`.lang-tab[data-lang="${key}"]`)?.click()
         };
     });
-    showRadialPicker({
-        id: 'languageRadialPicker',
+    showChoiceSheet({
+        id: 'languageChoiceSheet',
         ariaLabel: 'Choose a language',
-        hubHTML: 'Choose a<br>language',
+        title: 'Choose a language',
+        variant: 'grid',
         entries
     });
 }
