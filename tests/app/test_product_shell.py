@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v336"
+EXPECTED_CACHE_NAME = "flashcards-v337"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -180,6 +180,17 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("family === 'grammar' ? 'gloss_note'", flashcards)
         self.assertIn(".replace(/\\bsingular\\b/gi, 'sg.')", flashcards)
         self.assertIn(".replace(/\\bplural\\b/gi, 'pl.')", flashcards)
+
+    def test_first_run_walkthrough_is_once_only_and_replayable(self) -> None:
+        auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
+        walkthrough = (APP_ROOT / "js" / "about-example.js").read_text(encoding="utf-8")
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        self.assertGreaterEqual(auth.count("window.openFirstRunAboutExample?.(1)"), 2)
+        self.assertIn("function openFirstRunAboutExample(deckIndex = 1)", walkthrough)
+        self.assertIn("fluencyCardWalkthroughSeenV1", walkthrough)
+        self.assertIn("fluencyCardWalkthroughSeenV1", flashcards)
+        self.assertIn("window.openAboutExample?.(activeArtist ? 0 : 1)", main)
 
     def test_cognate_setting_uses_positive_inclusion_copy(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
@@ -378,9 +389,9 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertIn("config?.publicServices?.progressSyncUrl", auth)
         self.assertIn("secrets.googleScriptUrl || GOOGLE_SCRIPT_URL", auth)
-        self.assertIn('js/auth.js?v=20260827a', html)
-        self.assertIn("auth.js?v=20260827a", main)
-        self.assertIn("/js/auth.js?v=20260827a", worker)
+        self.assertIn('js/auth.js?v=20260908d', html)
+        self.assertIn("auth.js?v=20260908d", main)
+        self.assertIn("/js/auth.js?v=20260908d", worker)
 
     def test_progress_identity_bridges_historical_mode_ids_by_surface(self) -> None:
         progress = (APP_ROOT / "js" / "progress.js").read_text(encoding="utf-8")
