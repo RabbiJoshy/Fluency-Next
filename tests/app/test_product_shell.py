@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v335"
+EXPECTED_CACHE_NAME = "flashcards-v336"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -173,6 +173,13 @@ class ProductShellTests(unittest.TestCase):
             "card._expandedPos = new Set([lemmaPosGroupKeyForMeaning(currentMeaning)])",
             flashcards,
         )
+
+    def test_wiktionary_grammar_tails_become_compact_metadata(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        self.assertIn("function isWiktionaryGrammarNote(note)", flashcards)
+        self.assertIn("family === 'grammar' ? 'gloss_note'", flashcards)
+        self.assertIn(".replace(/\\bsingular\\b/gi, 'sg.')", flashcards)
+        self.assertIn(".replace(/\\bplural\\b/gi, 'pl.')", flashcards)
 
     def test_cognate_setting_uses_positive_inclusion_copy(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
@@ -348,7 +355,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260908b", worker)
+        self.assertIn("/js/main.js?v=20260908c", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:

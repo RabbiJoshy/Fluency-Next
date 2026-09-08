@@ -63,3 +63,30 @@ class WiktionaryGlossProjectionTests(unittest.TestCase):
     def test_unrecognized_outer_tail_keeps_the_whole_gloss(self) -> None:
         text = "bank (used as a name for a financial institution)"
         self.assertEqual(project_gloss(text).display_text, text)
+
+    def test_closed_vocabulary_grammar_tail_becomes_metadata(self) -> None:
+        projection = project_gloss(
+            "your, yours (2nd-person singular formal or 2nd-person plural)"
+        )
+        self.assertEqual(projection.display_text, "your, yours")
+        self.assertEqual(
+            [(item.family, item.kind, item.value) for item in projection.specialist_features],
+            [("grammar", "gloss_note", "2nd-person singular formal or 2nd-person plural")],
+        )
+
+    def test_grammatical_word_inside_semantic_tail_is_untouched(self) -> None:
+        for text in (
+            "girlfriend (female partner in a romantic relationship)",
+            "ball (formal dance)",
+            "happy (of a person)",
+            "guy; dude (male person)",
+            "article (object)",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(project_gloss(text).display_text, text)
+                self.assertEqual(project_gloss(text).specialist_features, ())
+
+    def test_reference_frame_is_construction_metadata(self) -> None:
+        projection = project_gloss("their (when referring to a plural noun)")
+        self.assertEqual(projection.display_text, "their")
+        self.assertEqual(projection.specialist_features[0].family, "construction")

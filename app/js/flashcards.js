@@ -2586,7 +2586,28 @@ function legacyObjectPronounProjection(value) {
 }
 
 const WIKTIONARY_FUNCTIONAL_NOTE = /^(?:used to |indicat(?:e|es|ing) |express(?:es|ing) |denot(?:e|es|ing) |mark(?:s|ing) |refer(?:s|ring) to |show(?:s|ing) )/i;
-const WIKTIONARY_CONSTRUCTION_NOTE = /^(?:after |before |connecting |followed by |only (?:in|with) |preceding |takes? |used (?:before|in|with) |with )/i;
+const WIKTIONARY_CONSTRUCTION_NOTE = /^(?:after |before |connecting |followed by |only (?:in|with) |preceding |takes? |used (?:before|in|with) |when referring to |with )/i;
+const WIKTIONARY_GRAMMAR_NOTE_WORDS = new Set([
+    '1st', '2nd', '3rd', 'a', 'an', 'and', 'direct', 'disjunctive', 'female',
+    'familiar', 'feminine', 'first', 'formal', 'informal', 'indirect', 'male',
+    'masculine', 'neuter', 'object', 'of', 'only', 'or', 'person', 'personal',
+    'plural', 'possessive', 'pronoun', 'reflexive', 'second', 'singular',
+    'subject', 'the', 'third', 'verb',
+]);
+const WIKTIONARY_GRAMMAR_NOTE_SIGNALS = new Set([
+    '1st', '2nd', '3rd', 'direct', 'first', 'indirect', 'personal', 'plural',
+    'possessive', 'pronoun', 'reflexive', 'second', 'singular', 'third',
+]);
+const WIKTIONARY_GRAMMAR_GENDER_WORDS = new Set([
+    'female', 'feminine', 'male', 'masculine', 'neuter',
+]);
+
+function isWiktionaryGrammarNote(note) {
+    const words = String(note || '').toLowerCase().replace(/‑/g, '-').match(/[a-z0-9]+/g) || [];
+    if (!words.length || !words.every(word => WIKTIONARY_GRAMMAR_NOTE_WORDS.has(word))) return false;
+    if (words.length === 1 && WIKTIONARY_GRAMMAR_GENDER_WORDS.has(words[0])) return true;
+    return words.some(word => WIKTIONARY_GRAMMAR_NOTE_SIGNALS.has(word));
+}
 
 function projectWiktionaryGloss(meaning, value) {
     const text = String(value || '').trim();
@@ -2618,11 +2639,14 @@ function projectWiktionaryGloss(meaning, value) {
         const note = remaining.slice(opening + 1, -1).trim();
         const family = WIKTIONARY_FUNCTIONAL_NOTE.test(note)
             ? 'functional'
-            : (WIKTIONARY_CONSTRUCTION_NOTE.test(note) ? 'construction' : null);
+            : (WIKTIONARY_CONSTRUCTION_NOTE.test(note)
+                ? 'construction'
+                : (isWiktionaryGrammarNote(note) ? 'grammar' : null));
         if (!family) break;
         notes.unshift({
             family,
-            kind: family === 'functional' ? 'usage_note' : 'gloss_phrase',
+            kind: family === 'functional' ? 'usage_note'
+                : (family === 'grammar' ? 'gloss_note' : 'gloss_phrase'),
             value: note,
         });
         remaining = remaining.slice(0, opening).trimEnd();
@@ -2928,15 +2952,30 @@ function senseMetadataDisplay(item) {
         return { short, full: item.value };
     }
     if (item.family === 'grammar') {
-        const label = ({
+        const exact = ({
             'reflexive=true': 'refl.',
             'person=1': '1st person',
             'person=2': '2nd person',
             'person=3': '3rd person',
             'number=singular': 'singular',
             'number=plural': 'plural',
-        })[item.value] || item.value;
-        return { short: label, full: item.value };
+        })[item.value];
+        if (exact) return { short: exact, full: item.value };
+        const short = item.value
+            .replace(/\bfirst[- ]person\b/gi, '1st')
+            .replace(/\bsecond[- ]person\b/gi, '2nd')
+            .replace(/\bthird[- ]person\b/gi, '3rd')
+            .replace(/\bpersonal pronoun\b/gi, 'pers. pron.')
+            .replace(/\bpersonal\b/gi, 'pers.')
+            .replace(/\bpronoun\b/gi, 'pron.')
+            .replace(/\bindirect object\b/gi, 'indirect obj.')
+            .replace(/\bdirect object\b/gi, 'direct obj.')
+            .replace(/\bsingular\b/gi, 'sg.')
+            .replace(/\bplural\b/gi, 'pl.')
+            .replace(/\bmasculine\b/gi, 'masc.')
+            .replace(/\bfeminine\b|\bfemale\b/gi, 'fem.')
+            .replace(/\bneuter\b/gi, 'neut.');
+        return { short, full: item.value };
     }
     return {
         short: item.value.replace(/-/g, ' '),
