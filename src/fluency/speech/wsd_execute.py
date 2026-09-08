@@ -30,6 +30,7 @@ from fluency.nlp.pos import load_pinned
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.wsd.commit import CommitPolicy
 from fluency.wsd.companion_gate import CONTRACTION_PARTS
+from fluency.features import MetadataAccounting
 from fluency.wsd.alignment import LiteralGlossAlignmentCorrector, SimAlignWordAligner
 from fluency.wsd.contracts import SelectedTuple, SelectionProjection, WSDAssignment
 from fluency.wsd.features import SpecialistFeature
@@ -173,6 +174,9 @@ def build_analyses(
                 specialist_features=tuple(
                     SpecialistFeature.from_dict(item)
                     for item in leaf.get("specialist_features", [])
+                ),
+                metadata_accounting=MetadataAccounting.from_envelope(
+                    leaf.get("metadata")
                 ),
             )
             for leaf in analysis["senses"]

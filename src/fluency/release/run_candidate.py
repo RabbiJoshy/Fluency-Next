@@ -321,6 +321,8 @@ def build_inactive_run_candidate(
                     meaning["metadata"]["specialist_features"] = sense[
                         "specialist_features"
                     ]
+                if sense.get("metadata"):
+                    meaning["metadata"]["sense_metadata"] = sense["metadata"]
                 if sense.get("definition"):
                     meaning["context"] = sense["definition"]
                 meanings.append(meaning)

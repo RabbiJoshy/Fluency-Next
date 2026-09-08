@@ -13,7 +13,7 @@ import unicodedata
 from typing import Any, Iterable
 
 from fluency.core.hashing import canonical_content_id, file_content_id
-from fluency.features import SpecialistFeature
+from fluency.features import MetadataAccounting, SpecialistFeature
 from fluency.menus import MenuAnalysis, SenseLeaf, build_analysis_id
 
 
@@ -27,6 +27,12 @@ REQUIRED_FILES = (
     "spanish_forms.json",
     "conjugation_reverse.json",
 )
+SPANISHDICT_METADATA_ACCOUNTING = MetadataAccounting(coverage={
+    "context": "parsed",
+    "dictionary_examples": "preserved",
+    "regions": "parsed",
+    "usage_and_construction_notes": "parsed",
+})
 NORMALIZED_MENU_FILE = "normalized_menu.json"
 CLITIC_SUFFIXES = (
     "selos", "selas", "melos", "melas", "noslo", "nosla", "telos", "telas",
@@ -566,6 +572,7 @@ class SpanishDictSenseMenuAdapter:
                                 ),
                             },
                             specialist_features=_specialist_features(sense),
+                            metadata_accounting=SPANISHDICT_METADATA_ACCOUNTING,
                         )
                         for sense_id, sense in senses
                     )

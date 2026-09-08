@@ -16,7 +16,7 @@ from fluency.languages.surfaces import (
     normalizer_for_language,
     typography_canonicalizer_for_language,
 )
-from fluency.features import SpecialistFeature
+from fluency.features import MetadataAccounting, SpecialistFeature
 from fluency.features.wiktionary import (
     extract as extract_wiktionary_features,
     extract_surface_grammar,
@@ -29,6 +29,15 @@ ADAPTER_ID = "wiktionary-sense-menu/v1"
 MENU_VERSION = "sense-menu/v1"
 REPORT_VERSION = "sense-menu-report/v1"
 FORM_TAGS = frozenset({"form-of", "alt-of"})
+WIKTIONARY_METADATA_ACCOUNTING = MetadataAccounting(coverage={
+    "cross_references": "parsed",
+    "etymology": "preserved",
+    "examples": "preserved",
+    "info_templates": "parsed",
+    "raw_glosses": "parsed",
+    "tags": "parsed",
+    "topics": "parsed",
+})
 
 
 class KaikkiMenuError(ValueError):
@@ -572,6 +581,7 @@ class KaikkiSenseMenuAdapter:
                             *_specialist_features(sense, self.language_policy),
                             *analysis_grammar,
                         ))),
+                        metadata_accounting=WIKTIONARY_METADATA_ACCOUNTING,
                     )
                     previous = leaves.get(sense_id)
                     if previous is not None and previous != leaf:

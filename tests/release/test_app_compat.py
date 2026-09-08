@@ -55,6 +55,26 @@ class AppCompatibilityTests(unittest.TestCase):
             "spanishdict-sense-menu/v1",
         )
 
+    def test_canonical_sense_metadata_reaches_the_app_contract(self) -> None:
+        seed = json.loads(default_seed_path().read_text(encoding="utf-8"))
+        deck = build_pilot_deck(seed)
+        envelope = {
+            "contract_version": "sense-metadata/v1",
+            "features": [],
+            "source_metadata": {},
+            "coverage": {"tags": "parsed"},
+            "unclassified": [],
+            "ignored": [],
+        }
+        deck["cards"][0]["meanings"][0]["metadata"] = {
+            "source_adapter": "wiktionary-sense-menu/v1",
+            "sense_metadata": envelope,
+        }
+        index, _ = build_app_compatibility_assets(deck)
+        self.assertEqual(
+            index[0]["meanings"][0]["metadata"]["sense_metadata"], envelope
+        )
+
     def test_typed_source_document_restores_app_provenance_and_human_title(self) -> None:
         seed = json.loads(default_seed_path().read_text(encoding="utf-8"))
         deck = build_pilot_deck(seed)

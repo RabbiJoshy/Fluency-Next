@@ -9,11 +9,11 @@ two stages later.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping
 
 from fluency.core.hashing import canonical_content_id
-from fluency.features import SpecialistFeature
+from fluency.features import MetadataAccounting, SpecialistFeature
 
 
 SENSE_MENU_VERSION = "sense-menu/v1"
@@ -27,6 +27,7 @@ class SenseLeaf:
     source_reference: str
     provider_metadata: Mapping[str, Any]
     specialist_features: tuple[SpecialistFeature, ...] = ()
+    metadata_accounting: MetadataAccounting = field(default_factory=MetadataAccounting)
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -41,6 +42,8 @@ class SenseLeaf:
             not isinstance(item, SpecialistFeature) for item in self.specialist_features
         ):
             raise ValueError("specialist_features must contain normalized features")
+        if not isinstance(self.metadata_accounting, MetadataAccounting):
+            raise ValueError("metadata_accounting must use the canonical contract")
 
     @property
     def gloss_text(self) -> str:
@@ -53,6 +56,10 @@ class SenseLeaf:
             "definition": self.definition,
             "source_reference": self.source_reference,
             "provider_metadata": dict(self.provider_metadata),
+            "metadata": self.metadata_accounting.envelope(
+                source_metadata=self.provider_metadata,
+                features=self.specialist_features,
+            ),
         }
         if self.specialist_features:
             record["specialist_features"] = [

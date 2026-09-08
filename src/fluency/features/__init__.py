@@ -19,5 +19,12 @@ from fluency.features.contract import (
     FeatureFamily,
     SpecialistFeature,
 )
+from fluency.features.metadata import METADATA_CONTRACT_VERSION, MetadataAccounting
 
-__all__ = ["FEATURE_FAMILIES", "FeatureFamily", "SpecialistFeature"]
+__all__ = [
+    "FEATURE_FAMILIES",
+    "FeatureFamily",
+    "METADATA_CONTRACT_VERSION",
+    "MetadataAccounting",
+    "SpecialistFeature",
+]

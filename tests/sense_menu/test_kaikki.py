@@ -257,6 +257,9 @@ class KaikkiSenseMenuTests(unittest.TestCase):
         self.assertEqual(leaf["sense_id"], "en-est-fr-noun-east")
         self.assertEqual(leaf["source_reference"], "kaikki:en-est-fr-noun-east")
         self.assertEqual(leaf["provider_metadata"]["tags"], ["masculine"])
+        self.assertEqual(leaf["metadata"]["contract_version"], "sense-metadata/v1")
+        self.assertEqual(leaf["metadata"]["features"], leaf.get("specialist_features", []))
+        self.assertEqual(leaf["metadata"]["coverage"]["tags"], "parsed")
 
     def test_topics_and_semantic_tags_become_normalized_specialist_features(self):
         cards = [{**create_card_record("fr", "suis").to_dict(), "rank": 1}]
