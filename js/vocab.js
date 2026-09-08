@@ -756,7 +756,17 @@ function mergeArtistExtraSupport(item, splitExamples) {
 // whitespace, and Unicode-composition differences that must not mint two
 // Merge Lemmas cards.
 function lemmaGroupKey(item) {
-    return String(item?.lemma || '').normalize('NFC').toLocaleLowerCase('es').trim();
+    // Derived, not shipped. `meanings[].headword` is in every deck the current
+    // pipeline builds, so Merge Lemmas needs no new release field and decision
+    // 0011's surface-only rule stands: identity is still the surface card, and
+    // this is only a grouping attribute computed at runtime.
+    //
+    // The shipped `lemma` remains the fallback for legacy and lyrics data that
+    // carries one. Where both exist the headword wins, for the reason
+    // buildCardFormModel gives: it is the lemmatisation with evidence behind it.
+    const derived = assignedHeadwordOf(item?.meanings);
+    const key = derived || String(item?.lemma || '');
+    return key.normalize('NFC').toLocaleLowerCase('es').trim();
 }
 
 function computeLemmaExampleCounts(vocabData, examplesData) {
@@ -873,6 +883,23 @@ function poolLemmaSiblingExamples(filteredData, allVocabData, examplesData) {
  * The snake_case aliases make this an adapter for future pipeline fields while
  * the lemma/word fallbacks preserve every currently shipped deck.
  */
+// The headword of the sense the card is actually about, weighted by assigned
+// frequency. Display and grouping both read this, so a merged card can never be
+// filed under one lemma and titled with another.
+function assignedHeadwordOf(meanings) {
+    const scored = (meanings || [])
+        .filter(mn => mn && mn.headword && Number(mn.percentage ?? mn.frequency ?? 0) > 0)
+        .map(mn => [Number(mn.percentage ?? mn.frequency ?? 0), String(mn.headword).trim()])
+        .filter(pair => pair[1]);
+    if (!scored.length) {
+        // No frequencies yet (an unassigned deck): fall back to the first
+        // headword the provider gave rather than losing the grouping entirely.
+        const first = (meanings || []).find(mn => mn && mn.headword);
+        return first ? String(first.headword).trim() : '';
+    }
+    return scored.reduce((a, b) => (b[0] > a[0] ? b : a))[1];
+}
+
 function buildCardFormModel(item, meanings = [], options = {}) {
     const representativeSurface = String(
         item?.dominant_surface
@@ -890,15 +917,7 @@ function buildCardFormModel(item, meanings = [], options = {}) {
     // There must not be two lemmatisations telling the learner different things,
     // and the assigned sense is the one with evidence behind it, so it wins.
     // Ties are broken by assigned frequency — the sense the card is actually about.
-    const assignedHeadword = (() => {
-        const scored = (meanings || [])
-            .filter(mn => mn && mn.headword
-                && Number(mn.percentage ?? mn.frequency ?? 0) > 0)
-            .map(mn => [Number(mn.percentage ?? mn.frequency ?? 0), String(mn.headword).trim()])
-            .filter(pair => pair[1]);
-        if (!scored.length) return '';
-        return scored.reduce((a, b) => (b[0] > a[0] ? b : a))[1];
-    })();
+    const assignedHeadword = assignedHeadwordOf(meanings);
     const citationForm = String(
         assignedHeadword
         || item?.citation_form
@@ -1034,7 +1053,29 @@ async function fetchAndJoinIndex(langConfig) {
     return data;
 }
 
+// Every route to a deck — setup counts, deck build, resume — passes through
+// here, so this is the one place per-language cognate scores have to be
+// attached. Loading is memoised per language config; a release without a
+// cognates file simply attaches nothing and the deck keeps every word.
+let _cognateScoresLoadedFor = null;
+let _cognateScoresLoading = null;
+
 async function fetchActiveVocabularyData(langConfig) {
+    const vocabulary = await fetchActiveVocabularyIndex(langConfig);
+    const path = langConfig?.cognatesPath || null;
+    if (path && _cognateScoresLoadedFor !== path && globalThis.loadCognateScores) {
+        _cognateScoresLoading = _cognateScoresLoading
+            || globalThis.loadCognateScores(langConfig).then(() => {
+                _cognateScoresLoadedFor = path;
+                _cognateScoresLoading = null;
+            });
+        await _cognateScoresLoading;
+    }
+    globalThis.applyCognateScores?.(vocabulary);
+    return vocabulary;
+}
+
+async function fetchActiveVocabularyIndex(langConfig) {
     const selectedSlugs = window._selectedArtistSlugs || [];
     const allConfigs = window._allArtistsConfig;
     if (!(activeArtist && selectedSlugs.length > 1 && allConfigs)) {
@@ -1329,6 +1370,16 @@ function selectLemmaModeRepresentatives(items) {
     return items.filter(item => item._lemmaModeRepresentative === true);
 }
 
+// Each language the learner reads excludes on its own, at its own cutoff, so
+// there is no single score to compare against a single threshold. cognates.js
+// owns that decision; this falls back to the shipped scalar and the slider for
+// decks that predate the per-language contract.
+function isCognateAlreadyKnown(item) {
+    const decide = globalThis.isCognateKnown;
+    if (decide) return Boolean(decide(item));
+    return Number(item?.cognate_score || 0) >= cognateThreshold;
+}
+
 function getVocabularyExclusionReason(item) {
     if (!item || !item.word || item.duplicate) return 'unavailable entry';
     const meanings = Array.isArray(item.meanings)
@@ -1349,13 +1400,14 @@ function getVocabularyExclusionReason(item) {
             }
         }
     }
-    if (excludeCognates && Number(item.cognate_score || 0) >= cognateThreshold) {
+    if (excludeCognates && isCognateAlreadyKnown(item)) {
         return 'cognate';
     }
-    const runtimeRepresentative = item._lemmaModeRepresentative;
-    if (useLemmaMode && lemmaFieldAvailable
-        && (runtimeRepresentative === false
-            || (runtimeRepresentative === undefined && item.most_frequent_lemma_instance !== true))) {
+    // Election happens at runtime in selectLemmaModeRepresentatives, over the
+    // cards that actually survived this filter pass. The shipped
+    // `most_frequent_lemma_instance` stamp is not consulted: it was elected
+    // against a different card set and could mark two rows for one lemma.
+    if (useLemmaMode && lemmaFieldAvailable && item._lemmaModeRepresentative === false) {
         return 'merged lemma form';
     }
     return null;
@@ -1467,7 +1519,7 @@ function buildFilteredVocab(vocabData) {
         // Cognates: dropped in Main/normal per the toggle, but KEPT in Extra so
         // they populate the Cognates category (the toggle is hidden there and
         // only decides which group cognates land in, not deck inclusion).
-        if (!isExtraScope && excludeCognates && cognateFieldAvailable && item.cognate_score >= cognateThreshold) {
+        if (!isExtraScope && excludeCognates && cognateFieldAvailable && isCognateAlreadyKnown(item)) {
             counts.cognates++;
             continue;
         }
@@ -1617,9 +1669,13 @@ async function loadVocabularyData(rangeString, opts = {}) {
         // reads "on": buildCardFormModel gets mergedLemma: false, so the card
         // keeps its surface form and the front falls through to the unmerged
         // variant list — every recorded spelling of the word.
-        lemmaFieldAvailable = vocabularyData.some(item => item.hasOwnProperty('most_frequent_lemma_instance'));
+        // A deck supports merging when its cards can be grouped at all. The old
+        // test asked for `most_frequent_lemma_instance`, a pipeline-stamped
+        // election this app re-does at runtime anyway, which made the feature
+        // unavailable on every deck the current pipeline builds.
+        lemmaFieldAvailable = vocabularyData.some(item => lemmaGroupKey(item));
         cognateFieldAvailable = vocabularyData.some(item =>
-            (item.cognate_score > 0) || item.cognet_cognate || item.is_transparent_cognate
+            (item.cognate_score > 0) || item.cognate_scores || item.cognet_cognate || item.is_transparent_cognate
         );
         if (useLemmaMode) await ensureLemmaPoolingData(langConfig);
         cachedVocabularyData = vocabularyData;
@@ -2123,6 +2179,7 @@ async function loadVocabularyData(rangeString, opts = {}) {
             card.is_english = item.is_english ?? null;
             card.is_english_loanword = item.is_english_loanword ?? null;
             card.cognate_score = item.cognate_score ?? null;
+            card.cognate_scores = item.cognate_scores ?? null;
             card.translationUnavailable = meanings.every(meaning => !String(meaning.meaning || '').trim());
             card.artistVocabularyScope = activeArtist ? artistVocabularyScope : null;
             const deckCard = studyMode === 'review' ? buildFocusedReviewCard(card) : card;
@@ -2881,3 +2938,7 @@ window.generateLinks = generateLinks;
 window.getExampleFromMeaning = getExampleFromMeaning;
 window.getVocabularyExclusionReason = getVocabularyExclusionReason;
 window.buildWordLookupMap = buildWordLookupMap;
+
+// Extras reports the forms merging absorbed, and must group them exactly as
+// the filter did. Exporting the rule keeps one definition of it.
+globalThis.lemmaGroupKey = lemmaGroupKey;

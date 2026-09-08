@@ -14031,3 +14031,246 @@
   .prov-conf--medium .prov-conf-band { background: rgba(226,165,99,.16); color: #e2a563; }
   .prov-conf--low .prov-conf-band { background: rgba(255,122,144,.16); color: #ff7a90; }
 }
+
+/* ── Fast mode row + page ─────────────────────────────────────────────────
+   One row under the level picker: the toggle, what it currently does, and the
+   way through to the page that explains it. Everything it bundles lives on
+   that page rather than competing with the level picker for attention. */
+.setup-options {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+}
+.setup-options-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.setup-options-bar .substep-title { flex: none; }
+.fast-mode-selector { flex: none; width: auto; min-width: 150px; }
+.fast-mode-summary {
+  flex: 1 1 140px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+.fast-mode-detail-btn {
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fast-mode-detail-btn:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+}
+.fast-mode-detail-btn:focus-visible,
+.fast-mode-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* The page. Reads as a document rather than a settings sheet, because the
+   point is to explain the trade before offering the controls. */
+.fast-mode-page-body {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+}
+.fast-mode-page-body h2 {
+  font-family: var(--font-emphasis);
+  font-size: 26px;
+  margin: 0 0 10px;
+  color: var(--text-primary, var(--text-secondary));
+}
+.fast-mode-lede {
+  margin: 0 0 28px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.fast-mode-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.fast-mode-controls .setup-substep {
+  margin-top: 0;
+  padding-top: 18px;
+}
+.fast-mode-explainer {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  opacity: 0.9;
+}
+.fast-mode-note {
+  margin: 26px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+.fast-mode-close { position: absolute; top: 18px; right: 20px; z-index: 1; }
+
+/* A page, not a dialogue. The explanation is the point, so it gets the whole
+   screen rather than a card floating over the setup panel the learner is
+   trying to understand. `.fullscreen-modal` caps at 600px for the other
+   walkthroughs; this overrides that deliberately. */
+.fast-mode-page {
+  max-width: none;
+  width: 100%;
+  min-height: 100%;
+  max-height: none;
+  border-radius: 0;
+  margin: 0;
+  background: var(--bg-primary, var(--bg-card));
+  overflow-y: auto;
+}
+#fastModeModal.modal { padding: 0; align-items: stretch; justify-content: stretch; }
+
+.extras-btn {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.extras-btn:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+}
+.extras-btn:focus-visible {
+  outline: 2px solid var(--accent-green);
+  outline-offset: 2px;
+}
+
+.extras-body {
+  padding: 4px 20px 20px;
+  max-height: 62vh;
+  overflow-y: auto;
+}
+.extras-section + .extras-section { margin-top: 22px; }
+.extras-body h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-family: var(--font-emphasis);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.extras-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-variant-numeric: tabular-nums;
+}
+.extras-blurb {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.extras-list { margin: 0; padding: 0; list-style: none; }
+.extras-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
+}
+.extras-row:last-child { border-bottom: 0; }
+.extras-word { font-weight: 600; color: var(--text-secondary); }
+.extras-translation {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.extras-note { font-size: 11px; color: var(--text-muted); opacity: 0.8; text-align: right; }
+.extras-note strong { color: var(--text-secondary); font-weight: 600; }
+.extras-empty { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+@media (max-width: 520px) {
+  .extras-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .extras-translation { grid-column: 1 / -1; white-space: normal; }
+}
+.extras-score { font-variant-numeric: tabular-nums; }
+
+/* Known-language picker: multi-select, unlike the two-state toggles beside it,
+   so it reads as a set of chips rather than a pair of alternatives. */
+.known-languages-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  background: none;
+  padding: 0;
+}
+.known-language-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.known-language-btn:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-light);
+}
+.known-language-btn.selected {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary-text);
+}
+.known-language-btn:focus-visible {
+  outline: 2px solid var(--accent-green);
+  outline-offset: 2px;
+}
+.known-languages-note { display: block; opacity: 0.75; }
+
+/* Fast mode's two states borrow the toggle look used by every other on/off
+   pair in setup. When the parts are set individually neither reads as
+   selected, and the summary beside them says so. */
+.fast-mode-btn {
+  flex: 1;
+  padding: 7px 14px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.fast-mode-btn.selected {
+  background: var(--accent-primary);
+  color: var(--accent-primary-text);
+}
+.fast-mode-btn:not(.selected):hover { color: var(--text-secondary); }

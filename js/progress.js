@@ -245,6 +245,15 @@ async function updateExclusionBars() {
         }
     }
 
+    // The Extras panel reports the words these same counts describe, and this
+    // is the only place on the setup screen that holds the full vocabulary
+    // after buildFilteredVocab() has stamped `_lemmaModeRepresentative` on it.
+    // cachedVocabularyData is still null on this route (it is only set once a
+    // deck is built), so publish the array Extras needs rather than making it
+    // re-fetch and re-filter what was just computed here.
+    globalThis.setupVocabularySnapshot = vocabularyData;
+    globalThis.refreshExtrasButton?.();
+
     // Update personal coverage bar
     updatePersonalCoverage(afterCognate);
 }
