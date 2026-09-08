@@ -15,7 +15,7 @@ import './ui.js?v=20260831a';
 import './vocab.js?v=20260907a';
 import './song-sets.js?v=20260823ae';
 import './vocabulary-import.js?v=20260825ak';
-import './flashcards.js?v=20260908c';
+import './flashcards.js?v=20260908e';
 import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import
@@ -691,6 +691,7 @@ function showRadialPicker({ id, ariaLabel, hubHTML, entries, className = '', clo
 
     const n = entries.length;
     if (n === 0) return;
+    const maxSeats = 6;
     const overlay = document.createElement('div');
     overlay.id = id;
     overlay.className = 'artist-radial-overlay';
@@ -702,50 +703,63 @@ function showRadialPicker({ id, ariaLabel, hubHTML, entries, className = '', clo
     const stage = document.createElement('div');
     stage.className = 'artist-radial-stage';
 
-    // Center hub: label + close affordance.
+    // Center hub: label + close affordance. The secondary line doubles as the
+    // scrub position so a long picker still communicates its full size.
     const hub = document.createElement('div');
     hub.className = 'artist-radial-hub';
-    hub.innerHTML = `<span class="artist-radial-hub-title">${hubHTML}</span>${closeLabel ? `<span class="artist-radial-close-label">${closeLabel}</span>` : ''}`;
+    hub.setAttribute('role', 'button');
+    hub.setAttribute('tabindex', '0');
+    hub.setAttribute('aria-label', `Close ${ariaLabel}`);
+    const hubHint = closeLabel || (n > maxSeats ? `Drag ring · 1/${n}` : '');
+    hub.innerHTML = `<span class="artist-radial-hub-title">${hubHTML}</span>${hubHint ? `<span class="artist-radial-close-label">${hubHint}</span>` : ''}`;
     stage.appendChild(hub);
 
-    // One ring divided by however many entries there are stops working as a list
-    // grows: eight languages already crowd the circle and every new one makes
-    // the thumbs smaller and closer. Capacity belongs to the circumference, so
-    // entries fill a ring, then the next ring out. A ring's capacity grows with
-    // its radius, so k rings hold roughly k times more than one ever could.
+    // A radial menu has a fixed visual capacity. Keep one readable ring and
+    // rotate the collection through its seats instead of shrinking entries or
+    // piling additional translucent rings on top of it.
     const startAngle = -90; // top of the circle (12 o'clock), going clockwise
-    const innerPct = 24;    // radius of the first ring, percent toward the edge
-    const ringStepPct = 13; // spacing between rings
-    const maxRingPct = 44;  // keep the outermost thumbs inside the stage
-    const arcPerThumbPct = 26; // circumference each thumb needs, same units
+    const seatCount = Math.min(n, maxSeats);
+    const seatStep = 360 / seatCount;
+    const radius = 39;
+    let scrubIndex = 0;
+    let scrubPointer = null;
+    let scrubMoved = false;
+    let suppressClickUntil = 0;
+    const thumbs = [];
 
-    const rings = [];
-    for (let placed = 0; placed < n; ) {
-        const radius = Math.min(innerPct + rings.length * ringStepPct, maxRingPct);
-        // The outermost ring absorbs whatever is left rather than spilling past
-        // the stage: a crowded outer ring is recoverable, an invisible one is not.
-        const atMaxRadius = radius >= maxRingPct;
-        const capacity = Math.max(1, Math.round((2 * Math.PI * radius) / arcPerThumbPct));
-        const take = atMaxRadius ? n - placed : Math.min(n - placed, capacity);
-        rings.push({ radius, count: take, offset: placed });
-        placed += take;
-    }
-    const ringOf = index => rings.find(r => index < r.offset + r.count) || rings[rings.length - 1];
+    const wrappedDistance = (index, centre) => {
+        let distance = index - centre;
+        while (distance > n / 2) distance -= n;
+        while (distance < -n / 2) distance += n;
+        return distance;
+    };
+
+    const renderRing = (animate = false) => {
+        stage.classList.toggle('is-snapping', animate);
+        thumbs.forEach((thumb, index) => {
+            const distance = wrappedDistance(index, scrubIndex);
+            const snappedDistance = wrappedDistance(index, Math.round(scrubIndex));
+            const firstSeat = -Math.floor((seatCount - 1) / 2);
+            const lastSeat = firstSeat + seatCount - 1;
+            const visible = n <= seatCount
+                || (snappedDistance >= firstSeat && snappedDistance <= lastSeat);
+            const angle = (startAngle + seatStep * distance) * (Math.PI / 180);
+            thumb.style.left = `${50 + radius * Math.cos(angle)}%`;
+            thumb.style.top = `${50 + radius * Math.sin(angle)}%`;
+            thumb.classList.toggle('is-off-ring', !visible);
+            thumb.setAttribute('aria-hidden', visible ? 'false' : 'true');
+            thumb.tabIndex = visible && !thumb.disabled ? 0 : -1;
+        });
+        const hint = hub.querySelector('.artist-radial-close-label');
+        if (hint && n > seatCount) {
+            const selected = ((Math.round(scrubIndex) % n) + n) % n;
+            hint.textContent = `Drag ring · ${selected + 1}/${n}`;
+        }
+    };
 
     entries.forEach((entry, i) => {
-        const ring = ringOf(i);
-        // Offset alternate rings by half a step so thumbs do not line up
-        // radially and read as spokes rather than as a ring.
-        const seat = i - ring.offset;
-        const stagger = (rings.indexOf(ring) % 2) * (180 / ring.count);
-        const angle = (startAngle + (360 / ring.count) * seat + stagger) * (Math.PI / 180);
-        const x = 50 + ring.radius * Math.cos(angle);
-        const y = 50 + ring.radius * Math.sin(angle);
-
         const thumb = document.createElement('button');
         thumb.className = 'artist-radial-thumb';
-        thumb.style.left = `${x}%`;
-        thumb.style.top = `${y}%`;
         thumb.setAttribute('aria-label', entry.disabled ? `${entry.label} — coming soon` : entry.label);
         thumb.title = entry.disabled ? `${entry.label} — Data coming soon` : entry.label;
         thumb.disabled = !!entry.disabled;
@@ -776,13 +790,59 @@ function showRadialPicker({ id, ariaLabel, hubHTML, entries, className = '', clo
 
         thumb.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (Date.now() < suppressClickUntil) return;
             if (entry.disabled) return;
             closeRadialPicker(id);
             entry.onSelect();
         });
 
+        thumbs.push(thumb);
         stage.appendChild(thumb);
     });
+
+    renderRing();
+
+    const pointerAngle = event => {
+        const bounds = stage.getBoundingClientRect();
+        return Math.atan2(event.clientY - (bounds.top + bounds.height / 2), event.clientX - (bounds.left + bounds.width / 2)) * 180 / Math.PI;
+    };
+    const angleDelta = (current, start) => {
+        let delta = current - start;
+        while (delta > 180) delta -= 360;
+        while (delta < -180) delta += 360;
+        return delta;
+    };
+    stage.addEventListener('pointerdown', event => {
+        if (event.target === hub || hub.contains(event.target)) return;
+        if (event.button !== undefined && event.button !== 0) return;
+        scrubPointer = {
+            id: event.pointerId,
+            angle: pointerAngle(event),
+            index: scrubIndex
+        };
+        scrubMoved = false;
+        stage.classList.add('is-scrubbing');
+        stage.setPointerCapture?.(event.pointerId);
+    });
+    stage.addEventListener('pointermove', event => {
+        if (!scrubPointer || event.pointerId !== scrubPointer.id) return;
+        const delta = angleDelta(pointerAngle(event), scrubPointer.angle);
+        if (Math.abs(delta) > 4) scrubMoved = true;
+        scrubIndex = scrubPointer.index + delta / seatStep;
+        renderRing();
+        if (scrubMoved) event.preventDefault();
+    });
+    const finishScrub = event => {
+        if (!scrubPointer || event.pointerId !== scrubPointer.id) return;
+        if (scrubMoved) suppressClickUntil = Date.now() + 400;
+        scrubIndex = ((Math.round(scrubIndex) % n) + n) % n;
+        scrubPointer = null;
+        stage.classList.remove('is-scrubbing');
+        renderRing(true);
+        setTimeout(() => stage.classList.remove('is-snapping'), 180);
+    };
+    stage.addEventListener('pointerup', finishScrub);
+    stage.addEventListener('pointercancel', finishScrub);
 
     overlay.appendChild(stage);
     document.body.appendChild(overlay);
@@ -794,8 +854,24 @@ function showRadialPicker({ id, ariaLabel, hubHTML, entries, className = '', clo
         if (e.target === overlay) closeRadialPicker(id);
     });
     hub.addEventListener('click', () => closeRadialPicker(id));
+    hub.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            closeRadialPicker(id);
+        }
+    });
     overlay._radialKeyHandler = e => {
         if (e.key === 'Escape') closeRadialPicker(id);
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            scrubIndex = (Math.round(scrubIndex) + 1) % n;
+            renderRing(true);
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            scrubIndex = (Math.round(scrubIndex) - 1 + n) % n;
+            renderRing(true);
+        }
     };
     document.addEventListener('keydown', overlay._radialKeyHandler);
 }

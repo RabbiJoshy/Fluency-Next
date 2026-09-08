@@ -2607,11 +2607,6 @@
             color: var(--text-muted);
             font-weight: 500;
         }
-        .pos-collapsible .pos-section-summary:not(.is-measuring) .pos-summary-sense:first-child {
-            flex-shrink: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
         /* The headword, when it differs from the word on the card. Carried on
            the pill rather than as a row tag or a nested level: only 201 POS
            groups in the deck hold more than one headword, so the pair is one
@@ -3093,6 +3088,22 @@
             -webkit-line-clamp: unset;
             line-clamp: unset;
             overflow: visible;
+        }
+
+        /* The selected subsense is the disclosure destination: always let it
+           grow to reveal its complete gloss and metadata without a second
+           tap on an ellipsis or an abbreviated pill. */
+        .meaning-row.is-current-sense .meaning-row-translation {
+            display: block;
+            -webkit-line-clamp: unset;
+            line-clamp: unset;
+            overflow: visible;
+        }
+        .meaning-row.is-current-sense .sense-metadata-list {
+            max-width: 100%;
+        }
+        .meaning-row.is-current-sense .sense-metadata-chip {
+            overflow-wrap: anywhere;
         }
 
         /* Selection elevation is coloured by the surrounding POS section in
@@ -11253,6 +11264,8 @@
             position: relative;
             width: min(78vw, 78vh, 460px);
             height: min(78vw, 78vh, 460px);
+            touch-action: none;
+            user-select: none;
             transform: scale(0.9);
             transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
@@ -11313,6 +11326,21 @@
             padding: 0;
             cursor: pointer;
             width: 30%;
+            transition: left 80ms linear, top 80ms linear, opacity 100ms ease;
+            will-change: left, top;
+        }
+        .artist-radial-stage.is-scrubbing .artist-radial-thumb {
+            transition: opacity 70ms ease;
+        }
+        .artist-radial-stage.is-snapping .artist-radial-thumb {
+            transition: left 170ms cubic-bezier(0.22, 0.8, 0.3, 1),
+                        top 170ms cubic-bezier(0.22, 0.8, 0.3, 1),
+                        opacity 100ms ease;
+        }
+        .artist-radial-thumb.is-off-ring {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
         }
 
         .artist-radial-disc {
