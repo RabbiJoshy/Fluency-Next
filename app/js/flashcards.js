@@ -645,6 +645,23 @@ function fitBackHeadword(root) {
     el.style.whiteSpace = prevWS;
 }
 
+// POS headers are a map of the available meanings, not another metadata row.
+// Remove balanced parenthetical asides from this one-line summary while the
+// full gloss/context remains untouched in the expanded subsense below.
+function senseSummaryText(value) {
+    let text = String(value || '').trim();
+    let previous = '';
+    while (text !== previous) {
+        previous = text;
+        text = text.replace(/\s*\([^()]*\)/gu, ' ');
+    }
+    return text
+        .replace(/\s+([,;:.])/gu, '$1')
+        .replace(/^[,;:.\s]+|[,;:.\s]+$/gu, '')
+        .replace(/\s{2,}/gu, ' ')
+        .trim();
+}
+
 // A collapsed (POS, headword) row is a useful sense overview, not merely an
 // expand control. Show every short sense that genuinely fits in the available
 // width and collapse only the measured overflow behind +N. This deliberately
@@ -656,25 +673,24 @@ function fitPosSectionSummaries(root) {
         const more = summary.querySelector('.pos-pill-more');
         if (!more || senses.length < 2 || summary.clientWidth <= 0) return;
 
-        senses.forEach(sense => { sense.hidden = false; });
-        more.hidden = true;
+        senses.forEach(sense => { sense.hidden = true; });
+        more.hidden = false;
         summary.classList.add('is-measuring');
 
-        if (summary.scrollWidth <= summary.clientWidth + 1) {
-            summary.classList.remove('is-measuring');
-            return;
+        let shownCount = 0;
+        for (let index = 0; index < senses.length; index++) {
+            senses[index].hidden = false;
+            const remaining = senses.length - index - 1;
+            more.hidden = remaining === 0;
+            more.textContent = `+${remaining}`;
+            if (summary.scrollWidth > summary.clientWidth + 1) {
+                senses[index].hidden = true;
+                more.hidden = false;
+                more.textContent = `+${senses.length - shownCount}`;
+                break;
+            }
+            shownCount++;
         }
-
-        more.hidden = false;
-        let hiddenCount = 0;
-        for (let index = senses.length - 1;
-            index > 0 && summary.scrollWidth > summary.clientWidth + 1;
-            index--) {
-            senses[index].hidden = true;
-            hiddenCount++;
-            more.textContent = `+${hiddenCount}`;
-        }
-        more.textContent = `+${hiddenCount}`;
         summary.classList.remove('is-measuring');
     });
 }
@@ -2988,10 +3004,9 @@ function senseMetadataHTML(meaning, active) {
     const chips = senseMetadataItems(meaning).map(item => {
         const display = senseMetadataDisplay(item);
         const family = escapeCardText(item.family);
-        if (display.short === display.full) {
-            return `<span class="sense-metadata-chip" data-family="${family}">${escapeCardText(display.short)}</span>`;
-        }
-        return `<button type="button" class="sense-metadata-chip is-expandable" data-family="${family}" data-short="${encodeURIComponent(display.short)}" data-full="${encodeURIComponent(display.full)}" aria-expanded="false" onclick="toggleSenseMetadataChip(event, this)">${escapeCardText(display.short)}</button>`;
+        // Metadata is shown only on the active subsense, so it should be fully
+        // legible there rather than requiring another tiny disclosure tap.
+        return `<span class="sense-metadata-chip is-full" data-family="${family}">${escapeCardText(display.full)}</span>`;
     }).join('');
     return chips ? `<span class="sense-metadata-list">${chips}</span>` : '';
 }
@@ -4721,7 +4736,7 @@ function updateCard({ announceHeadword = false } = {}) {
                 g.hasAssignedEvidence = true;
             }
             const rawText = String(getProductionEnglishCue(card, m) || m.meaning || '').trim();
-            const text = projectWiktionaryGloss(m, rawText).display;
+            const text = senseSummaryText(projectWiktionaryGloss(m, rawText).display);
             // Main senses only. Two rows sharing a translation are one meaning
             // seen in two contexts; the contexts belong in the expanded view.
             if (text && !g.senses.includes(text)) g.senses.push(text);
@@ -4739,10 +4754,10 @@ function updateCard({ announceHeadword = false } = {}) {
         const activeGroupSenseRaw = String(
             getProductionEnglishCue(card, currentMeaning) || currentMeaning?.meaning || ''
         ).trim();
-        const activeGroupSense = projectWiktionaryGloss(
+        const activeGroupSense = senseSummaryText(projectWiktionaryGloss(
             currentMeaning,
             activeGroupSenseRaw
-        ).display;
+        ).display);
 
         const renderSections = (sections) => Array.from(sections)
             .map(([key, rows]) => {

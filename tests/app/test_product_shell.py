@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v337"
+EXPECTED_CACHE_NAME = "flashcards-v340"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -234,7 +234,9 @@ class ProductShellTests(unittest.TestCase):
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
         css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
         self.assertIn("function fitPosSectionSummaries(root)", flashcards)
-        self.assertIn("summary.scrollWidth <= summary.clientWidth + 1", flashcards)
+        self.assertIn("summary.scrollWidth > summary.clientWidth + 1", flashcards)
+        self.assertIn("function senseSummaryText(value)", flashcards)
+        self.assertIn("senses[index].hidden = true", flashcards)
         self.assertIn('class="pos-summary-sense"', flashcards)
         self.assertIn('class="pos-pill-more" hidden', flashcards)
         self.assertIn("fitPosSectionSummaries(backEl)", flashcards)
@@ -248,6 +250,16 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("border-left: 1px solid rgba(var(--sense-match-rgb), 0.38)", css)
         self.assertIn('class="pos-pill-lemma"', flashcards)
         self.assertNotIn("headword-group-label", flashcards)
+
+    def test_long_radials_scrub_one_readable_ring(self) -> None:
+        main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
+        self.assertIn("const maxSeats = 6", main)
+        self.assertIn("wrappedDistance", main)
+        self.assertIn("Drag ring", main)
+        self.assertIn("stage.addEventListener('pointermove'", main)
+        self.assertIn(".artist-radial-thumb.is-off-ring", css)
+        self.assertIn("touch-action: none", css)
         self.assertNotIn("headword-group-label", css)
 
     def test_multi_pos_controls_use_bounded_grid_without_reordering_senses(self) -> None:
@@ -366,7 +378,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260908c", worker)
+        self.assertIn("/js/main.js?v=20260908e", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
