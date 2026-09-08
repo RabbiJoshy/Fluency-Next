@@ -13,7 +13,7 @@ from typing import Any, Protocol
 
 COMMAND_MODULES = (
     "dev", "workspace", "pilot", "frequency", "migration", "enrichment",
-    "deployment", "artist", "lyrics", "release", "pools", "pipeline", "identity",
+    "deployment", "artist", "lyrics", "release", "pools", "pipeline", "metadata", "identity",
 )
 
 
