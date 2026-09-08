@@ -39,6 +39,16 @@ def _object(path: Path) -> dict[str, Any]:
     return value
 
 
+def _object_list(path: Path) -> list[dict[str, Any]]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise StaticDeploymentError(f"required JSON is unavailable or invalid: {path}") from error
+    if not isinstance(value, list):
+        raise StaticDeploymentError(f"required JSON must contain a list: {path}")
+    return [row for row in value if isinstance(row, dict)]
+
+
 def _copy_tree(source: Path, target: Path, *, exclude_app_development: bool = False) -> None:
     def ignored(directory: str, names: list[str]) -> set[str]:
         if not exclude_app_development or Path(directory) != source:
@@ -189,6 +199,22 @@ def build_static_deployment(
             # deck dropped go unused. Both misses cost at most one easy card,
             # so the mapping is regenerated to improve coverage, never because
             # a release changed.
+            # Merge Lemmas is declared from the data, not from the app config,
+            # which declared it true for Spanish against a release that could
+            # not support it — the toggle appeared and silently did nothing.
+            #
+            # What the app groups by is the headword of each card's assigned
+            # sense, so that is what is asked for here. Decision 0011 still
+            # holds: no `lemma` is emitted and identity remains the surface
+            # card. The legacy shipped `lemma` stays a fallback for older data.
+            index_rows = _object_list(target / contract["index_path"])
+            merges_lemmas = any(
+                isinstance(meaning, dict) and meaning.get("headword")
+                for row in index_rows
+                for meaning in (row.get("meanings") or [])
+            ) or any(row.get("lemma") for row in index_rows)
+            language_config.setdefault("capabilities", {})["mergeLemmas"] = merges_lemmas
+
             cognate_source = workspace.root / "cognates" / language / "cognates.json"
             if cognate_source.is_file():
                 cognate_relative = f"cognates/{language}/cognates.json"

@@ -117,3 +117,19 @@ class ProgressSyncBackendTests(unittest.TestCase):
         for url in ("https://example.com/collect", "http://fluency-api.rabbijoshy.workers.dev", ""):
             with self.subTest(url=url), self.assertRaises(StaticDeploymentError):
                 _validate_site(self._site(url), {"files": []})
+
+
+class MergeLemmaCapabilityTests(unittest.TestCase):
+    """Decision 0011 hides Merge Lemmas when the release cannot support it. The
+    shipped config declared it anyway, so the toggle appeared and did nothing."""
+
+    def setUp(self) -> None:
+        self.source = (
+            Path(__file__).resolve().parents[2] / "src/fluency/deployment/static.py"
+        ).read_text(encoding="utf-8")
+
+    def test_the_capability_is_read_from_the_release_not_the_app_config(self) -> None:
+        # Grouping is by the assigned sense's headword, which every deck the
+        # current pipeline builds already carries.
+        self.assertIn('meaning.get("headword")', self.source)
+        self.assertIn('["mergeLemmas"] = merges_lemmas', self.source)

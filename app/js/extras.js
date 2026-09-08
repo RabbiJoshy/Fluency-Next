@@ -38,13 +38,16 @@ function cognateExtra(item) {
 
 function lemmaExtra(item) {
     if (!g().useLemmaMode || !g().lemmaFieldAvailable) return false;
-    const runtimeRepresentative = item._lemmaModeRepresentative;
-    return runtimeRepresentative === false
-        || (runtimeRepresentative === undefined && item.most_frequent_lemma_instance !== true);
+    // Election is done at runtime by the filter; the legacy shipped stamp is
+    // not consulted, exactly as in getVocabularyExclusionReason.
+    return item._lemmaModeRepresentative === false;
 }
 
 function lemmaKeyOf(item) {
-    return String(item?.lemma || '').normalize('NFC').toLocaleLowerCase('es').trim();
+    // vocab.js derives this from the assigned sense's headword; a second copy
+    // here would group the Extras list differently from the deck it describes.
+    const key = g().lemmaGroupKey;
+    return key ? key(item) : String(item?.lemma || '').normalize('NFC').toLocaleLowerCase('es').trim();
 }
 
 function firstTranslation(item) {
