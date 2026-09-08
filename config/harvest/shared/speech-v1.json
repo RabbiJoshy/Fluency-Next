@@ -1,1 +1,40 @@
-{"candidate_cap_per_surface":60,"config_version":"harvest-shared-policy/v1","easiness":{"first_new_word_discount":0.35,"long_penalty_weight":0.3,"preferred_maximum_tokens":12,"preferred_minimum_tokens":6,"short_penalty_weight":0.6,"unranked_assumed_rank":60000},"policy_id":"speech-v1","provenance":{"require_attribution":true,"require_license":true,"require_source_record_id":true},"quality":{"maximum_target_tokens":16,"maximum_translation_ratio":2.5,"maximum_translation_tokens":24,"minimum_distinct_ratio":0.75,"minimum_distinct_ratio_note":"How much of the sentence is new rather than echoed. Probed against real harvested Portuguese: every degenerate line scored 0.67 or below ('O que? O que e que eu...' 0.57) and every natural one 0.83 or above, so the boundary sits in an empty gap. Drops 1,718 of 120,000 candidates.","minimum_distinct_tokens":6,"minimum_distinct_tokens_note":"A sentence must show a word doing something. Easiness counts unfamiliar words and skips the target, so a line of pure repetition scores a perfect 0.0 and wins every ranking. Measured on 118,244 harvested Portuguese sentences: only 1.0% have four or fewer distinct tokens, so this removes the pathology at negligible cost to the pool.","minimum_target_tokens":4,"minimum_translation_ratio":0.4,"minimum_translation_tokens":2,"reject_all_caps":true,"reject_identical_sides":true,"reject_markup":true,"reject_truncated_fragments":true,"reject_truncated_fragments_note":"A line cut mid-thought is grammatical and teaches nothing: the clause the target belongs to was never finished. Measured on the Portuguese pilot: 6.5% of candidates, and no card fell below the five it must display (lowest pool 48 of 60)."}}
+{
+  "candidate_cap_per_surface": 60,
+  "config_version": "harvest-shared-policy/v1",
+  "easiness": {
+    "first_new_word_discount": 0.35,
+    "long_penalty_weight": 0.3,
+    "preferred_maximum_tokens": 12,
+    "preferred_minimum_tokens": 6,
+    "short_penalty_weight": 0.6,
+    "unranked_assumed_rank": 60000
+  },
+  "policy_id": "speech-v1",
+  "provenance": {
+    "require_attribution": true,
+    "require_license": true,
+    "require_source_record_id": true
+  },
+  "quality": {
+    "maximum_target_tokens": 16,
+    "maximum_translation_ratio": 2.5,
+    "maximum_translation_tokens": 24,
+    "minimum_distinct_ratio": 0.75,
+    "minimum_distinct_ratio_note": "How much of the sentence is new rather than echoed. Probed against real harvested Portuguese: every degenerate line scored 0.67 or below ('O que? O que e que eu...' 0.57) and every natural one 0.83 or above, so the boundary sits in an empty gap. Drops 1,718 of 120,000 candidates.",
+    "minimum_distinct_tokens": 6,
+    "minimum_distinct_tokens_note": "A sentence must show a word doing something. Easiness counts unfamiliar words and skips the target, so a line of pure repetition scores a perfect 0.0 and wins every ranking. Measured on 118,244 harvested Portuguese sentences: only 1.0% have four or fewer distinct tokens, so this removes the pathology at negligible cost to the pool.",
+    "minimum_target_tokens": 4,
+    "minimum_translation_ratio": 0.4,
+    "minimum_translation_tokens": 2,
+    "reject_all_caps": true,
+    "reject_identical_sides": true,
+    "reject_markup": true,
+    "reject_truncated_fragments": true,
+    "reject_truncated_fragments_note": "A line cut mid-thought is grammatical and teaches nothing: the clause the target belongs to was never finished. Measured on the Portuguese pilot: 6.5% of candidates, and no card fell below the five it must display (lowest pool 48 of 60)."
+  },
+  "scan": {
+    "stop_when_budget_filled_fraction": 0.95,
+    "check_every_records": 50000,
+    "note": "Stop scanning once this fraction of cards has filled its WSD budget. Harvest time is linear in corpus size, but the cards are not: the median Czech card has 1,128 matches and fills its 60 within the first 5% of the corpus, while three cards never fill it at all -- 23, 36 and 43 matches in 7.55M lines. Waiting for every card therefore costs a full scan to serve a handful of rare words. Measured on Czech and Portuguese, which agree closely: 95% of cards are satisfied by 19% of the corpus (5.3x faster), 98% by 30%, 99% by 46%. Past 95% each further percent of cards costs disproportionately more scanning, so that is where this sits. Cards left short are declared, never silently thinned -- shortfall_policy governs what happens to them. Absent means scan everything."
+  }
+}

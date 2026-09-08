@@ -39,6 +39,12 @@ STAGE_VERSION = "sentence-harvest/v1"
 CANDIDATES_VERSION = "harvest-candidates/v1"
 REPORT_VERSION = "harvest-report/v1"
 STAGE_RELATIVE = Path("stages/03_sentence_harvest")
+_HARVEST_OUTPUT_KEYS = {
+    "candidates": "candidates.json",
+    "report": "report.json",
+    "sentence_bank": "sentence-bank.jsonl",
+}
+_HARVEST_OUTPUT_FILES = tuple(_HARVEST_OUTPUT_KEYS.values())
 INVENTORY_RELATIVE = Path("stages/01_inventory/output/inventory.json")
 FREQUENCY_RELATIVE = Path("stages/01_inventory/output/frequency-ranks.json")
 
@@ -99,6 +105,86 @@ def _trim_candidates(
             key=lambda entry: (entry[1]["metrics"]["score"], entry[1]["sentence_id"]),
         )[:cap]
         candidates[card_id] = dict(retained)
+
+
+def _reusable_harvest(workspace, run_directory: Path, cache_key: str) -> Path | None:
+    """A finished harvest elsewhere in the workspace with this exact cache key.
+
+    The key already covers implementation, config and every input content id, so
+    an equal key means an equal output -- that is what content addressing is
+    for. It was computed and recorded on every stage from the start and then
+    never read, which left the pipeline rescanning millions of subtitle lines to
+    reproduce a file it already had.
+    """
+
+    runs = workspace.root / "runs"
+    if not runs.is_dir():
+        return None
+    for manifest_path in sorted(runs.glob(f"*/*/*/{STAGE_RELATIVE}/output/manifest.json")):
+        if manifest_path.is_relative_to(run_directory):
+            continue
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if manifest.get("status") != "complete" or manifest.get("cache_key") != cache_key:
+            continue
+        source = manifest_path.parent
+        if all((source / name).is_file() for name in _HARVEST_OUTPUT_FILES):
+            return source
+    return None
+
+
+def _reuse_harvest_output(
+    source: Path,
+    *,
+    output_directory: Path,
+    started_at: datetime,
+    cache_key: str,
+    implementation_content_id: str,
+    config_content_id: str,
+    inputs: dict[str, str],
+) -> Path:
+    """Copy a finished harvest into this run, recording that it was reused.
+
+    The manifest says `reused_from` rather than presenting the work as freshly
+    done: a run must not record what it did not verify, and it did not scan the
+    corpus. The output content ids are recomputed from the copied bytes rather
+    than trusted from the source manifest, so a corrupted copy cannot pass
+    itself off as the original.
+    """
+
+    output_directory.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output_directory.with_name(output_directory.name + ".partial")
+    if temporary.exists():
+        shutil.rmtree(temporary)
+    temporary.mkdir(parents=True)
+    for name in _HARVEST_OUTPUT_FILES:
+        shutil.copyfile(source / name, temporary / name)
+
+    outputs = {
+        key: file_content_id(temporary / name)
+        for key, name in _HARVEST_OUTPUT_KEYS.items()
+    }
+    stage = StageManifest(
+        stage_name="sentence_harvest",
+        stage_version=STAGE_VERSION,
+        cache_key=cache_key,
+        implementation_hash=implementation_content_id,
+        config_hash=config_content_id,
+        status="complete",
+        started_at=_timestamp(started_at),
+        inputs=inputs,
+        model_revisions={},
+        random_seed=0,
+        outputs=outputs,
+        completed_at=_timestamp(datetime.now(UTC)),
+    )
+    payload = stage.to_dict()
+    payload["reused_from"] = str(source)
+    (temporary / "manifest.json").write_bytes(json_bytes(payload))
+    temporary.rename(output_directory)
+    return output_directory
 
 
 def _adapter_for(
@@ -199,14 +285,89 @@ def harvest_run_stage(
     adapters: list[CorpusAdapter] = []
 
     policies_by_source = {policy["source"]: policy for policy in source_policies}
+    # Open every adapter first so the snapshot content ids -- and therefore this
+    # stage's cache key -- are known before anything is scanned. Scanning is the
+    # expensive part of a run (79 minutes for 3,000 Portuguese cards, 113 for
+    # Czech), and it is entirely determined by the key: same implementation,
+    # same config, same inputs, same output. A finished harvest elsewhere in the
+    # workspace is that output, already computed.
     for source in selected_sources:
-        adapter = _adapter_for(
-            policies_by_source[source],
-            normalized_snapshots[source],
-            language=language,
+        adapters.append(
+            _adapter_for(
+                policies_by_source[source],
+                normalized_snapshots[source],
+                language=language,
+            )
         )
-        adapters.append(adapter)
+    implementation_content_id = _implementation_content_id()
+    inputs = {
+        "inventory": inventory_content_id,
+        "frequency_ranks": frequency_content_id,
+        **{
+            f"source_{source}": adapter.snapshot_content_id
+            for source, adapter in zip(selected_sources, adapters, strict=True)
+        },
+    }
+    cache_key = build_stage_cache_key(
+        stage_name="sentence_harvest",
+        stage_version=STAGE_VERSION,
+        implementation_hash=implementation_content_id,
+        config_hash=config_content_id,
+        inputs=inputs,
+        model_revisions={},
+        random_seed=0,
+    )
+    reused_from = _reusable_harvest(workspace, run_directory, cache_key)
+    if reused_from is not None:
+        return _reuse_harvest_output(
+            reused_from,
+            output_directory=output_directory,
+            started_at=started_at,
+            cache_key=cache_key,
+            implementation_content_id=implementation_content_id,
+            config_content_id=config_content_id,
+            inputs=inputs,
+        )
+
+    # Stop once enough cards have filled their budget. The rarest cards never
+    # fill theirs at all, so waiting for every card is a full scan spent on a
+    # handful of words; the policy names the fraction that is worth waiting for.
+    scan_policy = shared.get("scan") or {}
+    stop_fraction = scan_policy.get("stop_when_budget_filled_fraction")
+    check_every = int(scan_policy.get("check_every_records") or 50_000)
+    stop_after = (
+        int(len(cards) * float(stop_fraction))
+        if isinstance(stop_fraction, (int, float)) and not isinstance(stop_fraction, bool)
+        else None
+    )
+    # Filling 95% of budgets is not the same as every card having something to
+    # show. On Portuguese the fraction rule alone stopped at 21% with one card
+    # holding 3 candidates, below the 5 examples its tier must display. The
+    # floor is therefore a second, non-negotiable condition: stop early only
+    # when no card is still short of what it has to show.
+    display_floor = {
+        card["card_id"]: display_examples_for_rank(profile["scope"], card["rank"])
+        for card in cards
+    }
+    scanned_records = 0
+    stopped_early = False
+
+    for adapter in adapters:
+        if stopped_early:
+            break
         for record in adapter.iter_records():
+            scanned_records += 1
+            if (
+                stop_after is not None
+                and scanned_records % check_every == 0
+                and sum(1 for held in candidates.values() if len(held) >= cap) >= stop_after
+                and all(
+                    len(candidates[card_id]) >= floor
+                    for card_id, floor in display_floor.items()
+                )
+            ):
+                stopped_early = True
+                break
             try:
                 validate_parallel_sentence(
                     record,
@@ -329,6 +490,18 @@ def harvest_run_stage(
         "retained_candidate_matches": sum(item["candidate_count"] for item in per_surface),
         "retained_sentences": len(sentence_records),
         "rejections": dict(sorted(rejections.items())),
+        # A run must be able to say how much of the corpus it actually read.
+        # Without this, an early stop and an exhausted corpus look identical in
+        # the report, and a thin pool looks like a rare word rather than a
+        # deliberate cut.
+        "scan": {
+            "stopped_early": stopped_early,
+            "records_examined": scanned_records,
+            "stop_when_budget_filled_fraction": stop_fraction,
+            "cards_at_budget": sum(
+                1 for item in per_surface if item["candidate_count"] >= cap
+            ),
+        },
         "surfaces_with_shortfall": sum(item["shortfall"] > 0 for item in per_surface),
         "release_blocked_by_shortfall": any(item["shortfall"] > 0 for item in per_surface),
         "per_surface": per_surface,

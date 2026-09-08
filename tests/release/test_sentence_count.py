@@ -8,7 +8,7 @@ learner reads past to find the word being taught.
 
 import unittest
 
-from fluency.harvest.matching import sentence_count
+from fluency.release.sentences import sentence_count
 
 
 class SentenceCountTests(unittest.TestCase):

@@ -24,7 +24,8 @@ from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
 from fluency.pipeline.planning import validate_pipeline_profile
-from fluency.harvest.matching import example_identity, sentence_count
+from fluency.harvest.matching import example_identity
+from fluency.release.sentences import sentence_count
 from fluency.release.composition import compose_release
 from fluency.core.io import atomic_write, json_bytes
 from fluency.release.study_structure import build_study_structure
