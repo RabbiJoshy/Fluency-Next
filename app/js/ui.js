@@ -1235,6 +1235,11 @@ function _setupVocabularySignature(language) {
         useLemmaMode,
         excludeCognates,
         cognateThreshold,
+        // Which languages the learner reads changes which words count as
+        // cognates, so it changes the deck. Without it here the prepared
+        // vocabulary is reused across a selection change and the setup counts
+        // report the previous selection.
+        (globalThis.activeKnownLanguages?.() || []).join(','),
         hideSingleOccurrence,
         excludeProperNouns,
         excludeNoise,

@@ -14031,3 +14031,196 @@
   .prov-conf--medium .prov-conf-band { background: rgba(226,165,99,.16); color: #e2a563; }
   .prov-conf--low .prov-conf-band { background: rgba(255,122,144,.16); color: #ff7a90; }
 }
+
+/* ── Fast-mode setup options + Extras ─────────────────────────────────────
+   The two sub-settings in Choose Level sit behind one disclosure so the
+   landing page reads as a choice rather than a settings panel. The row also
+   carries the Extras button, because "what did those settings take out?" is
+   the natural question to ask right next to them. */
+.setup-options {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+}
+.setup-options-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.setup-options-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 2px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-family: var(--font-emphasis);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+}
+.setup-options-toggle:hover { color: var(--text-secondary); }
+.setup-options-toggle:focus-visible {
+  outline: 2px solid var(--accent-green);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.setup-options-chevron {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.16s ease;
+}
+.setup-options-toggle[aria-expanded="true"] .setup-options-chevron { transform: rotate(90deg); }
+/* The summary is the whole point of collapsing: it states what the hidden
+   controls are currently set to, so nothing is concealed, only folded. */
+.setup-options-summary {
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.setup-options-toggle[aria-expanded="true"] .setup-options-summary { display: none; }
+.setup-options-body { padding-top: 2px; }
+/* The substep row already draws its own top border per substep; inside the
+   disclosure the first one would double up with the wrapper's. */
+.setup-options-body .substep-row > .setup-substep:first-child,
+.setup-options-body > .substep-row > .setup-substep {
+  border-top: 0;
+  margin-top: 4px;
+  padding-top: 0;
+}
+
+.extras-btn {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.extras-btn:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+}
+.extras-btn:focus-visible {
+  outline: 2px solid var(--accent-green);
+  outline-offset: 2px;
+}
+
+.extras-body {
+  padding: 4px 20px 20px;
+  max-height: 62vh;
+  overflow-y: auto;
+}
+.extras-section + .extras-section { margin-top: 22px; }
+.extras-body h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-family: var(--font-emphasis);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.extras-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-variant-numeric: tabular-nums;
+}
+.extras-blurb {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.extras-list { margin: 0; padding: 0; list-style: none; }
+.extras-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
+}
+.extras-row:last-child { border-bottom: 0; }
+.extras-word { font-weight: 600; color: var(--text-secondary); }
+.extras-translation {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.extras-note { font-size: 11px; color: var(--text-muted); opacity: 0.8; text-align: right; }
+.extras-note strong { color: var(--text-secondary); font-weight: 600; }
+.extras-empty { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+@media (max-width: 520px) {
+  .extras-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .extras-translation { grid-column: 1 / -1; white-space: normal; }
+}
+.extras-score { font-variant-numeric: tabular-nums; }
+
+/* Known-language picker: multi-select, unlike the two-state toggles beside it,
+   so it reads as a set of chips rather than a pair of alternatives. */
+.known-languages-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  background: none;
+  padding: 0;
+}
+.known-language-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.known-language-btn:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-light);
+}
+.known-language-btn.selected {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+  color: #06231d;
+}
+.known-language-btn:focus-visible {
+  outline: 2px solid var(--accent-green);
+  outline-offset: 2px;
+}
+.known-languages-note { display: block; opacity: 0.75; }

@@ -82,10 +82,20 @@ def _validate_site(site: Path, manifest: dict[str, Any]) -> None:
     progress_sync_url = (
         public_services.get("progressSyncUrl") if isinstance(public_services, dict) else None
     )
-    if (
-        not isinstance(progress_sync_url, str)
-        or re.fullmatch(r"https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec", progress_sync_url)
-        is None
+    # Both backends the app has shipped against. The Apps Script form is kept
+    # so an older deployment still validates; the Worker form was added when
+    # f54540b pointed the app at Cloudflare and left this check behind, which
+    # blocked every deployment build until it was noticed.
+    #
+    # These stay exact rather than "any https URL": this value is where every
+    # learner's progress is sent, so a typo must fail the build rather than
+    # quietly ship a site that posts somewhere else.
+    if not isinstance(progress_sync_url, str) or not any(
+        re.fullmatch(pattern, progress_sync_url)
+        for pattern in (
+            r"https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec",
+            r"https://[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev",
+        )
     ):
         raise StaticDeploymentError("deployment has no valid public progress sync URL")
     for record in manifest.get("files", []):
@@ -168,6 +178,28 @@ def build_static_deployment(
                 language_config[field] = f"{base}/{relative}" if relative else None
             language_config["releaseManifestPath"] = f"{base}/manifest.json"
             language_config["releaseCompositionPath"] = f"{base}/composition.json"
+            # Cognate scores are a property of (surface, language pair) rather
+            # than of a deck, so they live beside the release instead of inside
+            # it — adding a known language never re-cuts a release.
+            #
+            # They are keyed by language, not by release, because a score does
+            # not go stale when the deck moves: "každý is free to a Polish
+            # reader" is true wherever the word appears. A surface the mapping
+            # has not seen simply is not excluded, and scores for surfaces the
+            # deck dropped go unused. Both misses cost at most one easy card,
+            # so the mapping is regenerated to improve coverage, never because
+            # a release changed.
+            cognate_source = workspace.root / "cognates" / language / "cognates.json"
+            if cognate_source.is_file():
+                cognate_relative = f"cognates/{language}/cognates.json"
+                cognate_target = site / cognate_relative
+                cognate_target.parent.mkdir(parents=True, exist_ok=True)
+                cognate_target.write_bytes(cognate_source.read_bytes())
+                language_config["cognatesPath"] = cognate_relative
+                language_config.setdefault("capabilities", {})["cognateFilter"] = True
+            else:
+                language_config["cognatesPath"] = None
+                language_config.setdefault("capabilities", {})["cognateFilter"] = False
             files = _release_files(target, base)
             offline_sources.append({
                 "id": f"speech-{language}",

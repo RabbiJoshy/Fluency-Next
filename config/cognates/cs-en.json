@@ -1,0 +1,72 @@
+{
+  "target_language": "cs",
+  "known_language": "en",
+  "notes": "Czech read by an English speaker. Czech's English cognates are overwhelmingly borrowings that kept their spelling (telefon, problem, test), so the skeletons only need Czech's own diacritics folded away and the few Latin-digraph correspondences English preserves. Measured: adding a phonetic leg to this pair found zero words spelling alone missed, which is why none is configured. The floor/weight split is per-pair calibration against the app's three sensitivity stops (0.95 loose, 0.85 default, 0.75 strict), which were originally set for Spanish's raw-similarity scale. At 0.55/0.45 the combined score compressed so far that the loose stop hid two words; 0.75/0.25 puts kazdy/kazdy, skola/szkola and znovu/znowu at the default stop, which is the same 'obvious cognates' meaning Spanish has there. Ordering is unchanged by this: it stretches the scale, it does not reweight the evidence. default_threshold is the auto cutoff for this pair, chosen by reading the scored word list band by band on the 3000-word Czech deck: quality holds down to 0.70 (ctyri/cztery, koupit/kupic, trik/trick) and turns mixed at 0.65 (osobni/osobowy, stal/stay). Nothing is lost below it — excluded words move to Extras, so the cost of the number being slightly wrong is that a learner sees a word they already knew.",
+  "target_skeleton": [
+    [
+      "ch",
+      "x"
+    ],
+    [
+      "ě",
+      "e"
+    ],
+    [
+      "ř",
+      "r"
+    ],
+    [
+      "š",
+      "s"
+    ],
+    [
+      "č",
+      "c"
+    ],
+    [
+      "ž",
+      "z"
+    ],
+    [
+      "ů",
+      "u"
+    ],
+    [
+      "k",
+      "c"
+    ],
+    [
+      "z",
+      "s"
+    ],
+    [
+      "f",
+      "ph"
+    ]
+  ],
+  "known_skeleton": [
+    [
+      "ch",
+      "x"
+    ],
+    [
+      "k",
+      "c"
+    ],
+    [
+      "z",
+      "s"
+    ],
+    [
+      "f",
+      "ph"
+    ]
+  ],
+  "minimum_length": 4,
+  "length_guard": 0.7,
+  "gloss_maximum_words": 6,
+  "meaning_floor": 0.75,
+  "meaning_weight": 0.25,
+  "candidate_budget": 400,
+  "default_threshold": 0.7
+}

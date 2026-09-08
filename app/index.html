@@ -494,28 +494,61 @@
                      toggle so it doesn't compete with the help button on
                      the right (and so the headers stay tight when both
                      substeps are visible side-by-side). -->
-                <div class="substep-row">
-                    <div id="lemmaToggleContainer" class="setup-substep" style="display: none;">
-                        <div class="substep-header">
-                            <span class="substep-title">Merge Lemmas</span>
-                        </div>
-                        <div id="lemmaToggleSelector" class="group-size-selector">
-                            <button class="lemma-toggle-btn selected" data-lemma="off" data-short="Off" data-full="Off">Off</button>
-                            <button class="lemma-toggle-btn" data-lemma="on" data-short="On" data-full="On">On</button>
-                        </div>
-                        <span id="lemmaInfoLine" class="level-info-line substep-info-below" style="display: none;"></span>
+                <!-- Fast mode: the two sub-settings collapse behind one
+                     disclosure so the landing page states a choice rather than
+                     presenting a settings panel. setup-options.js owns the
+                     expanded state and the summary line; the containers inside
+                     keep their existing per-language visibility logic. -->
+                <div id="setupOptions" class="setup-options" style="display: none;">
+                    <div class="setup-options-bar">
+                        <button type="button" id="setupOptionsToggle" class="setup-options-toggle"
+                                aria-expanded="false" aria-controls="setupOptionsBody">
+                            <svg class="setup-options-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+                            <span>Options</span>
+                            <span id="setupOptionsSummary" class="setup-options-summary"></span>
+                        </button>
+                        <button type="button" id="extrasBtn" class="extras-btn" style="display: none;"></button>
                     </div>
+                    <div id="setupOptionsBody" class="setup-options-body" hidden>
+                        <div class="substep-row">
+                            <div id="lemmaToggleContainer" class="setup-substep" style="display: none;">
+                                <div class="substep-header">
+                                    <span class="substep-title">Merge Lemmas</span>
+                                </div>
+                                <div id="lemmaToggleSelector" class="group-size-selector">
+                                    <button class="lemma-toggle-btn selected" data-lemma="off" data-short="Off" data-full="Off">Off</button>
+                                    <button class="lemma-toggle-btn" data-lemma="on" data-short="On" data-full="On">On</button>
+                                </div>
+                                <span id="lemmaInfoLine" class="level-info-line substep-info-below" style="display: none;"></span>
+                            </div>
 
-                    <!-- Sub-setting: Cognate exclusion — same rationale. -->
-                    <div id="cognateToggleContainer" class="setup-substep" style="display: none;">
-                        <div class="substep-header">
-                            <span class="substep-title">Cognates</span>
+                            <!-- Sub-setting: Cognate exclusion — same rationale. -->
+                            <div id="cognateToggleContainer" class="setup-substep" style="display: none;">
+                                <div class="substep-header">
+                                    <span class="substep-title">Cognates</span>
+                                </div>
+                                <div id="cognateToggleSelector" class="group-size-selector">
+                                    <button class="cognate-toggle-btn" data-cognate="exclude" data-short="Exclude" data-full="Exclude">Exclude</button>
+                                    <button class="cognate-toggle-btn selected" data-cognate="include" data-short="Include" data-full="Include">Include</button>
+                                </div>
+                                <span id="cognateInfoLine" class="level-info-line substep-info-below" style="display: none;"></span>
+                            </div>
                         </div>
-                        <div id="cognateToggleSelector" class="group-size-selector">
-                            <button class="cognate-toggle-btn" data-cognate="exclude" data-short="Exclude" data-full="Exclude">Exclude</button>
-                            <button class="cognate-toggle-btn selected" data-cognate="include" data-short="Include" data-full="Include">Include</button>
+
+                        <!-- Which languages the learner already reads. Cognate
+                             exclusion scores each deck word against every one of
+                             them and takes the best, so a Polish speaker learning
+                             Czech loses the words Polish already gives them.
+                             Rendered by cognates.js from the scores the release
+                             actually shipped; hidden when only English is
+                             available, since one language is not a choice. -->
+                        <div id="knownLanguagesContainer" class="setup-substep" style="display: none;">
+                            <div class="substep-header">
+                                <span class="substep-title">Languages you read</span>
+                            </div>
+                            <div id="knownLanguagesSelector" class="group-size-selector known-languages-selector"></div>
+                            <span class="level-info-line substep-info-below known-languages-note">Cognates are excluded when they resemble any language you select.</span>
                         </div>
-                        <span id="cognateInfoLine" class="level-info-line substep-info-below" style="display: none;"></span>
                     </div>
                 </div>
             </div>
@@ -856,6 +889,19 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Extras Modal — the words the current settings keep out of the deck.
+         Populated by extras.js from the loaded vocabulary; two groups only,
+         cognates and merged forms. -->
+    <div id="extrasModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Set aside</h3>
+                <button class="modal-close" id="closeExtrasModal" aria-label="Close">✕</button>
+            </div>
+            <div class="extras-body" id="extrasBody"></div>
         </div>
     </div>
 

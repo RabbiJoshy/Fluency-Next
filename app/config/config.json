@@ -510,7 +510,8 @@
       "fileFormat": "json",
       "capabilities": {
         "lyrics": false,
-        "speech": true
+        "speech": true,
+        "cognateFilter": false
       },
       "colorTheme": {
         "primary": "#11457E",
@@ -567,7 +568,8 @@
       "examplesPath": "releases/cs/speech/cs-speech-3000-tiered-20260907/app/vocabulary.examples.json",
       "studyStructurePath": "releases/cs/speech/cs-speech-3000-tiered-20260907/app/study-structure.json",
       "releaseManifestPath": "releases/cs/speech/cs-speech-3000-tiered-20260907/manifest.json",
-      "releaseCompositionPath": "releases/cs/speech/cs-speech-3000-tiered-20260907/composition.json"
+      "releaseCompositionPath": "releases/cs/speech/cs-speech-3000-tiered-20260907/composition.json",
+      "cognatesPath": null
     }
   },
   "languageDisplayOrder": [

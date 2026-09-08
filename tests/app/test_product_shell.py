@@ -519,3 +519,44 @@ class ProductShellTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class KnownLanguageCognateSurfaceTests(unittest.TestCase):
+    """The learner declares which languages they already read, and cognate
+    exclusion scores against all of them rather than only English."""
+
+    def test_the_setup_panel_carries_the_known_language_picker(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        for required_id in (
+            "setupOptions",          # fast-mode disclosure the picker lives in
+            "knownLanguagesContainer",
+            "knownLanguagesSelector",
+            "extrasModal",           # what the exclusions did, kept browsable
+            "extrasBtn",
+        ):
+            self.assertIn(f'id="{required_id}"', html)
+
+    def test_the_runtime_modules_ship_and_are_precached(self) -> None:
+        worker = (APP_ROOT / "service-worker.js").read_text(encoding="utf-8")
+        main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        for filename in ("cognates.js", "extras.js", "setup-options.js"):
+            self.assertTrue((APP_ROOT / "js" / filename).is_file(), filename)
+            # A module missing from the precache list is invisible offline,
+            # which is the failure this pins.
+            self.assertIn(f"/js/{filename}?v=", worker, filename)
+            self.assertIn(f"./{filename}?v=", main, filename)
+
+    def test_each_known_language_excludes_on_its_own_cutoff(self) -> None:
+        vocab = (APP_ROOT / "js" / "vocab.js").read_text(encoding="utf-8")
+        # The filter must not read the legacy scalar directly: that could only
+        # ever mean "close to English".
+        self.assertIn("isCognateAlreadyKnown(item)", vocab)
+        cognates = (APP_ROOT / "js" / "cognates.js").read_text(encoding="utf-8")
+        self.assertIn("cognate_scores", cognates)
+        # Falling back to the scalar keeps releases that predate per-language
+        # scores behaving exactly as before.
+        self.assertIn("item.cognate_score", cognates)
+
+    def test_the_prepared_vocabulary_cache_notices_a_selection_change(self) -> None:
+        ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        self.assertIn("activeKnownLanguages?.() || []", ui)
