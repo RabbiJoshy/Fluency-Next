@@ -1361,7 +1361,7 @@ function initializeApp() {
 
     const showStudyMenu = (event) => {
         if (event) event.stopPropagation();
-        if (!window.showRadialPicker) return;
+        if (!window.showChoiceSheet) return;
         const targetLanguage = (config.languages[selectedLanguage]?.name || selectedLanguage || 'Target language')
             .replace(/\s*\(.*\)$/, '');
         // Label the direction this action will switch TO, rather than the
@@ -1387,11 +1387,11 @@ function initializeApp() {
         if (isJstOwner()) {
             entries.push({ label: 'Report a card issue', iconHTML: icon('<path d="M5 21V4"></path><path d="M5 5h11l-2 4 2 4H5"></path>'), onSelect: () => window.showFlagMenu?.() });
         }
-        window.showRadialPicker({
-            id: 'studyRadialPicker',
+        window.showChoiceSheet({
+            id: 'studyChoiceSheet',
             ariaLabel: 'Study options',
-            hubHTML: 'Study options',
-            className: 'study-radial-picker',
+            title: 'Study options',
+            variant: 'list',
             entries
         });
     };

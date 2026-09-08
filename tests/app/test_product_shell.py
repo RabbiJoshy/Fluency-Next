@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v341"
+EXPECTED_CACHE_NAME = "flashcards-v342"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -267,6 +267,18 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("touch-action: none", css)
         self.assertNotIn("headword-group-label", css)
 
+    def test_growing_language_and_study_lists_use_stable_choice_sheets(self) -> None:
+        main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
+        self.assertIn("function showChoiceSheet", main)
+        self.assertIn("id: 'languageChoiceSheet'", main)
+        self.assertIn("variant: 'grid'", main)
+        self.assertIn("id: 'studyChoiceSheet'", flashcards)
+        self.assertIn("variant: 'list'", flashcards)
+        self.assertIn(".choice-sheet-grid .choice-sheet-body", css)
+        self.assertIn(".choice-sheet-list .choice-sheet-item", css)
+
     def test_multi_pos_controls_use_bounded_grid_without_reordering_senses(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
         css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
@@ -383,7 +395,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260908f", worker)
+        self.assertIn("/js/main.js?v=20260908g", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
