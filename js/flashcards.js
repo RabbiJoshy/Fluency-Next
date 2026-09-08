@@ -2582,6 +2582,51 @@ function legacyObjectPronounProjection(value) {
     return null;
 }
 
+const WIKTIONARY_FUNCTIONAL_NOTE = /^(?:used to |indicat(?:e|es|ing) |express(?:es|ing) |denot(?:e|es|ing) |mark(?:s|ing) |refer(?:s|ring) to |show(?:s|ing) )/i;
+const WIKTIONARY_CONSTRUCTION_NOTE = /^(?:after |before |connecting |followed by |only (?:in|with) |preceding |takes? |used (?:before|in|with) |with )/i;
+
+function projectWiktionaryGloss(meaning, value) {
+    const text = String(value || '').trim();
+    const metadata = meaning?.metadata || {};
+    if (!text || metadata.source_adapter !== 'wiktionary-sense-menu/v1') {
+        return { display: text, features: [] };
+    }
+    const objectPronoun = legacyObjectPronounProjection(text);
+    if (objectPronoun) {
+        return {
+            display: objectPronoun.display,
+            features: [{ family: 'construction', kind: 'object_role', value: 'direct object' }],
+        };
+    }
+
+    let remaining = text;
+    const notes = [];
+    while (remaining.endsWith(')')) {
+        let depth = 0;
+        let opening = -1;
+        for (let index = remaining.length - 1; index >= 0; index--) {
+            if (remaining[index] === ')') depth++;
+            else if (remaining[index] === '(') {
+                depth--;
+                if (depth === 0) { opening = index; break; }
+            }
+        }
+        if (opening <= 0 || !/\s/u.test(remaining[opening - 1])) break;
+        const note = remaining.slice(opening + 1, -1).trim();
+        const family = WIKTIONARY_FUNCTIONAL_NOTE.test(note)
+            ? 'functional'
+            : (WIKTIONARY_CONSTRUCTION_NOTE.test(note) ? 'construction' : null);
+        if (!family) break;
+        notes.unshift({
+            family,
+            kind: family === 'functional' ? 'usage_note' : 'gloss_phrase',
+            value: note,
+        });
+        remaining = remaining.slice(0, opening).trimEnd();
+    }
+    return { display: remaining || text, features: notes };
+}
+
 function senseCrossReferences(meaning) {
     const metadata = meaning?.metadata || {};
     const candidates = [
@@ -2792,6 +2837,10 @@ function compactConstructionMetadata(value) {
     const exact = SENSE_CONSTRUCTION_SHORT[full.toLowerCase()];
     if (exact) return { short: exact, full };
     let short = full
+        .replace(/^connecting\s+/i, '')
+        .replace(/^preceding adjectives?$/i, 'before adj.')
+        .replace(/^used before\s+/i, 'before ')
+        .replace(/^only in subordinate clauses$/i, 'subordinate only')
         .replace(/^with\s+/i, '+ ')
         .replace(/\bdirect object\b/gi, 'direct obj.')
         .replace(/\bindirect object\b/gi, 'indirect obj.')
@@ -2823,12 +2872,17 @@ function senseMetadataItems(meaning) {
     const normalizedFeatures = [
         ...(Array.isArray(meaning?.specialist_features) ? meaning.specialist_features : []),
         ...(Array.isArray(metadata.specialist_features) ? metadata.specialist_features : []),
+        ...projectWiktionaryGloss(
+            meaning,
+            meaning?.meaning || meaning?.translation || ''
+        ).features,
     ];
     for (const feature of normalizedFeatures) {
         if (!feature || typeof feature !== 'object') continue;
         if (feature.family === 'register' || feature.family === 'domain'
             || feature.family === 'companion'
-            || feature.family === 'construction' || feature.family === 'grammar') {
+            || feature.family === 'construction' || feature.family === 'grammar'
+            || feature.family === 'functional') {
             add(feature.family, feature.kind || '', feature.value);
         }
     }
@@ -2866,6 +2920,10 @@ function senseMetadataDisplay(item) {
         return { short: `+ ${item.value}`, full: `used with ${item.value}` };
     }
     if (item.family === 'construction') return compactConstructionMetadata(item.value);
+    if (item.family === 'functional') {
+        const short = condenseSenseContext(item.value) || item.value;
+        return { short, full: item.value };
+    }
     if (item.family === 'grammar') {
         const label = ({
             'reflexive=true': 'refl.',
@@ -4621,7 +4679,7 @@ function updateCard({ announceHeadword = false } = {}) {
                 g.hasAssignedEvidence = true;
             }
             const rawText = String(getProductionEnglishCue(card, m) || m.meaning || '').trim();
-            const text = legacyObjectPronounProjection(rawText)?.display || rawText;
+            const text = projectWiktionaryGloss(m, rawText).display;
             // Main senses only. Two rows sharing a translation are one meaning
             // seen in two contexts; the contexts belong in the expanded view.
             if (text && !g.senses.includes(text)) g.senses.push(text);
@@ -4639,8 +4697,10 @@ function updateCard({ announceHeadword = false } = {}) {
         const activeGroupSenseRaw = String(
             getProductionEnglishCue(card, currentMeaning) || currentMeaning?.meaning || ''
         ).trim();
-        const activeGroupSense = legacyObjectPronounProjection(activeGroupSenseRaw)?.display
-            || activeGroupSenseRaw;
+        const activeGroupSense = projectWiktionaryGloss(
+            currentMeaning,
+            activeGroupSenseRaw
+        ).display;
 
         const renderSections = (sections) => Array.from(sections)
             .map(([key, rows]) => {
@@ -4844,9 +4904,12 @@ function updateCard({ announceHeadword = false } = {}) {
             const cliticCount = isClitic && m.allClitics ? m.allClitics.length : 0;
             const cliticCounter = (isClitic && cliticCount > 1) ? ` <span class="example-counter-group"><button class="mwe-cycle-btn" onclick="cycleMWEBackward(event)" title="Previous form">‹</button>${compactCounterHTML(cliticIdx, cliticCount, 'form')}<button class="mwe-cycle-btn" onclick="cycleMWEForward(event)" title="Next form">›</button></span>` : '';
             const cleanMweMeaning = isMWE ? mweMeaning.replace(/\s*\(elided\)/gi, '') : '';
-            const displayMeaning = isMWE
+            const rawDisplayMeaning = isMWE
                 ? (cleanMweMeaning || '<span style="font-style: italic; opacity: 0.5;">Translation unavailable</span>')
                 : (getProductionEnglishCue(card, m) || m.meaning);
+            const displayMeaning = isMWE
+                ? rawDisplayMeaning
+                : projectWiktionaryGloss(m, rawDisplayMeaning).display;
             const displayMeaningHTML = isMWE
                 ? displayMeaning
                 : senseCrossReferenceHTML(m, displayMeaning);
@@ -4930,7 +4993,9 @@ function updateCard({ announceHeadword = false } = {}) {
                 if (compactKnowledgeView && !isSelected) return;
                 // Sense cycle row: all unassigned/remainder senses for this
                 // POS; the shared POS pill now lives in the header legend.
-                const rawTranslations = m.allSenses ? m.allSenses.map(s => s.translation) : [m.meaning];
+                const rawTranslations = m.allSenses
+                    ? m.allSenses.map(s => projectWiktionaryGloss(s, s.translation).display)
+                    : [projectWiktionaryGloss(m, m.meaning).display];
                 // Prettify the remainder bucket:
                 //   1. Split any semicolon-packed gloss into atomic translations
                 //      (Wiktionary often bundles synonyms: "to pull out; to remove; to extract").
@@ -5086,7 +5151,10 @@ function updateCard({ announceHeadword = false } = {}) {
                                 ? `<span class="meaning-context-cell" style="line-height: 1.3; min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderSenseContextHTML(ctxRaw, { leadingDot: false })}${metadataHTML}</span>`
                                 : `<span style="opacity: 0.4; font-style: italic; font-size: 12px;">—</span>`;
                         } else {
-                            const transRaw = getProductionEnglishCue(card, mm) || mm.meaning || '';
+                            const transRaw = projectWiktionaryGloss(
+                                mm,
+                                getProductionEnglishCue(card, mm) || mm.meaning || ''
+                            ).display;
                             const transSafe = String(transRaw).replace(/"/g, '&quot;');
                             varyingHtml = `<span class="row-adaptive-text" style="font-weight: 600; color: var(--text-primary); line-height: 1.25; min-width: 0; overflow: hidden; text-overflow: ellipsis;">${senseCrossReferenceHTML(mm, transSafe)}${senseMetadataHTML(mm, isMemberSelected)}${modelProposalMarkerHTML(mm)}</span>`;
                         }
