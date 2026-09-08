@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v340"
+EXPECTED_CACHE_NAME = "flashcards-v341"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -258,6 +258,11 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("wrappedDistance", main)
         self.assertIn("Drag ring", main)
         self.assertIn("stage.addEventListener('pointermove'", main)
+        self.assertIn("Math.abs(delta) > 4 && !scrubMoved", main)
+        self.assertLess(
+            main.index("Math.abs(delta) > 4 && !scrubMoved"),
+            main.index("stage.setPointerCapture?.(event.pointerId)"),
+        )
         self.assertIn(".artist-radial-thumb.is-off-ring", css)
         self.assertIn("touch-action: none", css)
         self.assertNotIn("headword-group-label", css)
@@ -378,7 +383,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260908e", worker)
+        self.assertIn("/js/main.js?v=20260908f", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:

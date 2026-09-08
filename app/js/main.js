@@ -822,12 +822,16 @@ function showRadialPicker({ id, ariaLabel, hubHTML, entries, className = '', clo
         };
         scrubMoved = false;
         stage.classList.add('is-scrubbing');
-        stage.setPointerCapture?.(event.pointerId);
     });
     stage.addEventListener('pointermove', event => {
         if (!scrubPointer || event.pointerId !== scrubPointer.id) return;
         const delta = angleDelta(pointerAngle(event), scrubPointer.angle);
-        if (Math.abs(delta) > 4) scrubMoved = true;
+        if (Math.abs(delta) > 4 && !scrubMoved) {
+            scrubMoved = true;
+            // Capturing on pointerdown retargets an ordinary tap away from the
+            // option button. Capture only once this gesture is truly a scrub.
+            stage.setPointerCapture?.(event.pointerId);
+        }
         scrubIndex = scrubPointer.index + delta / seatStep;
         renderRing();
         if (scrubMoved) event.preventDefault();
