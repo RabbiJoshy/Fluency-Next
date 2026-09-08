@@ -173,6 +173,7 @@ function enterGuestMode() {
     showUserInfo();
     hideAuthModal();
     updateIncorrectButtonVisibility();
+    setTimeout(() => window.openFirstRunAboutExample?.(1), 250);
 }
 
 // Show login form
@@ -209,6 +210,7 @@ async function submitLogin() {
     localStorage.setItem('flashcardUser', JSON.stringify(currentUser));
     showUserInfo();
     hideAuthModal();
+    setTimeout(() => window.openFirstRunAboutExample?.(1), 250);
 
     // Load user progress from Google Sheets
     await loadUserProgressFromSheet();

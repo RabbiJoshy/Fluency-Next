@@ -152,6 +152,27 @@ const ABOUT_EXAMPLE_CARDS = {
     },
 };
 
+const CARD_WALKTHROUGH_SEEN_KEY = 'fluencyCardWalkthroughSeenV1';
+const LEGACY_CARD_WALKTHROUGH_PROMPT_KEY = 'fluencyCardWalkthroughPromptV1';
+
+function hasSeenCardWalkthrough() {
+    try {
+        return localStorage.getItem(CARD_WALKTHROUGH_SEEN_KEY) === '1'
+            || localStorage.getItem(LEGACY_CARD_WALKTHROUGH_PROMPT_KEY) === '1';
+    } catch (_) {
+        return false;
+    }
+}
+
+function rememberCardWalkthrough() {
+    try {
+        localStorage.setItem(CARD_WALKTHROUGH_SEEN_KEY, '1');
+        // The older first-flip prompt reads this key. Marking both makes every
+        // route into the same tour converge on one durable onboarding state.
+        localStorage.setItem(LEGACY_CARD_WALKTHROUGH_PROMPT_KEY, '1');
+    } catch (_) {}
+}
+
 // ---------------------------------------------------------------------------
 // Decks and their annotations
 // ---------------------------------------------------------------------------
@@ -920,6 +941,7 @@ let _resizeHandler = null;
 function openAboutExample(deckIndex = 0) {
     const modal = document.getElementById('aboutExampleModal');
     if (!modal) return;
+    rememberCardWalkthrough();
     modal.classList.remove('hidden');
     state.deckIndex = deckIndex;
     state.flipped = true;
@@ -937,9 +959,19 @@ function openAboutExample(deckIndex = 0) {
     }
 }
 
-// The ✕ returns to About, which is where the walkthrough was opened from and
-// where the rest of the project write-up still is. Closing straight through to
-// the app would drop a reader out of the page they were part-way through.
+function openFirstRunAboutExample(deckIndex = 1) {
+    if (hasSeenCardWalkthrough()) return false;
+    // Never stack the automatic tour over authentication, About, settings, or
+    // another onboarding sheet. Permanent replay links remain available.
+    if (document.querySelector('.modal:not(.hidden), .knowledge-overview-modal:not([hidden])')) {
+        return false;
+    }
+    openAboutExample(deckIndex);
+    return true;
+}
+
+// The modal is layered over its opener. Closing therefore reveals About when
+// launched there, or the main app when launched by onboarding/help.
 function closeAboutExample() {
     const modal = document.getElementById('aboutExampleModal');
     if (!modal) return;
@@ -977,4 +1009,5 @@ document.addEventListener('DOMContentLoaded', setupAboutExample);
 if (document.readyState !== 'loading') setupAboutExample();
 
 window.openAboutExample = openAboutExample;
+window.openFirstRunAboutExample = openFirstRunAboutExample;
 window.closeAboutExample = closeAboutExample;

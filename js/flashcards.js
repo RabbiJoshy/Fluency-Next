@@ -6024,6 +6024,7 @@ function updateCard({ announceHeadword = false } = {}) {
 }
 
 const CARD_WALKTHROUGH_PROMPT_KEY = 'fluencyCardWalkthroughPromptV1';
+const CARD_WALKTHROUGH_SEEN_KEY = 'fluencyCardWalkthroughSeenV1';
 let _cardWalkthroughPromptHandled = false;
 
 function rememberCardWalkthroughPrompt() {
@@ -6033,7 +6034,10 @@ function rememberCardWalkthroughPrompt() {
 
 function hasHandledCardWalkthroughPrompt() {
     if (_cardWalkthroughPromptHandled) return true;
-    try { return localStorage.getItem(CARD_WALKTHROUGH_PROMPT_KEY) === '1'; } catch (_) { return false; }
+    try {
+        return localStorage.getItem(CARD_WALKTHROUGH_PROMPT_KEY) === '1'
+            || localStorage.getItem(CARD_WALKTHROUGH_SEEN_KEY) === '1';
+    } catch (_) { return false; }
 }
 
 function _cardWalkthroughPromptKeydown(event) {
