@@ -130,6 +130,17 @@ def quality_rejection(
         return "language_hyphen_rule"
     if any(value in target or value in translation for value in language_rules["forbidden_substrings"]):
         return "language_forbidden_text"
+    # A subtitle row is a slice of a stream, so a row can begin partway through
+    # a sentence and end partway through another. Both leave a fragment that
+    # reads as broken language rather than as an example: "- zustal pres noc a
+    # pak se vratil." starts mid-clause, and "...do sveho stareho zivota," stops
+    # before the clause closes. Measured on Czech, 3.4% and 0.7% of displayed
+    # examples; on Portuguese, 0.4% and 0.3%.
+    stripped = target.strip().lstrip("\"'\u00ab([-\u2013\u2014 ")
+    if quality.get("reject_lowercase_start") and stripped[:1].islower():
+        return "starts_mid_sentence"
+    if quality.get("reject_unterminated") and target.strip().endswith((",", ";", ":")):
+        return "ends_mid_sentence"
     return None
 
 

@@ -30,7 +30,10 @@
     "reject_identical_sides": true,
     "reject_markup": true,
     "reject_truncated_fragments": true,
-    "reject_truncated_fragments_note": "A line cut mid-thought is grammatical and teaches nothing: the clause the target belongs to was never finished. Measured on the Portuguese pilot: 6.5% of candidates, and no card fell below the five it must display (lowest pool 48 of 60)."
+    "reject_truncated_fragments_note": "A line cut mid-thought is grammatical and teaches nothing: the clause the target belongs to was never finished. Measured on the Portuguese pilot: 6.5% of candidates, and no card fell below the five it must display (lowest pool 48 of 60).",
+    "reject_lowercase_start": true,
+    "reject_unterminated": true,
+    "fragment_note": "A subtitle row is a slice of a stream: it can begin partway through one sentence and end partway through the next. A row starting lowercase is a continuation of the row before it, and one ending in a comma, semicolon or colon stops before its clause closes. Both read as broken language rather than as an example. Measured on the shipped decks: 3.4% and 0.7% of Czech displayed examples, 0.4% and 0.3% of Portuguese."
   },
   "scan": {
     "stop_when_budget_filled_fraction": 0.95,

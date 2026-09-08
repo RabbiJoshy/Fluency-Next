@@ -46,13 +46,55 @@ def wsd_budget_per_card(harvest: dict[str, Any]) -> int:
     working unchanged; new profiles should use ``wsd_budget_per_card``.
     """
 
+    return max(count for _, count in wsd_budget_tiers(harvest))
+
+
+def wsd_budget_tiers(harvest: dict[str, Any]) -> list[tuple[int, int]]:
+    """Return [(through_rank, budget), ...] ascending by rank.
+
+    A flat budget spends the same on every card, but the cards are not the
+    same. A rank-2,900 card shows 3 examples and sends 10 occurrences to WSD,
+    so 50 of its 60 candidates are never used for anything -- and it is exactly
+    those rare cards that force a deep corpus scan, because they are the last
+    to fill. Tapering the budget lets the tail fill early and the scan finish.
+
+    It costs nothing in model spend: what reaches WSD is governed by
+    execution_cap_per_card, not by this. A plain integer still means the same
+    budget for every card.
+    """
+
     for key in (WSD_BUDGET_KEY, LEGACY_WSD_BUDGET_KEY):
         value = harvest.get(key)
         if isinstance(value, int) and not isinstance(value, bool):
-            return value
+            return [(2**31, value)]
+        if isinstance(value, list) and value:
+            tiers: list[tuple[int, int]] = []
+            for entry in value:
+                if not isinstance(entry, dict):
+                    raise BudgetError(f"each {key} tier must be an object")
+                rank, count = entry.get("through_rank"), entry.get("budget")
+                if not isinstance(rank, int) or isinstance(rank, bool) or rank < 1:
+                    raise BudgetError(f"each {key} tier needs a positive through_rank")
+                if not isinstance(count, int) or isinstance(count, bool) or count < 1:
+                    raise BudgetError(f"each {key} tier needs a positive budget")
+                tiers.append((rank, count))
+            tiers.sort()
+            if len({rank for rank, _ in tiers}) != len(tiers):
+                raise BudgetError(f"{key} tiers must not repeat a through_rank")
+            return tiers
     raise BudgetError(
         f"a Speech profile must state {WSD_BUDGET_KEY} (or legacy {LEGACY_WSD_BUDGET_KEY})"
     )
+
+
+def wsd_budget_for_rank(harvest: dict[str, Any], rank: int) -> int:
+    """How many candidates the card at this frequency rank may retain."""
+
+    tiers = wsd_budget_tiers(harvest)
+    for through_rank, count in tiers:
+        if rank <= through_rank:
+            return count
+    return tiers[-1][1]
 
 
 def display_example_tiers(scope: dict[str, Any]) -> list[tuple[int, int]]:

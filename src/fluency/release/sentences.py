@@ -16,7 +16,10 @@ _SENTENCE_BOUNDARY = re.compile(
     # an opening quote or bracket, an inverted Spanish mark, or a capital in any
     # of the scripts the decks use. "..." is not a boundary -- it is one speaker
     # trailing off inside a single line.
-    r"(?<=[.!?])\s+(?=[\"'\u00ab\u00bf\u00a1(\[]?[^\W\d_a-z\u00df-\u00ff])",
+    # A dash after the terminator is the commonest second-speaker marker in
+    # subtitles -- "disso. - Nao, nao." -- and leaving it out let two-speaker
+    # exchanges through the single-sentence rule after it had already shipped.
+    r"(?<=[.!?])\s+(?=[-\u2013\u2014]?\s*[\"'\u00ab\u00bf\u00a1(\[]?[^\W\d_a-z\u00df-\u00ff])",
     re.UNICODE,
 )
 

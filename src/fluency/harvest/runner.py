@@ -15,7 +15,12 @@ from fluency.core.canonical_json import canonical_json
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
-from fluency.pipeline.budget import display_examples_for_rank, wsd_budget_per_card
+from fluency.pipeline.budget import (
+    display_examples_for_rank,
+    execution_cap_per_card,
+    wsd_budget_for_rank,
+    wsd_budget_per_card,
+)
 from fluency.harvest.config import load_harvest_policies
 from fluency.harvest.inventory import load_frequency_ranks, load_harvest_inventory
 from fluency.harvest.matching import (
@@ -95,15 +100,16 @@ def _implementation_content_id() -> str:
 def _trim_candidates(
     candidates: dict[str, dict[str, dict[str, Any]]],
     *,
-    cap: int,
+    cap_for: dict[str, int],
 ) -> None:
     for card_id, by_identity in candidates.items():
-        if len(by_identity) <= cap:
+        card_cap = cap_for[card_id]
+        if len(by_identity) <= card_cap:
             continue
         retained = sorted(
             by_identity.items(),
             key=lambda entry: (entry[1]["metrics"]["score"], entry[1]["sentence_id"]),
-        )[:cap]
+        )[:card_cap]
         candidates[card_id] = dict(retained)
 
 
@@ -138,6 +144,7 @@ def _reusable_harvest(workspace, run_directory: Path, cache_key: str) -> Path | 
 def _reuse_harvest_output(
     source: Path,
     *,
+    run_id: str,
     output_directory: Path,
     started_at: datetime,
     cache_key: str,
@@ -161,6 +168,17 @@ def _reuse_harvest_output(
     temporary.mkdir(parents=True)
     for name in _HARVEST_OUTPUT_FILES:
         shutil.copyfile(source / name, temporary / name)
+    # candidates.json and report.json name the run that produced them. Copied
+    # verbatim they claim the source run, and every later stage that checks the
+    # bundle against the run then refuses it -- which is exactly what the WSD
+    # importer did. The harvested content is identical; the label is not, so the
+    # label is rewritten and the content ids below are recomputed from the copy.
+    for name in ("candidates.json", "report.json"):
+        target = temporary / name
+        payload = json.loads(target.read_text(encoding="utf-8"))
+        if payload.get("run_id") is not None:
+            payload["run_id"] = run_id
+            target.write_bytes(json_bytes(payload))
 
     outputs = {
         key: file_content_id(temporary / name)
@@ -270,6 +288,17 @@ def harvest_run_stage(
         normalized = matcher.normalize(token)
         frequency_ranks[normalized] = min(rank, frequency_ranks.get(normalized, rank))
 
+    # The budget may taper by rank, but never below what WSD will actually
+    # score: a card with fewer candidates than the execution cap has its sense
+    # assigned from thinner evidence, and nothing spare when a later rule
+    # rejects one. The display floor is lower still and is enforced separately.
+    execution_floor = execution_cap_per_card(profile)
+    cap_for = {
+        card["card_id"]: max(
+            wsd_budget_for_rank(profile["harvest"], card["rank"]), execution_floor
+        )
+        for card in cards
+    }
     cap = wsd_budget_per_card(profile["harvest"])
     candidates: dict[str, dict[str, dict[str, Any]]] = {
         card["card_id"]: {} for card in cards
@@ -321,6 +350,7 @@ def harvest_run_stage(
     if reused_from is not None:
         return _reuse_harvest_output(
             reused_from,
+            run_id=run_id,
             output_directory=output_directory,
             started_at=started_at,
             cache_key=cache_key,
@@ -360,7 +390,7 @@ def harvest_run_stage(
             if (
                 stop_after is not None
                 and scanned_records % check_every == 0
-                and sum(1 for held in candidates.values() if len(held) >= cap) >= stop_after
+                and sum(1 for cid, held in candidates.items() if len(held) >= cap_for[cid]) >= stop_after
                 and all(
                     len(candidates[card_id]) >= floor
                     for card_id, floor in display_floor.items()
@@ -419,10 +449,10 @@ def harvest_run_stage(
                     matched_per_card[card["card_id"]] += 1
                 elif candidate["sentence_id"] < held["sentence_id"]:
                     card_candidates[identity] = candidate
-                if len(card_candidates) > cap * 2:
-                    _trim_candidates(candidates, cap=cap)
+                if len(card_candidates) > cap_for[card["card_id"]] * 2:
+                    _trim_candidates(candidates, cap_for=cap_for)
 
-    _trim_candidates(candidates, cap=cap)
+    _trim_candidates(candidates, cap_for=cap_for)
     live_sentence_ids = {
         item["sentence_id"]
         for by_identity in candidates.values()
@@ -461,7 +491,7 @@ def harvest_run_stage(
                 # per-card WSD budget discarded, and the rule that discarded them.
                 "matched_before_budget": matched_before_budget,
                 "discarded_by_budget": max(0, matched_before_budget - len(retained)),
-                "budget_rule": f"wsd_budget_per_card={cap}",
+                "budget_rule": f"wsd_budget_per_card={cap_for[card['card_id']]}",
                 "display_rule": f"display_examples_per_card={final_target}",
             }
         )
@@ -499,7 +529,7 @@ def harvest_run_stage(
             "records_examined": scanned_records,
             "stop_when_budget_filled_fraction": stop_fraction,
             "cards_at_budget": sum(
-                1 for item in per_surface if item["candidate_count"] >= cap
+                1 for item in per_surface if item["candidate_count"] >= cap_for[item["card_id"]]
             ),
         },
         "surfaces_with_shortfall": sum(item["shortfall"] > 0 for item in per_surface),
