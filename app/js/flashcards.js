@@ -2673,6 +2673,7 @@ function projectWiktionaryGloss(meaning, value) {
 function senseCrossReferences(meaning) {
     const metadata = meaning?.metadata || {};
     const candidates = [
+        metadata.sense_metadata?.source_metadata?.cross_references,
         metadata.cross_references,
         metadata.sense_provider_metadata?.cross_references,
     ];
@@ -2900,7 +2901,8 @@ function compactConstructionMetadata(value) {
 
 function senseMetadataItems(meaning) {
     const metadata = meaning?.metadata || {};
-    const provider = metadata.sense_provider_metadata || {};
+    const canonical = metadata.sense_metadata || {};
+    const provider = canonical.source_metadata || metadata.sense_provider_metadata || {};
     const items = [];
     const seen = new Set();
     const add = (family, kind, value) => {
@@ -2913,12 +2915,12 @@ function senseMetadataItems(meaning) {
     };
 
     const normalizedFeatures = [
+        ...(Array.isArray(canonical.features) ? canonical.features : []),
         ...(Array.isArray(meaning?.specialist_features) ? meaning.specialist_features : []),
         ...(Array.isArray(metadata.specialist_features) ? metadata.specialist_features : []),
-        ...projectWiktionaryGloss(
-            meaning,
-            meaning?.meaning || meaning?.translation || ''
-        ).features,
+        ...(canonical.contract_version ? [] : projectWiktionaryGloss(
+            meaning, meaning?.meaning || meaning?.translation || ''
+        ).features),
     ];
     for (const feature of normalizedFeatures) {
         if (!feature || typeof feature !== 'object') continue;
@@ -2945,7 +2947,8 @@ function senseMetadataItems(meaning) {
     // Compatibility for releases made before specialist_features crossed the
     // release boundary. Restrict this fallback to Wiktionary and to phrases
     // with an unmistakable grammatical frame.
-    if (metadata.source_adapter === 'wiktionary-sense-menu/v1') {
+    if (!canonical.contract_version
+        && metadata.source_adapter === 'wiktionary-sense-menu/v1') {
         if (legacyObjectPronounProjection(meaning?.meaning || meaning?.translation)) {
             add('construction', 'object_role', 'direct object');
         }
