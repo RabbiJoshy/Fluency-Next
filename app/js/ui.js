@@ -754,18 +754,27 @@ async function renderLevelSelector(language, { preferActionable = false } = {}) 
     const releaseLevels = !activeArtist && Array.isArray(releaseStudyStructure?.levels)
         ? releaseStudyStructure.levels
         : [];
-    if (releaseLevels.length > 0) {
-        container.classList.remove('level-selector--slider');
-        container.innerHTML = releaseLevels.map(level => `
-            <button class="level-btn" data-level="${level.level_id}"
-                    data-short="${level.label}" data-full="${level.label}"
-                    data-start-rank="${level.start_rank}" data-end-rank="${level.end_rank + 1}"
-                    data-rank-basis="source" data-release-level="true"
-                    title="${level.label}: ranks ${level.start_rank}–${level.end_rank}">
-                ${level.label}
-            </button>
-        `).join('');
-    } else if (percentageMode && ppmData && ppmData.length > 0) {
+    // A Speech release ships its own levels — two hundred cards each, ten sets
+    // of twenty — and used to render them as a row of numbered buttons while
+    // Lyrics got the scrubber. There was never a reason for two controls: both
+    // are a list of levels with a rank span and a card count. Publishing the
+    // release levels as the active ranges lets the same scrubber, readout and
+    // example line serve both, and every reader of getActiveLevelRanges()
+    // stays consistent with what is on screen.
+    const usingReleaseLevels = releaseLevels.length > 0;
+    if (usingReleaseLevels) {
+        _smartLevelRangesCache = releaseLevels.map(level => ({
+            level: level.level_id,
+            startRank: level.start_rank,
+            // Ranges are half-open everywhere else in setup; the release states
+            // an inclusive end.
+            endRank: level.end_rank + 1,
+            cardCount: level.card_count,
+            rankBasis: 'source',
+            description: level.label,
+        }));
+    }
+    if (usingReleaseLevels || (percentageMode && ppmData && ppmData.length > 0)) {
         // Smart segment boundaries (both modes): pick stable baseline snap
         // points that target ~equal cards-per-segment with frequency-cliff labels
         // where the cliffs exist in the data. Algorithm auto-scales —
@@ -773,10 +782,10 @@ async function renderLevelSelector(language, { preferActionable = false } = {}) 
         // normal mode (occurrences_ppm 1–50000) gets cliffs in the
         // thousands. Falls back to the legacy coverage-threshold ranges
         // if the vocab cache isn't available yet.
-        _smartLevelRangesCache = null;
+        if (!usingReleaseLevels) _smartLevelRangesCache = null;
         const preparedSamples = await _loadLevelSliderSamples(selectedLanguage);
         const _raw = _levelSliderRawCache[selectedLanguage];
-        if (_raw) {
+        if (_raw && !usingReleaseLevels) {
             // Level boundaries are built from the stable baseline before any
             // optional filters. Filters change the eligible card count inside
             // a level, never the level's identity or rank span.
@@ -831,21 +840,27 @@ async function renderLevelSelector(language, { preferActionable = false } = {}) 
             });
             if (savedIdx >= 0) selectedLevel = percentageRanges[savedIdx].level;
         }
-        const initialIdx = savedIdx >= 0 ? savedIdx : lastIdx;
+        // Coverage levels are cumulative, so the widest is the useful default.
+        // Release levels are consecutive bands of two hundred cards, where the
+        // last one is the rarest vocabulary in the deck — a learner starts at
+        // the first, and the actionable-level pass refines it from there.
+        const initialIdx = savedIdx >= 0 ? savedIdx : (usingReleaseLevels ? 0 : lastIdx);
         const initial = percentageRanges[initialIdx];
         const initialMetrics = _levelBandMetrics(initial, preparedSamples);
         const initialDeckTotal = _levelDeckTotal(percentageRanges, preparedSamples);
         // Coverage display: use threshold for smart ranges, level string for legacy.
+        // Smart ranges know their coverage; release levels do not, and printing
+        // the level id where a percentage belongs read as a glitch.
         const initialCoverage = initial.threshold != null
             ? `${(initial.threshold * 100).toFixed(1)}%`
-            : initial.level;
+            : (usingReleaseLevels ? '' : initial.level);
         container.classList.add('level-selector--slider');
         container.innerHTML = `
             <div class="level-slider-wrap">
                 <div class="lsw-readout">
                     <span class="lsw-rank"><strong id="lswLevelVal">Level ${initialIdx + 1}</strong></span>
                     <span class="lsw-range">Ranks <strong id="lswRankVal">${initialMetrics.start.toLocaleString()}–${initialMetrics.end.toLocaleString()}</strong> <span class="lsw-deck-total" id="lswDeckTotal" aria-label="${initialDeckTotal.toLocaleString()} cards in deck">/ ${initialDeckTotal.toLocaleString()}</span></span>
-                    <span class="lsw-coverage">~<strong id="lswCovVal">${initialCoverage}</strong> ${coverageType}</span>
+                    <span class="lsw-coverage"${initialCoverage ? '' : ' hidden'}>~<strong id="lswCovVal">${initialCoverage}</strong> ${coverageType}</span>
                 </div>
                 <div id="lswSlider" class="lsw-segments lsw-scrubber" role="radiogroup" aria-label="Level scrubber" data-value="${initialIdx}">
                     ${percentageRanges.map((lv, i) => {
