@@ -22,6 +22,7 @@ from typing import Any
 from fluency.core.artifacts import verify_artifact
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.core.manifests import StageManifest, build_stage_cache_key
+from fluency.features.metadata import METADATA_CONTRACT_VERSION
 from fluency.core.workspace import Workspace
 from fluency.pipeline.planning import validate_pipeline_profile
 from fluency.harvest.matching import example_identity
@@ -587,6 +588,7 @@ def build_inactive_run_candidate(
 
     deck = {
         "deck_version": SPEECH_DECK_VERSION,
+        "metadata_contract": METADATA_CONTRACT_VERSION,
         "release_id": release_id,
         "language": language,
         "mode": mode,
@@ -657,6 +659,7 @@ def build_inactive_run_candidate(
         }
     composition = {
         "composition_version": "release-composition/v1",
+        "metadata_contract": METADATA_CONTRACT_VERSION,
         "release_id": release_id,
         "label": (
             f"{profile['locale']} Speech · real-data audit · "

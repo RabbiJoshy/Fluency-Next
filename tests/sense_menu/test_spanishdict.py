@@ -170,6 +170,9 @@ class SpanishDictSenseMenuTests(unittest.TestCase):
         cards = [{**create_card_record("es", "sr").to_dict(), "rank": 1}]
         menu, report = self.adapter().build(cards, snapshot_id="fixture-2026-08")
         self.assertEqual(menu["source_adapter"], ADAPTER_ID)
+        self.assertEqual(menu["metadata_contract"], "sense-metadata/v1")
+        self.assertEqual(menu["language_policy_id"], "es-spanishdict-v1")
+        self.assertTrue(menu["language_policy_content_id"].startswith("sha256:"))
         self.assertEqual(menu["cards"][0]["analyses"], [])
         self.assertEqual(report["cards_without_menu"], 1)
         self.assertEqual(report["fallbacks"], [])

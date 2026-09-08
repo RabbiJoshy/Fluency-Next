@@ -14,6 +14,7 @@ from typing import Any, Iterable
 
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.features import MetadataAccounting, SpecialistFeature
+from fluency.features.metadata import METADATA_CONTRACT_VERSION
 from fluency.menus import MenuAnalysis, SenseLeaf, build_analysis_id
 
 
@@ -628,12 +629,15 @@ class SpanishDictSenseMenuAdapter:
 
         payload = {
             "menu_version": MENU_VERSION,
+            "metadata_contract": METADATA_CONTRACT_VERSION,
             "language": "es",
             "gloss_language": "en",
             "source_edition": self.source_edition,
             "source_adapter": ADAPTER_ID,
             "snapshot_id": snapshot_id,
             "snapshot_content_id": self.snapshot_content_id,
+            "language_policy_id": self.language_policy.get("policy_id"),
+            "language_policy_content_id": canonical_content_id(self.language_policy),
             "cards": menu_cards,
         }
         reasons = Counter(item["reason"] for item in quarantine)

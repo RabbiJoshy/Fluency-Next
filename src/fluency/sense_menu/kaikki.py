@@ -17,6 +17,7 @@ from fluency.languages.surfaces import (
     typography_canonicalizer_for_language,
 )
 from fluency.features import SpecialistFeature
+from fluency.features.metadata import METADATA_CONTRACT_VERSION
 from fluency.features.wiktionary import (
     extract as extract_wiktionary_features,
     extract_surface_grammar,
@@ -637,12 +638,15 @@ class KaikkiSenseMenuAdapter:
 
         payload = {
             "menu_version": MENU_VERSION,
+            "metadata_contract": METADATA_CONTRACT_VERSION,
             "language": self.language_code,
             "gloss_language": self.gloss_language,
             "source_edition": self.source_edition,
             "source_adapter": ADAPTER_ID,
             "snapshot_id": snapshot_id,
             "snapshot_content_id": self.snapshot_content_id,
+            "language_policy_id": self.language_policy.get("policy_id"),
+            "language_policy_content_id": canonical_content_id(self.language_policy),
             "cards": menu_cards,
         }
         report = {

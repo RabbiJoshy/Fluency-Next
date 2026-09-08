@@ -11,6 +11,7 @@ from fluency.core.hashing import file_content_id, validate_content_id
 from fluency.core.identity import build_card_id
 from fluency.languages.french.surfaces import normalize_surface
 from fluency.release.app_compat import APP_CONTRACT_VERSION
+from fluency.features.metadata import METADATA_CONTRACT_VERSION
 
 
 ACTIVE_RELEASE_VERSION = "active-release/v1"
@@ -45,6 +46,12 @@ def _load_object(path: Path) -> dict[str, Any]:
 
 def validate_deck(deck: dict[str, Any]) -> None:
     _require(deck.get("deck_version") == SPEECH_DECK_VERSION, "unsupported deck version")
+    metadata_contract = deck.get("metadata_contract")
+    if metadata_contract is not None:
+        _require(
+            metadata_contract == METADATA_CONTRACT_VERSION,
+            "unsupported sense metadata contract",
+        )
     _require(isinstance(deck.get("release_id"), str), "deck release_id is required")
     language = deck.get("language")
     _require(isinstance(language, str) and _LANGUAGE_PATTERN.fullmatch(language) is not None, "deck language is invalid")
@@ -285,6 +292,18 @@ def validate_manifest(
     composition = _load_object(composition_path)
     validate_composition(composition)
     validate_deck(deck)
+    metadata_contract = manifest.get("metadata_contract")
+    if metadata_contract is not None:
+        _require(
+            metadata_contract == METADATA_CONTRACT_VERSION,
+            "unsupported manifest sense metadata contract",
+        )
+        _require(
+            deck.get("metadata_contract") == metadata_contract
+            and composition.get("metadata_contract") == metadata_contract
+            and app_contract.get("sense_metadata_contract") == metadata_contract,
+            "sense metadata contract disagrees across release files",
+        )
     _require(deck.get("release_id") == manifest.get("release_id"), "release IDs disagree")
     _require(composition.get("release_id") == manifest.get("release_id"), "composition and manifest release IDs disagree")
     for field in ("language", "locale", "mode", "created_at", "publication_status", "progress_namespace"):

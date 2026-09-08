@@ -81,6 +81,7 @@ def compose_release(workspace: Workspace, composition: dict[str, Any], deck: dic
         wsd = {"enabled": True, "status": "selected", "source_id": wsd_selection["source_id"]}
     app_contract = {
         "contract_version": APP_CONTRACT_VERSION,
+        "sense_metadata_contract": deck.get("metadata_contract"),
         "index_path": "app/vocabulary.index.json",
         "index_content_id": content_id(app_index_bytes),
         "examples_path": "app/vocabulary.examples.json",
@@ -95,6 +96,7 @@ def compose_release(workspace: Workspace, composition: dict[str, Any], deck: dic
         })
     manifest = {
         "manifest_version": RELEASE_MANIFEST_VERSION,
+        "metadata_contract": deck.get("metadata_contract"),
         "release_id": release_id,
         "language": composition["language"],
         "locale": composition["locale"],

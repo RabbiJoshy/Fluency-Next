@@ -247,6 +247,9 @@ class KaikkiSenseMenuTests(unittest.TestCase):
             cards, snapshot_id="fixture-2026-08"
         )
         self.assertEqual(menu["source_adapter"], ADAPTER_ID)
+        self.assertEqual(menu["metadata_contract"], "sense-metadata/v1")
+        self.assertEqual(menu["language_policy_id"], "fr-v1")
+        self.assertTrue(menu["language_policy_content_id"].startswith("sha256:"))
         self.assertTrue(menu["snapshot_content_id"].startswith("sha256:"))
         leaf = next(
             sense

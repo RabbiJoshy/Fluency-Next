@@ -19,6 +19,15 @@ class ReleaseValidationTests(unittest.TestCase):
     def test_valid_pilot_deck_passes(self) -> None:
         validate_deck(self.deck)
 
+    def test_a_declared_metadata_contract_must_be_current(self) -> None:
+        deck = deepcopy(self.deck)
+        deck["metadata_contract"] = "sense-metadata/obsolete"
+        with self.assertRaisesRegex(ReleaseValidationError, "metadata contract"):
+            validate_deck(deck)
+
+        deck["metadata_contract"] = "sense-metadata/v1"
+        validate_deck(deck)
+
     def test_unassigned_examples_are_valid_only_without_a_sense_claim(self) -> None:
         deck = deepcopy(self.deck)
         example = deck["cards"][0]["examples"][0]
