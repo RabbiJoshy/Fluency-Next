@@ -14032,11 +14032,10 @@
   .prov-conf--low .prov-conf-band { background: rgba(255,122,144,.16); color: #ff7a90; }
 }
 
-/* ── Fast-mode setup options + Extras ─────────────────────────────────────
-   The two sub-settings in Choose Level sit behind one disclosure so the
-   landing page reads as a choice rather than a settings panel. The row also
-   carries the Extras button, because "what did those settings take out?" is
-   the natural question to ask right next to them. */
+/* ── Fast mode row + page ─────────────────────────────────────────────────
+   One row under the level picker: the toggle, what it currently does, and the
+   way through to the page that explains it. Everything it bundles lives on
+   that page rather than competing with the level picker for attention. */
 .setup-options {
   margin-top: 10px;
   padding-top: 10px;
@@ -14045,70 +14044,101 @@
 .setup-options-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
-.setup-options-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  flex: 1 1 auto;
+.setup-options-bar .substep-title { flex: none; }
+.fast-mode-selector { flex: none; width: auto; min-width: 150px; }
+.fast-mode-summary {
+  flex: 1 1 140px;
   min-width: 0;
-  padding: 5px 2px;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-family: var(--font-emphasis);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  text-align: left;
-}
-.setup-options-toggle:hover { color: var(--text-secondary); }
-.setup-options-toggle:focus-visible {
-  outline: 2px solid var(--accent-green);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-.setup-options-chevron {
-  width: 13px;
-  height: 13px;
-  flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transition: transform 0.16s ease;
-}
-.setup-options-toggle[aria-expanded="true"] .setup-options-chevron { transform: rotate(90deg); }
-/* The summary is the whole point of collapsing: it states what the hidden
-   controls are currently set to, so nothing is concealed, only folded. */
-.setup-options-summary {
-  font-family: inherit;
-  font-size: 11.5px;
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--text-muted);
-  opacity: 0.85;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
+  opacity: 0.85;
 }
-.setup-options-toggle[aria-expanded="true"] .setup-options-summary { display: none; }
-.setup-options-body { padding-top: 2px; }
-/* The substep row already draws its own top border per substep; inside the
-   disclosure the first one would double up with the wrapper's. */
-.setup-options-body .substep-row > .setup-substep:first-child,
-.setup-options-body > .substep-row > .setup-substep {
-  border-top: 0;
-  margin-top: 4px;
-  padding-top: 0;
+.fast-mode-detail-btn {
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
 }
+.fast-mode-detail-btn:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+}
+.fast-mode-detail-btn:focus-visible,
+.fast-mode-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* The page. Reads as a document rather than a settings sheet, because the
+   point is to explain the trade before offering the controls. */
+.fast-mode-page-body {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+}
+.fast-mode-page-body h2 {
+  font-family: var(--font-emphasis);
+  font-size: 26px;
+  margin: 0 0 10px;
+  color: var(--text-primary, var(--text-secondary));
+}
+.fast-mode-lede {
+  margin: 0 0 28px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.fast-mode-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.fast-mode-controls .setup-substep {
+  margin-top: 0;
+  padding-top: 18px;
+}
+.fast-mode-explainer {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  opacity: 0.9;
+}
+.fast-mode-note {
+  margin: 26px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+.fast-mode-close { position: absolute; top: 18px; right: 20px; z-index: 1; }
+
+/* A page, not a dialogue. The explanation is the point, so it gets the whole
+   screen rather than a card floating over the setup panel the learner is
+   trying to understand. `.fullscreen-modal` caps at 600px for the other
+   walkthroughs; this overrides that deliberately. */
+.fast-mode-page {
+  max-width: none;
+  width: 100%;
+  min-height: 100%;
+  max-height: none;
+  border-radius: 0;
+  margin: 0;
+  background: var(--bg-primary, var(--bg-card));
+  overflow-y: auto;
+}
+#fastModeModal.modal { padding: 0; align-items: stretch; justify-content: stretch; }
 
 .extras-btn {
   display: inline-flex;
@@ -14215,12 +14245,32 @@
   border-color: var(--border-light);
 }
 .known-language-btn.selected {
-  background: var(--accent-green);
-  border-color: var(--accent-green);
-  color: #06231d;
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary-text);
 }
 .known-language-btn:focus-visible {
   outline: 2px solid var(--accent-green);
   outline-offset: 2px;
 }
 .known-languages-note { display: block; opacity: 0.75; }
+
+/* Fast mode's two states borrow the toggle look used by every other on/off
+   pair in setup. When the parts are set individually neither reads as
+   selected, and the summary beside them says so. */
+.fast-mode-btn {
+  flex: 1;
+  padding: 7px 14px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.fast-mode-btn.selected {
+  background: var(--accent-primary);
+  color: var(--accent-primary-text);
+}
+.fast-mode-btn:not(.selected):hover { color: var(--text-secondary); }

@@ -528,7 +528,9 @@ class KnownLanguageCognateSurfaceTests(unittest.TestCase):
     def test_the_setup_panel_carries_the_known_language_picker(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
         for required_id in (
-            "setupOptions",          # fast-mode disclosure the picker lives in
+            "setupOptions",          # the Fast mode row under the level picker
+            "fastModeSelector",
+            "fastModeModal",         # the full page behind it
             "knownLanguagesContainer",
             "knownLanguagesSelector",
             "extrasModal",           # what the exclusions did, kept browsable
@@ -539,7 +541,7 @@ class KnownLanguageCognateSurfaceTests(unittest.TestCase):
     def test_the_runtime_modules_ship_and_are_precached(self) -> None:
         worker = (APP_ROOT / "service-worker.js").read_text(encoding="utf-8")
         main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
-        for filename in ("cognates.js", "extras.js", "setup-options.js"):
+        for filename in ("cognates.js", "extras.js", "fast-mode.js"):
             self.assertTrue((APP_ROOT / "js" / filename).is_file(), filename)
             # A module missing from the precache list is invisible offline,
             # which is the failure this pins.
@@ -560,3 +562,37 @@ class KnownLanguageCognateSurfaceTests(unittest.TestCase):
     def test_the_prepared_vocabulary_cache_notices_a_selection_change(self) -> None:
         ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
         self.assertIn("activeKnownLanguages?.() || []", ui)
+
+
+class FastModeSurfaceTests(unittest.TestCase):
+    """Fast mode is one row under the level picker, with everything it bundles
+    on a page of its own."""
+
+    def setUp(self) -> None:
+        self.html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        self.script = (APP_ROOT / "js" / "fast-mode.js").read_text(encoding="utf-8")
+
+    def test_the_individual_controls_live_on_the_page_not_the_setup_screen(self) -> None:
+        # The toggles a learner cannot judge before seeing a card belong behind
+        # the explanation, not beside the level picker.
+        page_start = self.html.index('id="fastModeModal"')
+        for control in ("lemmaToggleContainer", "cognateToggleContainer", "knownLanguagesContainer"):
+            self.assertGreater(
+                self.html.index(f'id="{control}"'), page_start,
+                f"{control} must sit inside the Fast mode page",
+            )
+
+    def test_turning_fast_mode_on_drives_the_real_controls(self) -> None:
+        # Setting the state directly would be a second implementation of what
+        # each toggle means, free to drift from ui.js's.
+        self.assertIn(".lemma-toggle-btn[data-lemma=", self.script)
+        self.assertIn(".cognate-toggle-btn[data-cognate=", self.script)
+        self.assertIn("?.click();", self.script)
+
+    def test_a_hand_set_combination_reports_itself_as_custom(self) -> None:
+        self.assertIn("return 'custom'", self.script)
+
+    def test_the_summary_only_describes_parts_the_release_supports(self) -> None:
+        # Czech has no lemma mapping; a fixed summary claimed forms were merged.
+        self.assertIn("if (lemmaAvailable()) parts.push(", self.script)
+        self.assertIn("if (cognateAvailable()) {", self.script)

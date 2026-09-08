@@ -206,7 +206,7 @@ function toggleKnownLanguage(code) {
     // now stale. These are the same refreshes a cognate-toggle click performs.
     globalThis.updateExclusionBars?.();
     globalThis.updateLevelSelector?.();
-    globalThis.refreshSetupOptions?.();
+    globalThis.refreshFastMode?.();
 }
 
 globalThis.isCognateKnown = isCognateKnown;

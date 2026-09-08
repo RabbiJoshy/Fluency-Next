@@ -494,61 +494,25 @@
                      toggle so it doesn't compete with the help button on
                      the right (and so the headers stay tight when both
                      substeps are visible side-by-side). -->
-                <!-- Fast mode: the two sub-settings collapse behind one
-                     disclosure so the landing page states a choice rather than
-                     presenting a settings panel. setup-options.js owns the
-                     expanded state and the summary line; the containers inside
-                     keep their existing per-language visibility logic. -->
+                <!-- Fast mode is one decision: fewer cards, by merging word
+                     forms and skipping words you already recognise. The parts it
+                     bundles (Merge Lemmas, Cognates, the languages you read) are
+                     real choices but not ones a learner can make before seeing a
+                     card, so they live on the Fast mode page rather than here.
+                     Shown in both Speech and Lyrics; hidden only when the active
+                     release supports neither part. -->
                 <div id="setupOptions" class="setup-options" style="display: none;">
                     <div class="setup-options-bar">
-                        <button type="button" id="setupOptionsToggle" class="setup-options-toggle"
-                                aria-expanded="false" aria-controls="setupOptionsBody">
-                            <svg class="setup-options-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
-                            <span>Options</span>
-                            <span id="setupOptionsSummary" class="setup-options-summary"></span>
+                        <span class="substep-title">Fast mode</span>
+                        <div id="fastModeSelector" class="group-size-selector fast-mode-selector">
+                            <button type="button" class="fast-mode-btn" data-fast="off">Off</button>
+                            <button type="button" class="fast-mode-btn" data-fast="on">On</button>
+                        </div>
+                        <span id="fastModeSummary" class="level-info-line fast-mode-summary"></span>
+                        <button type="button" id="fastModeDetailBtn" class="fast-mode-detail-btn">
+                            How it works
                         </button>
                         <button type="button" id="extrasBtn" class="extras-btn" style="display: none;"></button>
-                    </div>
-                    <div id="setupOptionsBody" class="setup-options-body" hidden>
-                        <div class="substep-row">
-                            <div id="lemmaToggleContainer" class="setup-substep" style="display: none;">
-                                <div class="substep-header">
-                                    <span class="substep-title">Merge Lemmas</span>
-                                </div>
-                                <div id="lemmaToggleSelector" class="group-size-selector">
-                                    <button class="lemma-toggle-btn selected" data-lemma="off" data-short="Off" data-full="Off">Off</button>
-                                    <button class="lemma-toggle-btn" data-lemma="on" data-short="On" data-full="On">On</button>
-                                </div>
-                                <span id="lemmaInfoLine" class="level-info-line substep-info-below" style="display: none;"></span>
-                            </div>
-
-                            <!-- Sub-setting: Cognate exclusion — same rationale. -->
-                            <div id="cognateToggleContainer" class="setup-substep" style="display: none;">
-                                <div class="substep-header">
-                                    <span class="substep-title">Cognates</span>
-                                </div>
-                                <div id="cognateToggleSelector" class="group-size-selector">
-                                    <button class="cognate-toggle-btn" data-cognate="exclude" data-short="Exclude" data-full="Exclude">Exclude</button>
-                                    <button class="cognate-toggle-btn selected" data-cognate="include" data-short="Include" data-full="Include">Include</button>
-                                </div>
-                                <span id="cognateInfoLine" class="level-info-line substep-info-below" style="display: none;"></span>
-                            </div>
-                        </div>
-
-                        <!-- Which languages the learner already reads. Cognate
-                             exclusion scores each deck word against every one of
-                             them and takes the best, so a Polish speaker learning
-                             Czech loses the words Polish already gives them.
-                             Rendered by cognates.js from the scores the release
-                             actually shipped; hidden when only English is
-                             available, since one language is not a choice. -->
-                        <div id="knownLanguagesContainer" class="setup-substep" style="display: none;">
-                            <div class="substep-header">
-                                <span class="substep-title">Languages you read</span>
-                            </div>
-                            <div id="knownLanguagesSelector" class="group-size-selector known-languages-selector"></div>
-                            <span class="level-info-line substep-info-below known-languages-note">Cognates are excluded when they resemble any language you select.</span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -888,6 +852,62 @@
                         <span>Redo set</span>
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fast mode page — the whole explanation plus the individual controls,
+         so "what did this do to my deck?" is answerable in one place instead of
+         being split between a toggle and a help tooltip. -->
+    <div id="fastModeModal" class="modal hidden">
+        <div class="modal-content fullscreen-modal fast-mode-page">
+            <button class="modal-close fast-mode-close" id="closeFastModeModal" aria-label="Close">✕</button>
+            <div class="fast-mode-page-body">
+                <h2>Fast mode</h2>
+                <p class="fast-mode-lede">Fewer cards for the same coverage. Fast mode merges the
+                different forms of a word onto one card, and sets aside words you can already
+                recognise from a language you read.</p>
+
+                <div class="fast-mode-controls">
+                    <div id="lemmaToggleContainer" class="setup-substep" style="display: none;">
+                        <div class="substep-header">
+                            <span class="substep-title">Merge Lemmas</span>
+                        </div>
+                        <p class="fast-mode-explainer">One card per dictionary word. "run", "runs",
+                        "ran" and "running" share a card, and their examples pool together.</p>
+                        <div id="lemmaToggleSelector" class="group-size-selector">
+                            <button class="lemma-toggle-btn selected" data-lemma="off" data-short="Off" data-full="Off">Off</button>
+                            <button class="lemma-toggle-btn" data-lemma="on" data-short="On" data-full="On">On</button>
+                        </div>
+                        <span id="lemmaInfoLine" class="level-info-line substep-info-below" style="display: none;"></span>
+                    </div>
+
+                    <div id="cognateToggleContainer" class="setup-substep" style="display: none;">
+                        <div class="substep-header">
+                            <span class="substep-title">Cognates</span>
+                        </div>
+                        <p class="fast-mode-explainer">Words close enough to a language you already
+                        read that you would recognise them without study.</p>
+                        <div id="cognateToggleSelector" class="group-size-selector">
+                            <button class="cognate-toggle-btn" data-cognate="exclude" data-short="Exclude" data-full="Exclude">Exclude</button>
+                            <button class="cognate-toggle-btn selected" data-cognate="include" data-short="Include" data-full="Include">Include</button>
+                        </div>
+                        <span id="cognateInfoLine" class="level-info-line substep-info-below" style="display: none;"></span>
+                    </div>
+
+                    <div id="knownLanguagesContainer" class="setup-substep" style="display: none;">
+                        <div class="substep-header">
+                            <span class="substep-title">Languages you read</span>
+                        </div>
+                        <p class="fast-mode-explainer">Each language is judged on its own: a word is
+                        set aside if any language you read already gives it to you.</p>
+                        <div id="knownLanguagesSelector" class="group-size-selector known-languages-selector"></div>
+                    </div>
+                </div>
+
+                <p class="fast-mode-note" id="fastModeAvailability"></p>
+                <p class="fast-mode-note">Nothing is lost either way. Words fast mode sets aside stay
+                available under <strong>Set aside</strong> on the setup screen.</p>
             </div>
         </div>
     </div>
