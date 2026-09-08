@@ -76,13 +76,16 @@ class CognateLayerStagingTests(unittest.TestCase):
         )
         self.assertNotIn('f"{release_id}.json"', self.source)
 
-    def test_absence_turns_the_capability_off_rather_than_being_inferred(self) -> None:
+    def test_absence_of_a_mapping_leaves_no_path_behind(self) -> None:
         self.assertIn('language_config["cognatesPath"] = None', self.source)
-        self.assertIn('"cognateFilter"] = False', self.source)
 
-    def test_a_present_layer_is_copied_and_declared(self) -> None:
+    def test_a_present_mapping_is_copied_and_pointed_at(self) -> None:
         self.assertIn('cognate_relative = f"cognates/{language}/cognates.json"', self.source)
-        self.assertIn('"cognateFilter"] = True', self.source)
+        self.assertIn('language_config["cognatesPath"] = cognate_relative', self.source)
+
+    def test_the_capability_is_not_decided_by_the_mapping_alone(self) -> None:
+        # A language can have cognate data without a per-language mapping.
+        self.assertIn("has_mapping\n                or _carries_cognate_signal(index_rows)", self.source)
 
 
 class ProgressSyncBackendTests(unittest.TestCase):
@@ -133,3 +136,23 @@ class MergeLemmaCapabilityTests(unittest.TestCase):
         # current pipeline builds already carries.
         self.assertIn('meaning.get("headword")', self.source)
         self.assertIn('["mergeLemmas"] = merges_lemmas', self.source)
+
+
+class CognateCapabilitySourcesTests(unittest.TestCase):
+    """Deriving the capability from the new mapping alone switched off a filter
+    that had been working in Lyrics: Spanish carries is_transparent_cognate on
+    758 artist entries, which the app reads as a full cognate score."""
+
+    def setUp(self) -> None:
+        self.source = (
+            Path(__file__).resolve().parents[2] / "src/fluency/deployment/static.py"
+        ).read_text(encoding="utf-8")
+
+    def test_every_signal_the_app_reads_is_considered(self) -> None:
+        for signal in ("cognate_score", "cognet_cognate", "is_transparent_cognate"):
+            self.assertIn(signal, self.source, signal)
+
+    def test_artist_vocabularies_are_searched_too(self) -> None:
+        self.assertIn("_lyrics_carries_cognate_signal(lyrics_release, language)", self.source)
+        # From the workspace release: the site copy does not exist yet here.
+        self.assertIn('artists = lyrics_release / "app/Artists" / language', self.source)

@@ -39,6 +39,39 @@ def _object(path: Path) -> dict[str, Any]:
     return value
 
 
+# Everything the app treats as evidence that a word is a transparent cognate.
+# Kept beside the deployment check so the two cannot answer differently.
+def _carries_cognate_signal(rows: list[dict[str, Any]]) -> bool:
+    return any(
+        float(row.get("cognate_score") or 0) > 0
+        or row.get("cognet_cognate")
+        or row.get("is_transparent_cognate")
+        for row in rows
+    )
+
+
+def _lyrics_carries_cognate_signal(lyrics_release: Path, language: str) -> bool:
+    """Artist vocabularies are the other place cognate flags live.
+
+    Read from the workspace release rather than the site: the lyrics tree is
+    copied after the speech languages are configured, so the site copy does not
+    exist yet at this point.
+    """
+
+    artists = lyrics_release / "app/Artists" / language
+    if not artists.is_dir():
+        return False
+    for master in artists.glob("*/vocabulary_master.json"):
+        try:
+            payload = json.loads(master.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        rows = list(payload.values()) if isinstance(payload, dict) else payload
+        if _carries_cognate_signal([row for row in rows if isinstance(row, dict)]):
+            return True
+    return False
+
+
 def _object_list(path: Path) -> list[dict[str, Any]]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -216,16 +249,26 @@ def build_static_deployment(
             language_config.setdefault("capabilities", {})["mergeLemmas"] = merges_lemmas
 
             cognate_source = workspace.root / "cognates" / language / "cognates.json"
-            if cognate_source.is_file():
+            has_mapping = cognate_source.is_file()
+            if has_mapping:
                 cognate_relative = f"cognates/{language}/cognates.json"
                 cognate_target = site / cognate_relative
                 cognate_target.parent.mkdir(parents=True, exist_ok=True)
                 cognate_target.write_bytes(cognate_source.read_bytes())
                 language_config["cognatesPath"] = cognate_relative
-                language_config.setdefault("capabilities", {})["cognateFilter"] = True
             else:
                 language_config["cognatesPath"] = None
-                language_config.setdefault("capabilities", {})["cognateFilter"] = False
+            # The per-language mapping is not the only source of cognate data.
+            # Spanish carries `is_transparent_cognate` on 758 entries of its
+            # artist master, which the app reads as a full score — so deriving
+            # the capability from the mapping alone switched off a filter that
+            # had been working in Lyrics for a long time. Ask every source the
+            # app itself would.
+            language_config.setdefault("capabilities", {})["cognateFilter"] = (
+                has_mapping
+                or _carries_cognate_signal(index_rows)
+                or _lyrics_carries_cognate_signal(lyrics_release, language)
+            )
             files = _release_files(target, base)
             offline_sources.append({
                 "id": f"speech-{language}",
