@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v333"
+EXPECTED_CACHE_NAME = "flashcards-v334"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -154,7 +154,25 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn('class="pos-section-head"', walkthrough)
         self.assertIn('class="meaning-row-check"', walkthrough)
         self.assertIn('class="compact-example-counter"', walkthrough)
+        self.assertIn('class="compact-example-counter-label"', walkthrough)
         self.assertNotIn("font-family: var(--font-data); font-size: 14px", walkthrough)
+
+    def test_speech_cards_keep_dictionary_examples_separate_from_usage_share(self) -> None:
+        vocab = (APP_ROOT / "js" / "vocab.js").read_text(encoding="utf-8")
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        self.assertIn("examples: mergeReferenceExamples(m.examples || [], m)", vocab)
+        self.assertGreaterEqual(vocab.count("source_mode: 'reference'"), 2)
+        self.assertIn("never enter the frequency calculation above", vocab)
+        self.assertIn("'Wiktionary example'", flashcards)
+        self.assertIn("'SpanishDict example'", flashcards)
+        self.assertIn('compact-example-counter-label', flashcards)
+
+    def test_only_the_active_meaning_group_exposes_subsenses(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        self.assertIn(
+            "card._expandedPos = new Set([lemmaPosGroupKeyForMeaning(currentMeaning)])",
+            flashcards,
+        )
 
     def test_cognate_setting_uses_positive_inclusion_copy(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
@@ -330,7 +348,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260908a", worker)
+        self.assertIn("/js/main.js?v=20260908b", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:

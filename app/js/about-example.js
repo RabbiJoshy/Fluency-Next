@@ -511,7 +511,7 @@ function renderMeaningRows(card, selectedIdx) {
 // strip degrades to a right-aligned source label, exactly as on a live card.
 function renderCredit(card, meaning, example, exampleIdx) {
     const counter = meaning.examples.length > 1
-        ? `<span class="example-counter-group"><span class="compact-example-counter" aria-label="example ${exampleIdx + 1} of ${meaning.examples.length}">${exampleIdx + 1}⁄${meaning.examples.length}</span></span>`
+        ? `<span class="example-counter-group"><span class="compact-example-counter" aria-label="example ${exampleIdx + 1} of ${meaning.examples.length}"><span class="compact-example-counter-label" aria-hidden="true">ex</span>${exampleIdx + 1}⁄${meaning.examples.length}</span></span>`
         : '';
 
     if (example.trackId) {
