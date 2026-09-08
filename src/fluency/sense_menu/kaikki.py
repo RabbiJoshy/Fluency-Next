@@ -17,7 +17,10 @@ from fluency.languages.surfaces import (
     typography_canonicalizer_for_language,
 )
 from fluency.features import SpecialistFeature
-from fluency.features.wiktionary import extract as extract_wiktionary_features
+from fluency.features.wiktionary import (
+    extract as extract_wiktionary_features,
+    extract_surface_grammar,
+)
 from fluency.features.wiktionary_gloss import project_gloss
 from fluency.menus import MenuAnalysis, SenseLeaf, build_analysis_id
 
@@ -532,6 +535,9 @@ class KaikkiSenseMenuAdapter:
             analyses: list[MenuAnalysis] = []
             for (headword, part_of_speech), row_senses in sorted(grouped.items()):
                 source_key = f"{self.language_code}:{headword}:{part_of_speech}"
+                analysis_grammar = extract_surface_grammar(
+                    surface_grammar.get(surface, {}).get(headword, [])
+                )
                 provider_id_counts: Counter[str] = Counter(
                     sense["id"]
                     for _, sense in row_senses
@@ -562,7 +568,10 @@ class KaikkiSenseMenuAdapter:
                         definition=_context(sense),
                         source_reference=source_reference,
                         provider_metadata=_metadata(row, sense, self.language_policy),
-                        specialist_features=_specialist_features(sense, self.language_policy),
+                        specialist_features=tuple(dict.fromkeys((
+                            *_specialist_features(sense, self.language_policy),
+                            *analysis_grammar,
+                        ))),
                     )
                     previous = leaves.get(sense_id)
                     if previous is not None and previous != leaf:

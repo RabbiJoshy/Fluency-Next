@@ -38,3 +38,28 @@ class WiktionaryGlossProjectionTests(unittest.TestCase):
         self.assertEqual(project_gloss(text).display_text, text)
         self.assertEqual(project_gloss(text).specialist_features, ())
         self.assertEqual(project_gloss(text).cross_references, ())
+
+    def test_functional_tail_becomes_typed_metadata(self) -> None:
+        projection = project_gloss("from (used to indicate origin)")
+        self.assertEqual(projection.display_text, "from")
+        self.assertEqual(
+            [(item.family, item.kind, item.value) for item in projection.specialist_features],
+            [("functional", "usage_note", "used to indicate origin")],
+        )
+
+    def test_multiple_known_tails_are_projected_in_source_order(self) -> None:
+        projection = project_gloss(
+            "how (preceding adjectives) (indicates surprise or delight)"
+        )
+        self.assertEqual(projection.display_text, "how")
+        self.assertEqual(
+            [(item.family, item.value) for item in projection.specialist_features],
+            [
+                ("construction", "preceding adjectives"),
+                ("functional", "indicates surprise or delight"),
+            ],
+        )
+
+    def test_unrecognized_outer_tail_keeps_the_whole_gloss(self) -> None:
+        text = "bank (used as a name for a financial institution)"
+        self.assertEqual(project_gloss(text).display_text, text)

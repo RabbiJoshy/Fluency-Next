@@ -1,8 +1,8 @@
 """Conservative projections for metadata embedded inside Wiktionary glosses.
 
-Most trailing parentheses explain meaning and must remain visible.  This module
-recognizes only the two object-pronoun templates observed in the source data;
-everything else passes through byte-for-byte.
+Most trailing parentheses explain meaning and must remain visible. This module
+only removes notes whose wording identifies them as grammar or usage metadata;
+semantic parentheticals continue to pass through byte-for-byte.
 """
 
 from __future__ import annotations
@@ -39,9 +39,47 @@ _OBJECT_PRONOUN_FORMS = re.compile(
     re.IGNORECASE,
 )
 
+_FUNCTIONAL_NOTE = re.compile(
+    r"^(?:used to |indicat(?:e|es|ing) |express(?:es|ing) |denot(?:e|es|ing) "
+    r"|mark(?:s|ing) |refer(?:s|ring) to |show(?:s|ing) )",
+    re.IGNORECASE,
+)
+_CONSTRUCTION_NOTE = re.compile(
+    r"^(?:after |before |connecting |followed by |only (?:in|with) |preceding "
+    r"|takes? |used (?:before|in|with) |with )",
+    re.IGNORECASE,
+)
+
+
+def _trailing_parentheticals(text: str) -> tuple[str, tuple[str, ...]]:
+    """Split balanced trailing parentheticals without touching inner brackets."""
+
+    remaining = text.rstrip()
+    notes: list[str] = []
+    while remaining.endswith(")"):
+        depth = 0
+        opening = None
+        for index in range(len(remaining) - 1, -1, -1):
+            character = remaining[index]
+            if character == ")":
+                depth += 1
+            elif character == "(":
+                depth -= 1
+                if depth == 0:
+                    opening = index
+                    break
+        if opening is None or opening == 0 or not remaining[opening - 1].isspace():
+            break
+        note = remaining[opening + 1:-1].strip()
+        if not note or not (_FUNCTIONAL_NOTE.match(note) or _CONSTRUCTION_NOTE.match(note)):
+            break
+        notes.insert(0, note)
+        remaining = remaining[:opening].rstrip()
+    return remaining, tuple(notes)
+
 
 def project_gloss(text: str) -> GlossProjection:
-    """Separate only known grammatical routing notes from a display gloss."""
+    """Separate clearly marked grammar/usage notes from a display gloss."""
 
     for pattern in (_OBJECT_PRONOUN_SEE, _OBJECT_PRONOUN_FORMS):
         match = pattern.fullmatch(text)
@@ -62,4 +100,18 @@ def project_gloss(text: str) -> GlossProjection:
                 GlossReference("after_prepositions", match.group("preposition")),
             ),
         )
-    return GlossProjection(display_text=text)
+    display_text, notes = _trailing_parentheticals(text)
+    if not notes:
+        return GlossProjection(display_text=text)
+    return GlossProjection(
+        display_text=display_text,
+        specialist_features=tuple(
+            SpecialistFeature(
+                "functional" if _FUNCTIONAL_NOTE.match(note) else "construction",
+                "usage_note" if _FUNCTIONAL_NOTE.match(note) else "gloss_phrase",
+                note,
+                note,
+            )
+            for note in notes
+        ),
+    )

@@ -33,20 +33,79 @@ _WITH_HEAD = re.compile(r"^\[with\s+(?P<word>[^\W\d_]+)", re.UNICODE)
 
 # Fallbacks used when a language policy declares no vocabulary of its own.
 DEFAULT_REGISTER_TAGS = frozenset(
-    {"archaic", "colloquial", "dated", "formal", "informal", "obsolete",
-     "offensive", "poetic", "slang", "vulgar", "euphemistic"}
+    {"archaic", "colloquial", "dated", "derogatory", "dialectal", "euphemistic",
+     "familiar", "figuratively", "formal", "humorous", "informal", "ironic",
+     "literary", "mildly", "obsolete", "offensive", "pejorative", "poetic",
+     "rare", "regional", "slang", "vulgar"}
 )
 DEFAULT_CONSTRUCTION_TAGS = frozenset(
-    {"auxiliary", "copulative", "ditransitive", "impersonal", "intransitive",
-     "pronominal", "reflexive", "transitive"}
+    {"ambitransitive", "auxiliary", "copulative", "ditransitive", "impersonal",
+     "intransitive", "pronominal", "transitive"}
+)
+GRAMMAR_TAG_VALUES = {
+    "first-person": "person=1",
+    "second-person": "person=2",
+    "third-person": "person=3",
+    "singular": "number=singular",
+    "plural": "number=plural",
+    "dual": "number=dual",
+    "plural-only": "number=plural-only",
+    "in-plural": "number=plural-only",
+    "masculine": "gender=masculine",
+    "feminine": "gender=feminine",
+    "neuter": "gender=neuter",
+    "common-gender": "gender=common",
+    "animate": "animacy=animate",
+    "inanimate": "animacy=inanimate",
+    "nominative": "case=nominative",
+    "accusative": "case=accusative",
+    "dative": "case=dative",
+    "genitive": "case=genitive",
+    "instrumental": "case=instrumental",
+    "locative": "case=locative",
+    "vocative": "case=vocative",
+    "imperative": "mood=imperative",
+    "indicative": "mood=indicative",
+    "subjunctive": "mood=subjunctive",
+    "conditional": "mood=conditional",
+    "present": "tense=present",
+    "past": "tense=past",
+    "future": "tense=future",
+    "imperfect": "tense=imperfect",
+    "pluperfect": "tense=pluperfect",
+    "perfective": "aspect=perfective",
+    "imperfective": "aspect=imperfective",
+    "comparative": "degree=comparative",
+    "superlative": "degree=superlative",
+    "not-comparable": "degree=not-comparable",
+    "indeclinable": "declension=none",
+    "possessive": "possessive=true",
+    "reflexive": "reflexive=true",
+}
+FUNCTIONAL = re.compile(
+    r"^used to (?:denote|express|form|indicate|introduce|mark|refer to|show)\b",
+    re.IGNORECASE,
 )
 
 
 def _vocabulary(policy: Mapping[str, Any] | None, key: str, fallback: frozenset[str]):
     declared = (policy or {}).get(key)
-    if isinstance(declared, list) and declared:
-        return {str(value) for value in declared}
-    return set(fallback)
+    # Kaikki's general labels are shared by languages. A language policy adds
+    # local vocabulary; it must not accidentally switch off the shared set by
+    # declaring only the labels observed in one early audit.
+    values = set(fallback)
+    if isinstance(declared, list):
+        values.update(str(value) for value in declared if str(value).strip())
+    return values
+
+
+def _grammar_value(tag: str) -> str | None:
+    return GRAMMAR_TAG_VALUES.get(tag.casefold())
+
+
+def _is_construction_tag(tag: str, declared: set[str]) -> bool:
+    lowered = tag.casefold()
+    return lowered in declared or lowered.startswith("with-")
 
 
 def _split_parenthetical(sense: Mapping[str, Any]) -> list[str]:
@@ -62,6 +121,16 @@ def _split_parenthetical(sense: Mapping[str, Any]) -> list[str]:
         if parenthetical:
             return split_top_level_commas(parenthetical)
     return []
+
+
+def extract_surface_grammar(tags: Sequence[str]) -> tuple[SpecialistFeature, ...]:
+    """Normalize Wiktionary form-of tags into provider-neutral grammar marks."""
+
+    return tuple(
+        SpecialistFeature("grammar", "surface_mark", value, tag)
+        for tag in sorted(set(tags))
+        if (value := _grammar_value(tag)) is not None
+    )
 
 
 def extract(
@@ -101,7 +170,9 @@ def extract(
     for tag in sorted(tags):
         if tag in register:
             add("register", "usage_tag", tag)
-        elif tag in construction:
+        elif (grammar_value := _grammar_value(tag)) is not None:
+            add("grammar", "sense_mark", grammar_value)
+        elif _is_construction_tag(tag, construction):
             add("construction", "grammar_tag", tag)
 
     # The companion note: SpanishDict writes this as prose in `context`,
@@ -136,11 +207,21 @@ def extract(
             continue
         elif lowered in register:
             add("register", "gloss_note", part)
-        elif lowered in construction:
+        elif (grammar_value := _grammar_value(lowered)) is not None:
+            add("grammar", "sense_mark", grammar_value)
+        elif _is_construction_tag(lowered, construction):
             add("construction", "gloss_note", part)
         else:
             # Construction and frame notes written as prose. They are absent
             # from `tags` entirely, so nothing else in the pipeline carries them.
             add("construction", "gloss_phrase", part)
+
+    for field in ("glosses", "raw_glosses"):
+        values = sense.get(field)
+        if not isinstance(values, Sequence) or isinstance(values, (str, bytes)):
+            continue
+        for value in values:
+            if isinstance(value, str) and FUNCTIONAL.match(value.strip()) is not None:
+                add("functional", "usage_note", value.strip())
 
     return tuple(features)

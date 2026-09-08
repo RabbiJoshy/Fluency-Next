@@ -67,19 +67,9 @@
     }
   },
   "region_tags": [
-    "Angola",
-    "Brazil",
-    "Brazilian",
-    "Cape-Verde",
-    "European",
-    "Galicia",
-    "Guinea-Bissau",
-    "Macau",
-    "Mozambique",
-    "Portugal",
-    "São-Tomé",
-    "Timor-Leste"
+    "Moravia"
   ],
+  "region_tags_note": "Language-specific Czech labels observed in the pinned Kaikki source; shared register and grammar tags are supplied by the provider-neutral extractor.",
   "register_tags": [
     "archaic",
     "colloquial",

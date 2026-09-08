@@ -6,6 +6,8 @@ flat tag list. These are derived so the two providers publish one shape.
 """
 
 import unittest
+import json
+from pathlib import Path
 
 from fluency.sense_menu.kaikki import _context, _regions
 
@@ -74,6 +76,14 @@ class RegionDerivationTests(unittest.TestCase):
 
         self.assertEqual(_regions({"tags": ["Brazil"]}, {"region_tags": []}), [])
         self.assertEqual(_regions({"tags": ["Brazil"]}, {}), [])
+
+    def test_czech_policy_does_not_inherit_portuguese_regions(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        policy = json.loads(
+            (root / "config/sense_menu/languages/cs-v1.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(policy["region_tags"], ["Moravia"])
+        self.assertEqual(_regions({"tags": ["Brazil", "Moravia"]}, policy), ["Moravia"])
 
 
 if __name__ == "__main__":

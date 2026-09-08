@@ -10,8 +10,12 @@ from typing import Any, Literal, Mapping
 # prose ("used with \"de\""), Wiktionary as a structured +obj template. Unlike the
 # other families it is checkable rather than comparable: a gate can ask whether
 # the word is present, instead of scoring a similarity.
-FEATURE_FAMILIES = frozenset({"domain", "register", "construction", "companion"})
-FeatureFamily = Literal["domain", "register", "construction", "companion"]
+FEATURE_FAMILIES = frozenset(
+    {"domain", "register", "construction", "companion", "grammar", "functional"}
+)
+FeatureFamily = Literal[
+    "domain", "register", "construction", "companion", "grammar", "functional"
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,7 +64,10 @@ class SpecialistFeature:
 # be searched for.
 GRAMMATICAL_FORMS = frozenset(
     {"a", "an", "the", "infinitive", "gerund", "participle", "subjunctive",
-     "adjective", "adverb", "noun", "pronoun", "clause",
+     "adjective", "adjectives", "adverb", "adverbs", "noun", "nouns",
+     "pronoun", "pronouns", "verb", "verbs", "clause", "clauses",
+     "quantity", "quantities", "number", "numbers", "date", "dates",
+     "negative", "negatives", "first",
      # "[with direct object]", "[with indirect object]"
      "direct", "indirect", "object", "reflexive"}
 )

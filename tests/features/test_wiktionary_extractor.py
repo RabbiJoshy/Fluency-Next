@@ -2,7 +2,7 @@
 
 import unittest
 
-from fluency.features.wiktionary import extract
+from fluency.features.wiktionary import extract, extract_surface_grammar
 
 
 PT = {
@@ -17,6 +17,18 @@ def families(feats):
 
 
 class WiktionaryExtractorTests(unittest.TestCase):
+    def test_surface_grammar_is_language_neutral_and_typed(self) -> None:
+        out = extract_surface_grammar([
+            "feminine", "singular", "nominative", "perfective", "future"
+        ])
+        self.assertEqual(families(out), [
+            ("grammar", "surface_mark", "gender=feminine"),
+            ("grammar", "surface_mark", "tense=future"),
+            ("grammar", "surface_mark", "case=nominative"),
+            ("grammar", "surface_mark", "aspect=perfective"),
+            ("grammar", "surface_mark", "number=singular"),
+        ])
+
     def test_topics_become_domain_features(self) -> None:
         out = extract({"topics": ["finance"]}, policy=PT)
         self.assertEqual(families(out), [("domain", "topic", "finance")])
@@ -88,6 +100,19 @@ class WiktionaryExtractorTests(unittest.TestCase):
         self.assertEqual(families(out), [
             ("register", "usage_tag", "archaic"),
             ("grammar", "sense_mark", "reflexive=true"),
+        ])
+
+    def test_shared_tags_survive_a_language_specific_policy(self) -> None:
+        out = extract(
+            {},
+            tags=["literary", "with-dative", "perfective", "feminine"],
+            policy={"register_tags": ["local-only"], "construction_tags": []},
+        )
+        self.assertEqual(families(out), [
+            ("grammar", "sense_mark", "gender=feminine"),
+            ("register", "usage_tag", "literary"),
+            ("grammar", "sense_mark", "aspect=perfective"),
+            ("construction", "grammar_tag", "with-dative"),
         ])
 
     def test_functional_gloss_is_not_misfiled_as_construction(self) -> None:
