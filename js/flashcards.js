@@ -1324,7 +1324,10 @@ function dedupeExamples(examples) {
 function compactCounterHTML(current, total, label = 'example') {
     if (total < 2) return '';
     const text = `${current + 1}\u2044${total}`;
-    return `<span class="compact-example-counter" aria-label="${escapeCardText(`${label} ${current + 1} of ${total}`)}">${text}</span>`;
+    const visibleLabel = label === 'example'
+        ? '<span class="compact-example-counter-label" aria-hidden="true">ex</span>'
+        : '';
+    return `<span class="compact-example-counter" aria-label="${escapeCardText(`${label} ${current + 1} of ${total}`)}">${visibleLabel}${text}</span>`;
 }
 
 function initializeApp() {

@@ -4388,6 +4388,15 @@
             font-variant-numeric: tabular-nums;
         }
 
+        .compact-example-counter-label {
+            margin-right: 3px;
+            color: var(--text-subtle);
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
         .example-autoplay-fallback {
             display: flex;
             justify-content: center;
