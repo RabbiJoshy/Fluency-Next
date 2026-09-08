@@ -195,10 +195,10 @@ const ABOUT_EXAMPLE_DECKS = [
                     },
                     {
                         side: 'right',
-                        anchor: '.back-pos-legend',
-                        title: 'Part of speech',
-                        text: 'Noun, verb, adjective and so on — each with its own colour. The '
-                            + 'same colour tints the rows below and the word in the lyric.',
+                        anchor: '.pos-section-head',
+                        title: 'Meaning section',
+                        text: 'The part of speech labels the whole group once. Its colour carries '
+                            + 'through the rows, without repeating a tag beside every meaning.',
                     },
                     {
                         side: 'left',
@@ -283,7 +283,8 @@ const ABOUT_EXAMPLE_DECKS = [
                         side: 'right',
                         anchor: '.card-pos-list',
                         title: 'Part of speech',
-                        text: 'Same label, same colour, same corner on both sides of the card.',
+                        text: 'A compact hint on the question side. On the answer side it becomes '
+                            + 'the heading for the meanings it belongs to.',
                     },
                     {
                         side: 'right',
@@ -318,11 +319,11 @@ const ABOUT_EXAMPLE_DECKS = [
                     },
                     {
                         side: 'left',
-                        anchor: '.meanings-scroll',
+                        anchor: '.pos-section-head',
                         title: 'Three ways to translate it',
                         text: 'About 50% <em>even though</em>, 30% <em>although</em>, 20% '
-                            + '<em>even if</em> — each with a sentence where that reading is the '
-                            + 'right one.',
+                            + '<em>even if</em>. The section stays compact; opening a meaning ties '
+                            + 'it directly to the sentence underneath.',
                         interactive: true,
                     },
                     {
@@ -374,7 +375,8 @@ const ABOUT_EXAMPLE_DECKS = [
                         side: 'right',
                         anchor: '.card-pos-list',
                         title: 'Part of speech',
-                        text: 'Connecting words get their own colour, as every type does.',
+                        text: 'Connecting words get their own colour here; on the back that colour '
+                            + 'organises the complete meaning section.',
                     },
                     {
                         side: 'right',
@@ -470,27 +472,38 @@ function renderFront(card) {
 // these demo cards hit, reproduced with its inline styles intact so it picks
 // up the live rules rather than a copy of them.
 function renderMeaningRows(card, selectedIdx) {
-    return card.meanings.map((m, idx) => {
+    const rows = card.meanings.map((m, idx) => {
         const isSelected = idx === selectedIdx;
-        const bg = isSelected ? 'rgba(var(--sense-match-rgb), 0.2)' : 'rgba(255, 255, 255, 0.03)';
-        const border = isSelected
-            ? 'box-shadow: inset 3px 0 0 rgb(var(--sense-match-rgb)), inset -3px 0 0 rgb(var(--sense-match-rgb));'
-            : '';
-        const textColor = isSelected ? 'var(--text-primary)' : '#d7dee7';
+        const bg = 'rgba(var(--sense-match-rgb), 0.10)';
+        const textColor = 'var(--text-primary)';
         const ctx = m.context
             ? ` <span class="meaning-context">· ${esc(m.context)}</span>`
             : '';
         const pct = m.pct < 100
-            ? `<span class="about-example-pct" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-family: var(--font-data); font-size: 14px; color: #c9d2dd; white-space: nowrap; pointer-events: none;">${m.pct}%</span>`
+            ? `<span class="about-example-pct sense-percentage sense-percentage-tail" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); white-space: nowrap; pointer-events: none;">${m.pct}%</span>`
+            : '';
+        const check = isSelected
+            ? '<svg class="meaning-row-check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgb(var(--sense-match-rgb))" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>'
             : '';
         return `
-            <div class="meaning-row meaning-row-regular${isSelected ? ' selected is-current-sense' : ''}" data-meaning-index="${idx}" style="position: relative; display: grid; grid-template-columns: 1fr; align-items: center; padding: 1px 2px; margin-bottom: 4px; background: ${bg}; ${border} border-radius: 8px; cursor: pointer; min-height: 39px;">
+            <div class="meaning-row meaning-row-regular${isSelected ? ' selected is-current-sense' : ''}" data-meaning-index="${idx}" style="position: relative; display: grid; grid-template-columns: 1fr; align-items: center; padding: 1px 2px; margin-bottom: 4px; background: ${bg}; border-radius: 8px; cursor: pointer; min-height: 39px;">
+                ${check}
                 <div class="meaning-row-body" style="display: flex; flex-direction: column; align-items: stretch; justify-content: center; min-width: 0; padding: 0 ${m.pct < 100 ? '42px' : '8px'} 0 8px;">
                     <span class="meaning-row-translation row-adaptive-text" style="font-weight: ${isSelected ? 700 : 500}; color: ${textColor}; text-align: center; width: 100%;">${esc(m.translation)}${ctx}</span>
                 </div>
                 ${pct}
             </div>`;
     }).join('');
+    const selected = card.meanings[selectedIdx] || card.meanings[0];
+    return `
+        <section class="meaning-pos-section pos-collapsible is-open" data-pos="${esc(card.pos)}">
+            <button type="button" class="pos-section-head" aria-label="${esc(`${posName(card.pos)}: ${selected.translation}`)}">
+                <span class="pos-section-label">${esc(posName(card.pos))}</span>
+                <span class="pos-section-summary"><span class="pos-summary-sense">${esc(selected.translation)}</span></span>
+                <span class="pos-section-chevron">▾</span>
+            </button>
+            <div class="meaning-pos-rows">${rows}</div>
+        </section>`;
 }
 
 // Credit strip beneath the lyric: song + vocalists on the left, autoplay /
@@ -498,7 +511,7 @@ function renderMeaningRows(card, selectedIdx) {
 // strip degrades to a right-aligned source label, exactly as on a live card.
 function renderCredit(card, meaning, example, exampleIdx) {
     const counter = meaning.examples.length > 1
-        ? `<span class="example-counter-group"><span style="font-family: var(--font-data); font-size: 14px; min-width: 32px; text-align: center; display: inline-block;">${exampleIdx + 1}/${meaning.examples.length}</span></span>`
+        ? `<span class="example-counter-group"><span class="compact-example-counter" aria-label="example ${exampleIdx + 1} of ${meaning.examples.length}">${exampleIdx + 1}⁄${meaning.examples.length}</span></span>`
         : '';
 
     if (example.trackId) {
@@ -543,9 +556,6 @@ function renderBack(card, selectedIdx, exampleIdx) {
                     <div class="flip-back-area">
                         <div class="back-headword-row">
                             <span class="back-headword" style="font-size: 42px; font-weight: bold; line-height: 1.1;">${esc(card.word)}</span>
-                            <div class="back-pos-legend" aria-label="Parts of speech">
-                                <span class="card-pos ${posClass(card.pos)}"><span class="back-pos-dot" aria-hidden="true"></span>${posName(card.pos)}</span>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -674,6 +684,12 @@ function wireCardShell(stage) {
 // Handlers for everything inside the back face. Called again after every
 // back-face rebuild, since those nodes are replaced wholesale.
 function wireBack(stage) {
+    stage.querySelector('.pos-section-head')?.addEventListener('click', (e) => {
+        // The walkthrough shows one already-open group. Keep taps on its
+        // heading from being mistaken for a request to flip the whole card.
+        e.stopPropagation();
+    });
+
     // Sense selection — switching sense resets to that sense's first example,
     // the same as selectMeaning() does on a live card.
     stage.querySelectorAll('.meaning-row').forEach((row) => {
@@ -744,6 +760,8 @@ function placeMarkers() {
     layer.innerHTML = '';
 
     const stageRect = stage.getBoundingClientRect();
+    const cardRect = stage.querySelector('.card')?.getBoundingClientRect() || stageRect;
+    const occupied = { left: [], right: [] };
 
     orderedNotes().forEach((note, i) => {
         const target = stage.querySelector(note.anchor);
@@ -766,10 +784,21 @@ function placeMarkers() {
         marker.dataset.note = String(i);
         marker.textContent = String(i + 1);
         marker.setAttribute('aria-label', `Annotation ${i + 1}: ${note.title}`);
+        // Badges live just outside the card rather than covering the word,
+        // percentage, Spotify button or compact counter they explain. Several
+        // targets can share one row, so nudge collisions into a short stack.
         marker.style.left = onRight
-            ? `${rect.right - stageRect.left - 5}px`
-            : `${rect.left - stageRect.left - 17}px`;
-        marker.style.top = `${rect.top - stageRect.top + rect.height / 2 - 11}px`;
+            ? `${cardRect.right - stageRect.left + 4}px`
+            : `${cardRect.left - stageRect.left - 26}px`;
+        const side = onRight ? 'right' : 'left';
+        let top = rect.top - stageRect.top + rect.height / 2 - 11;
+        const upperBound = cardRect.top - stageRect.top;
+        const lowerBound = cardRect.bottom - stageRect.top - 22;
+        top = Math.max(upperBound, Math.min(top, lowerBound));
+        while (occupied[side].some(value => Math.abs(value - top) < 24)) top -= 24;
+        top = Math.max(upperBound, top);
+        occupied[side].push(top);
+        marker.style.top = `${top}px`;
         marker.addEventListener('mouseenter', () => setActiveNote(i));
         marker.addEventListener('mouseleave', () => setActiveNote(-1));
         marker.addEventListener('focus', () => setActiveNote(i));

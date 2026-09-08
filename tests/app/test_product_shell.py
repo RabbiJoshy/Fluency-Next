@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v327"
+EXPECTED_CACHE_NAME = "flashcards-v333"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -146,7 +146,15 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("const hideRedundantSingleBackPos", flashcards)
         self.assertIn("posItems.length === 1", flashcards)
         self.assertIn("!onlyPosHasAction", flashcards)
-        self.assertIn("if (!hideRedundantSingleBackPos)", flashcards)
+        self.assertIn("!suppressBackPosLegend && !hideRedundantSingleBackPos", flashcards)
+
+    def test_card_walkthrough_uses_the_current_compact_back(self) -> None:
+        walkthrough = (APP_ROOT / "js" / "about-example.js").read_text(encoding="utf-8")
+        self.assertNotIn('<div class="back-pos-legend"', walkthrough)
+        self.assertIn('class="pos-section-head"', walkthrough)
+        self.assertIn('class="meaning-row-check"', walkthrough)
+        self.assertIn('class="compact-example-counter"', walkthrough)
+        self.assertNotIn("font-family: var(--font-data); font-size: 14px", walkthrough)
 
     def test_cognate_setting_uses_positive_inclusion_copy(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
@@ -322,7 +330,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260831b", worker)
+        self.assertIn("/js/main.js?v=20260908a", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
