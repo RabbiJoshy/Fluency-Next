@@ -6,11 +6,13 @@
   "snapshot_metadata_version": "tatoeba-weekly-snapshot/v1",
   "translation_language": "en",
   "language_codes": {
-    "fr": "fra",
+    "cs": "ces",
+    "en": "eng",
     "es": "spa",
+    "fr": "fra",
     "nl": "nld",
-    "pt": "por",
-    "en": "eng"
+    "pl": "pol",
+    "pt": "por"
   },
   "file_templates": {
     "target_sentences": "{target_code}_sentences_detailed.tsv.bz2",

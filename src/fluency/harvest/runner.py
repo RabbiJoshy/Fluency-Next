@@ -108,7 +108,11 @@ def _trim_candidates(
             continue
         retained = sorted(
             by_identity.items(),
-            key=lambda entry: (entry[1]["metrics"]["score"], entry[1]["sentence_id"]),
+            key=lambda entry: (
+                entry[1].get("source_rank", 0),
+                entry[1]["metrics"]["score"],
+                entry[1]["sentence_id"],
+            ),
         )[:card_cap]
         candidates[card_id] = dict(retained)
 
@@ -382,7 +386,18 @@ def harvest_run_stage(
     scanned_records = 0
     stopped_early = False
 
-    for adapter in adapters:
+    # Under preferred_order the position of a source in the profile's list is
+    # its priority: a card takes everything the first source can give before
+    # the next one fills the remainder. Tatoeba is human-written and Czech
+    # OpenSubtitles is often amateur translation, so preferring the curated
+    # source is worth more than any ranking applied afterwards -- but only
+    # where it has depth, which for Czech is 87% of cards.
+    prefer = profile["harvest"].get("source_policy") == "preferred_order"
+    for source_rank, (source_name, adapter) in enumerate(
+        zip(selected_sources, adapters, strict=True)
+    ):
+        if not prefer:
+            source_rank = 0
         if stopped_early:
             break
         for record in adapter.iter_records():
@@ -433,6 +448,8 @@ def harvest_run_stage(
                 candidate = {
                     "sentence_id": record["sentence_id"],
                     "metrics": metrics,
+                    "source": source_name,
+                    "source_rank": source_rank,
                 }
                 card_candidates = candidates[card["card_id"]]
                 # A card's candidates are distinct EXAMPLES, not corpus rows.
@@ -469,7 +486,11 @@ def harvest_run_stage(
         final_target = display_examples_for_rank(scope, card["rank"])
         retained = sorted(
             candidates[card["card_id"]].values(),
-            key=lambda item: (item["metrics"]["score"], item["sentence_id"]),
+            key=lambda item: (
+                item.get("source_rank", 0),
+                item["metrics"]["score"],
+                item["sentence_id"],
+            ),
         )
         candidate_cards.append(
             {

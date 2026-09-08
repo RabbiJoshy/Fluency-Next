@@ -207,7 +207,7 @@ def validate_pipeline_profile(profile: dict[str, Any]) -> None:
             f"harvest {field} is required",
         )
     _require(
-        harvest.get("source_policy") in {"exclusive", "explicit_union"},
+        harvest.get("source_policy") in {"exclusive", "explicit_union", "preferred_order"},
         "harvest source policy is invalid",
     )
     sources = harvest.get("sources")
