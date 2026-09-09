@@ -1058,6 +1058,7 @@ async function fetchAndJoinIndex(langConfig) {
 // attached. Loading is memoised per language config; a release without a
 // cognates file simply attaches nothing and the deck keeps every word.
 let _cognateScoresLoadedFor = null;
+let _coverageLoadedFor = null;
 let _cognateScoresLoading = null;
 
 async function fetchActiveVocabularyData(langConfig) {
@@ -1072,6 +1073,12 @@ async function fetchActiveVocabularyData(langConfig) {
         await _cognateScoresLoading;
     }
     globalThis.applyCognateScores?.(vocabulary);
+    // Corpus shares are per-language and tiny; load them on the same pass so
+    // the level readout has them before the first render.
+    if (langConfig?.coveragePath && _coverageLoadedFor !== langConfig.coveragePath) {
+        _coverageLoadedFor = langConfig.coveragePath;
+        await globalThis.loadCoverage?.(langConfig);
+    }
     return vocabulary;
 }
 

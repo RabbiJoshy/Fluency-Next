@@ -905,6 +905,23 @@
                     </div>
                 </div>
 
+                <!-- How the level figure reads. Share is the honest headline
+                     and decays to under a percent by the last level; gain keeps
+                     a legible number by measuring against what is left. Same
+                     data either way. -->
+                <div id="coverageModeContainer" class="setup-substep" style="display: none;">
+                    <div class="substep-header">
+                        <span class="substep-title">Level percentage</span>
+                    </div>
+                    <p class="fast-mode-explainer">Whether a level's figure is its share of
+                    all speech, or its share of what you have not covered yet.</p>
+                    <div id="coverageModeSelector" class="group-size-selector">
+                        <button type="button" class="coverage-mode-btn" data-coverage="share">Of all speech</button>
+                        <button type="button" class="coverage-mode-btn" data-coverage="gain">Of what's left</button>
+                    </div>
+                    <span class="level-info-line substep-info-below" id="coverageModeExample"></span>
+                </div>
+
                 <p class="fast-mode-note" id="fastModeAvailability"></p>
                 <p class="fast-mode-note">Nothing is lost either way. Words fast mode sets aside stay
                 available under <strong>Set aside</strong> on the setup screen.</p>
