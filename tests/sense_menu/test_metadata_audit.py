@@ -20,7 +20,7 @@ class MetadataAuditTests(unittest.TestCase):
                 "lang_code": "pt",
                 "senses": [{
                     "glosses": ["to test"],
-                    "tags": ["perfective", "unmapped-local-tag"],
+                    "tags": ["perfective", "unmapped-local-tag", "form-of"],
                     "topics": ["computing"],
                     "info_templates": [
                         {"name": "+obj", "expansion": "[with de 'of']"},
@@ -46,6 +46,7 @@ class MetadataAuditTests(unittest.TestCase):
             {item["source_field"] for item in report["unclassified"]},
             {"tags", "info_templates"},
         )
+        self.assertEqual(report["ignored"][0]["value"], "form-of")
 
     def test_status_is_generated_for_every_registered_language(self):
         report = metadata_status(REPOSITORY_ROOT)

@@ -92,6 +92,11 @@ class WiktionaryExtractorTests(unittest.TestCase):
             ("construction", "gloss_note", "transitive"),
         ])
 
+    def test_region_tag_is_normalized_without_requiring_a_parenthetical(self) -> None:
+        self.assertEqual(families(extract({}, tags=["Brazil"], policy=PT)), [
+            ("register", "region", "Brazil"),
+        ])
+
     def test_a_mark_stated_twice_is_emitted_once(self) -> None:
         """The same mark routinely appears as a tag and in the parenthetical."""
 
@@ -144,6 +149,13 @@ class WiktionaryExtractorTests(unittest.TestCase):
             ["tags", "info_templates"],
         )
         self.assertNotIn("perfective", [item.get("value") for item in accounting.unclassified])
+
+    def test_dictionary_relation_tags_are_explicitly_ignored_not_unclassified(self) -> None:
+        accounting = metadata_accounting({}, tags=["form-of", "alt-of"], policy=PT)
+        self.assertEqual(accounting.unclassified, ())
+        self.assertEqual(
+            [item["value"] for item in accounting.ignored], ["alt-of", "form-of"]
+        )
 
 
 if __name__ == "__main__":

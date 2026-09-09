@@ -61,6 +61,7 @@ def audit_wiktionary_snapshot(
         raise ValueError("Wiktionary audit requires a Wiktionary language policy")
     feature_families: Counter[str] = Counter()
     unclassified: Counter[tuple[str, str, str]] = Counter()
+    ignored: Counter[tuple[str, str, str]] = Counter()
     observed_tags: Counter[str] = Counter()
     observed_templates: Counter[str] = Counter()
     sense_count = 0
@@ -81,6 +82,10 @@ def audit_wiktionary_snapshot(
             value = item.get("value")
             rendered = json.dumps(value, ensure_ascii=False, sort_keys=True)
             unclassified[(item["source_field"], rendered, item["reason"])] += 1
+        for item in accounting.ignored:
+            value = item.get("value")
+            rendered = json.dumps(value, ensure_ascii=False, sort_keys=True)
+            ignored[(item["source_field"], rendered, item["reason"])] += 1
     return {
         "report_version": "sense-metadata-audit/v1",
         "metadata_contract": "sense-metadata/v1",
@@ -101,6 +106,17 @@ def audit_wiktionary_snapshot(
             }
             for (source_field, value, reason), count in sorted(
                 unclassified.items(), key=lambda item: (-item[1], item[0])
+            )
+        ],
+        "ignored": [
+            {
+                "source_field": source_field,
+                "value": json.loads(value),
+                "reason": reason,
+                "count": count,
+            }
+            for (source_field, value, reason), count in sorted(
+                ignored.items(), key=lambda item: (-item[1], item[0])
             )
         ],
     }

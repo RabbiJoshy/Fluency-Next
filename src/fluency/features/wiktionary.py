@@ -43,6 +43,7 @@ DEFAULT_CONSTRUCTION_TAGS = frozenset(
     {"ambitransitive", "auxiliary", "copulative", "ditransitive", "impersonal",
      "intransitive", "pronominal", "transitive"}
 )
+STRUCTURAL_TAGS = frozenset({"alt-of", "form-of"})
 GRAMMAR_TAG_VALUES = {
     "first-person": "person=1",
     "second-person": "person=2",
@@ -116,6 +117,9 @@ def classify_tag(
 
     register = _vocabulary(policy, "register_tags", DEFAULT_REGISTER_TAGS)
     construction = _vocabulary(policy, "construction_tags", DEFAULT_CONSTRUCTION_TAGS)
+    regions = _vocabulary(policy, "region_tags", frozenset())
+    if tag in regions:
+        return SpecialistFeature("register", "region", tag, tag)
     if tag in register:
         return SpecialistFeature("register", "usage_tag", tag, tag)
     if (grammar_value := _grammar_value(tag)) is not None:
@@ -134,7 +138,15 @@ def metadata_accounting(
     """Account for provider metadata not yet represented by typed features."""
 
     unclassified: list[dict[str, Any]] = []
+    ignored: list[dict[str, Any]] = []
     for tag in sorted(set(tags)):
+        if tag in STRUCTURAL_TAGS:
+            ignored.append({
+                "source_field": "tags",
+                "value": tag,
+                "reason": "dictionary relation handled during sense resolution",
+            })
+            continue
         if classify_tag(tag, policy=policy) is None:
             unclassified.append({
                 "source_field": "tags",
@@ -167,6 +179,7 @@ def metadata_accounting(
             "topics": "parsed",
         },
         unclassified=tuple(unclassified),
+        ignored=tuple(ignored),
     )
 
 
