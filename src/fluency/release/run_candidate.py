@@ -27,7 +27,7 @@ from fluency.features.metadata import METADATA_CONTRACT_VERSION
 from fluency.core.workspace import Workspace
 from fluency.pipeline.planning import validate_pipeline_profile
 from fluency.harvest.matching import example_identity
-from fluency.release.sentences import near_duplicate, sentence_count
+from fluency.release.sentences import has_placeholder_name, near_duplicate, sentence_count
 from fluency.release.composition import compose_release
 from fluency.core.io import atomic_write, json_bytes
 from fluency.release.study_structure import build_study_structure
@@ -242,20 +242,23 @@ def build_inactive_run_candidate(
         # half, so the rest is text the learner reads past to find the word being
         # taught. Prefer rows that are a single sentence, and fall back to the
         # rest only if a card cannot fill its quota -- declining, never emptying.
-        def passes(item, single_only: bool) -> bool:
-            if not single_only:
+        def passes(item, strict: bool) -> bool:
+            if not strict:
                 return True
             sentence = sentences.get(item["sentence_id"])
-            return bool(sentence) and sentence_count(sentence["target"]["text"]) <= 1
+            if not sentence:
+                return False
+            text = sentence["target"]["text"]
+            return sentence_count(text) <= 1 and not has_placeholder_name(text)
 
         selected = []
         seen: set[str] = set()
         chosen_texts: list[str] = []
-        for single_only in (True, False):
+        for strict in (True, False):
             if len(selected) == limit:
                 break
             for item in ranked:
-                if not passes(item, single_only):
+                if not passes(item, strict):
                     continue
                 sentence = sentences.get(item["sentence_id"])
                 identity = (

@@ -80,3 +80,25 @@ def near_duplicate(a: str, b: str, *, threshold: float = 0.8) -> bool:
         return False
     overlap = len(at & bt)
     return overlap / max(len(at), len(bt)) >= threshold
+
+
+_PLACEHOLDER_NAMES = re.compile(
+    r"\b(?:Tom|Mary|Mária|Marie|Maria|John|Ken|Bob|Alice|Jim)\b", re.UNICODE
+)
+
+
+def has_placeholder_name(text: str) -> bool:
+    """Whether a sentence uses Tatoeba's stock cast.
+
+    Tatoeba's contributors use Tom and Mary the way a maths textbook uses x and
+    y, and they are 7-17% of every language's corpus -- 17.4% of Czech. They
+    then arrive over-represented on cards, because a Tom sentence is short and
+    built from common words, which is exactly what the easiness score rewards:
+    a quarter of the Czech examples read carried one.
+
+    A learner meeting Tom in every fourth sentence is learning a corpus habit,
+    not a language, so these are preferred against. They are not rejected: for
+    a rare card a Tom sentence is better than nothing.
+    """
+
+    return bool(_PLACEHOLDER_NAMES.search(text))
