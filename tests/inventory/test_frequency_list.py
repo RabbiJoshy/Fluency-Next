@@ -66,3 +66,30 @@ class FrequencyListTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FrequencyUnitTests(unittest.TestCase):
+    """The inventory report used to call every adapter's number
+    `frequency_per_million`, including raw occurrence counts."""
+
+    def test_each_adapter_declares_what_its_number_is(self) -> None:
+        from fluency.inventory.corpus_frequency import FREQUENCY_UNIT as corpus_unit
+        from fluency.inventory.frequency_list import FREQUENCY_UNIT as listed_unit
+        from fluency.inventory.lexique import FREQUENCY_UNIT as lexique_unit
+
+        # A published list is counts; a compiled corpus is a rate. Conflating
+        # them is what made `to` read as 8,285,056 per million.
+        self.assertEqual(listed_unit, "occurrences")
+        self.assertEqual(corpus_unit, "per_million")
+        self.assertNotEqual(listed_unit, corpus_unit)
+        self.assertTrue(lexique_unit)
+
+    def test_the_report_no_longer_claims_a_unit_it_cannot_guarantee(self) -> None:
+        source = (
+            Path(__file__).resolve().parents[2] / "src/fluency/inventory/runner.py"
+        ).read_text(encoding="utf-8")
+        # The old name may still appear in the comment explaining the change;
+        # what matters is that no field is emitted under it.
+        self.assertNotIn('"frequency_per_million":', source)
+        self.assertIn('"source_frequency": frequency', source)
+        self.assertIn('"source_frequency_unit": frequency_unit', source)

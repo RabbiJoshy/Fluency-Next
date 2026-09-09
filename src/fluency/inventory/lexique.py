@@ -11,6 +11,10 @@ from typing import Iterator
 from fluency.languages.french.surfaces import normalize_surface
 
 
+# Lexique's own FreqOrtho column. Named for its source rather than assigned a
+# unit here, because the runner only reports it and nothing converts it.
+FREQUENCY_UNIT = "lexique_freqortho"
+
 ADAPTER_ID = "lexique4-surface-frequency/v1"
 SURFACE_COLUMN = "1_Mot"
 FREQUENCY_COLUMN = "11_FreqOrtho"

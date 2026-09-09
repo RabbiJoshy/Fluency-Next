@@ -21,6 +21,9 @@ from typing import Iterator
 from fluency.languages.surfaces import normalizer_for_language
 
 
+# A published list gives raw occurrence counts, not a rate.
+FREQUENCY_UNIT = "occurrences"
+
 ADAPTER_ID = "published-surface-frequency-list/v1"
 _SURFACE_PATTERN = re.compile(r"^[^\W\d_]+(?:[’'-][^\W\d_]+)*$", re.UNICODE)
 

@@ -24,6 +24,9 @@ from fluency.core.io import json_bytes
 
 
 ADAPTER_ID = "corpus-surface-frequency/v1"
+# Computed as count * 1e6 / total_tokens when the snapshot is compiled.
+FREQUENCY_UNIT = "per_million"
+
 SNAPSHOT_VERSION = "corpus-surface-frequency-snapshot/v1"
 FREQUENCIES_FILE = "surface-frequencies.tsv"
 MANIFEST_FILE = "manifest.json"

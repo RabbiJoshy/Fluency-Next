@@ -16,14 +16,17 @@ from fluency.core.manifests import StageManifest, build_stage_cache_key
 from fluency.core.workspace import Workspace
 from fluency.inventory.config import load_inventory_language_policy
 from fluency.inventory.corpus_frequency import (
+    FREQUENCY_UNIT as CORPUS_FREQUENCY_UNIT,
     ADAPTER_ID as CORPUS_ADAPTER_ID,
     load_corpus_frequency_snapshot,
 )
 from fluency.inventory.frequency_list import (
+    FREQUENCY_UNIT as FREQUENCY_LIST_UNIT,
     ADAPTER_ID as FREQUENCY_LIST_ADAPTER_ID,
     read_frequency_list,
 )
 from fluency.inventory.lexique import (
+    FREQUENCY_UNIT as LEXIQUE_FREQUENCY_UNIT,
     ADAPTER_ID as LEXIQUE_ADAPTER_ID,
     ranked_surfaces,
     read_lexique4,
@@ -140,6 +143,7 @@ def build_inventory_stage(
             raise InventoryRunError("the Lexique adapter requires one French TSV snapshot")
         result = read_lexique4(resolved_snapshot)
         frequencies = result.frequencies
+        frequency_unit = LEXIQUE_FREQUENCY_UNIT
         source_content_id = file_content_id(resolved_snapshot)
         source_metrics = {
             "source_rows": result.source_rows,
@@ -156,6 +160,7 @@ def build_inventory_stage(
             )
         listed = read_frequency_list(resolved_snapshot, language=language)
         frequencies = listed.frequencies
+        frequency_unit = FREQUENCY_LIST_UNIT
         source_content_id = file_content_id(resolved_snapshot)
         source_metrics = {
             "source_rows": listed.source_rows,
@@ -175,6 +180,7 @@ def build_inventory_stage(
             expected_snapshot_id=snapshot_id,
         )
         frequencies = compiled.frequencies
+        frequency_unit = CORPUS_FREQUENCY_UNIT
         source_content_id = compiled.frequencies_content_id
         source_metrics = {
             "source_lines": compiled.manifest["source_lines"],
@@ -198,6 +204,9 @@ def build_inventory_stage(
             expected_snapshot_id=snapshot_id,
         )
         source_content_id = recovered.ranking_content_id
+        # A recovered ranking carries whatever the ranking it was rebuilt from
+        # carried; nothing here can say which.
+        frequency_unit = "source_defined"
         source_ranked = list(recovered.ranked_surfaces)
         source_metrics = {
             "source_records": len(source_ranked),
@@ -210,7 +219,7 @@ def build_inventory_stage(
         {
             "surface": surface,
             "source_rank": rank,
-            "frequency_per_million": frequency,
+            "source_frequency": frequency,
             **exclusions[surface],
         }
         for rank, (surface, frequency) in enumerate(source_ranked, start=1)
@@ -247,13 +256,20 @@ def build_inventory_stage(
         "accepted_unique_surfaces": len(ranked),
         "inventory_surfaces": len(inventory_cards),
         "frequency_measure": profile["inventory"]["frequency_measure"],
+        # What `source_frequency` is actually in. The adapters disagree — a
+        # published list gives occurrence counts, a compiled corpus gives a
+        # per-million rate — and the report used to call every one of them
+        # `frequency_per_million`, so Czech's `to` read as 8,285,056 per
+        # million. The number is only ever reported, never converted, so it is
+        # kept as the source gave it and labelled instead.
+        "source_frequency_unit": frequency_unit,
         **source_metrics,
         "language_policy": language_policy["policy_id"],
         "excluded_surfaces": excluded,
         "identity_fields": ["language", "surface_key"],
         "forbidden_identity_fields": ["lemma", "part_of_speech"],
         "top_surfaces": [
-            {"rank": rank, "surface": surface, "frequency_per_million": frequency}
+            {"rank": rank, "surface": surface, "source_frequency": frequency}
             for rank, (surface, frequency) in enumerate(ranked[:surface_limit], start=1)
         ],
     }
