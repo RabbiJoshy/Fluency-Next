@@ -22,11 +22,21 @@ class MetadataContractUITests(unittest.TestCase):
         styles = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
         self.assertIn("function displaySenseGloss(meaning, value, active = true)", flashcards)
         self.assertIn("return senseSummaryText(projected) || projected;", flashcards)
-        self.assertIn('class="sense-metadata-detail"', flashcards)
+        self.assertIn('class="sense-metadata-detail${overflow', flashcards)
         self.assertIn(".sense-metadata-detail + .sense-metadata-detail::before", styles)
         self.assertIn("group-card-varying-cell${isMemberSelected ? ' is-active-subsense' : ''}", flashcards)
         self.assertIn(".group-card-varying-cell:not(.is-active-subsense)", styles)
         self.assertIn(".meaning-row-regular:not(.is-current-sense)", styles)
+
+    def test_active_metadata_is_ordered_compact_and_disclosable(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        styles = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
+        self.assertIn("const familyOrder = {", flashcards)
+        self.assertIn("const visibleLimit = 3;", flashcards)
+        self.assertIn("display.short", flashcards)
+        self.assertIn("toggleSenseMetadataOverflow(event, this)", flashcards)
+        self.assertIn("'gender=variable-by-person': 'varies by gender'", flashcards)
+        self.assertIn(".sense-metadata-more", styles)
 
 
 if __name__ == "__main__":
