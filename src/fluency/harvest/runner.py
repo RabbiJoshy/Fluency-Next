@@ -24,6 +24,7 @@ from fluency.pipeline.budget import (
 from fluency.harvest.config import load_harvest_policies
 from fluency.harvest.inventory import load_frequency_ranks, load_harvest_inventory
 from fluency.harvest.matching import (
+    detect_variety,
     SurfaceMatcher,
     easiness_metrics,
     example_identity,
@@ -486,6 +487,9 @@ def harvest_run_stage(
             if reason is not None:
                 rejections[reason] += 1
                 continue
+            variety = detect_variety(record["target"]["text"], language_policy)
+            if variety is not None:
+                record["target"]["variety"] = variety
             sentence_records[record["sentence_id"]] = record
             for card in matched_cards:
                 metrics = easiness_metrics(

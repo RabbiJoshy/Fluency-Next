@@ -6,7 +6,13 @@
     "unicode_form": "NFC",
     "casefold": true,
     "canonical_apostrophe": "'",
-    "apostrophe_variants": ["’", "‘", "ʼ", "‛", "＇"],
+    "apostrophe_variants": [
+      "’",
+      "‘",
+      "ʼ",
+      "‛",
+      "＇"
+    ],
     "collapse_whitespace": true
   },
   "matching": {
@@ -16,6 +22,23 @@
   "sentence_rules": {
     "reject_contains_apostrophe": false,
     "reject_contains_hyphen": false,
-    "forbidden_substrings": ["http://", "https://", "<", ">", "♪", "♫"]
-  }
+    "forbidden_substrings": [
+      "http://",
+      "https://",
+      "<",
+      ">",
+      "♪",
+      "♫"
+    ]
+  },
+  "variety_markers": {
+    "419": [
+      "\\b(ustedes|carro|celular|papá|mamá|allá|acá|plata|manejar|computadora)\\b"
+    ],
+    "es": [
+      "\\b(vosotros|vosotras|coche|móvil|ordenador|vale|zumo|piso|tío|guay)\\b",
+      "\\b\\w+(áis|éis|ís)\\b"
+    ]
+  },
+  "variety_note": "Peninsular against Latin American. vosotros/ustedes is the reliable structural split; lexis is weaker because much is shared."
 }

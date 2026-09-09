@@ -73,6 +73,28 @@ def example_identity(text: str) -> str:
     )
 
 
+def detect_variety(text: str, language_policy: dict[str, Any]) -> str | None:
+    """Which regional variety a sentence announces, if any.
+
+    A deck can be European or Brazilian Portuguese from ONE harvest only if the
+    harvest records which each sentence is. Markers are lexical and structural,
+    so a sentence carrying none is undetectable rather than neutral: 65.5% of
+    the Portuguese bank is unmarked and some of it is quietly Brazilian.
+
+    Recorded, never filtered. Which variety a learner is shown is a selection
+    decision that can be retuned; what the pool contains cannot be, without
+    harvesting again.
+    """
+
+    markers = language_policy.get("variety_markers") or {}
+    hits = [
+        name
+        for name, patterns in markers.items()
+        if any(re.search(p, text, re.IGNORECASE | re.UNICODE) for p in patterns)
+    ]
+    return hits[0] if len(hits) == 1 else None
+
+
 def quality_rejection(
     target: str,
     translation: str,

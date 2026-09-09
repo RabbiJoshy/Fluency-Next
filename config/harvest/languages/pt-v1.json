@@ -6,7 +6,13 @@
     "unicode_form": "NFC",
     "casefold": true,
     "canonical_apostrophe": "'",
-    "apostrophe_variants": ["’", "‘", "ʼ", "‛", "＇"],
+    "apostrophe_variants": [
+      "’",
+      "‘",
+      "ʼ",
+      "‛",
+      "＇"
+    ],
     "collapse_whitespace": true
   },
   "matching": {
@@ -16,6 +22,26 @@
   "sentence_rules": {
     "reject_contains_apostrophe": false,
     "reject_contains_hyphen": false,
-    "forbidden_substrings": ["http://", "https://", "<", ">", "♪", "♫"]
-  }
+    "forbidden_substrings": [
+      "http://",
+      "https://",
+      "<",
+      ">",
+      "♪",
+      "♫"
+    ]
+  },
+  "variety_markers": {
+    "br": [
+      "\\b(você|vocês|banheiro|ônibus|trem|celular|geladeira|legal|bunda|carona|bonde)\\b",
+      "\\ba gente\\b",
+      "\\best(á|ão|ava|avam|ou)\\s+\\w+ndo\\b",
+      "^\\s*(me|te|se|lhe|nos)\\s+\\w"
+    ],
+    "eu": [
+      "\\b(tu|teu|tua|teus|tuas|ti|contigo|vós|autocarro|comboio|telemóvel|frigorífico|casa de banho|pequeno-almoço|giro|rapariga)\\b",
+      "\\best(á|ás|ão|ava|avam)\\s+a\\s+\\w+r\\b"
+    ]
+  },
+  "variety_note": "European Portuguese against Brazilian. estar+gerund vs estar a+infinitive is the sharpest structural split; the rest is lexis and address. Measured on the Portuguese bank: 28.4% Brazilian-marked, 6.4% European-marked, 65.5% unmarked -- so an unmarked sentence is undetectable, not neutral."
 }

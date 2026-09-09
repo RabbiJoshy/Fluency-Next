@@ -246,6 +246,14 @@ class TatoebaAdapter:
                     "license_url": self.metadata["license_url"],
                     "attribution": attribution,
                     "url": target_url,
+                    # Tatoeba ids are chronological, so a target written after
+                    # the English it is linked to was almost certainly
+                    # translated FROM English -- which is where calques come
+                    # from. 77-89% of these corpora are, and it explains
+                    # sentences like "Nous y allons mais vous non." keeping
+                    # English's skeleton. Recorded rather than filtered: it is a
+                    # risk signal for selection to weigh, not a verdict.
+                    "translated_from_english": int(target_id) > int(translation_id),
                 },
                 "target": {
                     "language": self.target_language,
