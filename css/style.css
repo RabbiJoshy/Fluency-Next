@@ -14332,3 +14332,61 @@
 }
 .coverage-mode-btn:not(.selected):hover { color: var(--text-secondary); }
 .coverage-mode-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+
+/* ── Step 1 once a source is chosen ───────────────────────────────────────
+   Before you pick, the card teaches: it names the language, offers "Choose
+   another language", labels the pair of buttons "Learn from", and describes
+   each of them. All of that earns its space once.
+
+   Afterwards it says the same two facts five times — the header eyebrow
+   already reads "Learning from speech", the arrow already means the language
+   is tappable, and the descriptions describe a choice you have made. On a
+   phone that pushed Choose level below the fold, so the first thing a
+   returning learner sees is a decision they already took.
+
+   Collapsed by :has() on the selection class the buttons already carry, so
+   there is no second piece of state to keep in step, and a first run — where
+   nothing is selected — keeps the full explanation. */
+.standard-source-card:has(.standard-source-choice-btn.is-selected) .standard-source-choice-title,
+.standard-source-card:has(.standard-source-choice-btn.is-selected) .standard-source-choice-btn small,
+.standard-source-card:has(.standard-source-choice-btn.is-selected) .artist-source-copy > span:last-child {
+  display: none;
+}
+.standard-source-card:has(.standard-source-choice-btn.is-selected) .standard-source-choice {
+  padding: 7px 7px 6px;
+  gap: 0;
+}
+.standard-source-card:has(.standard-source-choice-btn.is-selected) .standard-source-choice-btn {
+  min-height: 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+}
+/* The name carries the row on its own once the subtitle is gone. */
+.standard-source-card:has(.standard-source-choice-btn.is-selected) .artist-source-picker {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.standard-source-card:has(.standard-source-choice-btn.is-selected) .artist-source-copy {
+  display: block;
+}
+
+/* Once chosen, the two source buttons are one line of text each, so they fit
+   side by side even on a phone — where the mobile rule stacks them because
+   the uncollapsed version carries a description under each name. */
+.standard-source-card:has(.standard-source-choice-btn.is-selected) .standard-source-choice-buttons {
+  grid-template-columns: 1fr 1fr;
+}
+/* "Language" sitting above "Czech" says the same thing twice, so the word goes
+   and the eyebrow above it stays — it is the only place the mode is named in
+   words. They are one element: the eyebrow is #step1Title::before, so hiding
+   the element took the eyebrow with it and left a bare step number over dead
+   space. Zeroing the element's own type and restoring it on the pseudo-element
+   drops the text without touching what is generated. */
+#step1:has(.standard-source-choice-btn.is-selected) #step1Title {
+  font-size: 0;
+  line-height: 0;
+}
+#step1:has(.standard-source-choice-btn.is-selected) #step1Title::before {
+  font-size: 10px;
+  line-height: 1.2;
+}
