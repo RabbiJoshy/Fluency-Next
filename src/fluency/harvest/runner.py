@@ -101,20 +101,46 @@ def _trim_candidates(
     candidates: dict[str, dict[str, dict[str, Any]]],
     *,
     cap_for: dict[str, int],
+    source_share: dict[str, float] | None = None,
 ) -> None:
+    """Keep the best candidates per card, without letting one source crowd out
+    the others.
+
+    Ordering the whole pool by source first meant the preferred source filled
+    every budget and the other was trimmed away before selection ever saw it --
+    a Czech pool came out 99% Tatoeba. Which source a learner should be shown is
+    a selection decision that can be retuned forever; which sources survive the
+    harvest is not, because recovering one means harvesting again. So the
+    harvest reserves a share for each source and ranks only within it.
+    """
+
     for card_id, by_identity in candidates.items():
         card_cap = cap_for[card_id]
         if len(by_identity) <= card_cap:
             continue
-        retained = sorted(
-            by_identity.items(),
-            key=lambda entry: (
-                entry[1].get("source_rank", 0),
-                entry[1]["metrics"]["score"],
-                entry[1]["sentence_id"],
-            ),
-        )[:card_cap]
-        candidates[card_id] = dict(retained)
+        by_source: dict[str, list] = {}
+        for identity, item in by_identity.items():
+            by_source.setdefault(item.get("source", ""), []).append((identity, item))
+        for rows in by_source.values():
+            rows.sort(key=lambda e: (e[1]["metrics"]["score"], e[1]["sentence_id"]))
+
+        kept: dict[str, dict[str, Any]] = {}
+        shares = source_share or {}
+        # First pass: every source gets its reserved share.
+        for source, rows in by_source.items():
+            quota = int(card_cap * shares.get(source, 1.0 / max(len(by_source), 1)))
+            for identity, item in rows[:quota]:
+                kept[identity] = item
+        # Second pass: whatever a source could not fill goes to the best of the
+        # rest, so a reserved share never wastes budget on a source that is thin.
+        if len(kept) < card_cap:
+            leftovers = sorted(
+                ((i, it) for i, it in by_identity.items() if i not in kept),
+                key=lambda e: (e[1]["metrics"]["score"], e[1]["sentence_id"]),
+            )
+            for identity, item in leftovers[: card_cap - len(kept)]:
+                kept[identity] = item
+        candidates[card_id] = kept
 
 
 def _reusable_harvest(workspace, run_directory: Path, cache_key: str) -> Path | None:
@@ -392,6 +418,10 @@ def harvest_run_stage(
     # OpenSubtitles is often amateur translation, so preferring the curated
     # source is worth more than any ranking applied afterwards -- but only
     # where it has depth, which for Czech is 87% of cards.
+    # What fraction of a card's budget each source may claim. Declared, so the
+    # mix a deck is BUILT from stays a selection decision while the mix the pool
+    # CONTAINS is fixed once at harvest.
+    source_share = profile["harvest"].get("source_share") or {}
     prefer = profile["harvest"].get("source_policy") == "preferred_order"
     for source_rank, (source_name, adapter) in enumerate(
         zip(selected_sources, adapters, strict=True)
@@ -474,9 +504,9 @@ def harvest_run_stage(
                 elif candidate["sentence_id"] < held["sentence_id"]:
                     card_candidates[identity] = candidate
                 if len(card_candidates) > cap_for[card["card_id"]] * 2:
-                    _trim_candidates(candidates, cap_for=cap_for)
+                    _trim_candidates(candidates, cap_for=cap_for, source_share=source_share)
 
-    _trim_candidates(candidates, cap_for=cap_for)
+    _trim_candidates(candidates, cap_for=cap_for, source_share=source_share)
     live_sentence_ids = {
         item["sentence_id"]
         for by_identity in candidates.values()
