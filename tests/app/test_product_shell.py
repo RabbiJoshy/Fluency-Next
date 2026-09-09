@@ -596,3 +596,20 @@ class FastModeSurfaceTests(unittest.TestCase):
         # Czech has no lemma mapping; a fixed summary claimed forms were merged.
         self.assertIn("if (lemmaAvailable()) parts.push(", self.script)
         self.assertIn("if (cognateAvailable()) {", self.script)
+
+
+class ReleaseLevelSetsTests(unittest.TestCase):
+    """Routing release levels through the scrubber dropped the marker the range
+    selector branches on, and every Speech language rendered no sets at all."""
+
+    def test_release_levels_keep_their_marker_on_the_hidden_buttons(self) -> None:
+        ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        self.assertIn(
+            """${usingReleaseLevels ? ' data-release-level="true"' : ''}""", ui
+        )
+
+    def test_both_readers_of_that_marker_still_exist(self) -> None:
+        # Without the attribute these fall through to a CEFR lookup that cannot
+        # match a release level id, and the set list comes back empty.
+        ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        self.assertEqual(ui.count("dataset.releaseLevel === 'true'"), 2)

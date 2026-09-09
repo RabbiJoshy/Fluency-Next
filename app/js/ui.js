@@ -806,7 +806,7 @@ async function renderLevelSelector(language, { preferActionable = false } = {}) 
         const buttonsHTML = percentageRanges.map(level => {
             const description = level.description || `${level.level} ${coverageType}`;
             return `
-            <button class="level-btn" data-level="${level.level}" data-short="${level.level}" data-full="${description}" data-start-rank="${level.startRank}" data-end-rank="${level.endRank}" data-rank-basis="${level.rankBasis || 'source'}" title="${description}">
+            <button class="level-btn" data-level="${level.level}" data-short="${level.level}" data-full="${description}" data-start-rank="${level.startRank}" data-end-rank="${level.endRank}" data-rank-basis="${level.rankBasis || 'source'}"${usingReleaseLevels ? ' data-release-level="true"' : ''} title="${description}">
                 ${level.level}
             </button>
         `}).join('');
