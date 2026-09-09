@@ -2670,6 +2670,17 @@ function projectWiktionaryGloss(meaning, value) {
     return { display: remaining || text, features: notes };
 }
 
+// A subsense that is not selected is a navigation label, not the place to
+// reproduce Wiktionary's full editorial aside. Keep that detail verbatim on
+// the active subsense, where the matching example gives it context.
+function displaySenseGloss(meaning, value, active = true) {
+    const projected = projectWiktionaryGloss(meaning, value).display;
+    if (active || meaning?.metadata?.source_adapter !== 'wiktionary-sense-menu/v1') {
+        return projected;
+    }
+    return senseSummaryText(projected) || projected;
+}
+
 function senseCrossReferences(meaning) {
     const metadata = meaning?.metadata || {};
     const candidates = [
@@ -2979,7 +2990,16 @@ function senseMetadataDisplay(item) {
             'number=singular': 'singular',
             'number=plural': 'plural',
         })[item.value];
-        if (exact) return { short: exact, full: item.value };
+        if (exact) return { short: exact, full: exact };
+        const assignment = /^([^=]+)=(.+)$/u.exec(item.value);
+        if (assignment) {
+            const [, property, rawValue] = assignment;
+            const value = rawValue.replace(/-/g, ' ');
+            const full = value === 'true'
+                ? property.replace(/-/g, ' ')
+                : (property === 'declension' && value === 'none' ? 'indeclinable' : value);
+            return { short: full, full };
+        }
         const short = item.value
             .replace(/\bfirst[- ]person\b/gi, '1st')
             .replace(/\bsecond[- ]person\b/gi, '2nd')
@@ -3004,14 +3024,13 @@ function senseMetadataDisplay(item) {
 
 function senseMetadataHTML(meaning, active) {
     if (!active) return '';
-    const chips = senseMetadataItems(meaning).map(item => {
+    const details = senseMetadataItems(meaning).map(item => {
         const display = senseMetadataDisplay(item);
         const family = escapeCardText(item.family);
-        // Metadata is shown only on the active subsense, so it should be fully
-        // legible there rather than requiring another tiny disclosure tap.
-        return `<span class="sense-metadata-chip is-full" data-family="${family}">${escapeCardText(display.full)}</span>`;
+        const label = escapeCardText(display.full);
+        return `<span class="sense-metadata-detail" data-family="${family}" title="${family}: ${label}">${label}</span>`;
     }).join('');
-    return chips ? `<span class="sense-metadata-list">${chips}</span>` : '';
+    return details ? `<span class="sense-metadata-list" aria-label="Sense details">${details}</span>` : '';
 }
 
 function contextWithoutSenseMetadata(meaning, active) {
@@ -4969,7 +4988,7 @@ function updateCard({ announceHeadword = false } = {}) {
                 : (getProductionEnglishCue(card, m) || m.meaning);
             const displayMeaning = isMWE
                 ? rawDisplayMeaning
-                : projectWiktionaryGloss(m, rawDisplayMeaning).display;
+                : displaySenseGloss(m, rawDisplayMeaning, isSelected);
             const displayMeaningHTML = isMWE
                 ? displayMeaning
                 : senseCrossReferenceHTML(m, displayMeaning);
@@ -5211,15 +5230,16 @@ function updateCard({ announceHeadword = false } = {}) {
                                 ? `<span class="meaning-context-cell" style="line-height: 1.3; min-width: 0; overflow-wrap: anywhere; word-break: break-word;">${renderSenseContextHTML(ctxRaw, { leadingDot: false })}${metadataHTML}</span>`
                                 : `<span style="opacity: 0.4; font-style: italic; font-size: 12px;">—</span>`;
                         } else {
-                            const transRaw = projectWiktionaryGloss(
+                            const transRaw = displaySenseGloss(
                                 mm,
-                                getProductionEnglishCue(card, mm) || mm.meaning || ''
-                            ).display;
+                                getProductionEnglishCue(card, mm) || mm.meaning || '',
+                                isMemberSelected
+                            );
                             const transSafe = String(transRaw).replace(/"/g, '&quot;');
                             varyingHtml = `<span class="row-adaptive-text" style="font-weight: 600; color: var(--text-primary); line-height: 1.25; min-width: 0; overflow: hidden; text-overflow: ellipsis;">${senseCrossReferenceHTML(mm, transSafe)}${senseMetadataHTML(mm, isMemberSelected)}${modelProposalMarkerHTML(mm)}</span>`;
                         }
                         const varyingCol = isTransAxis ? 2 : 1;
-                        const varyingCell = `<div onclick="event.stopPropagation(); selectMeaning(${memberIdx})" style="${baseCell} grid-column: ${varyingCol}; min-width: 0; overflow: hidden;">${varyingHtml}</div>`;
+                        const varyingCell = `<div class="group-card-varying-cell${isMemberSelected ? ' is-active-subsense' : ''}" onclick="event.stopPropagation(); selectMeaning(${memberIdx})" style="${baseCell} grid-column: ${varyingCol}; min-width: 0; overflow: hidden;">${varyingHtml}</div>`;
                         return varyingCell;
                     }).join('');
 

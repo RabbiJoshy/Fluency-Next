@@ -17,6 +17,16 @@ class MetadataContractUITests(unittest.TestCase):
         self.assertIn("canonical.contract_version ? [] : projectWiktionaryGloss", flashcards)
         self.assertIn("if (!canonical.contract_version", flashcards)
 
+    def test_inactive_wiktionary_subsenses_use_clean_navigation_labels(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        styles = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
+        self.assertIn("function displaySenseGloss(meaning, value, active = true)", flashcards)
+        self.assertIn("return senseSummaryText(projected) || projected;", flashcards)
+        self.assertIn('class="sense-metadata-detail"', flashcards)
+        self.assertIn(".sense-metadata-detail + .sense-metadata-detail::before", styles)
+        self.assertIn("group-card-varying-cell${isMemberSelected ? ' is-active-subsense' : ''}", flashcards)
+        self.assertIn(".group-card-varying-cell:not(.is-active-subsense)", styles)
+
 
 if __name__ == "__main__":
     unittest.main()
