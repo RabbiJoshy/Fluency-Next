@@ -2969,7 +2969,26 @@ function senseMetadataItems(meaning) {
             }
         }
     }
-    return items;
+    const familyOrder = {
+        construction: 0,
+        grammar: 0,
+        companion: 1,
+        functional: 1,
+        register: 2,
+        domain: 3,
+    };
+    return items
+        .map((item, sourceIndex) => ({ ...item, sourceIndex }))
+        .sort((left, right) => (
+            (familyOrder[left.family] ?? 9) - (familyOrder[right.family] ?? 9)
+            || left.sourceIndex - right.sourceIndex
+        ))
+        .filter((item, index, ordered) => {
+            const label = senseMetadataDisplay(item).short.toLocaleLowerCase('en');
+            return ordered.findIndex(candidate => (
+                senseMetadataDisplay(candidate).short.toLocaleLowerCase('en') === label
+            )) === index;
+        });
 }
 
 function senseMetadataDisplay(item) {
@@ -2989,6 +3008,27 @@ function senseMetadataDisplay(item) {
             'person=3': '3rd person',
             'number=singular': 'singular',
             'number=plural': 'plural',
+            'number=plural-only': 'plural only',
+            'form=participle': 'participle',
+            'countability=countable': 'countable',
+            'countability=uncountable': 'uncountable',
+            'inflection=invariable': 'invariable',
+            'definiteness=definite': 'definite',
+            'definiteness=indefinite': 'indefinite',
+            'gender=variable-by-person': 'varies by gender',
+            'adjective-class=relational': 'relational adj.',
+            'gender=virile': 'virile',
+            'gender=nonvirile': 'nonvirile',
+            'voice=active': 'active voice',
+            'voice=passive': 'passive voice',
+            'form=adjectival': 'adjectival',
+            'form=adverbial': 'adverbial',
+            'case=partitive': 'partitive',
+            'derivation=diminutive': 'diminutive',
+            'derivation=augmentative': 'augmentative',
+            'noun-class=collective': 'collective',
+            'animacy=animal-not-person': 'animal, not person',
+            'tense=past-historic': 'past historic',
         })[item.value];
         if (exact) return { short: exact, full: exact };
         const assignment = /^([^=]+)=(.+)$/u.exec(item.value);
@@ -3024,13 +3064,22 @@ function senseMetadataDisplay(item) {
 
 function senseMetadataHTML(meaning, active) {
     if (!active) return '';
-    const details = senseMetadataItems(meaning).map(item => {
+    const items = senseMetadataItems(meaning);
+    const visibleLimit = 3;
+    const details = items.map((item, index) => {
         const display = senseMetadataDisplay(item);
         const family = escapeCardText(item.family);
-        const label = escapeCardText(display.full);
-        return `<span class="sense-metadata-detail" data-family="${family}" title="${family}: ${label}">${label}</span>`;
+        const shortLabel = escapeCardText(display.short);
+        const fullLabel = escapeCardText(display.full);
+        const overflow = index >= visibleLimit;
+        return `<span class="sense-metadata-detail${overflow ? ' is-overflow' : ''}" data-family="${family}" title="${family}: ${fullLabel}" aria-label="${fullLabel}"${overflow ? ' hidden' : ''}>${shortLabel}</span>`;
     }).join('');
-    return details ? `<span class="sense-metadata-list" aria-label="Sense details">${details}</span>` : '';
+    if (!details) return '';
+    const overflowCount = Math.max(0, items.length - visibleLimit);
+    const more = overflowCount
+        ? `<button type="button" class="sense-metadata-more" aria-expanded="false" onclick="toggleSenseMetadataOverflow(event, this)" data-count="${overflowCount}" aria-label="Show ${overflowCount} more sense details">+${overflowCount}</button>`
+        : '';
+    return `<span class="sense-metadata-list" aria-label="Sense details">${details}${more}</span>`;
 }
 
 function contextWithoutSenseMetadata(meaning, active) {
@@ -3050,6 +3099,21 @@ function toggleSenseMetadataChip(event, chip) {
     const expanded = chip.getAttribute('aria-expanded') === 'true';
     chip.textContent = decodeURIComponent(expanded ? chip.dataset.short : chip.dataset.full);
     chip.setAttribute('aria-expanded', String(!expanded));
+}
+
+function toggleSenseMetadataOverflow(event, control) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const list = control?.closest?.('.sense-metadata-list');
+    if (!list) return;
+    const expand = control.getAttribute('aria-expanded') !== 'true';
+    list.querySelectorAll('.sense-metadata-detail.is-overflow').forEach(detail => {
+        detail.hidden = !expand;
+    });
+    const count = Number(control.dataset.count) || 0;
+    control.setAttribute('aria-expanded', String(expand));
+    control.setAttribute('aria-label', expand ? 'Show fewer sense details' : `Show ${count} more sense details`);
+    control.textContent = expand ? 'Less' : `+${count}`;
 }
 
 function highlightPossibleSpanishDictUsage(sentenceHTML, usage, targetWord = '') {
@@ -7454,3 +7518,4 @@ const stubFor = (name, loader) => {
 window.describeCliticForm = describeCliticForm;
 window.openSenseCrossReference = openSenseCrossReference;
 window.toggleSenseMetadataChip = toggleSenseMetadataChip;
+window.toggleSenseMetadataOverflow = toggleSenseMetadataOverflow;

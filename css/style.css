@@ -3054,6 +3054,32 @@
             color: color-mix(in srgb, #2563eb 72%, var(--text-primary));
         }
 
+        .sense-metadata-more {
+            appearance: none;
+            border: 0;
+            border-bottom: 1px solid currentColor;
+            border-radius: 0;
+            padding: 0;
+            background: transparent;
+            color: rgb(var(--sense-match-rgb));
+            font: inherit;
+            font-weight: 750;
+            line-height: inherit;
+            cursor: pointer;
+        }
+
+        .sense-metadata-more::before {
+            content: '·';
+            margin: 0 5px;
+            color: var(--text-secondary);
+            opacity: 0.5;
+        }
+
+        .sense-metadata-more:focus-visible {
+            outline: 2px solid rgb(var(--sense-match-rgb));
+            outline-offset: 2px;
+        }
+
         .sense-metadata-chip {
             appearance: none;
             border: 1px solid rgba(var(--sense-match-rgb), 0.38);
