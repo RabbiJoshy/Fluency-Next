@@ -12,6 +12,7 @@ the occurrence that was selected as evidence, and card identity is untouched.
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import UTC, datetime
 import json
 from pathlib import Path
@@ -26,7 +27,7 @@ from fluency.features.metadata import METADATA_CONTRACT_VERSION
 from fluency.core.workspace import Workspace
 from fluency.pipeline.planning import validate_pipeline_profile
 from fluency.harvest.matching import example_identity
-from fluency.release.sentences import sentence_count
+from fluency.release.sentences import near_duplicate, sentence_count
 from fluency.release.composition import compose_release
 from fluency.core.io import atomic_write, json_bytes
 from fluency.release.study_structure import build_study_structure
@@ -212,6 +213,11 @@ def build_inactive_run_candidate(
     menu_by_card = {card["card_id"]: card for card in menus.get("cards", [])}
     candidates_by_card = {card["card_id"]: card for card in candidates.get("cards", [])}
     scope = profile["scope"]
+    # How many different cards may show the same sentence before it is held
+    # back. Two is enough to let a genuinely apt sentence serve a pair of
+    # related cards without letting one line carry the deck.
+    max_reuse = int(scope.get("max_cards_sharing_an_example", 2))
+    reuse: Counter[str] = Counter()
     menu_adapter = str(menus.get("source_adapter", ""))
     menu_provider = "spanishdict" if menu_adapter.startswith("spanishdict-") else "wiktionary"
 
@@ -244,6 +250,7 @@ def build_inactive_run_candidate(
 
         selected = []
         seen: set[str] = set()
+        chosen_texts: list[str] = []
         for single_only in (True, False):
             if len(selected) == limit:
                 break
@@ -258,7 +265,24 @@ def build_inactive_run_candidate(
                 )
                 if identity in seen:
                     continue
+                text = sentence["target"]["text"] if sentence else ""
+                # Tatoeba's contributors write agreement families on purpose --
+                # "Vous etes plus grand/grande/grands que moi" -- so identical
+                # word sequences are not the only way a card ends up showing one
+                # sentence three times. 43 of 100 French cards and 22 of 100
+                # Portuguese had a near-duplicate pair among their examples.
+                if text and any(near_duplicate(text, other) for other in chosen_texts):
+                    continue
+                # A sentence built purely from the commonest words wins on every
+                # card those words belong to, so the deck repeats itself even
+                # though no single card does. 500 French display slots held only
+                # 304 distinct sentences; one appeared on seven cards.
+                if text and reuse[identity] >= max_reuse:
+                    continue
                 seen.add(identity)
+                if text:
+                    chosen_texts.append(text)
+                    reuse[identity] += 1
                 selected.append(item)
                 if len(selected) == limit:
                     break

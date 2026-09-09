@@ -1,0 +1,35 @@
+{
+  "config_version": "harvest-language-policy/v1",
+  "policy_id": "pl-v1",
+  "language": "pl",
+  "normalization": {
+    "unicode_form": "NFC",
+    "casefold": true,
+    "canonical_apostrophe": "'",
+    "apostrophe_variants": [
+      "’",
+      "‘",
+      "ʼ",
+      "‛",
+      "＇"
+    ],
+    "collapse_whitespace": true
+  },
+  "matching": {
+    "boundary_policy": "unicode_word",
+    "token_pattern": "[^\\W\\d_]+(?:['’-][^\\W\\d_]+)*"
+  },
+  "sentence_rules": {
+    "reject_contains_apostrophe": false,
+    "reject_contains_hyphen": false,
+    "forbidden_substrings": [
+      "http://",
+      "https://",
+      "<",
+      ">",
+      "♪",
+      "♫"
+    ]
+  },
+  "policy_note": "Polish uses no apostrophes in ordinary words and hyphenates compounds (bialo-czerwony), so neither is rejected. The token pattern is Unicode-word based, which covers a with ogonek, c/n/s/z with acute, l with stroke and z with dot."
+}

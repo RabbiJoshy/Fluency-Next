@@ -404,6 +404,13 @@ def harvest_run_stage(
             scanned_records += 1
             if (
                 stop_after is not None
+                # Never stop while a later source has not been read. Under
+                # preferred_order the first source saturates most cards long
+                # before the checkpoint -- Tatoeba filled 95 of 100 Portuguese
+                # cards in 50,000 rows -- so stopping here left the fallback
+                # source with rows_seen: 0. The cards that need the fallback are
+                # precisely the ones the fraction rule is willing to abandon.
+                and source_rank == len(adapters) - 1
                 and scanned_records % check_every == 0
                 and sum(1 for cid, held in candidates.items() if len(held) >= cap_for[cid]) >= stop_after
                 and all(

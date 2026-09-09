@@ -1,0 +1,7 @@
+{
+  "config_version": "inventory-language-policy/v1",
+  "policy_id": "pl-v1",
+  "language": "pl",
+  "surface_exclusions": {},
+  "exclusion_note": "Empty until a first Polish harvest is read. Exclusions are derived from what a real run surfaces -- subtitle release-group tags, untranslated English, given names -- and inventing them ahead of the evidence risks deleting ordinary inflected words, which is the mistake the Czech list documents."
+}
