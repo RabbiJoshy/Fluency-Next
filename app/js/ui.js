@@ -802,7 +802,11 @@ async function renderLevelSelector(language, { preferActionable = false } = {}) 
         }
         const percentageRanges = getActiveLevelRanges();
         console.log('Using percentage levels:', percentageRanges);
-        const coverageType = activeArtist ? 'lyrics comprehension' : 'speech comprehension';
+        const coverageType = activeArtist
+            ? 'lyrics comprehension'
+            : (usingReleaseLevels && globalThis.coverageAvailable?.()
+                ? globalThis.coverageLabel()
+                : 'speech comprehension');
         const buttonsHTML = percentageRanges.map(level => {
             const description = level.description || `${level.level} ${coverageType}`;
             return `
@@ -849,11 +853,18 @@ async function renderLevelSelector(language, { preferActionable = false } = {}) 
         const initialMetrics = _levelBandMetrics(initial, preparedSamples);
         const initialDeckTotal = _levelDeckTotal(percentageRanges, preparedSamples);
         // Coverage display: use threshold for smart ranges, level string for legacy.
-        // Smart ranges know their coverage; release levels do not, and printing
-        // the level id where a percentage belongs read as a glitch.
+        // Smart ranges carry their own coverage. Release levels are a pure
+        // ordering, so the figure comes from the shipped corpus shares when the
+        // language has them, and the span stays hidden when it does not —
+        // printing the level id where a percentage belongs read as a glitch.
+        const releaseCoverage = usingReleaseLevels
+            ? globalThis.levelCoverage?.(preparedSamples, initial.startRank, initial.endRank)
+            : null;
         const initialCoverage = initial.threshold != null
             ? `${(initial.threshold * 100).toFixed(1)}%`
-            : (usingReleaseLevels ? '' : initial.level);
+            : (usingReleaseLevels
+                ? (releaseCoverage != null ? `${(releaseCoverage * 100).toFixed(1)}%` : '')
+                : initial.level);
         container.classList.add('level-selector--slider');
         container.innerHTML = `
             <div class="level-slider-wrap">
@@ -1533,9 +1544,18 @@ function updateLevelSliderReadout(i) {
         rankEl.textContent = `${metrics.start.toLocaleString()}–${metrics.end.toLocaleString()}`;
     }
     if (covEl) {
-        covEl.textContent = lv.threshold != null
+        // Release levels have no threshold of their own; their figure comes
+        // from the shipped corpus shares, and the whole span hides when the
+        // language ships none rather than showing a level id as a percentage.
+        const shipped = lv.threshold == null
+            ? globalThis.levelCoverage?.(_syncSamples, lv.startRank, lv.endRank)
+            : null;
+        const text = lv.threshold != null
             ? `${(lv.threshold * 100).toFixed(1)}%`
-            : lv.level;
+            : (shipped != null ? `${(shipped * 100).toFixed(1)}%` : '');
+        covEl.textContent = text;
+        const span = covEl.closest('.lsw-coverage');
+        if (span) span.hidden = !text;
     }
 
     // Patch tick labels too if the cache is warm — keeps the row of

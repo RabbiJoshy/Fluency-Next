@@ -28,10 +28,47 @@ def register(subparsers) -> None:
     compile_corpus.add_argument("--corpus", type=Path, required=True)
     compile_corpus.add_argument("--snapshot-id", required=True)
     compile_corpus.add_argument("--provider", required=True)
+    coverage = frequency_actions.add_parser(
+        "build-coverage",
+        help="what share of a corpus each deck surface accounts for",
+    )
+    coverage.add_argument("--workspace", default=os.environ.get("FLUENCY_WORKSPACE"))
+    coverage.add_argument("--language", required=True)
+    coverage.add_argument("--release-index", type=Path, required=True)
+    coverage.add_argument("--release-id", required=True)
+    coverage.add_argument(
+        "--frequency-source",
+        type=Path,
+        required=True,
+        help="a 'surface count' list, e.g. an OpenSubtitles frequency file",
+    )
+    coverage.add_argument("--provider", default="opensubtitles-2018")
+    coverage.add_argument(
+        "--out",
+        type=Path,
+        help="default: <workspace>/coverage/<language>/coverage.json",
+    )
 
 
 def handle_frequency(args: argparse.Namespace) -> int:
     workspace = Workspace.load(_workspace_path(args.workspace))
+    if args.frequency_command == "build-coverage":
+        layer = build_coverage_layer(
+            language=args.language,
+            release_index=args.release_index,
+            frequency_source=args.frequency_source,
+            provider=args.provider,
+            release_id=args.release_id,
+        )
+        out = args.out or workspace.root / "coverage" / args.language / "coverage.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(json_bytes(layer))
+        print(
+            f"{args.language}: {layer['covered_surfaces']} of {layer['deck_surfaces']} "
+            f"deck surfaces found in {layer['corpus']['distinct_surfaces']} corpus surfaces"
+        )
+        print(f"Wrote {out}")
+        return 0
     if args.frequency_command == "compile-corpus":
         def progress(state: dict[str, int]) -> None:
             gib = state["source_bytes"] / (1024 ** 3)

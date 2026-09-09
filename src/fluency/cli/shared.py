@@ -32,6 +32,7 @@ from fluency.enrichments.conjugations import build_conjugation_layer, pin_jehle_
 from fluency.enrichments.cognates import build_app_cognates, build_cognate_layer
 from fluency.harvest.runner import harvest_run_stage
 from fluency.inventory.corpus_frequency import compile_corpus_frequency_snapshot
+from fluency.inventory.coverage import build_coverage_layer
 from fluency.inventory.runner import build_inventory_stage
 from fluency.lyrics.ingest import ingest_legacy_genius_song
 from fluency.lyrics.corpus import build_lyrics_corpus_plan, ingest_lyrics_corpus_plan

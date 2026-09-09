@@ -248,6 +248,19 @@ def build_static_deployment(
             ) or any(row.get("lemma") for row in index_rows)
             language_config.setdefault("capabilities", {})["mergeLemmas"] = merges_lemmas
 
+            # Corpus shares, staged the same way and for the same reason: they
+            # belong to (surface, corpus), so a recut deck keeps them. Absent,
+            # the level readout simply says nothing rather than guessing.
+            coverage_source = workspace.root / "coverage" / language / "coverage.json"
+            if coverage_source.is_file():
+                coverage_relative = f"coverage/{language}/coverage.json"
+                coverage_target = site / coverage_relative
+                coverage_target.parent.mkdir(parents=True, exist_ok=True)
+                coverage_target.write_bytes(coverage_source.read_bytes())
+                language_config["coveragePath"] = coverage_relative
+            else:
+                language_config["coveragePath"] = None
+
             cognate_source = workspace.root / "cognates" / language / "cognates.json"
             has_mapping = cognate_source.is_file()
             if has_mapping:

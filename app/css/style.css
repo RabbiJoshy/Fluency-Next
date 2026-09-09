@@ -14313,3 +14313,22 @@
   color: var(--accent-primary-text);
 }
 .fast-mode-btn:not(.selected):hover { color: var(--text-secondary); }
+
+/* The level-percentage switch shares the fast-mode page's control styling. */
+.coverage-mode-btn {
+  flex: 1;
+  padding: 7px 12px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.coverage-mode-btn.selected {
+  background: var(--accent-primary);
+  color: var(--accent-primary-text);
+}
+.coverage-mode-btn:not(.selected):hover { color: var(--text-secondary); }
+.coverage-mode-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }

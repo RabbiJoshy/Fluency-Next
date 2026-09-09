@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v344"
+EXPECTED_CACHE_NAME = "flashcards-v345"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -613,3 +613,28 @@ class ReleaseLevelSetsTests(unittest.TestCase):
         # match a release level id, and the set list comes back empty.
         ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
         self.assertEqual(ui.count("dataset.releaseLevel === 'true'"), 2)
+
+
+class LevelCoverageTests(unittest.TestCase):
+    """Speech levels are a pure ordering; the corpus shares give them a figure
+    a learner can act on."""
+
+    def setUp(self) -> None:
+        self.script = (APP_ROOT / "js" / "coverage.js").read_text(encoding="utf-8")
+
+    def test_both_readings_come_from_the_same_shares(self) -> None:
+        # share: fraction of the corpus. gain: fraction of what is left.
+        self.assertIn("if (readMode() === 'share') return band;", self.script)
+        self.assertIn("return remaining > 0 ? band / remaining : null;", self.script)
+
+    def test_a_level_with_nothing_to_say_reports_nothing(self) -> None:
+        # A zero would read as "this level is worthless" rather than "unknown".
+        self.assertIn("if (band <= 0) return null;", self.script)
+
+    def test_the_switch_hides_when_a_language_ships_no_shares(self) -> None:
+        self.assertIn("container.style.display = coverageAvailable() ? 'block' : 'none';", self.script)
+
+    def test_the_switch_is_on_the_page_that_explains_the_deck(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        page_start = html.index('id="fastModeModal"')
+        self.assertGreater(html.index('id="coverageModeContainer"'), page_start)

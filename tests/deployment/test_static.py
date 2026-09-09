@@ -156,3 +156,18 @@ class CognateCapabilitySourcesTests(unittest.TestCase):
         self.assertIn("_lyrics_carries_cognate_signal(lyrics_release, language)", self.source)
         # From the workspace release: the site copy does not exist yet here.
         self.assertIn('artists = lyrics_release / "app/Artists" / language', self.source)
+
+
+class CoverageStagingTests(unittest.TestCase):
+    """Corpus shares travel beside the release like cognate scores do."""
+
+    def setUp(self) -> None:
+        self.source = (
+            Path(__file__).resolve().parents[2] / "src/fluency/deployment/static.py"
+        ).read_text(encoding="utf-8")
+
+    def test_shares_are_keyed_by_language_not_release(self) -> None:
+        self.assertIn('workspace.root / "coverage" / language / "coverage.json"', self.source)
+
+    def test_absence_leaves_no_path_rather_than_a_guess(self) -> None:
+        self.assertIn('language_config["coveragePath"] = None', self.source)
