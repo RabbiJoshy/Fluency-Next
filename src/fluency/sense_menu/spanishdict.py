@@ -15,6 +15,9 @@ from typing import Any, Iterable
 from fluency.core.hashing import canonical_content_id, file_content_id
 from fluency.features import MetadataAccounting, SpecialistFeature
 from fluency.features.metadata import METADATA_CONTRACT_VERSION
+from fluency.features.spanishdict_metadata import (
+    metadata_accounting as account_spanishdict_metadata,
+)
 from fluency.menus import MenuAnalysis, SenseLeaf, build_analysis_id
 
 
@@ -573,7 +576,7 @@ class SpanishDictSenseMenuAdapter:
                                 ),
                             },
                             specialist_features=_specialist_features(sense),
-                            metadata_accounting=SPANISHDICT_METADATA_ACCOUNTING,
+                            metadata_accounting=account_spanishdict_metadata(sense),
                         )
                         for sense_id, sense in senses
                     )
