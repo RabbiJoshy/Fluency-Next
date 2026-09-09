@@ -15,6 +15,25 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
 class CrossLanguageMetadataConformanceTests(unittest.TestCase):
+    def test_every_wiktionary_policy_declares_the_same_adapter_slots(self) -> None:
+        registry = load_sense_menu_registry(REPOSITORY_ROOT)
+        list_slots = {
+            "construction_tags", "domain_tags", "ignored_tags", "region_tags",
+            "register_tags",
+        }
+        for language, entry in registry["languages"].items():
+            if entry["provider"] != "wiktionary":
+                continue
+            with self.subTest(language=language):
+                policy = load_sense_menu_language_policy(
+                    REPOSITORY_ROOT,
+                    policy_id=entry["policy_id"],
+                    language=language,
+                )
+                for slot in list_slots:
+                    self.assertIsInstance(policy[slot], list)
+                self.assertIsInstance(policy["grammar_tags"], dict)
+
     def test_every_policy_emits_the_same_envelope_shape(self) -> None:
         registry = load_sense_menu_registry(REPOSITORY_ROOT)
         expected = {

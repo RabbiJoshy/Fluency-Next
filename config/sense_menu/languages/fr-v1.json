@@ -3,7 +3,7 @@
   "policy_id": "fr-v1",
   "language": "fr",
   "provider": "wiktionary",
-  "audit_status": "partial",
+  "audit_status": "audited",
   "card_binding": {
     "identity": "surface-card/v1",
     "headword_role": "lookup_metadata_only"
@@ -67,9 +67,21 @@
       ]
     }
   },
-  "region_tags": [],
-  "region_tags_note": "Declared and empty: no French regional tag list has been established yet. Populate and re-run the sense-menu stage to backfill.",
-  "register_tags": [],
-  "construction_tags": [],
-  "feature_vocabulary_note": "Declared and empty: no French vocabulary has been established, so the extractor falls back to its provider defaults. Populate and re-run the sense-menu stage to backfill."
+  "region_tags": [
+    "Alsace", "Antilles", "Belgium", "Canada", "Congo", "France",
+    "Louisiana", "Luxembourg", "Lyon", "Montreal", "Morocco",
+    "Normandy", "North-America", "Quebec", "Rwanda", "Switzerland"
+  ],
+  "register_tags": [
+    "childish", "endearing", "historical", "idiomatic", "neologism",
+    "nonstandard", "proscribed", "sarcastic", "slur", "uncommon"
+  ],
+  "construction_tags": ["attributive", "direct-object", "ergative", "in-compounds"],
+  "domain_tags": ["Ancient-Rome", "Internet", "Judaism", "rhetoric"],
+  "grammar_tags": {"historic": "tense=past-historic"},
+  "ignored_tags": [
+    "abbreviation", "acronym", "alternative", "clipping", "empty-gloss",
+    "initialism", "letter", "misspelling", "morpheme", "no-gloss"
+  ],
+  "feature_vocabulary_note": "Audited against the pinned 2026-08-05 French snapshot. Unmapped qualifiers remain explicit in the metadata audit queue."
 }

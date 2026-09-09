@@ -93,5 +93,8 @@
     "pronominal",
     "reflexive",
     "transitive"
-  ]
+  ],
+  "domain_tags": [],
+  "grammar_tags": {},
+  "ignored_tags": []
 }

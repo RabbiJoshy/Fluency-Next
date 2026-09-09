@@ -13,6 +13,9 @@ PT = {
     "register_tags": ["informal", "poetic"],
     "construction_tags": ["intransitive", "transitive"],
     "region_tags": ["Brazil", "Portugal"],
+    "domain_tags": [],
+    "grammar_tags": {},
+    "ignored_tags": [],
 }
 
 
@@ -53,6 +56,33 @@ class WiktionaryExtractorTests(unittest.TestCase):
             ("register", "usage_tag", "informal"),
             ("construction", "grammar_tag", "intransitive"),
         ])
+
+    def test_language_grammar_domain_and_ignored_tags_are_explicit(self) -> None:
+        policy = {
+            **PT,
+            "grammar_tags": {"historic": "tense=past-historic"},
+            "domain_tags": ["Internet"],
+            "ignored_tags": ["no-diminutive"],
+        }
+        out = extract({}, tags=["historic", "Internet"], policy=policy)
+        self.assertEqual(families(out), [
+            ("domain", "domain_tag", "Internet"),
+            ("grammar", "sense_mark", "tense=past-historic"),
+        ])
+        accounting = metadata_accounting(
+            {}, tags=["historic", "Internet", "no-diminutive"], policy=policy
+        )
+        self.assertEqual(accounting.unclassified, ())
+        self.assertEqual(
+            [item["value"] for item in accounting.ignored], ["no-diminutive"]
+        )
+
+    def test_language_grammar_mapping_applies_to_surface_forms(self) -> None:
+        policy = {**PT, "grammar_tags": {"historic": "tense=past-historic"}}
+        self.assertEqual(
+            families(extract_surface_grammar(["historic"], policy=policy)),
+            [("grammar", "surface_mark", "tense=past-historic")],
+        )
 
     def test_parenthetical_prose_becomes_a_construction_feature(self) -> None:
         """Frame notes appear nowhere else in the pipeline."""

@@ -4,10 +4,25 @@
   "language": "nl",
   "provider": "wiktionary",
   "provider_policy_id": "wiktionary-v1",
-  "audit_status": "scaffold",
+  "audit_status": "partial",
   "card_binding": {"identity": "surface-card/v1", "headword_role": "lookup_metadata_only"},
   "menu_order_role": "provider_prior",
-  "region_tags": [],
-  "register_tags": [],
-  "construction_tags": []
+  "region_tags": [
+    "Belgium", "Brabant", "Brabantian", "Flanders", "Flemish", "Groningen",
+    "Limburg", "Netherlands", "South-Africa", "Suriname", "The-Hague", "Twente"
+  ],
+  "register_tags": [
+    "childish", "endearing", "historical", "idiomatic", "jargon",
+    "nonstandard", "proscribed", "sarcastic", "slur", "uncommon"
+  ],
+  "construction_tags": [
+    "attributive", "dependent", "ergative", "in-compounds", "postpositional",
+    "predicative", "subordinating"
+  ],
+  "domain_tags": ["Internet", "Judaism"],
+  "grammar_tags": {},
+  "ignored_tags": [
+    "abbreviation", "acronym", "alternative", "clipping", "initialism",
+    "letter", "misspelling", "morpheme", "no-diminutive", "no-gloss"
+  ]
 }

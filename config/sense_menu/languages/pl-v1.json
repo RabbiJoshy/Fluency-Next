@@ -4,10 +4,18 @@
   "language": "pl",
   "provider": "wiktionary",
   "provider_policy_id": "wiktionary-v1",
-  "audit_status": "scaffold",
+  "audit_status": "partial",
   "card_binding": {"identity": "surface-card/v1", "headword_role": "lookup_metadata_only"},
   "menu_order_role": "provider_prior",
-  "region_tags": [],
-  "register_tags": [],
-  "construction_tags": []
+  "region_tags": ["Lithuania", "Poznań", "Łowicz"],
+  "register_tags": [
+    "endearing", "historical", "idiomatic", "proscribed", "uncommon"
+  ],
+  "construction_tags": ["collocation", "prepositional"],
+  "domain_tags": ["Internet"],
+  "grammar_tags": {},
+  "ignored_tags": [
+    "abbreviation", "alternative", "misspelling", "morpheme", "noun-from-verb",
+    "no-gloss"
+  ]
 }

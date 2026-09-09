@@ -36,7 +36,7 @@ class SenseMenuPolicyTests(unittest.TestCase):
 
     def test_scaffold_language_inherits_safe_wiktionary_adapter_defaults(self):
         policy = load_sense_menu_language_policy(
-            REPOSITORY_ROOT, policy_id="pl-v1", language="pl"
+            REPOSITORY_ROOT, policy_id="it-v1", language="it"
         )
         self.assertEqual(policy["audit_status"], "scaffold")
         self.assertTrue(policy["redirects"]["require_source_case_match"])

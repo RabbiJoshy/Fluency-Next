@@ -9,5 +9,8 @@
   "menu_order_role": "provider_prior",
   "region_tags": [],
   "register_tags": [],
-  "construction_tags": []
+  "construction_tags": [],
+  "domain_tags": [],
+  "grammar_tags": {},
+  "ignored_tags": []
 }

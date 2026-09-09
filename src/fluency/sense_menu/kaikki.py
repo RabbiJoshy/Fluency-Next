@@ -539,7 +539,8 @@ class KaikkiSenseMenuAdapter:
             for (headword, part_of_speech), row_senses in sorted(grouped.items()):
                 source_key = f"{self.language_code}:{headword}:{part_of_speech}"
                 analysis_grammar = extract_surface_grammar(
-                    surface_grammar.get(surface, {}).get(headword, [])
+                    surface_grammar.get(surface, {}).get(headword, []),
+                    policy=self.language_policy,
                 )
                 provider_id_counts: Counter[str] = Counter(
                     sense["id"]

@@ -83,6 +83,25 @@ GRAMMAR_TAG_VALUES = {
     "indeclinable": "declension=none",
     "possessive": "possessive=true",
     "reflexive": "reflexive=true",
+    "participle": "form=participle",
+    "countable": "countability=countable",
+    "uncountable": "countability=uncountable",
+    "invariable": "inflection=invariable",
+    "definite": "definiteness=definite",
+    "indefinite": "definiteness=indefinite",
+    "by-personal-gender": "gender=variable-by-person",
+    "relational": "adjective-class=relational",
+    "virile": "gender=virile",
+    "nonvirile": "gender=nonvirile",
+    "active": "voice=active",
+    "passive": "voice=passive",
+    "adjectival": "form=adjectival",
+    "adverbial": "form=adverbial",
+    "partitive": "case=partitive",
+    "diminutive": "derivation=diminutive",
+    "augmentative": "derivation=augmentative",
+    "collective": "noun-class=collective",
+    "animal-not-person": "animacy=animal-not-person",
 }
 FUNCTIONAL = re.compile(
     r"^used to (?:denote|express|form|indicate|introduce|mark|refer to|show)\b",
@@ -101,7 +120,14 @@ def _vocabulary(policy: Mapping[str, Any] | None, key: str, fallback: frozenset[
     return values
 
 
-def _grammar_value(tag: str) -> str | None:
+def _grammar_value(
+    tag: str, policy: Mapping[str, Any] | None = None
+) -> str | None:
+    language_values = (policy or {}).get("grammar_tags")
+    if isinstance(language_values, Mapping):
+        declared = language_values.get(tag)
+        if isinstance(declared, str) and declared.strip():
+            return declared
     return GRAMMAR_TAG_VALUES.get(tag.casefold())
 
 
@@ -118,11 +144,14 @@ def classify_tag(
     register = _vocabulary(policy, "register_tags", DEFAULT_REGISTER_TAGS)
     construction = _vocabulary(policy, "construction_tags", DEFAULT_CONSTRUCTION_TAGS)
     regions = _vocabulary(policy, "region_tags", frozenset())
+    domains = _vocabulary(policy, "domain_tags", frozenset())
     if tag in regions:
         return SpecialistFeature("register", "region", tag, tag)
+    if tag in domains:
+        return SpecialistFeature("domain", "domain_tag", tag, tag)
     if tag in register:
         return SpecialistFeature("register", "usage_tag", tag, tag)
-    if (grammar_value := _grammar_value(tag)) is not None:
+    if (grammar_value := _grammar_value(tag, policy)) is not None:
         return SpecialistFeature("grammar", "sense_mark", grammar_value, tag)
     if _is_construction_tag(tag, construction):
         return SpecialistFeature("construction", "grammar_tag", tag, tag)
@@ -139,12 +168,17 @@ def metadata_accounting(
 
     unclassified: list[dict[str, Any]] = []
     ignored: list[dict[str, Any]] = []
+    policy_ignored = _vocabulary(policy, "ignored_tags", frozenset())
     for tag in sorted(set(tags)):
-        if tag in STRUCTURAL_TAGS:
+        if tag in STRUCTURAL_TAGS or tag in policy_ignored:
             ignored.append({
                 "source_field": "tags",
                 "value": tag,
-                "reason": "dictionary relation handled during sense resolution",
+                "reason": (
+                    "dictionary relation handled during sense resolution"
+                    if tag in STRUCTURAL_TAGS
+                    else "provider label intentionally excluded by language policy"
+                ),
             })
             continue
         if classify_tag(tag, policy=policy) is None:
@@ -198,13 +232,15 @@ def _split_parenthetical(sense: Mapping[str, Any]) -> list[str]:
     return []
 
 
-def extract_surface_grammar(tags: Sequence[str]) -> tuple[SpecialistFeature, ...]:
+def extract_surface_grammar(
+    tags: Sequence[str], *, policy: Mapping[str, Any] | None = None
+) -> tuple[SpecialistFeature, ...]:
     """Normalize Wiktionary form-of tags into provider-neutral grammar marks."""
 
     return tuple(
         SpecialistFeature("grammar", "surface_mark", value, tag)
         for tag in sorted(set(tags))
-        if (value := _grammar_value(tag)) is not None
+        if (value := _grammar_value(tag, policy)) is not None
     )
 
 
@@ -279,7 +315,7 @@ def extract(
             continue
         elif lowered in register:
             add("register", "gloss_note", part)
-        elif (grammar_value := _grammar_value(lowered)) is not None:
+        elif (grammar_value := _grammar_value(lowered, policy)) is not None:
             add("grammar", "sense_mark", grammar_value)
         elif _is_construction_tag(lowered, construction):
             add("construction", "gloss_note", part)

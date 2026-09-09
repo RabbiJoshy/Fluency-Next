@@ -111,6 +111,20 @@ def load_sense_menu_language_policy(
             isinstance(target, str) and target for target in targets
         ):
             raise SenseMenuPolicyError(f"redirect target POS list is invalid: {source_pos}")
+    for field in (
+        "construction_tags", "domain_tags", "ignored_tags", "region_tags", "register_tags"
+    ):
+        values = policy.get(field)
+        if not isinstance(values, list) or not all(
+            isinstance(value, str) and value for value in values
+        ):
+            raise SenseMenuPolicyError(f"Wiktionary {field} must be a string list")
+    grammar_tags = policy.get("grammar_tags")
+    if not isinstance(grammar_tags, dict) or not all(
+        isinstance(tag, str) and tag and isinstance(value, str) and value
+        for tag, value in grammar_tags.items()
+    ):
+        raise SenseMenuPolicyError("Wiktionary grammar_tags must map strings to strings")
     return policy
 
 

@@ -4,10 +4,10 @@
   "languages": {
     "cs": {"app_key": "czech", "policy_id": "cs-v1", "provider": "wiktionary", "audit_status": "audited"},
     "es": {"app_key": "spanish", "policy_id": "es-spanishdict-v1", "provider": "spanishdict", "audit_status": "audited"},
-    "fr": {"app_key": "french", "policy_id": "fr-v1", "provider": "wiktionary", "audit_status": "partial"},
+    "fr": {"app_key": "french", "policy_id": "fr-v1", "provider": "wiktionary", "audit_status": "audited"},
     "it": {"app_key": "italian", "policy_id": "it-v1", "provider": "wiktionary", "audit_status": "scaffold"},
-    "nl": {"app_key": "dutch", "policy_id": "nl-v1", "provider": "wiktionary", "audit_status": "scaffold"},
-    "pl": {"app_key": "polish", "policy_id": "pl-v1", "provider": "wiktionary", "audit_status": "scaffold"},
+    "nl": {"app_key": "dutch", "policy_id": "nl-v1", "provider": "wiktionary", "audit_status": "partial"},
+    "pl": {"app_key": "polish", "policy_id": "pl-v1", "provider": "wiktionary", "audit_status": "partial"},
     "pt": {"app_key": "portuguese", "policy_id": "pt-v1", "provider": "wiktionary", "audit_status": "audited"},
     "ru": {"app_key": "russian", "policy_id": "ru-v1", "provider": "wiktionary", "audit_status": "scaffold"},
     "sv": {"app_key": "swedish", "policy_id": "sv-v1", "provider": "wiktionary", "audit_status": "scaffold"}
