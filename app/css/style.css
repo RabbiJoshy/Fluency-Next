@@ -3137,6 +3137,14 @@
             overflow: hidden;
         }
 
+        .meaning-row-regular:not(.is-current-sense) .meaning-row-translation {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            overflow: hidden;
+        }
+
         /* Selection elevation is coloured by the surrounding POS section in
            `.meaning-row.is-current-sense`; this legacy class only preserves
            stacking for callers and older cached markup. */

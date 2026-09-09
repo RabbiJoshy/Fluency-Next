@@ -26,6 +26,7 @@ class MetadataContractUITests(unittest.TestCase):
         self.assertIn(".sense-metadata-detail + .sense-metadata-detail::before", styles)
         self.assertIn("group-card-varying-cell${isMemberSelected ? ' is-active-subsense' : ''}", flashcards)
         self.assertIn(".group-card-varying-cell:not(.is-active-subsense)", styles)
+        self.assertIn(".meaning-row-regular:not(.is-current-sense)", styles)
 
 
 if __name__ == "__main__":
