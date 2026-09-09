@@ -18,7 +18,7 @@ import './fast-mode.js?v=20260908e';
 import './extras.js?v=20260908d';
 import './song-sets.js?v=20260823ae';
 import './vocabulary-import.js?v=20260825ak';
-import './flashcards.js?v=20260908e';
+import './flashcards.js?v=20260909a';
 import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import

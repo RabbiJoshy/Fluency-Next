@@ -3027,12 +3027,31 @@
         }
 
         .sense-metadata-list {
-            display: inline-flex;
+            display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 3px;
-            margin-left: 5px;
-            vertical-align: middle;
+            gap: 0;
+            width: 100%;
+            margin-top: 3px;
+            color: var(--text-secondary);
+            font-size: 10px;
+            font-style: normal;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .sense-metadata-detail + .sense-metadata-detail::before {
+            content: '·';
+            margin: 0 5px;
+            opacity: 0.5;
+        }
+
+        .sense-metadata-detail[data-family="register"] {
+            color: color-mix(in srgb, #d97706 78%, var(--text-primary));
+        }
+
+        .sense-metadata-detail[data-family="domain"] {
+            color: color-mix(in srgb, #2563eb 72%, var(--text-primary));
         }
 
         .sense-metadata-chip {
@@ -3102,8 +3121,20 @@
         .meaning-row.is-current-sense .sense-metadata-list {
             max-width: 100%;
         }
-        .meaning-row.is-current-sense .sense-metadata-chip {
+        .meaning-row.is-current-sense .sense-metadata-detail {
             overflow-wrap: anywhere;
+        }
+
+        /* Inactive sub-senses are compact navigation choices. The selected
+           one remains uncapped and grows to show its complete dictionary
+           detail, so density never makes information inaccessible. */
+        .group-card-varying-cell:not(.is-active-subsense) > .row-adaptive-text,
+        .group-card-varying-cell:not(.is-active-subsense) > .meaning-context-cell {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            overflow: hidden;
         }
 
         /* Selection elevation is coloured by the surrounding POS section in
