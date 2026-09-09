@@ -52,6 +52,36 @@ class MetadataAuditTests(unittest.TestCase):
         self.assertEqual(report["metadata_contract"], "sense-metadata/v1")
         self.assertEqual(len(report["languages"]), 9)
         self.assertTrue(all("snapshot" in row for row in report["languages"]))
+        self.assertTrue(all(row["release_status"] == "not_checked" for row in report["languages"]))
+
+    def test_status_detects_current_legacy_and_inactive_app_releases(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app_root = Path(directory)
+            (app_root / "config").mkdir()
+            (app_root / "releases" / "pt").mkdir(parents=True)
+            (app_root / "releases" / "fr").mkdir(parents=True)
+            (app_root / "releases" / "pt" / "manifest.json").write_text(
+                json.dumps({"metadata_contract": "sense-metadata/v1"}), encoding="utf-8"
+            )
+            (app_root / "releases" / "fr" / "manifest.json").write_text(
+                json.dumps({"manifest_version": "release-manifest/v1"}), encoding="utf-8"
+            )
+            (app_root / "config" / "config.json").write_text(json.dumps({
+                "languages": {
+                    "portuguese": {"hasData": True, "releaseManifestPath": "releases/pt/manifest.json"},
+                    "french": {"hasData": True, "releaseManifestPath": "releases/fr/manifest.json"},
+                    "italian": {"hasData": False},
+                }
+            }), encoding="utf-8")
+            rows = {
+                row["language"]: row
+                for row in metadata_status(REPOSITORY_ROOT, app_root=app_root)["languages"]
+            }
+
+        self.assertEqual(rows["pt"]["release_status"], "current")
+        self.assertEqual(rows["fr"]["release_status"], "legacy")
+        self.assertEqual(rows["it"]["release_status"], "inactive")
+        self.assertEqual(rows["cs"]["release_status"], "missing")
 
 
 if __name__ == "__main__":

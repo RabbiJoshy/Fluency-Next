@@ -132,6 +132,9 @@ def load_sense_menu_registry(repository_root: Path) -> dict[str, Any]:
         policy_id = entry.get("policy_id")
         provider = entry.get("provider")
         status = entry.get("audit_status")
+        app_key = entry.get("app_key")
+        if not isinstance(app_key, str) or not app_key:
+            raise SenseMenuPolicyError(f"registry app key is missing for {language}")
         if not isinstance(policy_id, str) or not policy_id:
             raise SenseMenuPolicyError(f"registry policy is missing for {language}")
         if status not in AUDIT_STATUSES:

@@ -17,6 +17,7 @@ def register(subparsers) -> None:
     actions = parser.add_subparsers(dest="metadata_command", required=True)
     status = actions.add_parser("status", help="show policy and source-snapshot readiness")
     status.add_argument("--workspace", type=Path)
+    status.add_argument("--app-root", type=Path, help="inspect the releases configured by this app tree")
     audit = actions.add_parser("audit-wiktionary", help="inventory typed and unclassified metadata")
     audit.add_argument("--language", required=True)
     audit.add_argument("--policy", required=True)
@@ -26,7 +27,7 @@ def register(subparsers) -> None:
 
 def handle(args) -> int:
     if args.metadata_command == "status":
-        report = metadata_status(project_root(), args.workspace)
+        report = metadata_status(project_root(), args.workspace, args.app_root)
     elif args.metadata_command == "audit-wiktionary":
         report = audit_wiktionary_snapshot(
             project_root(),

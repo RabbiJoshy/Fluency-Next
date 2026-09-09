@@ -106,7 +106,34 @@ def audit_wiktionary_snapshot(
     }
 
 
-def metadata_status(repository_root: Path, workspace_root: Path | None = None) -> dict[str, Any]:
+def _release_status(app_root: Path | None, entry: dict[str, Any]) -> dict[str, Any]:
+    if app_root is None:
+        return {"release_status": "not_checked", "release_metadata_contract": None}
+    config_path = app_root / "config" / "config.json"
+    if not config_path.is_file():
+        return {"release_status": "missing", "release_metadata_contract": None}
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    language = (config.get("languages") or {}).get(entry["app_key"])
+    if not isinstance(language, dict):
+        return {"release_status": "missing", "release_metadata_contract": None}
+    if language.get("hasData") is False:
+        return {"release_status": "inactive", "release_metadata_contract": None}
+    manifest_path = language.get("releaseManifestPath")
+    if not isinstance(manifest_path, str) or not (app_root / manifest_path).is_file():
+        return {"release_status": "missing", "release_metadata_contract": None}
+    manifest = json.loads((app_root / manifest_path).read_text(encoding="utf-8"))
+    contract = manifest.get("metadata_contract")
+    return {
+        "release_status": "current" if contract == "sense-metadata/v1" else "legacy",
+        "release_metadata_contract": contract,
+    }
+
+
+def metadata_status(
+    repository_root: Path,
+    workspace_root: Path | None = None,
+    app_root: Path | None = None,
+) -> dict[str, Any]:
     """Build the policy/snapshot matrix from files rather than a hand-kept table."""
 
     registry = load_sense_menu_registry(repository_root)
@@ -134,6 +161,7 @@ def metadata_status(repository_root: Path, workspace_root: Path | None = None) -
             "policy_id": entry["policy_id"],
             "audit_status": entry["audit_status"],
             "snapshot": str(snapshots[-1]) if snapshots else None,
+            **_release_status(app_root, entry),
         })
     return {
         "report_version": "sense-metadata-status/v1",
