@@ -5,9 +5,10 @@
     "first_new_word_discount": 0.35,
     "long_penalty_weight": 0.3,
     "preferred_maximum_tokens": 12,
-    "preferred_minimum_tokens": 6,
+    "preferred_minimum_tokens": 8,
     "short_penalty_weight": 0.6,
-    "unranked_assumed_rank": 60000
+    "unranked_assumed_rank": 60000,
+    "preferred_minimum_tokens_note": "Raised from 6 so the shortest sentences stop winning. A literal calque from English keeps English's short function-word skeleton, which is exactly the shape frequency-burden rewards: on French, 'Nous y allons mais vous non.' ranked FIRST for four separate cards. This does not fix the ranking, it stops the most skeletal sentences taking the head of the queue."
   },
   "policy_id": "speech-v1",
   "provenance": {
@@ -21,8 +22,8 @@
     "maximum_translation_tokens": 24,
     "minimum_distinct_ratio": 0.75,
     "minimum_distinct_ratio_note": "How much of the sentence is new rather than echoed. Probed against real harvested Portuguese: every degenerate line scored 0.67 or below ('O que? O que e que eu...' 0.57) and every natural one 0.83 or above, so the boundary sits in an empty gap. Drops 1,718 of 120,000 candidates.",
-    "minimum_distinct_tokens": 6,
-    "minimum_distinct_tokens_note": "A sentence must show a word doing something. Easiness counts unfamiliar words and skips the target, so a line of pure repetition scores a perfect 0.0 and wins every ranking. Measured on 118,244 harvested Portuguese sentences: only 1.0% have four or fewer distinct tokens, so this removes the pathology at negligible cost to the pool.",
+    "minimum_distinct_tokens": 4,
+    "minimum_distinct_tokens_note": "Lowered from 6. Six was a patch for a bug since fixed at source: easiness measured burden over distinct words but length over raw tokens, so repetition padded a sentence past the short-sentence penalty and scored a perfect 0.0. With length now measured on the same basis, and minimum_distinct_ratio catching echoes, six was a subtitle-era compensation discarding a quarter of the better corpus -- it rejected 28% of Spanish Tatoeba records, whose sentences are legitimately short at a 5.1-word mean.",
     "minimum_target_tokens": 4,
     "minimum_translation_ratio": 0.4,
     "minimum_translation_tokens": 2,
@@ -38,6 +39,8 @@
   "scan": {
     "stop_when_budget_filled_fraction": 0.95,
     "check_every_records": 50000,
-    "note": "Stop scanning once this fraction of cards has filled its WSD budget. Harvest time is linear in corpus size, but the cards are not: the median Czech card has 1,128 matches and fills its 60 within the first 5% of the corpus, while three cards never fill it at all -- 23, 36 and 43 matches in 7.55M lines. Waiting for every card therefore costs a full scan to serve a handful of rare words. Measured on Czech and Portuguese, which agree closely: 95% of cards are satisfied by 19% of the corpus (5.3x faster), 98% by 30%, 99% by 46%. Past 95% each further percent of cards costs disproportionately more scanning, so that is where this sits. Cards left short are declared, never silently thinned -- shortfall_policy governs what happens to them. Absent means scan everything."
+    "note": "Stop scanning once this fraction of cards has filled its WSD budget. Harvest time is linear in corpus size, but the cards are not: the median Czech card has 1,128 matches and fills its 60 within the first 5% of the corpus, while three cards never fill it at all -- 23, 36 and 43 matches in 7.55M lines. Waiting for every card therefore costs a full scan to serve a handful of rare words. Measured on Czech and Portuguese, which agree closely: 95% of cards are satisfied by 19% of the corpus (5.3x faster), 98% by 30%, 99% by 46%. Past 95% each further percent of cards costs disproportionately more scanning, so that is where this sits. Cards left short are declared, never silently thinned -- shortfall_policy governs what happens to them. Absent means scan everything.",
+    "max_records_per_source": 1500000,
+    "max_records_note": "A ceiling on how much of a corpus is read, per source. The long tail is what makes a harvest slow: the median card fills within the first 5% of a corpus while three Czech cards never fill at all, so a minimum-per-card target buys a full scan to serve a handful of rare words -- and the sentences it drags back for them are the worst in the corpus. A card that cannot fill within the ceiling has told you the word is rare, which is information, not failure. Tatoeba is smaller than this and is always read whole."
   }
 }

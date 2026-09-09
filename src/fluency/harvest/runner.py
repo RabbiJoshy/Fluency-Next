@@ -409,6 +409,10 @@ def harvest_run_stage(
         card["card_id"]: display_examples_for_rank(profile["scope"], card["rank"])
         for card in cards
     }
+    # A ceiling on how much of each corpus is read. The long tail is what makes
+    # a harvest slow, and a card that cannot fill within the ceiling has told
+    # you the word is rare rather than that the harvest failed.
+    max_per_source = scan_policy.get("max_records_per_source")
     scanned_records = 0
     stopped_early = False
 
@@ -430,8 +434,12 @@ def harvest_run_stage(
             source_rank = 0
         if stopped_early:
             break
+        source_records = 0
         for record in adapter.iter_records():
             scanned_records += 1
+            source_records += 1
+            if isinstance(max_per_source, int) and source_records > max_per_source:
+                break
             if (
                 stop_after is not None
                 # Never stop while a later source has not been read. Under
@@ -584,6 +592,7 @@ def harvest_run_stage(
         # deliberate cut.
         "scan": {
             "stopped_early": stopped_early,
+            "max_records_per_source": max_per_source,
             "records_examined": scanned_records,
             "stop_when_budget_filled_fraction": stop_fraction,
             "cards_at_budget": sum(
