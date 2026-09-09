@@ -47,12 +47,16 @@
   "harvest": {
     "shared_policy": "speech-v1",
     "language_policy": "pt-v1",
-    "source_policy": "preferred_order",
+    "source_policy": "explicit_union",
     "sources": [
       "tatoeba",
       "opensubtitles"
     ],
-    "wsd_budget_per_card": 60
+    "wsd_budget_per_card": 60,
+    "source_share": {
+      "tatoeba": 0.6,
+      "opensubtitles": 0.4
+    }
   },
   "stage_order": [
     "inventory",

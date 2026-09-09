@@ -32,9 +32,10 @@
   "harvest": {
     "shared_policy": "speech-v1",
     "language_policy": "pl-v1",
-    "source_policy": "preferred_order",
+    "source_policy": "explicit_union",
     "sources": [
-      "tatoeba"
+      "tatoeba",
+      "opensubtitles"
     ],
     "wsd_budget_per_card": [
       {
@@ -50,7 +51,11 @@
         "budget": 20
       }
     ],
-    "source_note": "Tatoeba first, OpenSubtitles for the tail. Tatoeba sentences are human-written and clean; Czech OpenSubtitles carries a lot of amateur translation, of which roughly 8% of displayed examples were broken or calqued from English. Tatoeba reaches 5 matches on 87% of these 3000 cards and none at all on 149, so it cannot serve the tail alone."
+    "source_note": "Tatoeba first, OpenSubtitles for the tail. Tatoeba sentences are human-written and clean; Czech OpenSubtitles carries a lot of amateur translation, of which roughly 8% of displayed examples were broken or calqued from English. Tatoeba reaches 5 matches on 87% of these 3000 cards and none at all on 149, so it cannot serve the tail alone.",
+    "source_share": {
+      "tatoeba": 0.6,
+      "opensubtitles": 0.4
+    }
   },
   "stage_order": [
     "inventory",

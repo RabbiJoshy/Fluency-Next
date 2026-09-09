@@ -42,11 +42,16 @@
   "harvest": {
     "shared_policy": "speech-v1",
     "language_policy": "fr-v1",
-    "source_policy": "exclusive",
+    "source_policy": "explicit_union",
     "sources": [
-      "tatoeba"
+      "tatoeba",
+      "opensubtitles"
     ],
-    "candidate_cap_per_surface": 60
+    "candidate_cap_per_surface": 60,
+    "source_share": {
+      "tatoeba": 0.6,
+      "opensubtitles": 0.4
+    }
   },
   "stage_order": [
     "inventory",
