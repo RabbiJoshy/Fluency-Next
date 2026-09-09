@@ -26,7 +26,21 @@ class ReleaseValidationTests(unittest.TestCase):
             validate_deck(deck)
 
         deck["metadata_contract"] = "sense-metadata/v1"
+        for card in deck["cards"]:
+            for meaning in card["meanings"]:
+                meaning.setdefault("metadata", {})["sense_metadata"] = {
+                    "contract_version": "sense-metadata/v1",
+                    "features": [],
+                    "source_metadata": {},
+                    "coverage": {},
+                    "unclassified": [],
+                    "ignored": [],
+                }
         validate_deck(deck)
+
+        del deck["cards"][0]["meanings"][0]["metadata"]["sense_metadata"]
+        with self.assertRaisesRegex(ReleaseValidationError, "canonical sense metadata"):
+            validate_deck(deck)
 
     def test_unassigned_examples_are_valid_only_without_a_sense_claim(self) -> None:
         deck = deepcopy(self.deck)

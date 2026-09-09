@@ -11,6 +11,7 @@ from fluency.core.hashing import file_content_id, validate_content_id
 from fluency.core.identity import build_card_id
 from fluency.languages.french.surfaces import normalize_surface
 from fluency.release.app_compat import APP_CONTRACT_VERSION
+from fluency.features import MetadataAccounting, SpecialistFeature
 from fluency.features.metadata import METADATA_CONTRACT_VERSION
 
 
@@ -122,6 +123,29 @@ def validate_deck(deck: dict[str, Any]) -> None:
                     "blank meaning requires explicit missing status and context",
                 )
             _require("legacy_sources" not in meaning, "legacy meaning sources are not allowed")
+            if metadata_contract == METADATA_CONTRACT_VERSION:
+                metadata = meaning.get("metadata")
+                _require(isinstance(metadata, dict), "canonical meaning metadata is required")
+                envelope = metadata.get("sense_metadata")
+                _require(isinstance(envelope, dict), "canonical sense metadata is required")
+                try:
+                    MetadataAccounting.from_envelope(envelope)
+                    source_metadata = envelope.get("source_metadata")
+                    features = envelope.get("features")
+                    _require(
+                        isinstance(source_metadata, dict),
+                        "canonical source metadata must be an object",
+                    )
+                    _require(
+                        isinstance(features, list),
+                        "canonical metadata features must be a list",
+                    )
+                    for feature in features:
+                        SpecialistFeature.from_dict(feature)
+                except (TypeError, ValueError) as error:
+                    raise ReleaseValidationError(
+                        f"canonical sense metadata is invalid: {error}"
+                    ) from None
 
         examples = card.get("examples")
         _require(isinstance(examples, list), f"card {surface_key} examples must be a list")
