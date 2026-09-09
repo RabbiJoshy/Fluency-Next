@@ -29,8 +29,12 @@ TRANSLATION = "a translation long enough to pass the ratio gate"
 # leaving one out silently makes it look rare enough to dominate the score.
 RANKS = {"não": 4, "e": 8, "sei": 300, "o": 2, "que": 1, "é": 6}
 
-# Rejected by the count gate alone: five distinct tokens, none repeated.
-TOO_FEW_WORDS = "Não sei o que é."
+# Rejected by the count gate ALONE: three distinct words in four tokens is
+# below the four-word floor, while its 0.75 ratio is exactly on the echo
+# threshold and so does not trip it. Isolating one gate needs a probe the other
+# cannot reach.
+TOO_FEW_WORDS = "Sei o que sei."
+TOO_FEW_WORDS_TRANSLATION = "I know what I know"
 # Rejected by the ratio gate alone: seven distinct tokens, ten in total.
 MOSTLY_ECHO = "Eu não sei o que tu queres, eu não sei."
 
@@ -75,7 +79,10 @@ class RepetitionGateTests(unittest.TestCase):
         self.assertIsNone(reject("Não, não sei o que ela disse."))
 
     def test_the_thresholds_are_declared_not_hardcoded(self) -> None:
-        self.assertEqual(SHARED["quality"]["minimum_distinct_tokens"], 6)
+        # Four, not six. Six was a patch for the easiness length bug, which is
+        # fixed at source; keeping it discarded a quarter of Tatoeba, whose
+        # sentences are legitimately short.
+        self.assertEqual(SHARED["quality"]["minimum_distinct_tokens"], 4)
         self.assertEqual(SHARED["quality"]["minimum_distinct_ratio"], 0.75)
 
 
@@ -86,12 +93,21 @@ class EchoRatioTests(unittest.TestCase):
         self.assertEqual(reject(MOSTLY_ECHO), "echoed_target")
 
     def test_a_short_sentence_that_is_not_an_echo_is_judged_by_count_only(self) -> None:
-        self.assertEqual(reject(TOO_FEW_WORDS), "insufficient_distinct_tokens")
+        self.assertEqual(
+            reject(TOO_FEW_WORDS, TOO_FEW_WORDS_TRANSLATION),
+            "insufficient_distinct_tokens",
+        )
 
     def test_each_gate_catches_what_the_other_misses(self) -> None:
         """Neither threshold is redundant: disabling one lets its probe through."""
 
-        self.assertIsNone(reject(TOO_FEW_WORDS, policy=without("minimum_distinct_tokens")))
+        self.assertIsNone(
+            reject(
+                TOO_FEW_WORDS,
+                TOO_FEW_WORDS_TRANSLATION,
+                policy=without("minimum_distinct_tokens"),
+            )
+        )
         self.assertIsNone(reject(MOSTLY_ECHO, policy=without("minimum_distinct_ratio")))
 
     def test_a_language_declaring_no_thresholds_keeps_everything(self) -> None:

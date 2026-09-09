@@ -427,11 +427,16 @@ def harvest_run_stage(
     # CONTAINS is fixed once at harvest.
     source_share = profile["harvest"].get("source_share") or {}
     prefer = profile["harvest"].get("source_policy") == "preferred_order"
-    for source_rank, (source_name, adapter) in enumerate(
+    for source_index, (source_name, adapter) in enumerate(
         zip(selected_sources, adapters, strict=True)
     ):
-        if not prefer:
-            source_rank = 0
+        # Preference rank and position in the list are different things. Under a
+        # plain union every source ranks equally, but the LAST one read is still
+        # the last one -- and conflating them made the early stop unreachable,
+        # so a 100-card Portuguese harvest read the full ceiling and took 59
+        # minutes instead of seconds.
+        source_rank = source_index if prefer else 0
+        is_last_source = source_index == len(adapters) - 1
         if stopped_early:
             break
         source_records = 0
@@ -448,7 +453,7 @@ def harvest_run_stage(
                 # cards in 50,000 rows -- so stopping here left the fallback
                 # source with rows_seen: 0. The cards that need the fallback are
                 # precisely the ones the fraction rule is willing to abandon.
-                and source_rank == len(adapters) - 1
+                and is_last_source
                 and scanned_records % check_every == 0
                 and sum(1 for cid, held in candidates.items() if len(held) >= cap_for[cid]) >= stop_after
                 and all(
