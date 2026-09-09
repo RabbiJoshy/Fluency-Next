@@ -2,6 +2,27 @@
   "config_version": "inventory-language-policy/v1",
   "policy_id": "nl-v1",
   "language": "nl",
-  "surface_exclusions": {},
-  "exclusion_note": "Empty until a first Dutch harvest is read. Exclusions are derived from what a real run surfaces -- subtitle release-group tags, untranslated English, given names -- and inventing them ahead of the evidence risks deleting ordinary inflected words, which is the mistake the Czech list documents."
+  "surface_exclusions": {
+    "n": {
+      "reason": "the clitic 'n (een) with its apostrophe stripped by the frequency list tokenizer; 97% of its matches are inside 'n",
+      "decision": "exclude_without_redirect"
+    },
+    "t": {
+      "reason": "the clitic 't (het) with its apostrophe stripped; 62% of matches are inside 't and the bare letter is not a Dutch word",
+      "decision": "exclude_without_redirect"
+    },
+    "s": {
+      "reason": "the clitic 's (des/is, as in 's morgens) with its apostrophe stripped; 97% of matches are inside 's",
+      "decision": "exclude_without_redirect"
+    },
+    "m": {
+      "reason": "the letter M, appearing as a clothing size or initial, not a Dutch word",
+      "decision": "exclude_without_redirect"
+    },
+    "mr": {
+      "reason": "abbreviation of meneer, not a spoken word",
+      "decision": "exclude_without_redirect"
+    }
+  },
+  "exclusion_note": "Derived from the first Dutch 100-card harvest. Dutch writes reduced forms with an apostrophe -- 'n, 't, 's, z'n, m'n -- and the FrequencyWords tokenizer split on the apostrophe, so the bare letters entered the frequency list as if they were words. Verified before excluding: 97% of 'n' matches and 97% of 's' matches occur inside an apostrophe form. 'u' was NOT excluded despite being one letter: it is the formal second person and 0% of its matches are clitic. Short is not the same as junk, and Czech k/s/v/z are ordinary prepositions."
 }

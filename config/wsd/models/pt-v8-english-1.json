@@ -1,0 +1,61 @@
+{
+  "config_version": "wsd-model-profile/v1",
+  "profile_id": "pt-v8-english-1",
+  "language": "pt",
+  "execution_status": "ready",
+  "source_method_id": "provider-neutral-v8-english",
+  "method_summary": "Portuguese parity profile for normalized evidence and supplied-English leaf correction",
+  "provider_prior": {
+    "enabled": true,
+    "source": "wiktionary_menu_order",
+    "weight": 0.02,
+    "decay": 0.5,
+    "status": "untuned_parity_backstop"
+  },
+  "gloss": {
+    "enabled": true,
+    "model_revision": "gemini-embedding-001",
+    "task_type": "SEMANTIC_SIMILARITY",
+    "dimensions": 3072,
+    "cache_lookup": "exact_text"
+  },
+  "occurrence_pos": {
+    "enabled": true,
+    "model_revision": "pt_core_news_lg@3.8.0",
+    "role": "provider-neutral_pos_and_grammar_evidence"
+  },
+  "constrain": {
+    "pos_filter": "provider_pos_bridge",
+    "grammar_gate": "normalized_feature_family_evidence_only_not_portuguese_validated",
+    "companion_gate": "normalized_feature_family_evidence_only_not_portuguese_validated",
+    "legacy_clitic_gate": "disabled_no_measured_portuguese_gate"
+  },
+  "multiword": {"enabled": false, "status": "no_portuguese_mwe_inventory"},
+  "commit": {
+    "leaf_minimum": 0.0,
+    "glosskey_minimum": 0.0,
+    "tuple_minimum": 0.0,
+    "status": "thresholds_unmeasured_parity_only"
+  },
+  "specialists": {"enabled": false},
+  "token_tuple_vote": {"enabled": false},
+  "calibration": {"enabled": false},
+  "alignment": {
+    "enabled": true,
+    "model_revision": "literal-gloss-alignment/v1+simalign@0.4|bert-base-multilingual-cased@3f076fdb1ab68d5b2880cb87a0886f315b8146f8|bpe-layer8-inter",
+    "translation_source": "supplied_sentence_translation",
+    "network_policy": "local_files_only",
+    "abstention": "no_unique_exact_leaf_cue_or_no_strict_alignment"
+  },
+  "generative_escalation": false,
+  "asset_gate": {
+    "required_before_ready": [
+      "gemini_exact_text_embedding_cache",
+      "pt_core_news_lg",
+      "bert_base_multilingual_cased_pinned_snapshot"
+    ],
+    "derived_per_run": ["gemini_exact_text_cache_delta"],
+    "assignment_outputs_are_inputs": false
+  },
+  "note": "Parity backstop only: execution shape is checked; Portuguese meaning quality is not claimed."
+}

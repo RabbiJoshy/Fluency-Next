@@ -1,0 +1,58 @@
+{
+  "config_version": "wsd-model-profile/v1",
+  "profile_id": "es-v9-2",
+  "language": "es",
+  "execution_status": "ready",
+  "source_method_id": "provider-neutral-v9-machine-fields",
+  "method_summary": "v9 forced selection plus exact multiword competition tied to the target occurrence",
+  "provider_prior": {
+    "enabled": true,
+    "source": "spanishdict_menu_order",
+    "weight": 0.02,
+    "decay": 0.5
+  },
+  "gloss": {
+    "enabled": true,
+    "model_revision": "gemini-embedding-001",
+    "task_type": "SEMANTIC_SIMILARITY",
+    "dimensions": 3072,
+    "cache_lookup": "exact_text"
+  },
+  "occurrence_pos": {
+    "enabled": true,
+    "model_revision": "es_dep_news_trf@3.8.0",
+    "role": "provider-neutral_pos_and_grammar_evidence"
+  },
+  "constrain": {
+    "pos_filter": "provider_pos_bridge",
+    "grammar_gate": "evidence_only_failed_full_deck_trial",
+    "companion_gate": "legacy_leaf_repair",
+    "legacy_clitic_gate": "spanish_se_only_measured_residue"
+  },
+  "multiword": {
+    "enabled": true,
+    "inventory": "mwe_merged/v1",
+    "role": "exact_span_candidate_competition",
+    "active_projection": "mwe_augmented"
+  },
+  "commit": {
+    "strategy": "rank_agreement",
+    "choices": ["provider_order", "raw_gloss", "forced_selection"],
+    "status": "publish_deepest_level_shared_by_independent_cheap_choices",
+    "raw_margins_are_confidence": false
+  },
+  "specialists": {"enabled": false},
+  "token_tuple_vote": {"enabled": false},
+  "calibration": {"enabled": false},
+  "alignment": {"enabled": false},
+  "generative_escalation": false,
+  "asset_gate": {
+    "required_before_ready": [
+      "gemini_exact_text_embedding_cache",
+      "es_dep_news_trf",
+      "mwe_merged_inventory"
+    ],
+    "derived_per_run": ["gemini_exact_text_cache_delta"],
+    "assignment_outputs_are_inputs": false
+  }
+}

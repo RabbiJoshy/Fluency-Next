@@ -78,5 +78,15 @@
   "release": {
     "activation": "manual",
     "fallback_policy": "none"
+  },
+  "sense_menu": {
+    "source_adapter": "wiktionary-sense-menu/v1",
+    "language_policy": "pl-v1",
+    "source_edition": "enwiktionary",
+    "gloss_language": "en",
+    "snapshot_id": null,
+    "output_schema": "sense-menu/v1",
+    "join_key": "surface_card_id",
+    "lemma_role": "lookup_metadata_only"
   }
 }

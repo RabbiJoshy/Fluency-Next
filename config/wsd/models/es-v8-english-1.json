@@ -1,0 +1,66 @@
+{
+  "config_version": "wsd-model-profile/v1",
+  "profile_id": "es-v8-english-1",
+  "language": "es",
+  "execution_status": "ready",
+  "source_method_id": "provider-neutral-v8-english",
+  "method_summary": "v7 retrieval plus normalized grammar/companion evidence and conservative supplied-English leaf correction",
+  "provider_prior": {
+    "enabled": true,
+    "source": "spanishdict_menu_order",
+    "weight": 0.02,
+    "decay": 0.5,
+    "status": "retained_pending_frequency_sampled_ablation"
+  },
+  "gloss": {
+    "enabled": true,
+    "model_revision": "gemini-embedding-001",
+    "task_type": "SEMANTIC_SIMILARITY",
+    "dimensions": 3072,
+    "cache_lookup": "exact_text"
+  },
+  "occurrence_pos": {
+    "enabled": true,
+    "model_revision": "es_dep_news_trf@3.8.0",
+    "role": "provider-neutral_pos_and_grammar_evidence"
+  },
+  "constrain": {
+    "pos_filter": "provider_pos_bridge",
+    "grammar_gate": "normalized_feature_family_evidence_only_failed_manual_spotcheck",
+    "companion_gate": "legacy_leaf_repair_only_normalized_gate_failed_manual_spotcheck",
+    "legacy_clitic_gate": "spanish_se_only_measured_residue"
+  },
+  "multiword": {
+    "enabled": true,
+    "inventory": "mwe_merged/v1",
+    "role": "stored_mwe_augmented_projection",
+    "active_projection": "provider_only"
+  },
+  "commit": {
+    "leaf_minimum": 0.0,
+    "glosskey_minimum": 0.0,
+    "tuple_minimum": 0.0,
+    "status": "thresholds_unmeasured_defaults_emit_leaf"
+  },
+  "specialists": {"enabled": false},
+  "token_tuple_vote": {"enabled": false},
+  "calibration": {"enabled": false},
+  "alignment": {
+    "enabled": true,
+    "model_revision": "literal-gloss-alignment/v1+simalign@0.4|bert-base-multilingual-cased@3f076fdb1ab68d5b2880cb87a0886f315b8146f8|bpe-layer8-inter",
+    "translation_source": "supplied_sentence_translation",
+    "network_policy": "local_files_only",
+    "abstention": "no_unique_exact_leaf_cue_or_no_strict_alignment"
+  },
+  "generative_escalation": false,
+  "asset_gate": {
+    "required_before_ready": [
+      "gemini_exact_text_embedding_cache",
+      "es_dep_news_trf",
+      "bert_base_multilingual_cased_pinned_snapshot",
+      "mwe_merged_inventory"
+    ],
+    "derived_per_run": ["gemini_exact_text_cache_delta"],
+    "assignment_outputs_are_inputs": false
+  }
+}

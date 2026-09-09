@@ -1,0 +1,49 @@
+{
+  "config_version": "wsd-model-profile/v1",
+  "profile_id": "es-v10-1",
+  "language": "es",
+  "execution_status": "ready",
+  "source_method_id": "provider-neutral-v10-pedagogy-guards",
+  "method_summary": "v9 forced leaf selection with repaired SpanishDict menus and conservative supported-leaf publication",
+  "provider_prior": {
+    "enabled": true,
+    "source": "spanishdict_menu_order",
+    "weight": 0.02,
+    "decay": 0.5
+  },
+  "gloss": {
+    "enabled": true,
+    "model_revision": "gemini-embedding-001",
+    "task_type": "SEMANTIC_SIMILARITY",
+    "dimensions": 3072,
+    "cache_lookup": "exact_text"
+  },
+  "occurrence_pos": {
+    "enabled": true,
+    "model_revision": "es_dep_news_trf@3.8.0",
+    "role": "provider-neutral_pos_and_grammar_evidence"
+  },
+  "constrain": {
+    "pos_filter": "provider_pos_bridge",
+    "grammar_gate": "evidence_only_with_publication_guard",
+    "companion_gate": "legacy_leaf_repair_with_publication_guard",
+    "legacy_clitic_gate": "spanish_se_with_object_cluster_and_finite_verb_repairs"
+  },
+  "multiword": {"enabled": false, "active_projection": "provider_only"},
+  "commit": {
+    "strategy": "rank_agreement_with_machine_readable_guards",
+    "choices": ["provider_order", "raw_gloss", "forced_selection"],
+    "status": "forced_leaf_always_retained_but_only_supported_leaf_is_shown",
+    "raw_margins_are_confidence": false
+  },
+  "specialists": {"enabled": false},
+  "token_tuple_vote": {"enabled": false},
+  "calibration": {"enabled": false},
+  "alignment": {"enabled": false},
+  "generative_escalation": false,
+  "asset_gate": {
+    "required_before_ready": ["gemini_exact_text_embedding_cache", "es_dep_news_trf"],
+    "derived_per_run": ["gemini_exact_text_cache_delta"],
+    "assignment_outputs_are_inputs": false
+  }
+}

@@ -39,6 +39,17 @@
       "revision": "3.8.0",
       "language": "fr",
       "note": "French. Elision splits a token (n', j'), so a surface span may not align with a whole word the way it does in Spanish or Portuguese."
+    },
+    "word-alignment": {
+      "provider": "huggingface",
+      "name": "bert-base-multilingual-cased",
+      "revision": "3f076fdb1ab68d5b2880cb87a0886f315b8146f8",
+      "adapter": "simalign@0.4",
+      "token_type": "bpe",
+      "layer": 8,
+      "matching_method": "inter",
+      "network_policy": "local_files_only",
+      "note": "Shared source-to-English word alignment. It consumes an existing translation and never calls a translator."
     }
   }
 }

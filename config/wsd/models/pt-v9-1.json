@@ -1,0 +1,54 @@
+{
+  "config_version": "wsd-model-profile/v1",
+  "profile_id": "pt-v9-1",
+  "language": "pt",
+  "execution_status": "ready",
+  "source_method_id": "provider-neutral-v9-rank-agreement",
+  "method_summary": "Wiktionary parity profile for provider-order/raw-gloss agreement controlling how much of the selected leaf is published",
+  "provider_prior": {
+    "enabled": true,
+    "source": "wiktionary_menu_order",
+    "weight": 0.02,
+    "decay": 0.5,
+    "status": "untuned_parity_backstop"
+  },
+  "gloss": {
+    "enabled": true,
+    "model_revision": "gemini-embedding-001",
+    "task_type": "SEMANTIC_SIMILARITY",
+    "dimensions": 3072,
+    "cache_lookup": "exact_text"
+  },
+  "occurrence_pos": {
+    "enabled": true,
+    "model_revision": "pt_core_news_lg@3.8.0",
+    "role": "provider-neutral_pos_and_grammar_evidence"
+  },
+  "constrain": {
+    "pos_filter": "provider_pos_bridge",
+    "grammar_gate": "normalized_feature_family_evidence_only_not_portuguese_validated",
+    "companion_gate": "normalized_feature_family_evidence_only_not_portuguese_validated",
+    "legacy_clitic_gate": "disabled_no_measured_portuguese_gate"
+  },
+  "multiword": {"enabled": false, "status": "no_portuguese_mwe_inventory"},
+  "commit": {
+    "strategy": "rank_agreement",
+    "choices": ["provider_order", "raw_gloss", "forced_selection"],
+    "status": "provider_parity_shape_check",
+    "raw_margins_are_confidence": false
+  },
+  "specialists": {"enabled": false},
+  "token_tuple_vote": {"enabled": false},
+  "calibration": {"enabled": false},
+  "alignment": {"enabled": false, "status": "v8_rejected_no_translation_at_decision_time"},
+  "generative_escalation": false,
+  "asset_gate": {
+    "required_before_ready": [
+      "gemini_exact_text_embedding_cache",
+      "pt_core_news_lg"
+    ],
+    "derived_per_run": ["gemini_exact_text_cache_delta"],
+    "assignment_outputs_are_inputs": false
+  },
+  "note": "Parity backstop only: execution shape is checked; Portuguese meaning quality is not claimed."
+}
