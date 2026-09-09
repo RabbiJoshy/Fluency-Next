@@ -16,6 +16,7 @@ from fluency.features.spanishdict import extract as extract_spanishdict
 from fluency.features.spanishdict_metadata import metadata_accounting as account_spanishdict
 from fluency.features.wiktionary import extract as extract_wiktionary
 from fluency.features.wiktionary import metadata_accounting as account_wiktionary
+from fluency.features.wiktionary_gloss import project_gloss
 from fluency.release.composition import compose_release
 from fluency.release.validation import validate_release_bundle
 from fluency.sense_menu.config import (
@@ -62,7 +63,17 @@ def canonicalize_meaning_metadata(
         source = dict(provider)
         source.setdefault("glosses", [str(meaning.get("translation") or "")])
         tags = [tag for tag in source.get("tags", []) if isinstance(tag, str)]
-        derived = list(extract_wiktionary(source, tags=tags, policy=policy))
+        # Re-type provider-derived features from source evidence on every
+        # upgrade. Keeping all previous features would leave stale generic
+        # classifications beside a newer language-specific classification.
+        # Surface marks belong to the resolved card form rather than this
+        # individual sense, so preserve those: that evidence is not present in
+        # ``sense_provider_metadata``.
+        existing = [feature for feature in existing if feature.kind == "surface_mark"]
+        derived = [
+            *extract_wiktionary(source, tags=tags, policy=policy),
+            *project_gloss(str(meaning.get("translation") or "")).specialist_features,
+        ]
         accounting = account_wiktionary(source, tags=tags, policy=policy)
     elif adapter.startswith("spanishdict-"):
         nested = provider.get("spanishdict") or {}

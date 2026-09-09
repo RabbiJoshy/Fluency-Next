@@ -117,6 +117,48 @@ class MetadataUpgradeTests(unittest.TestCase):
             [item["value"] for item in features].count("aspect=perfective"), 1
         )
 
+    def test_wiktionary_upgrade_retypes_stale_provider_features(self) -> None:
+        meaning = {
+            "translation": "to have",
+            "metadata": {
+                "source_adapter": "wiktionary-sense-menu/v1",
+                "sense_provider_metadata": {
+                    "tags": ["idiomatic"],
+                    "raw_glosses": ["(idiomatic) to have"],
+                },
+                "specialist_features": [
+                    {
+                        "family": "construction",
+                        "kind": "gloss_phrase",
+                        "value": "idiomatic",
+                        "embedding_text": "idiomatic",
+                    },
+                    {
+                        "family": "grammar",
+                        "kind": "surface_mark",
+                        "value": "number=plural",
+                        "embedding_text": "plural",
+                    },
+                ],
+            },
+        }
+
+        canonicalize_meaning_metadata(meaning, policy=self.policy("fr"))
+
+        features = meaning["metadata"]["specialist_features"]
+        self.assertNotIn(
+            ("construction", "gloss_phrase", "idiomatic"),
+            {(item["family"], item["kind"], item["value"]) for item in features},
+        )
+        self.assertIn(
+            ("register", "usage_tag", "idiomatic"),
+            {(item["family"], item["kind"], item["value"]) for item in features},
+        )
+        self.assertIn(
+            ("grammar", "surface_mark", "number=plural"),
+            {(item["family"], item["kind"], item["value"]) for item in features},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
