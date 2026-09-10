@@ -69,6 +69,8 @@
   },
   "region_tags": [
     "Angola",
+    "Azores",
+    "Bahia",
     "Brazil",
     "Brazilian",
     "Cape-Verde",
@@ -76,22 +78,40 @@
     "Galicia",
     "Guinea-Bissau",
     "Macau",
+    "Madeira",
+    "Minas-Gerais",
     "Mozambique",
+    "North-Brazil",
+    "Northeast-Brazil",
+    "Paraná",
     "Portugal",
+    "Rio-de-Janeiro",
+    "South-Brazil",
+    "São-Paulo",
     "São-Tomé",
     "Timor-Leste"
   ],
   "register_tags": [
     "archaic",
+    "childish",
     "colloquial",
     "dated",
+    "endearing",
     "euphemistic",
     "formal",
+    "historical",
+    "idiomatic",
     "informal",
+    "neologism",
+    "nonstandard",
     "obsolete",
     "offensive",
     "poetic",
+    "proscribed",
+    "sarcastic",
     "slang",
+    "slur",
+    "uncommon",
     "vulgar"
   ],
   "construction_tags": [
@@ -104,7 +124,11 @@
     "reflexive",
     "transitive"
   ],
-  "domain_tags": [],
+  "domain_tags": ["Ancient-Rome", "Hinduism", "Internet", "Judaism", "rhetoric"],
   "grammar_tags": {},
-  "ignored_tags": []
+  "ignored_tags": [
+    "abbreviation", "acronym", "alternative", "clipping", "contraction",
+    "ellipsis", "empty-gloss", "initialism", "letter", "misspelling",
+    "morpheme", "no-gloss", "pronunciation-spelling"
+  ]
 }

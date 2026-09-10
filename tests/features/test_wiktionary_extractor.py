@@ -36,6 +36,22 @@ class WiktionaryExtractorTests(unittest.TestCase):
             ("grammar", "surface_mark", "number=singular"),
         ])
 
+    def test_high_confidence_form_and_constraint_tags_are_typed(self) -> None:
+        out = extract({}, tags=[
+            "preterite", "infinitive", "gerund", "comparable", "defective",
+            "plural-normally", "gender-neutral", "catenative",
+        ], policy=PT)
+        self.assertEqual(set(families(out)), {
+            ("grammar", "sense_mark", "tense=preterite"),
+            ("grammar", "sense_mark", "form=infinitive"),
+            ("grammar", "sense_mark", "form=gerund"),
+            ("grammar", "sense_mark", "degree=comparable"),
+            ("grammar", "sense_mark", "inflection=defective"),
+            ("grammar", "sense_mark", "number=usually-plural"),
+            ("grammar", "sense_mark", "gender=gender-neutral"),
+            ("grammar", "sense_mark", "verb-class=catenative"),
+        })
+
     def test_topics_become_domain_features(self) -> None:
         out = extract({"topics": ["finance"]}, policy=PT)
         self.assertEqual(families(out), [("domain", "topic", "finance")])

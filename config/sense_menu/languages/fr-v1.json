@@ -81,7 +81,8 @@
   "grammar_tags": {"historic": "tense=past-historic"},
   "ignored_tags": [
     "abbreviation", "acronym", "alternative", "clipping", "empty-gloss",
-    "initialism", "letter", "misspelling", "morpheme", "no-gloss"
+    "contraction", "ellipsis", "initialism", "letter", "misspelling",
+    "morpheme", "no-gloss", "pronunciation-spelling"
   ],
   "feature_vocabulary_note": "Audited against the pinned 2026-08-05 French snapshot. Unmapped qualifiers remain explicit in the metadata audit queue."
 }
