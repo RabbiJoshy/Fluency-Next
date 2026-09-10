@@ -1,6 +1,6 @@
 {
   "profile_version": "speech-pipeline-profile/v1",
-  "profile_id": "spanish_speech_audit_100",
+  "profile_id": "es_speech_scale_3000",
   "language": "es",
   "locale": "es-ES",
   "mode": "speech",
@@ -16,9 +16,19 @@
     "fallback_policy": "none"
   },
   "scope": {
-    "surface_limit": 100,
+    "surface_limit": 3000,
     "examples_per_surface": 3,
-    "shortfall_policy": "publish_explicit"
+    "shortfall_policy": "publish_explicit",
+    "display_examples_per_card": [
+      {
+        "through_rank": 1000,
+        "examples": 5
+      },
+      {
+        "through_rank": 3000,
+        "examples": 3
+      }
+    ]
   },
   "inventory": {
     "source_adapter": "recovered-surface-ranking/v1",
@@ -52,7 +62,21 @@
     "source_share": {
       "tatoeba": 0.6,
       "opensubtitles": 0.4
-    }
+    },
+    "wsd_budget_per_card": [
+      {
+        "through_rank": 1000,
+        "budget": 60
+      },
+      {
+        "through_rank": 2000,
+        "budget": 30
+      },
+      {
+        "through_rank": 3000,
+        "budget": 20
+      }
+    ]
   },
   "stage_order": [
     "inventory",
@@ -72,7 +96,8 @@
     "model_revisions": {
       "gloss.model_revision": "gemini-embedding-001",
       "occurrence_pos.model_revision": "es_dep_news_trf@3.8.0"
-    }
+    },
+    "max_wsd_units_per_run": 32000
   },
   "release": {
     "activation": "manual",
