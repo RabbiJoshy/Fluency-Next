@@ -48,6 +48,9 @@ let cognateLanguages = [];
 // override can come later; until then the words a slightly wrong number moves
 // are not lost, only relocated to Extras.
 let cognateThresholds = {};
+// The language the loaded map was built for. Scores are keyed by bare surface,
+// which several languages share, so the map must never outlive its language.
+let cognateLanguage = null;
 let selectedKnownLanguages = null;
 
 function readSelected() {
@@ -128,8 +131,11 @@ function strongestKnownLanguage(item) {
 
 // Attach shipped scores to the loaded vocabulary. Called once per deck load,
 // before any filtering, so buildFilteredVocab sees a complete item.
-function applyCognateScores(vocabularyData) {
+function applyCognateScores(vocabularyData, languageCode) {
     if (!Array.isArray(vocabularyData) || !cognateScores) return;
+    // A map for another language would score words that merely look alike
+    // across the two.
+    if (languageCode && cognateLanguage && languageCode !== cognateLanguage) return;
     for (const item of vocabularyData) {
         const scores = cognateScores[String(item.word || '').toLowerCase()];
         if (scores) item.cognate_scores = scores;
@@ -140,6 +146,7 @@ async function loadCognateScores(langConfig) {
     cognateScores = null;
     cognateLanguages = [];
     cognateThresholds = {};
+    cognateLanguage = null;
     const path = langConfig && langConfig.cognatesPath;
     if (!path) return;
     try {
@@ -149,6 +156,7 @@ async function loadCognateScores(langConfig) {
         const scores = payload && payload.scores;
         if (!scores || typeof scores !== 'object') throw new Error('no scores in cognate file');
         cognateScores = scores;
+        cognateLanguage = payload.language || null;
         cognateLanguages = Array.isArray(payload.known_languages)
             ? payload.known_languages.slice()
             : Object.keys(Object.values(scores)[0] || {});
@@ -163,6 +171,7 @@ async function loadCognateScores(langConfig) {
         cognateScores = null;
         cognateLanguages = [];
         cognateThresholds = {};
+        cognateLanguage = null;
     }
     renderKnownLanguagePicker();
 }

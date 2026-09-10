@@ -638,3 +638,35 @@ class LevelCoverageTests(unittest.TestCase):
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
         page_start = html.index('id="fastModeModal"')
         self.assertGreater(html.index('id="coverageModeContainer"'), page_start)
+
+
+class CognateAvailabilityTests(unittest.TestCase):
+    """cognateFilter is declared per language, but the data is per language and
+    mode — Spanish's flags are in the artist master, French's in one playlist
+    of a language with lyrics disabled. Both showed a dead toggle."""
+
+    def test_the_declaration_cannot_turn_a_filter_on_by_itself(self) -> None:
+        ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        self.assertIn("cognateFieldAvailable = false;", ui)
+        self.assertIn("if (declaredCapability !== false && langConfig) {", ui)
+
+    def test_the_deck_is_what_decides(self) -> None:
+        ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        self.assertIn("item.cognate_scores", ui)
+        self.assertIn("item.is_transparent_cognate", ui)
+
+
+class CognateMapScopeTests(unittest.TestCase):
+    """Cognate scores are keyed by bare surface, so a map must not outlive the
+    language it was built for — a stale Czech map scored six Spanish words,
+    because a, to and je exist in both."""
+
+    def test_switching_to_a_language_without_a_map_clears_the_old_one(self) -> None:
+        vocab = (APP_ROOT / "js" / "vocab.js").read_text(encoding="utf-8")
+        # The loader must run when the path changes to null, not be skipped.
+        self.assertIn("if (_cognateScoresLoadedFor !== path && globalThis.loadCognateScores) {", vocab)
+        self.assertIn("if (_coverageLoadedFor !== coveragePath) {", vocab)
+
+    def test_a_map_refuses_a_language_it_was_not_built_for(self) -> None:
+        cognates = (APP_ROOT / "js" / "cognates.js").read_text(encoding="utf-8")
+        self.assertIn("if (languageCode && cognateLanguage && languageCode !== cognateLanguage) return;", cognates)

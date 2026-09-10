@@ -1063,20 +1063,27 @@ let _cognateScoresLoading = null;
 
 async function fetchActiveVocabularyData(langConfig) {
     const vocabulary = await fetchActiveVocabularyIndex(langConfig);
+    // Switching to a language with no mapping must CLEAR the previous one, not
+    // skip the loader and leave it in place. Scores are keyed by bare surface,
+    // so a stale Czech map scored six Spanish words — a, to, je and friends
+    // exist in both languages.
     const path = langConfig?.cognatesPath || null;
-    if (path && _cognateScoresLoadedFor !== path && globalThis.loadCognateScores) {
+    if (_cognateScoresLoadedFor !== path && globalThis.loadCognateScores) {
         _cognateScoresLoading = _cognateScoresLoading
-            || globalThis.loadCognateScores(langConfig).then(() => {
+            || Promise.resolve(globalThis.loadCognateScores(langConfig)).then(() => {
                 _cognateScoresLoadedFor = path;
                 _cognateScoresLoading = null;
             });
         await _cognateScoresLoading;
     }
-    globalThis.applyCognateScores?.(vocabulary);
+    // speechLang is the only language code the app config carries ("cs-CZ").
+    const languageCode = String(langConfig?.speechLang || '').split('-')[0] || null;
+    globalThis.applyCognateScores?.(vocabulary, languageCode);
     // Corpus shares are per-language and tiny; load them on the same pass so
     // the level readout has them before the first render.
-    if (langConfig?.coveragePath && _coverageLoadedFor !== langConfig.coveragePath) {
-        _coverageLoadedFor = langConfig.coveragePath;
+    const coveragePath = langConfig?.coveragePath || null;
+    if (_coverageLoadedFor !== coveragePath) {
+        _coverageLoadedFor = coveragePath;
         await globalThis.loadCoverage?.(langConfig);
     }
     return vocabulary;
