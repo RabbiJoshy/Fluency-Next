@@ -45,6 +45,14 @@ class SenseMenuPolicyTests(unittest.TestCase):
             policy["redirects"]["target_pos_by_source_pos"]["verb"], ["verb"]
         )
 
+    def test_portuguese_policy_separates_region_and_register_labels(self):
+        policy = load_sense_menu_language_policy(
+            REPOSITORY_ROOT, policy_id="pt-v1", language="pt"
+        )
+        self.assertIn("Alentejo", policy["region_tags"])
+        self.assertIn("nonstandard", policy["register_tags"])
+        self.assertNotIn("Alentejo", policy["construction_tags"])
+
 
 if __name__ == "__main__":
     unittest.main()
