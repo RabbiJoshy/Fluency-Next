@@ -401,15 +401,12 @@ def harvest_run_stage(
         if isinstance(stop_fraction, (int, float)) and not isinstance(stop_fraction, bool)
         else None
     )
-    # Filling 95% of budgets is not the same as every card having something to
-    # show. On Portuguese the fraction rule alone stopped at 21% with one card
-    # holding 3 candidates, below the 5 examples its tier must display. The
-    # floor is therefore a second, non-negotiable condition: stop early only
-    # when no card is still short of what it has to show.
-    display_floor = {
-        card["card_id"]: display_examples_for_rank(profile["scope"], card["rank"])
-        for card in cards
-    }
+    # An absolute floor on every card is NOT a stopping condition. It reads as
+    # prudence and behaves as a hostage: at 3,000 cards a single surface with
+    # two matches in the whole corpus blocked the stop and forced a full 1.5M
+    # scan -- 9.8 hours, against 27 seconds at 100 cards where no such card
+    # existed. A word that cannot fill is rare, which is a fact about the word;
+    # shortfall_policy declares those cards rather than chasing them.
     # A ceiling on how much of each corpus is read. The long tail is what makes
     # a harvest slow, and a card that cannot fill within the ceiling has told
     # you the word is rare rather than that the harvest failed.
@@ -457,10 +454,6 @@ def harvest_run_stage(
                 and is_last_source
                 and scanned_records % check_every == 0
                 and sum(1 for cid, held in candidates.items() if len(held) >= cap_for[cid]) >= stop_after
-                and all(
-                    len(candidates[card_id]) >= floor
-                    for card_id, floor in display_floor.items()
-                )
             ):
                 stopped_early = True
                 break

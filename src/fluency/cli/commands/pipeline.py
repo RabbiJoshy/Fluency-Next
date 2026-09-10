@@ -199,9 +199,14 @@ def handle_pipeline(args: argparse.Namespace) -> int:
             f"across {len(report['per_surface'])} surfaces."
         )
         if report["release_blocked_by_shortfall"]:
+            # Nothing is actually blocked: no later stage reads this, and the
+            # builder does not check it. Saying "blocked" invited waiting for a
+            # gate that does not exist, and "three" was the old flat display
+            # count -- the tiers ask for five up to rank 1,000 and three beyond.
             print(
-                f"Release remains blocked: {report['surfaces_with_shortfall']} surfaces "
-                "have fewer than three candidates."
+                f"{report['surfaces_with_shortfall']} surfaces returned fewer "
+                "candidates than their tier displays; shortfall_policy governs "
+                "how they are published."
             )
         print("No WSD, final example selection, release build, or activation was run.")
         return 0
