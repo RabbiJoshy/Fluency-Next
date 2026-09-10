@@ -103,6 +103,7 @@ def _trim_candidates(
     *,
     cap_for: dict[str, int],
     source_share: dict[str, float] | None = None,
+    only: str | None = None,
 ) -> None:
     """Keep the best candidates per card, without letting one source crowd out
     the others.
@@ -115,7 +116,14 @@ def _trim_candidates(
     harvest reserves a share for each source and ranks only within it.
     """
 
-    for card_id, by_identity in candidates.items():
+    # One card overflowing said nothing about the other 2,999, but every
+    # overflow rescanned all of them. Common words overflow constantly, so the
+    # work grew with cards x overflows: a 3,000-card harvest spent 104 minutes
+    # where its matching accounts for 3.
+    targets = (
+        [(only, candidates[only])] if only is not None else list(candidates.items())
+    )
+    for card_id, by_identity in targets:
         card_cap = cap_for[card_id]
         if len(by_identity) <= card_cap:
             continue
@@ -514,7 +522,12 @@ def harvest_run_stage(
                 elif candidate["sentence_id"] < held["sentence_id"]:
                     card_candidates[identity] = candidate
                 if len(card_candidates) > cap_for[card["card_id"]] * 2:
-                    _trim_candidates(candidates, cap_for=cap_for, source_share=source_share)
+                    _trim_candidates(
+                        candidates,
+                        cap_for=cap_for,
+                        source_share=source_share,
+                        only=card["card_id"],
+                    )
 
     _trim_candidates(candidates, cap_for=cap_for, source_share=source_share)
     live_sentence_ids = {
