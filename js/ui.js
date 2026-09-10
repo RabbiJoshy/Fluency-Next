@@ -1832,17 +1832,32 @@ async function updateCognateToggleVisibility() {
     const cognateContainer = document.getElementById('cognateToggleContainer');
     const cognateSelector = document.getElementById('cognateToggleSelector');
 
+    // The capability is declared per LANGUAGE while the data is per language
+    // AND mode, so a declaration alone cannot answer this. Spanish carries its
+    // cognate flags in the artist master: true for Lyrics, nothing for Speech.
+    // French's live in one artist playlist while French has lyrics disabled, so
+    // the flag was true over no reachable data at all. Both showed a toggle
+    // that silently did nothing.
+    //
+    // The declaration is now read as permission, not as presence: it can keep a
+    // filter off, but only the loaded deck can turn it on.
     const declaredCapability = window._activeReleaseCapabilities?.cognateFilter
         ?? langConfig?.capabilities?.cognateFilter;
-    cognateFieldAvailable = declaredCapability === true;
-    if (langConfig && typeof declaredCapability !== 'boolean') {
+    cognateFieldAvailable = false;
+    if (declaredCapability !== false && langConfig) {
         try {
             const vocabData = await fetchActiveVocabularyData(langConfig);
             cognateFieldAvailable = vocabData.some(item =>
-                (item.cognate_score > 0) || item.cognet_cognate || item.is_transparent_cognate
+                (item.cognate_score > 0)
+                || item.cognate_scores
+                || item.cognet_cognate
+                || item.is_transparent_cognate
             );
         } catch (error) {
             console.error('Error checking cognate field availability:', error);
+            // Unknown is not the same as absent, but showing a control we
+            // cannot back is what caused this; stay off.
+            cognateFieldAvailable = false;
         }
     }
 
