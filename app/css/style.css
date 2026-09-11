@@ -13998,6 +13998,10 @@
     border-color: var(--text-muted);
 }
 
+.about-example-mobile-coach {
+    display: none;
+}
+
 /* -------- Narrow viewports ------------------------------------------------ */
 /* Stack the card above its notes. The badges stay anchored because they are
    positioned from measured boxes and re-placed on resize. */
@@ -14056,6 +14060,122 @@
 
     .about-example-blurb {
         font-size: 13.5px;
+    }
+}
+
+@media (max-width: 700px) {
+    .about-example-body {
+        padding-bottom: 210px;
+    }
+
+    .about-example-notes {
+        display: none;
+    }
+
+    .about-example-marker {
+        display: none;
+    }
+
+    .about-example-marker.is-active {
+        display: grid;
+        animation: about-example-mobile-target 1.4s ease-in-out infinite;
+    }
+
+    .about-example-anchored.is-annotation-active {
+        outline-width: 3px;
+        box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent-amber) 18%, transparent);
+        animation: about-example-mobile-spotlight 280ms ease-out;
+    }
+
+    .about-example-mobile-coach:not([hidden]) {
+        position: fixed;
+        z-index: 40;
+        left: 10px;
+        right: 10px;
+        bottom: max(10px, env(safe-area-inset-bottom));
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 5px 12px;
+        padding: 14px;
+        border: 1px solid color-mix(in srgb, var(--accent-primary) 40%, var(--border-color));
+        border-radius: 16px;
+        background: color-mix(in srgb, var(--bg-card) 96%, transparent);
+        box-shadow: 0 18px 55px rgba(0, 0, 0, 0.48);
+        backdrop-filter: blur(18px);
+        animation: about-example-mobile-coach-in 260ms ease-out;
+    }
+
+    .about-example-mobile-progress {
+        grid-column: 1 / -1;
+        color: var(--accent-amber);
+        font-family: var(--font-data);
+        font-size: 10px;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .about-example-mobile-coach > strong {
+        align-self: center;
+        color: var(--text-primary);
+        font-family: var(--font-emphasis);
+        font-size: 16px;
+    }
+
+    .about-example-mobile-coach > p {
+        grid-column: 1 / -1;
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.42;
+    }
+
+    .about-example-mobile-actions {
+        grid-column: 2;
+        grid-row: 2;
+        display: flex;
+        gap: 7px;
+    }
+
+    .about-example-mobile-actions button {
+        min-width: 64px;
+        padding: 8px 11px;
+        border: 1px solid var(--border-light);
+        border-radius: 999px;
+        background: transparent;
+        color: var(--text-secondary);
+        font: 650 12px/1 var(--font-emphasis);
+    }
+
+    .about-example-mobile-actions button:last-child {
+        border-color: transparent;
+        background: var(--accent-primary);
+        color: var(--accent-primary-text);
+    }
+
+    .about-example-mobile-actions button:disabled {
+        opacity: 0.35;
+    }
+}
+
+@keyframes about-example-mobile-target {
+    0%, 100% { transform: scale(1.12); }
+    50% { transform: scale(1.32); }
+}
+
+@keyframes about-example-mobile-spotlight {
+    from { box-shadow: 0 0 0 18px transparent; }
+}
+
+@keyframes about-example-mobile-coach-in {
+    from { opacity: 0; transform: translateY(18px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .about-example-marker.is-active,
+    .about-example-anchored.is-annotation-active,
+    .about-example-mobile-coach:not([hidden]) {
+        animation: none;
     }
 }
 

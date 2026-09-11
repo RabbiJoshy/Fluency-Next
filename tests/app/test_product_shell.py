@@ -162,6 +162,18 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn('walkthroughSenseSummary(meaning.translation)', walkthrough)
         self.assertNotIn("font-family: var(--font-data); font-size: 14px", walkthrough)
 
+    def test_mobile_walkthrough_is_a_guided_animated_sequence(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        walkthrough = (APP_ROOT / "js" / "about-example.js").read_text(encoding="utf-8")
+        styles = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
+        self.assertIn('id="aboutExampleMobileCoach"', html)
+        self.assertIn("function moveMobileTour(direction)", walkthrough)
+        self.assertIn("MOBILE_WALKTHROUGH_QUERY", walkthrough)
+        self.assertIn("'Show front'", walkthrough)
+        self.assertIn("'Finish'", walkthrough)
+        self.assertIn("@keyframes about-example-mobile-spotlight", styles)
+        self.assertIn("@media (prefers-reduced-motion: reduce)", styles)
+
     def test_speech_cards_keep_dictionary_examples_separate_from_usage_share(self) -> None:
         vocab = (APP_ROOT / "js" / "vocab.js").read_text(encoding="utf-8")
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")

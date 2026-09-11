@@ -700,6 +700,12 @@ const state = {
     activeNote: -1,
 };
 
+const MOBILE_WALKTHROUGH_QUERY = '(max-width: 700px)';
+
+function isMobileWalkthrough() {
+    return window.matchMedia?.(MOBILE_WALKTHROUGH_QUERY).matches === true;
+}
+
 function currentDeck() {
     return ABOUT_EXAMPLE_DECKS[state.deckIndex];
 }
@@ -760,7 +766,7 @@ function refreshBack() {
 
 // Flipping is a face change, so the annotations change with it: new copy, new
 // numbered set, badges re-placed on the side now showing.
-function flipCardFace() {
+function flipCardFace(mobileNote = 0) {
     const stage = document.getElementById('aboutExampleStage');
     const cardEl = stage?.querySelector('.card');
     if (!cardEl) return;
@@ -778,7 +784,13 @@ function flipCardFace() {
     renderNotes();
     syncFlipButton();
     // Re-place once the transform has settled, so boxes are measured flat.
-    setTimeout(placeMarkers, 640);
+    setTimeout(() => {
+        placeMarkers();
+        if (isMobileWalkthrough()) {
+            const finalIndex = Math.max(0, orderedNotes().length - 1);
+            setActiveNote(Math.min(mobileNote, finalIndex));
+        }
+    }, 640);
 }
 
 function wireCardShell(stage) {
@@ -966,6 +978,48 @@ function setActiveNote(index) {
     root.querySelectorAll('.about-example-anchored').forEach((el) => {
         el.classList.toggle('is-annotation-active', Number(el.dataset.aboutExampleNote) === index);
     });
+    renderMobileCoach();
+}
+
+function renderMobileCoach() {
+    const coach = document.getElementById('aboutExampleMobileCoach');
+    if (!coach) return;
+    const mobile = isMobileWalkthrough();
+    const notes = orderedNotes();
+    const index = Math.max(0, Math.min(state.activeNote, notes.length - 1));
+    const note = notes[index];
+    coach.hidden = !mobile || !note;
+    if (coach.hidden) return;
+
+    document.getElementById('aboutExampleMobileProgress').textContent =
+        `${state.flipped ? 'Back' : 'Front'} · ${index + 1} of ${notes.length}`;
+    document.getElementById('aboutExampleMobileTitle').innerHTML =
+        `${esc(note.title)}${note.interactive ? '<span class="about-example-try">tap it</span>' : ''}`;
+    document.getElementById('aboutExampleMobileText').innerHTML = note.text;
+    const back = document.getElementById('aboutExampleMobileBack');
+    const next = document.getElementById('aboutExampleMobileNext');
+    back.disabled = state.flipped && index === 0;
+    next.textContent = index < notes.length - 1
+        ? 'Next'
+        : (state.flipped ? 'Show front' : 'Finish');
+}
+
+function moveMobileTour(direction) {
+    if (!isMobileWalkthrough()) return;
+    const notes = orderedNotes();
+    const index = Math.max(0, Math.min(state.activeNote, notes.length - 1));
+    const candidate = index + direction;
+    if (candidate >= 0 && candidate < notes.length) {
+        setActiveNote(candidate);
+        return;
+    }
+    if (direction > 0 && state.flipped) {
+        flipCardFace(0);
+    } else if (direction > 0) {
+        closeAboutExample();
+    } else if (!state.flipped) {
+        flipCardFace(Number.MAX_SAFE_INTEGER);
+    }
 }
 
 function renderFaceCopy() {
@@ -1070,14 +1124,19 @@ function openAboutExample(deckIndex = 0) {
     state.flipped = true;
     state.meaningIndex = currentCard().defaultMeaningIndex || 0;
     state.exampleIndex = 0;
-    state.activeNote = -1;
+    state.activeNote = isMobileWalkthrough() ? 0 : -1;
 
     renderTabs();
     renderCard();
     syncFlipButton();
+    renderMobileCoach();
 
     if (!_resizeHandler) {
-        _resizeHandler = () => placeMarkers();
+        _resizeHandler = () => {
+            if (isMobileWalkthrough() && state.activeNote < 0) state.activeNote = 0;
+            placeMarkers();
+            renderMobileCoach();
+        };
         window.addEventListener('resize', _resizeHandler);
     }
 }
@@ -1113,7 +1172,9 @@ function setupAboutExample() {
     modal.dataset.ready = '1';
 
     document.getElementById('closeAboutExampleModal')?.addEventListener('click', closeAboutExample);
-    document.getElementById('aboutExampleFlip')?.addEventListener('click', flipCardFace);
+    document.getElementById('aboutExampleFlip')?.addEventListener('click', () => flipCardFace(0));
+    document.getElementById('aboutExampleMobileBack')?.addEventListener('click', () => moveMobileTour(-1));
+    document.getElementById('aboutExampleMobileNext')?.addEventListener('click', () => moveMobileTour(1));
 
     // Escape closes; left/right switch decks; space flips, as it does in study.
     document.addEventListener('keydown', (e) => {
