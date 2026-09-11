@@ -47,7 +47,7 @@
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260911b">
+    <link rel="modulepreload" href="js/main.js?v=20260911c">
     <link rel="modulepreload" href="js/theme.js?v=20260825ak">
     <link rel="modulepreload" href="js/state.js?v=20260825ak">
     <link rel="modulepreload" href="js/data-contracts.js?v=20260825ak">
@@ -763,7 +763,25 @@
         </div>
     </div>
 
-    <!-- About This Project Modal -->
+    <!-- Short learner-facing introduction to the card tutorial. -->
+    <div id="tutorialIntroModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="settings-tabs-header">
+                <h3 style="margin: 0;">Tutorial</h3>
+                <button class="modal-close" id="closeTutorialIntroModal" aria-label="Close tutorial introduction">&#10005;</button>
+            </div>
+            <div class="help-content">
+                <p style="margin: 0 0 18px;">
+                    <button class="help-more-info-btn" id="startCardTutorialBtn" type="button">Start tutorial →</button>
+                </p>
+                <p>Fluency teaches vocabulary from speech and lyrics, beginning with the words you are most likely to meet.</p>
+                <p>Language is heavily concentrated: a relatively small number of frequent words account for most everyday speech. Your coverage therefore reflects how useful each learned word is, rather than simply counting cards.</p>
+                <p>Cards separate a word's meanings and connect each meaning to a real sentence. The walkthrough shows how to read and use both sides of the card.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Portfolio/CV About page; deliberately separate from the learner intro. -->
     <div id="aboutProjectModal" class="modal hidden">
         <div class="modal-content fullscreen-modal about-project-modal">
             <button class="modal-close about-close-floating" id="closeAboutProjectModal" aria-label="Close">✕</button>
@@ -1568,6 +1586,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260911b"></script>
+    <script type="module" src="js/main.js?v=20260911c"></script>
 </body>
 </html>
