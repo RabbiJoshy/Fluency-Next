@@ -564,18 +564,22 @@ function walkthroughSenseText(meaning, selected) {
 
 function walkthroughMetadata(meaning, selected) {
     if (!selected || !Array.isArray(meaning.metadata) || !meaning.metadata.length) return '';
-    const visibleLimit = 3;
-    const details = meaning.metadata.map((item, index) => (
-        `<span class="sense-metadata-detail${index >= visibleLimit ? ' is-overflow' : ''}" `
-        + `data-family="${esc(item.family)}" title="${esc(`${item.family}: ${item.full}`)}"`
-        + `${index >= visibleLimit ? ' hidden' : ''}>${esc(item.short)}</span>`
+    const renderItems = items => items.map(item => (
+        `<span class="sense-metadata-detail" data-family="${esc(item.family)}" `
+        + `title="${esc(`${item.family}: ${item.full}`)}">${esc(item.short)}</span>`
     )).join('');
-    const overflow = meaning.metadata.length - visibleLimit;
-    const more = overflow > 0
-        ? `<button type="button" class="sense-metadata-more" aria-expanded="false" `
-            + `data-count="${overflow}" aria-label="Show ${overflow} more sense details">+${overflow}</button>`
-        : '';
-    return `<span class="sense-metadata-list" aria-label="Sense details">${details}${more}</span>`;
+    const primary = meaning.metadata.filter(item => item.family !== 'grammar' && item.family !== 'functional');
+    const grammar = meaning.metadata.filter(item => item.family === 'grammar');
+    const supporting = meaning.metadata.filter(item => item.family === 'functional');
+    const primaryHTML = primary.length
+        ? `<span class="sense-metadata-tier sense-metadata-tier--primary">${renderItems(primary)}</span>` : '';
+    const grammarHTML = grammar.length
+        ? `<span class="sense-metadata-tier sense-metadata-tier--grammar"><span class="sense-metadata-tier-label">grammar</span>${renderItems(grammar)}</span>` : '';
+    const supportingHTML = supporting.length
+        ? `<span class="sense-metadata-tier sense-metadata-tier--details" hidden>${renderItems(supporting)}</span>` : '';
+    const more = supporting.length
+        ? `<button type="button" class="sense-metadata-more" aria-expanded="false" data-count="${supporting.length}">Details +${supporting.length}</button>` : '';
+    return `<span class="sense-metadata-list" aria-label="Sense details">${primaryHTML}${grammarHTML}${supportingHTML}${more}</span>`;
 }
 
 function renderMeaningRows(card, selectedIdx) {
@@ -700,6 +704,12 @@ const state = {
     activeNote: -1,
 };
 
+const MOBILE_WALKTHROUGH_QUERY = '(max-width: 700px)';
+
+function isMobileWalkthrough() {
+    return window.matchMedia?.(MOBILE_WALKTHROUGH_QUERY).matches === true;
+}
+
 function currentDeck() {
     return ABOUT_EXAMPLE_DECKS[state.deckIndex];
 }
@@ -760,7 +770,7 @@ function refreshBack() {
 
 // Flipping is a face change, so the annotations change with it: new copy, new
 // numbered set, badges re-placed on the side now showing.
-function flipCardFace() {
+function flipCardFace(mobileNote = 0) {
     const stage = document.getElementById('aboutExampleStage');
     const cardEl = stage?.querySelector('.card');
     if (!cardEl) return;
@@ -778,7 +788,13 @@ function flipCardFace() {
     renderNotes();
     syncFlipButton();
     // Re-place once the transform has settled, so boxes are measured flat.
-    setTimeout(placeMarkers, 640);
+    setTimeout(() => {
+        placeMarkers();
+        if (isMobileWalkthrough()) {
+            const finalIndex = Math.max(0, orderedNotes().length - 1);
+            setActiveNote(Math.min(mobileNote, finalIndex));
+        }
+    }, 640);
 }
 
 function wireCardShell(stage) {
@@ -826,14 +842,13 @@ function wireBack(stage) {
         const control = e.currentTarget;
         const list = control.closest('.sense-metadata-list');
         const expanded = control.getAttribute('aria-expanded') === 'true';
-        list?.querySelectorAll('.sense-metadata-detail.is-overflow').forEach(detail => {
-            detail.hidden = expanded;
-        });
+        const details = list?.querySelector('.sense-metadata-tier--details');
+        if (details) details.hidden = expanded;
         control.setAttribute('aria-expanded', String(!expanded));
-        control.textContent = expanded ? `+${control.dataset.count}` : 'Less';
+        control.textContent = expanded ? `Details +${control.dataset.count}` : 'Hide details';
         control.setAttribute('aria-label', expanded
-            ? `Show ${control.dataset.count} more sense details`
-            : 'Show fewer sense details');
+            ? `Show ${control.dataset.count} supporting details`
+            : 'Hide supporting details');
         placeMarkers();
     });
 
@@ -966,6 +981,48 @@ function setActiveNote(index) {
     root.querySelectorAll('.about-example-anchored').forEach((el) => {
         el.classList.toggle('is-annotation-active', Number(el.dataset.aboutExampleNote) === index);
     });
+    renderMobileCoach();
+}
+
+function renderMobileCoach() {
+    const coach = document.getElementById('aboutExampleMobileCoach');
+    if (!coach) return;
+    const mobile = isMobileWalkthrough();
+    const notes = orderedNotes();
+    const index = Math.max(0, Math.min(state.activeNote, notes.length - 1));
+    const note = notes[index];
+    coach.hidden = !mobile || !note;
+    if (coach.hidden) return;
+
+    document.getElementById('aboutExampleMobileProgress').textContent =
+        `${state.flipped ? 'Back' : 'Front'} · ${index + 1} of ${notes.length}`;
+    document.getElementById('aboutExampleMobileTitle').innerHTML =
+        `${esc(note.title)}${note.interactive ? '<span class="about-example-try">tap it</span>' : ''}`;
+    document.getElementById('aboutExampleMobileText').innerHTML = note.text;
+    const back = document.getElementById('aboutExampleMobileBack');
+    const next = document.getElementById('aboutExampleMobileNext');
+    back.disabled = state.flipped && index === 0;
+    next.textContent = index < notes.length - 1
+        ? 'Next'
+        : (state.flipped ? 'Show front' : 'Finish');
+}
+
+function moveMobileTour(direction) {
+    if (!isMobileWalkthrough()) return;
+    const notes = orderedNotes();
+    const index = Math.max(0, Math.min(state.activeNote, notes.length - 1));
+    const candidate = index + direction;
+    if (candidate >= 0 && candidate < notes.length) {
+        setActiveNote(candidate);
+        return;
+    }
+    if (direction > 0 && state.flipped) {
+        flipCardFace(0);
+    } else if (direction > 0) {
+        closeAboutExample();
+    } else if (!state.flipped) {
+        flipCardFace(Number.MAX_SAFE_INTEGER);
+    }
 }
 
 function renderFaceCopy() {
@@ -1070,14 +1127,19 @@ function openAboutExample(deckIndex = 0) {
     state.flipped = true;
     state.meaningIndex = currentCard().defaultMeaningIndex || 0;
     state.exampleIndex = 0;
-    state.activeNote = -1;
+    state.activeNote = isMobileWalkthrough() ? 0 : -1;
 
     renderTabs();
     renderCard();
     syncFlipButton();
+    renderMobileCoach();
 
     if (!_resizeHandler) {
-        _resizeHandler = () => placeMarkers();
+        _resizeHandler = () => {
+            if (isMobileWalkthrough() && state.activeNote < 0) state.activeNote = 0;
+            placeMarkers();
+            renderMobileCoach();
+        };
         window.addEventListener('resize', _resizeHandler);
     }
 }
@@ -1113,7 +1175,9 @@ function setupAboutExample() {
     modal.dataset.ready = '1';
 
     document.getElementById('closeAboutExampleModal')?.addEventListener('click', closeAboutExample);
-    document.getElementById('aboutExampleFlip')?.addEventListener('click', flipCardFace);
+    document.getElementById('aboutExampleFlip')?.addEventListener('click', () => flipCardFace(0));
+    document.getElementById('aboutExampleMobileBack')?.addEventListener('click', () => moveMobileTour(-1));
+    document.getElementById('aboutExampleMobileNext')?.addEventListener('click', () => moveMobileTour(1));
 
     // Escape closes; left/right switch decks; space flips, as it does in study.
     document.addEventListener('keydown', (e) => {
