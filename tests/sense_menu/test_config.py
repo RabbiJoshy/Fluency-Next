@@ -53,6 +53,19 @@ class SenseMenuPolicyTests(unittest.TestCase):
         self.assertIn("nonstandard", policy["register_tags"])
         self.assertNotIn("Alentejo", policy["construction_tags"])
 
+    def test_portuguese_audit_maps_ambiguous_provider_tags_by_evidence(self):
+        policy = load_sense_menu_language_policy(
+            REPOSITORY_ROOT, policy_id="pt-v1", language="pt"
+        )
+        self.assertIn("particle", policy["domain_tags"])
+        self.assertIn("Northern", policy["region_tags"])
+        self.assertIn("ergative", policy["construction_tags"])
+        self.assertEqual(policy["grammar_tags"]["numeral"], "word-class=numeral")
+        self.assertEqual(
+            policy["grammar_tags"]["no-first-person-singular-present"],
+            "inflection=no-first-person-singular-present",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
