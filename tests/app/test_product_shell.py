@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v351"
+EXPECTED_CACHE_NAME = "flashcards-v352"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -203,11 +203,21 @@ class ProductShellTests(unittest.TestCase):
         walkthrough = (APP_ROOT / "js" / "about-example.js").read_text(encoding="utf-8")
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
         main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
-        self.assertGreaterEqual(auth.count("window.openFirstRunAboutExample?.(1)"), 2)
-        self.assertIn("function openFirstRunAboutExample(deckIndex = 1)", walkthrough)
+        self.assertGreaterEqual(auth.count("window.openFirstRunAboutExample?.()"), 2)
+        self.assertIn("function openFirstRunAboutExample()", walkthrough)
+        self.assertIn("const TUTORIAL_DECK_SEQUENCE = [1, 0]", walkthrough)
+        self.assertNotIn("function renderTabs()", walkthrough)
         self.assertIn("fluencyCardWalkthroughSeenV1", walkthrough)
         self.assertIn("fluencyCardWalkthroughSeenV1", flashcards)
-        self.assertIn("window.openAboutExample?.(activeArtist ? 0 : 1)", main)
+        self.assertIn("window.openAboutProjectModal?.()", main)
+
+    def test_tutorial_opens_with_philosophy_then_runs_speech_to_lyrics(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        about = (APP_ROOT / "content" / "about.md").read_text(encoding="utf-8")
+        auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
+        self.assertIn('<button id="helpBtn" class="top-bar-text-btn">Tutorial</button>', html)
+        self.assertIn("[Start tutorial](example://walkthrough)", about)
+        self.assertIn("window.startAboutTutorial = startAboutTutorial", auth)
 
     def test_cognate_setting_uses_positive_inclusion_copy(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
@@ -412,7 +422,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260911a", worker)
+        self.assertIn("/js/main.js?v=20260911b", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
@@ -435,9 +445,9 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertIn("config?.publicServices?.progressSyncUrl", auth)
         self.assertIn("secrets.googleScriptUrl || GOOGLE_SCRIPT_URL", auth)
-        self.assertIn('js/auth.js?v=20260908d', html)
-        self.assertIn("auth.js?v=20260908d", main)
-        self.assertIn("/js/auth.js?v=20260908d", worker)
+        self.assertIn('js/auth.js?v=20260911b', html)
+        self.assertIn("auth.js?v=20260911b", main)
+        self.assertIn("/js/auth.js?v=20260911b", worker)
 
     def test_progress_identity_bridges_historical_mode_ids_by_surface(self) -> None:
         progress = (APP_ROOT / "js" / "progress.js").read_text(encoding="utf-8")

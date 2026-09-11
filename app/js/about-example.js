@@ -695,7 +695,7 @@ function renderBack(card, selectedIdx, exampleIdx) {
 // ---------------------------------------------------------------------------
 
 const state = {
-    deckIndex: 0,
+    chapterIndex: 0,
     // The back opens first, deliberately: it holds the senses, the shares and
     // the evidence. The front is a prompt with a rank on it.
     flipped: true,
@@ -704,6 +704,11 @@ const state = {
     activeNote: -1,
 };
 
+// The source order is intentional: first teach the everyday Speech card,
+// then reveal that the same study model works with Lyrics and live playback.
+// ABOUT_EXAMPLE_DECKS retains its data order; this owns the tutorial story.
+const TUTORIAL_DECK_SEQUENCE = [1, 0];
+
 const MOBILE_WALKTHROUGH_QUERY = '(max-width: 700px)';
 
 function isMobileWalkthrough() {
@@ -711,7 +716,7 @@ function isMobileWalkthrough() {
 }
 
 function currentDeck() {
-    return ABOUT_EXAMPLE_DECKS[state.deckIndex];
+    return ABOUT_EXAMPLE_DECKS[TUTORIAL_DECK_SEQUENCE[state.chapterIndex]];
 }
 
 function currentCard() {
@@ -753,6 +758,7 @@ function renderCard() {
     renderFaceCopy();
     renderNotes();
     placeMarkers();
+    syncContinueButton();
 }
 
 // Sense and example changes replace only the back face, leaving the .card
@@ -787,6 +793,7 @@ function flipCardFace(mobileNote = 0) {
     renderFaceCopy();
     renderNotes();
     syncFlipButton();
+    syncContinueButton();
     // Re-place once the transform has settled, so boxes are measured flat.
     setTimeout(() => {
         placeMarkers();
@@ -902,6 +909,17 @@ function syncFlipButton() {
     btn.textContent = state.flipped ? '⟲  Show the front' : '⟲  Show the back';
 }
 
+function syncContinueButton() {
+    const btn = document.getElementById('aboutExampleContinue');
+    if (!btn) return;
+    const ready = !isMobileWalkthrough() && !state.flipped;
+    btn.hidden = !ready;
+    if (!ready) return;
+    btn.textContent = state.chapterIndex < TUTORIAL_DECK_SEQUENCE.length - 1
+        ? 'Continue to Lyrics →'
+        : 'Finish tutorial';
+}
+
 // ---------------------------------------------------------------------------
 // Annotations
 // ---------------------------------------------------------------------------
@@ -995,16 +1013,19 @@ function renderMobileCoach() {
     if (coach.hidden) return;
 
     document.getElementById('aboutExampleMobileProgress').textContent =
-        `${state.flipped ? 'Back' : 'Front'} · ${index + 1} of ${notes.length}`;
+        `${currentDeck().tab} · ${state.chapterIndex + 1} of ${TUTORIAL_DECK_SEQUENCE.length}`
+        + ` · ${state.flipped ? 'Back' : 'Front'} · ${index + 1} of ${notes.length}`;
     document.getElementById('aboutExampleMobileTitle').innerHTML =
         `${esc(note.title)}${note.interactive ? '<span class="about-example-try">tap it</span>' : ''}`;
     document.getElementById('aboutExampleMobileText').innerHTML = note.text;
     const back = document.getElementById('aboutExampleMobileBack');
     const next = document.getElementById('aboutExampleMobileNext');
-    back.disabled = state.flipped && index === 0;
+    back.disabled = state.chapterIndex === 0 && state.flipped && index === 0;
     next.textContent = index < notes.length - 1
         ? 'Next'
-        : (state.flipped ? 'Show front' : 'Finish');
+        : (state.flipped
+            ? 'Show front'
+            : (state.chapterIndex < TUTORIAL_DECK_SEQUENCE.length - 1 ? 'Continue to Lyrics' : 'Finish'));
 }
 
 function moveMobileTour(direction) {
@@ -1019,9 +1040,11 @@ function moveMobileTour(direction) {
     if (direction > 0 && state.flipped) {
         flipCardFace(0);
     } else if (direction > 0) {
-        closeAboutExample();
+        advanceChapterOrFinish();
     } else if (!state.flipped) {
         flipCardFace(Number.MAX_SAFE_INTEGER);
+    } else if (state.chapterIndex > 0) {
+        showTutorialChapter(state.chapterIndex - 1, false, Number.MAX_SAFE_INTEGER);
     }
 }
 
@@ -1077,39 +1100,38 @@ function renderNotes() {
 }
 
 // ---------------------------------------------------------------------------
-// Deck tabs
+// Linear tutorial chapters
 // ---------------------------------------------------------------------------
 
-function renderTabs() {
-    const host = document.getElementById('aboutExampleTabs');
+function renderSequenceProgress() {
+    const host = document.getElementById('aboutExampleSequence');
     if (!host) return;
-    host.innerHTML = ABOUT_EXAMPLE_DECKS.map((d, i) => `
-        <button type="button" class="about-example-tab${i === state.deckIndex ? ' is-current' : ''}"
-                data-deck="${i}" role="tab" aria-selected="${i === state.deckIndex}">${esc(d.tab)}</button>`).join('');
-    host.querySelectorAll('.about-example-tab').forEach((tab) => {
-        tab.addEventListener('click', () => selectDeck(Number(tab.dataset.deck)));
-    });
+    host.innerHTML = `<strong>${esc(currentDeck().tab)}</strong><span>${state.chapterIndex + 1} of ${TUTORIAL_DECK_SEQUENCE.length}</span>`;
 }
 
-// Switching decks resets the card to its deliberate showcase sense and first
-// example. The annotations are written against a known card state: the lyrics
-// card opens on a sense with several examples; the speech card opens on the
-// metadata-rich regional sense.
-// Face is deliberately NOT reset: if you were reading the front, you stay on
-// the front and get the other deck's front.
-function selectDeck(index) {
-    if (index < 0 || index >= ABOUT_EXAMPLE_DECKS.length || index === state.deckIndex) return;
-    state.deckIndex = index;
+function showTutorialChapter(index, flipped = true, mobileNote = 0) {
+    if (index < 0 || index >= TUTORIAL_DECK_SEQUENCE.length) return;
+    state.chapterIndex = index;
+    state.flipped = flipped;
     state.meaningIndex = currentCard().defaultMeaningIndex || 0;
     state.exampleIndex = 0;
-    state.activeNote = -1;
+    state.activeNote = isMobileWalkthrough() ? mobileNote : -1;
 
-    renderTabs();
+    renderSequenceProgress();
     renderCard();
     syncFlipButton();
+    renderMobileCoach();
 
     const body = document.getElementById('aboutExampleBody');
     if (body) body.scrollTop = 0;
+}
+
+function advanceChapterOrFinish() {
+    if (state.chapterIndex < TUTORIAL_DECK_SEQUENCE.length - 1) {
+        showTutorialChapter(state.chapterIndex + 1);
+    } else {
+        closeAboutExample();
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1118,40 +1140,32 @@ function selectDeck(index) {
 
 let _resizeHandler = null;
 
-function openAboutExample(deckIndex = 0) {
+function openAboutExample() {
     const modal = document.getElementById('aboutExampleModal');
     if (!modal) return;
     rememberCardWalkthrough();
     modal.classList.remove('hidden');
-    state.deckIndex = deckIndex;
-    state.flipped = true;
-    state.meaningIndex = currentCard().defaultMeaningIndex || 0;
-    state.exampleIndex = 0;
-    state.activeNote = isMobileWalkthrough() ? 0 : -1;
-
-    renderTabs();
-    renderCard();
-    syncFlipButton();
-    renderMobileCoach();
+    showTutorialChapter(0);
 
     if (!_resizeHandler) {
         _resizeHandler = () => {
             if (isMobileWalkthrough() && state.activeNote < 0) state.activeNote = 0;
             placeMarkers();
+            syncContinueButton();
             renderMobileCoach();
         };
         window.addEventListener('resize', _resizeHandler);
     }
 }
 
-function openFirstRunAboutExample(deckIndex = 1) {
+function openFirstRunAboutExample() {
     if (hasSeenCardWalkthrough()) return false;
     // Never stack the automatic tour over authentication, About, settings, or
     // another onboarding sheet. Permanent replay links remain available.
     if (document.querySelector('.modal:not(.hidden), .knowledge-overview-modal:not([hidden])')) {
         return false;
     }
-    openAboutExample(deckIndex);
+    openAboutExample();
     return true;
 }
 
@@ -1176,15 +1190,16 @@ function setupAboutExample() {
 
     document.getElementById('closeAboutExampleModal')?.addEventListener('click', closeAboutExample);
     document.getElementById('aboutExampleFlip')?.addEventListener('click', () => flipCardFace(0));
+    document.getElementById('aboutExampleContinue')?.addEventListener('click', advanceChapterOrFinish);
     document.getElementById('aboutExampleMobileBack')?.addEventListener('click', () => moveMobileTour(-1));
     document.getElementById('aboutExampleMobileNext')?.addEventListener('click', () => moveMobileTour(1));
 
-    // Escape closes; left/right switch decks; space flips, as it does in study.
+    // Escape closes; left/right move through the story; space flips, as in study.
     document.addEventListener('keydown', (e) => {
         if (modal.classList.contains('hidden')) return;
         if (e.key === 'Escape') closeAboutExample();
-        else if (e.key === 'ArrowRight') selectDeck(state.deckIndex + 1);
-        else if (e.key === 'ArrowLeft') selectDeck(state.deckIndex - 1);
+        else if (e.key === 'ArrowRight') showTutorialChapter(state.chapterIndex + 1);
+        else if (e.key === 'ArrowLeft') showTutorialChapter(state.chapterIndex - 1);
         else if (e.key === ' ' && !e.target.closest('button')) {
             e.preventDefault();
             flipCardFace();

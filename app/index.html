@@ -40,14 +40,14 @@
             document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#eef2f5' : '#0a0e14';
         })();
     </script>
-    <link rel="stylesheet" href="css/style.css?v=20260911a">
+    <link rel="stylesheet" href="css/style.css?v=20260911b">
     <link rel="stylesheet" href="css/light-theme.css?v=20260828a">
     <!-- Module preloads. Without these the browser waits to discover the
          imports inside main.js before kicking off the per-module fetches,
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260911a">
+    <link rel="modulepreload" href="js/main.js?v=20260911b">
     <link rel="modulepreload" href="js/theme.js?v=20260825ak">
     <link rel="modulepreload" href="js/state.js?v=20260825ak">
     <link rel="modulepreload" href="js/data-contracts.js?v=20260825ak">
@@ -56,8 +56,8 @@
     <link rel="modulepreload" href="js/offline-content.js?v=20260825ak">
     <link rel="modulepreload" href="js/speech.js?v=20260824d">
     <link rel="modulepreload" href="js/artist-ui.js?v=20260825ak">
-    <link rel="modulepreload" href="js/auth.js?v=20260908d">
-    <link rel="modulepreload" href="js/about-example.js?v=20260911a">
+    <link rel="modulepreload" href="js/auth.js?v=20260911b">
+    <link rel="modulepreload" href="js/about-example.js?v=20260911b">
     <link rel="modulepreload" href="js/estimation.js?v=20260825ak">
     <link rel="modulepreload" href="js/config.js?v=20260907a">
     <link rel="modulepreload" href="js/progress.js?v=20260831a">
@@ -318,11 +318,11 @@
 
     <div class="container">
         <div class="file-upload" id="setupPanel">
-            <!-- Top bar: How to start, Estimate Level, gear (shared by both modes) -->
+            <!-- Top bar: Tutorial, Estimate Level, gear (shared by both modes) -->
             <div id="topBar" class="setup-step">
                 <div class="step-header top-bar-header">
                     <span id="topBarUserName" class="top-bar-user-name"></span>
-                    <button id="helpBtn" class="top-bar-text-btn">How to start</button>
+                    <button id="helpBtn" class="top-bar-text-btn">Tutorial</button>
                     <!-- Offline / sync-pending status pill. Hidden when online with an empty queue. -->
                     <button id="syncStatusIndicator" class="sync-status is-synced" type="button" title="Open synchronization details" onclick="showSettingsModalWithTab('offline')">Synced</button>
                     <button class="gear-btn top-bar-find" id="findWordBtn" title="Find a word">
@@ -779,16 +779,16 @@
     <div id="aboutExampleModal" class="modal hidden">
         <div class="modal-content fullscreen-modal about-example-modal">
             <div class="about-example-body" id="aboutExampleBody">
-                <!-- One row, not a banner above a summary: deck switch left,
+                <!-- One row, not a banner above a summary: chapter progress left,
                      the summary itself in the middle, exit right. Vertical
                      space is the scarce thing here — the card and its
                      annotations have to fit on screen together, so nothing
                      gets a whole band of its own.
-                     The tabs choose DECK (Lyrics / Speech) alone; which face
-                     you are reading is decided by flipping the card, and the
+                     Speech leads naturally into Lyrics; which face you are
+                     reading is decided by flipping the card, and the
                      annotations follow the face. -->
                 <div class="about-example-topbar">
-                    <div class="about-example-tabs" id="aboutExampleTabs" role="tablist" aria-label="Deck"></div>
+                    <div class="about-example-sequence" id="aboutExampleSequence" aria-live="polite"></div>
                     <div class="about-example-intro" id="aboutExampleIntro"></div>
                     <button class="modal-close about-example-close" id="closeAboutExampleModal" aria-label="Close walkthrough" title="Close walkthrough">✕</button>
                 </div>
@@ -800,6 +800,7 @@
                             <div class="about-example-markers" id="aboutExampleMarkers" aria-hidden="true"></div>
                         </div>
                         <button type="button" class="about-example-flip" id="aboutExampleFlip">⟲  Show the front</button>
+                        <button type="button" class="about-example-continue" id="aboutExampleContinue" hidden></button>
                     </div>
                     <div class="about-example-notes about-example-notes-right" id="aboutExampleNotesRight"></div>
                 </div>
@@ -1567,6 +1568,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260911a"></script>
+    <script type="module" src="js/main.js?v=20260911b"></script>
 </body>
 </html>
