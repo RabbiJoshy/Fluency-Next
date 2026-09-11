@@ -5,8 +5,8 @@ import './sync-queue.js?v=20260825ak';
 import { initOfflineContent } from './offline-content.js?v=20260825ak';
 import './speech.js?v=20260824d';
 import './artist-ui.js?v=20260825ak';
-import './auth.js?v=20260908d';
-import './about-example.js?v=20260911a';
+import './auth.js?v=20260911b';
+import './about-example.js?v=20260911b';
 import './estimation.js?v=20260825ak';
 import './config.js?v=20260907a';
 import './progress.js?v=20260908d';
@@ -323,8 +323,9 @@ loadConfig().then(async () => {
     setupEstimationModal();
     setupTooltipHandlers();
 
-    // Wire shared top bar buttons (How to start, Estimate Level, gear)
-    document.getElementById('helpBtn').addEventListener('click', () => openHelpModal());
+    // Tutorial opens with the app's philosophy, whose lead action starts the
+    // guided Speech → Lyrics walkthrough.
+    document.getElementById('helpBtn').addEventListener('click', () => window.openAboutProjectModal?.());
     document.getElementById('topBarGearBtn').addEventListener('click', () => showSettingsModal());
     // Level-estimate CTA (shown when user has no progress yet, in the slot
     // where the personal coverage bar will live once they do).
@@ -364,13 +365,11 @@ loadConfig().then(async () => {
     if (helpStudyContent && !document.getElementById('helpCardWalkthroughBtn')) {
         const walkthroughAction = document.createElement('p');
         walkthroughAction.className = 'help-card-walkthrough-action';
-        walkthroughAction.innerHTML = '<button class="help-more-info-btn" id="helpCardWalkthroughBtn" type="button">Show the card walkthrough →</button>';
+        walkthroughAction.innerHTML = '<button class="help-more-info-btn" id="helpCardWalkthroughBtn" type="button">Open tutorial introduction →</button>';
         helpStudyContent.appendChild(walkthroughAction);
         walkthroughAction.querySelector('button').addEventListener('click', () => {
             document.getElementById('helpModal').classList.add('hidden');
-            // The walkthrough contains one Lyrics and one Speech card. Open on
-            // the card that matches the learner's current source.
-            window.openAboutExample?.(activeArtist ? 0 : 1);
+            window.openAboutProjectModal?.();
         });
     }
     // Hide floating gear — replaced by gear in the top bar
