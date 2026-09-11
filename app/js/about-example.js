@@ -564,18 +564,22 @@ function walkthroughSenseText(meaning, selected) {
 
 function walkthroughMetadata(meaning, selected) {
     if (!selected || !Array.isArray(meaning.metadata) || !meaning.metadata.length) return '';
-    const visibleLimit = 3;
-    const details = meaning.metadata.map((item, index) => (
-        `<span class="sense-metadata-detail${index >= visibleLimit ? ' is-overflow' : ''}" `
-        + `data-family="${esc(item.family)}" title="${esc(`${item.family}: ${item.full}`)}"`
-        + `${index >= visibleLimit ? ' hidden' : ''}>${esc(item.short)}</span>`
+    const renderItems = items => items.map(item => (
+        `<span class="sense-metadata-detail" data-family="${esc(item.family)}" `
+        + `title="${esc(`${item.family}: ${item.full}`)}">${esc(item.short)}</span>`
     )).join('');
-    const overflow = meaning.metadata.length - visibleLimit;
-    const more = overflow > 0
-        ? `<button type="button" class="sense-metadata-more" aria-expanded="false" `
-            + `data-count="${overflow}" aria-label="Show ${overflow} more sense details">+${overflow}</button>`
-        : '';
-    return `<span class="sense-metadata-list" aria-label="Sense details">${details}${more}</span>`;
+    const primary = meaning.metadata.filter(item => item.family !== 'grammar' && item.family !== 'functional');
+    const grammar = meaning.metadata.filter(item => item.family === 'grammar');
+    const supporting = meaning.metadata.filter(item => item.family === 'functional');
+    const primaryHTML = primary.length
+        ? `<span class="sense-metadata-tier sense-metadata-tier--primary">${renderItems(primary)}</span>` : '';
+    const grammarHTML = grammar.length
+        ? `<span class="sense-metadata-tier sense-metadata-tier--grammar"><span class="sense-metadata-tier-label">grammar</span>${renderItems(grammar)}</span>` : '';
+    const supportingHTML = supporting.length
+        ? `<span class="sense-metadata-tier sense-metadata-tier--details" hidden>${renderItems(supporting)}</span>` : '';
+    const more = supporting.length
+        ? `<button type="button" class="sense-metadata-more" aria-expanded="false" data-count="${supporting.length}">Details +${supporting.length}</button>` : '';
+    return `<span class="sense-metadata-list" aria-label="Sense details">${primaryHTML}${grammarHTML}${supportingHTML}${more}</span>`;
 }
 
 function renderMeaningRows(card, selectedIdx) {
@@ -838,14 +842,13 @@ function wireBack(stage) {
         const control = e.currentTarget;
         const list = control.closest('.sense-metadata-list');
         const expanded = control.getAttribute('aria-expanded') === 'true';
-        list?.querySelectorAll('.sense-metadata-detail.is-overflow').forEach(detail => {
-            detail.hidden = expanded;
-        });
+        const details = list?.querySelector('.sense-metadata-tier--details');
+        if (details) details.hidden = expanded;
         control.setAttribute('aria-expanded', String(!expanded));
-        control.textContent = expanded ? `+${control.dataset.count}` : 'Less';
+        control.textContent = expanded ? `Details +${control.dataset.count}` : 'Hide details';
         control.setAttribute('aria-label', expanded
-            ? `Show ${control.dataset.count} more sense details`
-            : 'Show fewer sense details');
+            ? `Show ${control.dataset.count} supporting details`
+            : 'Hide supporting details');
         placeMarkers();
     });
 

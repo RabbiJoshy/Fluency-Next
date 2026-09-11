@@ -2906,7 +2906,6 @@ function compactConstructionMetadata(value) {
         .replace(/\s+([,;)])/g, '$1')
         .replace(/,\s*\+/g, ' +')
         .trim();
-    if (short.length > 32) short = `${short.slice(0, 31).trimEnd()}…`;
     return { short: short || full, full };
 }
 
@@ -2938,7 +2937,7 @@ function senseMetadataItems(meaning) {
         if (feature.family === 'register' || feature.family === 'domain'
             || feature.family === 'companion'
             || feature.family === 'construction' || feature.family === 'grammar'
-            || feature.family === 'functional') {
+            || feature.family === 'functional' || feature.family === 'source') {
             add(feature.family, feature.kind || '', feature.value);
         }
     }
@@ -2949,6 +2948,8 @@ function senseMetadataItems(meaning) {
         add('register', 'region', label);
     }
     for (const topic of provider.topics || []) add('domain', 'topic', topic);
+    if (provider.etymology_text) add('source', 'etymology', provider.etymology_text);
+    if (provider.qualifier) add('source', 'qualifier', provider.qualifier);
     for (const tag of provider.tags || []) {
         const lowered = String(tag || '').toLowerCase();
         if (SENSE_REGISTER_TAGS.has(lowered)) add('register', 'usage_tag', tag);
@@ -2971,11 +2972,12 @@ function senseMetadataItems(meaning) {
     }
     const familyOrder = {
         construction: 0,
-        grammar: 0,
         companion: 1,
-        functional: 1,
         register: 2,
         domain: 3,
+        grammar: 4,
+        functional: 5,
+        source: 6,
     };
     return items
         .map((item, sourceIndex) => ({ ...item, sourceIndex }))
@@ -3010,6 +3012,8 @@ function senseMetadataDisplay(item) {
             'number=plural': 'plural',
             'number=plural-only': 'plural only',
             'form=participle': 'participle',
+            'form=personal-infinitive': 'personal infinitive',
+            'pronoun-class=personal': 'personal pronoun',
             'countability=countable': 'countable',
             'countability=uncountable': 'uncountable',
             'inflection=invariable': 'invariable',
@@ -3056,6 +3060,10 @@ function senseMetadataDisplay(item) {
             .replace(/\bneuter\b/gi, 'neut.');
         return { short, full: item.value };
     }
+    if (item.family === 'source') {
+        const prefix = item.kind === 'etymology' ? 'Etymology' : 'Source note';
+        return { short: `${prefix}: ${item.value}`, full: `${prefix}: ${item.value}` };
+    }
     return {
         short: item.value.replace(/-/g, ' '),
         full: item.value.replace(/-/g, ' '),
@@ -3065,28 +3073,52 @@ function senseMetadataDisplay(item) {
 function senseMetadataHTML(meaning, active) {
     if (!active) return '';
     const items = senseMetadataItems(meaning);
-    const visibleLimit = 3;
-    const details = items.map((item, index) => {
+    const renderItems = (values) => values.map((item) => {
         const display = senseMetadataDisplay(item);
         const family = escapeCardText(item.family);
         const shortLabel = escapeCardText(display.short);
         const fullLabel = escapeCardText(display.full);
-        const overflow = index >= visibleLimit;
-        return `<span class="sense-metadata-detail${overflow ? ' is-overflow' : ''}" data-family="${family}" title="${family}: ${fullLabel}" aria-label="${fullLabel}"${overflow ? ' hidden' : ''}>${shortLabel}</span>`;
+        return `<span class="sense-metadata-detail" data-family="${family}" title="${family}: ${fullLabel}" aria-label="${fullLabel}">${shortLabel}</span>`;
     }).join('');
-    if (!details) return '';
-    const overflowCount = Math.max(0, items.length - visibleLimit);
-    const more = overflowCount
-        ? `<button type="button" class="sense-metadata-more" aria-expanded="false" onclick="toggleSenseMetadataOverflow(event, this)" data-count="${overflowCount}" aria-label="Show ${overflowCount} more sense details">+${overflowCount}</button>`
+    const primary = items.filter(item => ['construction', 'companion', 'register', 'domain'].includes(item.family));
+    const grammar = items.filter(item => item.family === 'grammar');
+    const supporting = items.filter(item => item.family === 'functional' || item.family === 'source');
+    if (!primary.length && !grammar.length && !supporting.length) return '';
+    const primaryHTML = primary.length
+        ? `<span class="sense-metadata-tier sense-metadata-tier--primary">${renderItems(primary)}</span>`
         : '';
-    return `<span class="sense-metadata-list" aria-label="Sense details">${details}${more}</span>`;
+    const grammarHTML = grammar.length
+        ? `<span class="sense-metadata-tier sense-metadata-tier--grammar"><span class="sense-metadata-tier-label">grammar</span>${renderItems(grammar)}</span>`
+        : '';
+    const supportingHTML = supporting.length
+        ? `<span class="sense-metadata-tier sense-metadata-tier--details" hidden>${renderItems(supporting)}</span>`
+        : '';
+    const more = supporting.length
+        ? `<button type="button" class="sense-metadata-more" aria-expanded="false" onclick="toggleSenseMetadataOverflow(event, this)" data-count="${supporting.length}" aria-label="Show ${supporting.length} supporting details">Details +${supporting.length}</button>`
+        : '';
+    return `<span class="sense-metadata-list" aria-label="Sense details">${primaryHTML}${grammarHTML}${supportingHTML}${more}</span>`;
 }
 
 function contextWithoutSenseMetadata(meaning, active) {
     const context = String(meaning?.context || '').trim();
     if (!active || !context) return context;
-    const represented = new Set(senseMetadataItems(meaning).map(item =>
-        item.value.toLocaleLowerCase('en')));
+    const metadata = meaning?.metadata || {};
+    const canonical = metadata.sense_metadata || {};
+    const provider = canonical.source_metadata || metadata.sense_provider_metadata || {};
+    // For canonical Wiktionary releases, `context` is the source's leading
+    // parenthetical. The extractor accounts for every top-level clause as a
+    // typed feature, so repeating the original prose beside those features is
+    // pure duplication. It remains preserved in source metadata and details.
+    if (metadata.source_adapter === 'wiktionary-sense-menu/v1'
+        && canonical.contract_version
+        && String(provider.context || '').trim() === context) return '';
+    const represented = new Set();
+    for (const item of senseMetadataItems(meaning)) {
+        const display = senseMetadataDisplay(item);
+        for (const value of [item.value, display.short, display.full]) {
+            represented.add(String(value || '').trim().toLocaleLowerCase('en'));
+        }
+    }
     return splitSenseMetadataClauses(context)
         .filter(clause => !represented.has(clause.toLocaleLowerCase('en')))
         .join(', ');
@@ -3107,13 +3139,12 @@ function toggleSenseMetadataOverflow(event, control) {
     const list = control?.closest?.('.sense-metadata-list');
     if (!list) return;
     const expand = control.getAttribute('aria-expanded') !== 'true';
-    list.querySelectorAll('.sense-metadata-detail.is-overflow').forEach(detail => {
-        detail.hidden = !expand;
-    });
+    const details = list.querySelector('.sense-metadata-tier--details');
+    if (details) details.hidden = !expand;
     const count = Number(control.dataset.count) || 0;
     control.setAttribute('aria-expanded', String(expand));
-    control.setAttribute('aria-label', expand ? 'Show fewer sense details' : `Show ${count} more sense details`);
-    control.textContent = expand ? 'Less' : `+${count}`;
+    control.setAttribute('aria-label', expand ? 'Hide supporting details' : `Show ${count} supporting details`);
+    control.textContent = expand ? 'Hide details' : `Details +${count}`;
 }
 
 function highlightPossibleSpanishDictUsage(sentenceHTML, usage, targetWord = '') {

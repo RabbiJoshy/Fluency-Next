@@ -6,7 +6,7 @@ import { initOfflineContent } from './offline-content.js?v=20260825ak';
 import './speech.js?v=20260824d';
 import './artist-ui.js?v=20260825ak';
 import './auth.js?v=20260908d';
-import './about-example.js?v=20260910a';
+import './about-example.js?v=20260911a';
 import './estimation.js?v=20260825ak';
 import './config.js?v=20260907a';
 import './progress.js?v=20260908d';
@@ -19,7 +19,7 @@ import './fast-mode.js?v=20260908e';
 import './extras.js?v=20260908d';
 import './song-sets.js?v=20260823ae';
 import './vocabulary-import.js?v=20260825ak';
-import './flashcards.js?v=20260909b';
+import './flashcards.js?v=20260911a';
 import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import

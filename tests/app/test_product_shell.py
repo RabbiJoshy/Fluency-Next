@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v350"
+EXPECTED_CACHE_NAME = "flashcards-v351"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -156,7 +156,7 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn('class="compact-example-counter"', walkthrough)
         self.assertIn('class="compact-example-counter-label"', walkthrough)
         self.assertIn("card: 'tem'", walkthrough)
-        self.assertIn('class="sense-metadata-detail${index >= visibleLimit', walkthrough)
+        self.assertIn('class="sense-metadata-tier sense-metadata-tier--primary"', walkthrough)
         self.assertIn('class="sense-metadata-more"', walkthrough)
         self.assertIn('class="sense-cross-reference"', walkthrough)
         self.assertIn('walkthroughSenseSummary(meaning.translation)', walkthrough)
@@ -412,7 +412,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260909b", worker)
+        self.assertIn("/js/main.js?v=20260911a", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:

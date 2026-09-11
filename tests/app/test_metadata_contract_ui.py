@@ -23,7 +23,7 @@ class MetadataContractUITests(unittest.TestCase):
         styles = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
         self.assertIn("function displaySenseGloss(meaning, value, active = true)", flashcards)
         self.assertIn("return senseSummaryText(projected) || projected;", flashcards)
-        self.assertIn('class="sense-metadata-detail${overflow', flashcards)
+        self.assertIn('class="sense-metadata-tier sense-metadata-tier--primary"', flashcards)
         self.assertIn(".sense-metadata-detail + .sense-metadata-detail::before", styles)
         self.assertIn("group-card-varying-cell${isMemberSelected ? ' is-active-subsense' : ''}", flashcards)
         self.assertIn(".group-card-varying-cell:not(.is-active-subsense)", styles)
@@ -33,11 +33,21 @@ class MetadataContractUITests(unittest.TestCase):
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
         styles = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
         self.assertIn("const familyOrder = {", flashcards)
-        self.assertIn("const visibleLimit = 3;", flashcards)
+        self.assertIn("const primary = items.filter", flashcards)
+        self.assertIn("const grammar = items.filter", flashcards)
         self.assertIn("display.short", flashcards)
         self.assertIn("toggleSenseMetadataOverflow(event, this)", flashcards)
         self.assertIn("'gender=variable-by-person': 'varies by gender'", flashcards)
+        self.assertIn("'form=personal-infinitive': 'personal infinitive'", flashcards)
+        self.assertIn("'pronoun-class=personal': 'personal pronoun'", flashcards)
+        self.assertIn("if (provider.etymology_text) add('source', 'etymology'", flashcards)
+        self.assertNotIn("short.slice(0, 31)", flashcards)
         self.assertIn(".sense-metadata-more", styles)
+
+    def test_canonical_wiktionary_context_is_not_repeated_beside_features(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        self.assertIn("String(provider.context || '').trim() === context", flashcards)
+        self.assertIn("pure duplication", flashcards)
 
     def test_one_shared_metadata_renderer_serves_every_active_dictionary_language(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
