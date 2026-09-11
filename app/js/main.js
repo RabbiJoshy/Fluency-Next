@@ -22,6 +22,14 @@ import './vocabulary-import.js?v=20260825ak';
 import './flashcards.js?v=20260911a';
 import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 
+function openTutorialIntroduction() {
+    document.getElementById('tutorialIntroModal')?.classList.remove('hidden');
+}
+
+function closeTutorialIntroduction() {
+    document.getElementById('tutorialIntroModal')?.classList.add('hidden');
+}
+
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import
 // immediately for an artist URL so it races setup/data loading, but keep it
 // entirely out of normal Speech startup. Card/modal code already has its own
@@ -323,9 +331,16 @@ loadConfig().then(async () => {
     setupEstimationModal();
     setupTooltipHandlers();
 
-    // Tutorial opens with the app's philosophy, whose lead action starts the
-    // guided Speech → Lyrics walkthrough.
-    document.getElementById('helpBtn').addEventListener('click', () => window.openAboutProjectModal?.());
+    // Keep the short learner tutorial separate from the portfolio /about page.
+    document.getElementById('helpBtn').addEventListener('click', openTutorialIntroduction);
+    document.getElementById('closeTutorialIntroModal')?.addEventListener('click', closeTutorialIntroduction);
+    document.getElementById('startCardTutorialBtn')?.addEventListener('click', () => {
+        closeTutorialIntroduction();
+        window.openAboutExample?.();
+    });
+    document.getElementById('tutorialIntroModal')?.addEventListener('click', event => {
+        if (event.target === event.currentTarget) closeTutorialIntroduction();
+    });
     document.getElementById('topBarGearBtn').addEventListener('click', () => showSettingsModal());
     // Level-estimate CTA (shown when user has no progress yet, in the slot
     // where the personal coverage bar will live once they do).
@@ -369,7 +384,7 @@ loadConfig().then(async () => {
         helpStudyContent.appendChild(walkthroughAction);
         walkthroughAction.querySelector('button').addEventListener('click', () => {
             document.getElementById('helpModal').classList.add('hidden');
-            window.openAboutProjectModal?.();
+            openTutorialIntroduction();
         });
     }
     // Hide floating gear — replaced by gear in the top bar

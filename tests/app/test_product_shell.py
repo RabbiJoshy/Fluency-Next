@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v352"
+EXPECTED_CACHE_NAME = "flashcards-v353"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -209,15 +209,25 @@ class ProductShellTests(unittest.TestCase):
         self.assertNotIn("function renderTabs()", walkthrough)
         self.assertIn("fluencyCardWalkthroughSeenV1", walkthrough)
         self.assertIn("fluencyCardWalkthroughSeenV1", flashcards)
-        self.assertIn("window.openAboutProjectModal?.()", main)
+        self.assertIn("helpBtn').addEventListener('click', openTutorialIntroduction", main)
 
-    def test_tutorial_opens_with_philosophy_then_runs_speech_to_lyrics(self) -> None:
+    def test_portfolio_about_can_launch_the_speech_to_lyrics_tutorial(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
         about = (APP_ROOT / "content" / "about.md").read_text(encoding="utf-8")
         auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
         self.assertIn('<button id="helpBtn" class="top-bar-text-btn">Tutorial</button>', html)
         self.assertIn("[Start tutorial](example://walkthrough)", about)
         self.assertIn("window.startAboutTutorial = startAboutTutorial", auth)
+
+    def test_in_app_tutorial_has_a_short_separate_intro_and_top_action(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        intro = html.index('id="tutorialIntroModal"')
+        start = html.index('id="startCardTutorialBtn"', intro)
+        first_paragraph = html.index("Fluency teaches vocabulary", intro)
+        self.assertLess(start, first_paragraph)
+
+        self.assertIn("window.openAboutExample?.()", main)
 
     def test_cognate_setting_uses_positive_inclusion_copy(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
@@ -422,7 +432,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260911b", worker)
+        self.assertIn("/js/main.js?v=20260911c", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
