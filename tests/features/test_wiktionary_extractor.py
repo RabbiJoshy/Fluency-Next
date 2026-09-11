@@ -194,6 +194,22 @@ class WiktionaryExtractorTests(unittest.TestCase):
             ("grammar", "sense_mark", "reflexive=true"),
         ])
 
+    def test_shared_usage_and_scope_qualifiers_are_provider_neutral(self) -> None:
+        out = extract({}, tags=[
+            "usually", "sometimes", "often", "broadly", "specifically",
+            "especially", "metonymically", "literally", "standard",
+        ], policy=PT)
+        self.assertEqual(set(families(out)), {
+            ("register", "usage_tag", value)
+            for value in {
+                "usually", "sometimes", "often", "broadly", "specifically",
+                "especially", "metonymically", "literally", "standard",
+            }
+        })
+        self.assertEqual(metadata_accounting(
+            {}, tags=["usually", "broadly", "metonymically"], policy=PT
+        ).unclassified, ())
+
     def test_shared_tags_survive_a_language_specific_policy(self) -> None:
         out = extract(
             {},

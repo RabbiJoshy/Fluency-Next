@@ -36,8 +36,13 @@ _WITH_HEAD = re.compile(r"^\[with\s+(?P<word>[^\W\d_]+)", re.UNICODE)
 DEFAULT_REGISTER_TAGS = frozenset(
     {"archaic", "colloquial", "dated", "derogatory", "dialectal", "euphemistic",
      "familiar", "figuratively", "formal", "humorous", "informal", "ironic",
-     "literary", "mildly", "obsolete", "offensive", "pejorative", "poetic",
-     "rare", "regional", "slang", "vulgar"}
+     "literally", "literary", "metonymically", "mildly", "obsolete", "offensive",
+     "pejorative", "poetic", "rare", "regional", "slang", "standard", "vulgar",
+     # Wiktionary uses these as sense-level usage/scope qualifiers across
+     # languages. Portuguese exposes them particularly often (1,624 senses in
+     # the 2026-08-20 snapshot), but their meaning is provider-wide rather than
+     # a Portuguese-only invention.
+     "broadly", "especially", "often", "sometimes", "specifically", "usually"}
 )
 DEFAULT_CONSTRUCTION_TAGS = frozenset(
     {"ambitransitive", "auxiliary", "copulative", "ditransitive", "impersonal",
