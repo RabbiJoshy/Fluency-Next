@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v348"
+EXPECTED_CACHE_NAME = "flashcards-v349"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -155,6 +155,11 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn('class="meaning-row-check"', walkthrough)
         self.assertIn('class="compact-example-counter"', walkthrough)
         self.assertIn('class="compact-example-counter-label"', walkthrough)
+        self.assertIn("card: 'tem'", walkthrough)
+        self.assertIn('class="sense-metadata-detail${index >= visibleLimit', walkthrough)
+        self.assertIn('class="sense-metadata-more"', walkthrough)
+        self.assertIn('class="sense-cross-reference"', walkthrough)
+        self.assertIn('walkthroughSenseSummary(meaning.translation)', walkthrough)
         self.assertNotIn("font-family: var(--font-data); font-size: 14px", walkthrough)
 
     def test_speech_cards_keep_dictionary_examples_separate_from_usage_share(self) -> None:

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import unittest
 
@@ -37,6 +38,35 @@ class MetadataContractUITests(unittest.TestCase):
         self.assertIn("toggleSenseMetadataOverflow(event, this)", flashcards)
         self.assertIn("'gender=variable-by-person': 'varies by gender'", flashcards)
         self.assertIn(".sense-metadata-more", styles)
+
+    def test_one_shared_metadata_renderer_serves_every_active_dictionary_language(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))
+        gloss_renderer = flashcards[
+            flashcards.index("function displaySenseGloss"):
+            flashcards.index("function senseCrossReferences")
+        ]
+        metadata_renderer = flashcards[
+            flashcards.index("function senseMetadataItems"):
+            flashcards.index("function contextWithoutSenseMetadata")
+        ]
+        self.assertNotIn("selectedLanguage", gloss_renderer)
+        self.assertNotIn("selectedLanguage", metadata_renderer)
+        for language in ("portuguese", "french", "spanish", "czech"):
+            with self.subTest(language=language):
+                language_config = config["languages"][language]
+                self.assertTrue(language_config["hasData"])
+                self.assertTrue(language_config["indexPath"].endswith("vocabulary.index.json"))
+
+    def test_cross_references_use_the_same_card_navigation_in_every_language(self) -> None:
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+        navigation = flashcards[
+            flashcards.index("function senseCrossReferences"):
+            flashcards.index("function condenseSenseContext")
+        ]
+        self.assertIn("openSenseCrossReference", navigation)
+        self.assertIn("window.popupFoundWord", navigation)
+        self.assertNotIn("selectedLanguage", navigation)
 
 
 if __name__ == "__main__":

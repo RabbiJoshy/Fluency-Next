@@ -31,8 +31,10 @@
 //
 // `cielo` is a genuine Bad Bunny deck entry — rank, line count, meanings,
 // percentages, lyrics and timestamps all read out of the built deck rather
-// than written for the walkthrough. `aunque` is the Speech-mode card the About
-// copy already discusses.
+// than written for the walkthrough. `tem` is curated from the live Portuguese
+// speech release because its Wiktionary senses demonstrate the compact
+// metadata and cross-card-reference treatment that the old `aunque` mock did
+// not contain.
 
 const ABOUT_EXAMPLE_CARDS = {
     // Chosen for the quality of its sense assignment, not at random. `fuego`
@@ -102,48 +104,80 @@ const ABOUT_EXAMPLE_CARDS = {
         ],
     },
 
-    aunque: {
+    tem: {
         mode: 'speech',
-        word: 'aunque',
-        pos: 'CCONJ',
-        rank: 429,
-        corpusCount: 229,
+        word: 'tem',
+        pos: 'VERB',
+        rank: 47,
+        corpusCount: 1326,
+        defaultMeaningIndex: 2,
         meanings: [
             {
-                pos: 'CCONJ',
-                translation: 'even though',
-                context: null,
+                pos: 'VERB',
+                translation: 'to have (to possess or hold something)',
+                context: 'to be in possession of something',
                 pct: 50,
+                metadata: [
+                    { short: 'tr.', full: 'transitive', family: 'construction' },
+                ],
                 examples: [
                     {
-                        target: 'Ella le escucha, aunque nadie más lo haga.',
-                        english: 'She listens to him even though no one else does.',
+                        target: 'E isso tem muito mais do que isso!',
+                        english: 'And this has much more than that!',
                         sourceLabel: 'Speech example',
                     },
                 ],
             },
             {
-                pos: 'CCONJ',
-                translation: 'although',
+                pos: 'VERB',
+                translation: 'to have to; must',
                 context: null,
                 pct: 30,
+                metadata: [
+                    { short: 'aux.', full: 'auxiliary', family: 'construction' },
+                    { short: '+ de/que + infinitive', full: 'with de or que + infinitive', family: 'construction' },
+                ],
                 examples: [
                     {
-                        target: 'Estaré allí, aunque puede que llegue tarde.',
-                        english: "I'll be there, although I may be late.",
+                        target: 'Mas não tem de o ser.',
+                        english: "But it doesn't have to be.",
                         sourceLabel: 'Speech example',
                     },
                 ],
             },
             {
-                pos: 'CCONJ',
-                translation: 'even if',
+                pos: 'VERB',
+                translation: 'there be (to exist physically or abstractly)',
                 context: null,
-                pct: 20,
+                pct: 15,
+                metadata: [
+                    { short: 'impers.', full: 'impersonal', family: 'construction' },
+                    { short: 'tr.', full: 'transitive', family: 'construction' },
+                    { short: 'Brazil', full: 'Brazil', family: 'register' },
+                    { short: 'informal', full: 'informal', family: 'register' },
+                ],
                 examples: [
                     {
-                        target: 'Aunque no lo hagas, yo lo haré.',
-                        english: "Even if you don't do it, I will.",
+                        target: 'Aqui tem tudo o que precisamos.',
+                        english: 'Everything we need is here.',
+                        sourceLabel: 'Wiktionary example',
+                    },
+                ],
+            },
+            {
+                pos: 'VERB',
+                translation: 'See ter de, ter que.',
+                references: ['ter de', 'ter que'],
+                context: null,
+                pct: 5,
+                metadata: [
+                    { short: 'aux.', full: 'auxiliary', family: 'construction' },
+                    { short: '+ de/que + infinitive', full: 'with de or que + infinitive', family: 'construction' },
+                ],
+                examples: [
+                    {
+                        target: 'Não, ele tem de fazer isto.',
+                        english: "No, he's got to do this.",
                         sourceLabel: 'Speech example',
                     },
                 ],
@@ -320,58 +354,73 @@ const ABOUT_EXAMPLE_DECKS = [
 
     {
         id: 'speech',
-        card: 'aunque',
+        card: 'tem',
         tab: 'Speech',
         faces: {
             back: {
-                title: 'The same card, built from film and TV dialogue',
-                blurb: 'Not everyone wants to learn from music. The other set of cards is built '
-                     + 'from subtitles instead, and works identically — only the example '
-                     + 'sentences come from somewhere else.',
+                title: 'A dictionary-rich card without the dictionary clutter',
+                blurb: 'This Portuguese speech card has several Wiktionary senses. The overview '
+                     + 'stays brief; the selected sense reveals its full wording and compact '
+                     + 'grammar, register and region details beside the matching sentence.',
                 notes: [
                     {
                         side: 'left',
                         anchor: '.back-headword',
-                        title: 'A small connecting word',
-                        text: 'Courses built around topics — food, travel, the airport — leave '
-                            + 'words like <em>aunque</em> until late. Teaching by how common a '
-                            + 'word is puts it early, because it’s how sentences get joined '
-                            + 'together.',
+                        title: 'The surface form',
+                        text: '<em>tem</em> is shown as it actually appears in speech. The card can '
+                            + 'still connect its senses to the dictionary headword <em>ter</em>.',
                     },
                     {
                         side: 'left',
                         anchor: '.pos-section-head',
-                        title: 'Three ways to translate it',
-                        text: 'About 50% <em>even though</em>, 30% <em>although</em>, 20% '
-                            + '<em>even if</em>. The section stays compact; opening a meaning ties '
-                            + 'it directly to the sentence underneath.',
+                        title: 'A clean sense overview',
+                        text: 'Parenthetical notes stay out of this header. It fits every complete '
+                            + 'sense label it can, then uses one unambiguous <em>+N</em> count.',
                         interactive: true,
                     },
                     {
                         side: 'left',
-                        anchor: '.example-song-credit',
-                        title: 'Where the sentence is from',
-                        text: 'No song here. Lines come from film and TV subtitles, picked to sit '
-                            + 'near your level so a hard word isn’t buried in a harder sentence.',
+                        anchor: '.meaning-row.is-current-sense',
+                        title: 'One fully open subsense',
+                        text: 'The selected row grows to show the full definition. Other rows are '
+                            + 'compact choices, and another part of speech stays closed.',
+                        interactive: true,
+                    },
+                    {
+                        side: 'left',
+                        anchor: '.sense-cross-reference',
+                        title: 'References become navigation',
+                        text: 'A Wiktionary “See” target is a real card link in the app, instead '
+                            + 'of dead editorial text.',
+                    },
+                    {
+                        side: 'right',
+                        anchor: '.sense-metadata-list',
+                        title: 'Metadata, in a stable order',
+                        text: 'Grammar and construction come first, then companion words, register, '
+                            + 'region and domain. Tap <em>+N</em> only when there is more.',
+                        interactive: true,
                     },
                     {
                         side: 'right',
                         anchor: '.about-example-pct',
-                        title: 'The same proportions',
-                        text: 'Measured the same way, over lines of dialogue instead of lyrics.',
+                        title: 'Usage share stays separate',
+                        text: 'Dictionary examples and metadata do not change these percentages; '
+                            + 'they describe the speech evidence assigned to each sense.',
                     },
                     {
                         side: 'right',
                         anchor: '.example-word-highlight',
-                        title: 'The same marking',
-                        text: 'The word you’re learning is highlighted inside the sentence, '
-                            + 'exactly as on a song card.',
+                        title: 'The matching sentence',
+                        text: 'Changing the active sense changes this sentence, making the link '
+                            + 'between the meaning and its evidence explicit.',
                     },
                     {
                         side: 'right',
-                        anchor: '.sentence',
-                        title: 'Everything else is the same',
-                        text: 'Same rows, same flip, same tap for another example.',
+                        anchor: '.example-song-credit',
+                        title: 'Examples may come from two places',
+                        text: 'Speech evidence and dictionary examples can both help, while only '
+                            + 'the speech evidence contributes to usage share.',
                     },
                 ],
             },
@@ -389,15 +438,14 @@ const ABOUT_EXAMPLE_DECKS = [
                         side: 'left',
                         anchor: '.card-rank-label',
                         title: 'How common it is',
-                        text: 'The 429th most-used word in Spanish film and TV dialogue — far '
-                            + 'earlier than a topic-based course would reach it.',
+                        text: 'The 47th most-used form in Portuguese film and TV dialogue.',
                     },
                     {
                         side: 'right',
                         anchor: '.card-pos-list',
                         title: 'Part of speech',
-                        text: 'Connecting words get their own colour here; on the back that colour '
-                            + 'organises the complete meaning section.',
+                        text: 'A compact hint here; on the back, the verb heading organises all '
+                            + 'of the visible subsenses.',
                     },
                     {
                         side: 'right',
@@ -492,6 +540,44 @@ function renderFront(card) {
 // meanings group; the singleton `.meaning-row-regular` branch below is the one
 // these demo cards hit, reproduced with its inline styles intact so it picks
 // up the live rules rather than a copy of them.
+function walkthroughSenseSummary(value) {
+    let text = String(value || '').trim();
+    let previous = '';
+    while (text !== previous) {
+        previous = text;
+        text = text.replace(/\s*\([^()]*\)/gu, ' ');
+    }
+    return text.replace(/\s{2,}/gu, ' ').replace(/\s+([,;:.])/gu, '$1').trim();
+}
+
+function walkthroughSenseText(meaning, selected) {
+    if (Array.isArray(meaning.references) && meaning.references.length) {
+        const links = meaning.references.map(target => (
+            `<button type="button" class="sense-cross-reference" title="Open ${esc(target)} card" `
+            + `aria-label="Open ${esc(target)} card">${esc(target)}</button>`
+        )).join('<span class="sense-cross-reference-separator">,</span> ');
+        return `<span class="sense-cross-reference-prefix">See</span> ${links}`;
+    }
+    const value = selected ? meaning.translation : walkthroughSenseSummary(meaning.translation);
+    return esc(value || meaning.translation);
+}
+
+function walkthroughMetadata(meaning, selected) {
+    if (!selected || !Array.isArray(meaning.metadata) || !meaning.metadata.length) return '';
+    const visibleLimit = 3;
+    const details = meaning.metadata.map((item, index) => (
+        `<span class="sense-metadata-detail${index >= visibleLimit ? ' is-overflow' : ''}" `
+        + `data-family="${esc(item.family)}" title="${esc(`${item.family}: ${item.full}`)}"`
+        + `${index >= visibleLimit ? ' hidden' : ''}>${esc(item.short)}</span>`
+    )).join('');
+    const overflow = meaning.metadata.length - visibleLimit;
+    const more = overflow > 0
+        ? `<button type="button" class="sense-metadata-more" aria-expanded="false" `
+            + `data-count="${overflow}" aria-label="Show ${overflow} more sense details">+${overflow}</button>`
+        : '';
+    return `<span class="sense-metadata-list" aria-label="Sense details">${details}${more}</span>`;
+}
+
 function renderMeaningRows(card, selectedIdx) {
     const rows = card.meanings.map((m, idx) => {
         const isSelected = idx === selectedIdx;
@@ -510,17 +596,25 @@ function renderMeaningRows(card, selectedIdx) {
             <div class="meaning-row meaning-row-regular${isSelected ? ' selected is-current-sense' : ''}" data-meaning-index="${idx}" style="position: relative; display: grid; grid-template-columns: 1fr; align-items: center; padding: 1px 2px; margin-bottom: 4px; background: ${bg}; border-radius: 8px; cursor: pointer; min-height: 39px;">
                 ${check}
                 <div class="meaning-row-body" style="display: flex; flex-direction: column; align-items: stretch; justify-content: center; min-width: 0; padding: 0 ${m.pct < 100 ? '42px' : '8px'} 0 8px;">
-                    <span class="meaning-row-translation row-adaptive-text" style="font-weight: ${isSelected ? 700 : 500}; color: ${textColor}; text-align: center; width: 100%;">${esc(m.translation)}${ctx}</span>
+                    <span class="meaning-row-translation row-adaptive-text" style="font-weight: ${isSelected ? 700 : 500}; color: ${textColor}; text-align: center; width: 100%;">${walkthroughSenseText(m, isSelected)}${ctx}</span>
+                    ${walkthroughMetadata(m, isSelected)}
                 </div>
                 ${pct}
             </div>`;
     }).join('');
-    const selected = card.meanings[selectedIdx] || card.meanings[0];
+    const summaryLimit = Math.min(2, card.meanings.length);
+    const summaries = card.meanings.slice(0, summaryLimit).map(meaning => (
+        `<span class="pos-summary-sense">${esc(walkthroughSenseSummary(meaning.translation))}</span>`
+    )).join('');
+    const hiddenCount = card.meanings.length - summaryLimit;
+    const more = hiddenCount > 0
+        ? `<span class="pos-pill-more" aria-label="${hiddenCount} more senses">+${hiddenCount}</span>`
+        : '';
     return `
         <section class="meaning-pos-section pos-collapsible is-open" data-pos="${esc(card.pos)}">
-            <button type="button" class="pos-section-head" aria-label="${esc(`${posName(card.pos)}: ${selected.translation}`)}">
+            <button type="button" class="pos-section-head" aria-label="${esc(`${posName(card.pos)}: ${card.meanings.map(m => walkthroughSenseSummary(m.translation)).join('; ')}`)}">
                 <span class="pos-section-label">${esc(posName(card.pos))}</span>
-                <span class="pos-section-summary"><span class="pos-summary-sense">${esc(selected.translation)}</span></span>
+                <span class="pos-section-summary">${summaries}${more}</span>
                 <span class="pos-section-chevron">▾</span>
             </button>
             <div class="meaning-pos-rows">${rows}</div>
@@ -696,6 +790,8 @@ function wireCardShell(stage) {
     // 0.6s flip transition actually play.
     cardEl.addEventListener('click', (e) => {
         if (e.target.closest('.spotify-btn')) return;
+        if (e.target.closest('.sense-metadata-more')) return;
+        if (e.target.closest('.sense-cross-reference')) return;
         if (e.target.closest('.meaning-row')) return;
         if (e.target.closest('.sentence[data-about-example-cycle="1"]')) return;
         flipCardFace();
@@ -715,12 +811,38 @@ function wireBack(stage) {
     // the same as selectMeaning() does on a live card.
     stage.querySelectorAll('.meaning-row').forEach((row) => {
         row.addEventListener('click', (e) => {
+            if (e.target.closest('.sense-metadata-more, .sense-cross-reference')) return;
             e.stopPropagation();
             const idx = Number(row.dataset.meaningIndex);
             if (Number.isNaN(idx)) return;
             state.meaningIndex = idx;
             state.exampleIndex = 0;
             refreshBack();
+        });
+    });
+
+    stage.querySelector('.sense-metadata-more')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const control = e.currentTarget;
+        const list = control.closest('.sense-metadata-list');
+        const expanded = control.getAttribute('aria-expanded') === 'true';
+        list?.querySelectorAll('.sense-metadata-detail.is-overflow').forEach(detail => {
+            detail.hidden = expanded;
+        });
+        control.setAttribute('aria-expanded', String(!expanded));
+        control.textContent = expanded ? `+${control.dataset.count}` : 'Less';
+        control.setAttribute('aria-label', expanded
+            ? `Show ${control.dataset.count} more sense details`
+            : 'Show fewer sense details');
+        placeMarkers();
+    });
+
+    // The real card opens the referenced vocabulary card. The walkthrough is
+    // data-independent, so its copy of the control is intentionally inert.
+    stage.querySelectorAll('.sense-cross-reference').forEach(reference => {
+        reference.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
         });
     });
 
@@ -912,15 +1034,16 @@ function renderTabs() {
     });
 }
 
-// Switching decks resets the card to its first sense and first example. The
-// annotations are written against a known card state — leave "light" selected
-// (one example, no counter) and the note about cycling points at nothing.
+// Switching decks resets the card to its deliberate showcase sense and first
+// example. The annotations are written against a known card state: the lyrics
+// card opens on a sense with several examples; the speech card opens on the
+// metadata-rich regional sense.
 // Face is deliberately NOT reset: if you were reading the front, you stay on
 // the front and get the other deck's front.
 function selectDeck(index) {
     if (index < 0 || index >= ABOUT_EXAMPLE_DECKS.length || index === state.deckIndex) return;
     state.deckIndex = index;
-    state.meaningIndex = 0;
+    state.meaningIndex = currentCard().defaultMeaningIndex || 0;
     state.exampleIndex = 0;
     state.activeNote = -1;
 
@@ -945,7 +1068,7 @@ function openAboutExample(deckIndex = 0) {
     modal.classList.remove('hidden');
     state.deckIndex = deckIndex;
     state.flipped = true;
-    state.meaningIndex = 0;
+    state.meaningIndex = currentCard().defaultMeaningIndex || 0;
     state.exampleIndex = 0;
     state.activeNote = -1;
 
