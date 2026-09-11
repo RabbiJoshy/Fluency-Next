@@ -125,6 +125,28 @@ def load_sense_menu_language_policy(
         for tag, value in grammar_tags.items()
     ):
         raise SenseMenuPolicyError("Wiktionary grammar_tags must map strings to strings")
+    contextual = policy.get("contextual_grammar_tags")
+    if not isinstance(contextual, dict):
+        raise SenseMenuPolicyError("Wiktionary contextual_grammar_tags must be an object")
+    for tag, rules in contextual.items():
+        if not isinstance(tag, str) or not tag or not isinstance(rules, list) or not rules:
+            raise SenseMenuPolicyError("contextual grammar tags require named rule lists")
+        for rule in rules:
+            if not isinstance(rule, dict):
+                raise SenseMenuPolicyError(f"contextual grammar rule is invalid: {tag}")
+            value = rule.get("value")
+            positions = rule.get("parts_of_speech", [])
+            required_tags = rule.get("requires_tags", [])
+            if not isinstance(value, str) or not value:
+                raise SenseMenuPolicyError(f"contextual grammar value is invalid: {tag}")
+            if not all(
+                isinstance(items, list)
+                and all(isinstance(item, str) and item for item in items)
+                for items in (positions, required_tags)
+            ):
+                raise SenseMenuPolicyError(f"contextual grammar conditions are invalid: {tag}")
+            if not positions and not required_tags:
+                raise SenseMenuPolicyError(f"contextual grammar rule has no conditions: {tag}")
     return policy
 
 

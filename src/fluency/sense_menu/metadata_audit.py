@@ -42,7 +42,7 @@ def _senses(path: Path, language: str) -> Iterator[dict[str, Any]]:
                 continue
             for sense in row.get("senses", []) or []:
                 if isinstance(sense, dict):
-                    yield sense
+                    yield {**sense, "part_of_speech": row.get("pos")}
 
 
 def audit_wiktionary_snapshot(

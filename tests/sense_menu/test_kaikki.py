@@ -260,6 +260,7 @@ class KaikkiSenseMenuTests(unittest.TestCase):
         self.assertEqual(leaf["sense_id"], "en-est-fr-noun-east")
         self.assertEqual(leaf["source_reference"], "kaikki:en-est-fr-noun-east")
         self.assertEqual(leaf["provider_metadata"]["tags"], ["masculine"])
+        self.assertEqual(leaf["provider_metadata"]["part_of_speech"], "noun")
         self.assertEqual(leaf["metadata"]["contract_version"], "sense-metadata/v1")
         self.assertEqual(leaf["metadata"]["features"], leaf.get("specialist_features", []))
         self.assertEqual(leaf["metadata"]["coverage"]["tags"], "parsed")

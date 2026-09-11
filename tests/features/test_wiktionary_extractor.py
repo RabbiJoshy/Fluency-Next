@@ -15,6 +15,7 @@ PT = {
     "region_tags": ["Brazil", "Portugal"],
     "domain_tags": [],
     "grammar_tags": {},
+    "contextual_grammar_tags": {},
     "ignored_tags": [],
 }
 
@@ -98,6 +99,42 @@ class WiktionaryExtractorTests(unittest.TestCase):
         self.assertEqual(
             families(extract_surface_grammar(["historic"], policy=policy)),
             [("grammar", "surface_mark", "tense=past-historic")],
+        )
+
+    def test_contextual_tag_uses_pos_and_companion_tags(self) -> None:
+        policy = {
+            **PT,
+            "contextual_grammar_tags": {
+                "personal": [
+                    {
+                        "parts_of_speech": ["verb"],
+                        "requires_tags": ["infinitive"],
+                        "value": "form=personal-infinitive",
+                    },
+                    {
+                        "parts_of_speech": ["pron"],
+                        "value": "pronoun-class=personal",
+                    },
+                ]
+            },
+        }
+        infinitive = {"part_of_speech": "verb", "tags": ["infinitive", "personal"]}
+        pronoun = {"part_of_speech": "pron", "tags": ["personal"]}
+        adjective = {"part_of_speech": "adj", "tags": ["personal"]}
+        self.assertIn(
+            ("grammar", "sense_mark", "form=personal-infinitive"),
+            families(extract(infinitive, tags=infinitive["tags"], policy=policy)),
+        )
+        self.assertEqual(
+            families(extract(pronoun, tags=pronoun["tags"], policy=policy)),
+            [("grammar", "sense_mark", "pronoun-class=personal")],
+        )
+        self.assertEqual(extract(adjective, tags=adjective["tags"], policy=policy), ())
+        self.assertEqual(
+            [item["value"] for item in metadata_accounting(
+                adjective, tags=adjective["tags"], policy=policy
+            ).unclassified],
+            ["personal"],
         )
 
     def test_parenthetical_prose_becomes_a_construction_feature(self) -> None:

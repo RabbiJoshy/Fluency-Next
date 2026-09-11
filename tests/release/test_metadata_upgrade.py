@@ -159,6 +159,27 @@ class MetadataUpgradeTests(unittest.TestCase):
             {(item["family"], item["kind"], item["value"]) for item in features},
         )
 
+    def test_wiktionary_upgrade_supplies_pos_for_contextual_tags(self) -> None:
+        meaning = {
+            "part_of_speech": "pron",
+            "translation": "him",
+            "metadata": {
+                "source_adapter": "wiktionary-sense-menu/v1",
+                "sense_provider_metadata": {"tags": ["personal"]},
+            },
+        }
+
+        canonicalize_meaning_metadata(meaning, policy=self.policy("pt"))
+
+        features = meaning["metadata"]["specialist_features"]
+        self.assertIn(
+            ("grammar", "sense_mark", "pronoun-class=personal"),
+            {(item["family"], item["kind"], item["value"]) for item in features},
+        )
+        self.assertEqual(
+            meaning["metadata"]["sense_metadata"]["unclassified"], []
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

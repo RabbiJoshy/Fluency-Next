@@ -150,13 +150,50 @@ def _grammar_value(
     return GRAMMAR_TAG_VALUES.get(tag.casefold())
 
 
+def _contextual_grammar_value(
+    tag: str,
+    sense: Mapping[str, Any] | None,
+    policy: Mapping[str, Any] | None,
+) -> str | None:
+    """Resolve a provider label whose meaning depends on its sense context."""
+
+    if sense is None:
+        return None
+    mappings = (policy or {}).get("contextual_grammar_tags")
+    if not isinstance(mappings, Mapping):
+        return None
+    rules = mappings.get(tag)
+    if not isinstance(rules, Sequence) or isinstance(rules, (str, bytes)):
+        return None
+    sense_tags = {
+        value for value in (sense.get("tags") or []) if isinstance(value, str)
+    }
+    part_of_speech = sense.get("part_of_speech")
+    for rule in rules:
+        if not isinstance(rule, Mapping):
+            continue
+        positions = rule.get("parts_of_speech") or []
+        required_tags = rule.get("requires_tags") or []
+        if positions and part_of_speech not in positions:
+            continue
+        if not set(required_tags).issubset(sense_tags):
+            continue
+        value = rule.get("value")
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
 def _is_construction_tag(tag: str, declared: set[str]) -> bool:
     lowered = tag.casefold()
     return lowered in declared or lowered.startswith("with-")
 
 
 def classify_tag(
-    tag: str, *, policy: Mapping[str, Any] | None = None
+    tag: str,
+    *,
+    sense: Mapping[str, Any] | None = None,
+    policy: Mapping[str, Any] | None = None,
 ) -> SpecialistFeature | None:
     """Classify one provider tag without pretending unknown tags are empty."""
 
@@ -170,7 +207,10 @@ def classify_tag(
         return SpecialistFeature("domain", "domain_tag", tag, tag)
     if tag in register:
         return SpecialistFeature("register", "usage_tag", tag, tag)
-    if (grammar_value := _grammar_value(tag, policy)) is not None:
+    grammar_value = _grammar_value(tag, policy) or _contextual_grammar_value(
+        tag, sense, policy
+    )
+    if grammar_value is not None:
         return SpecialistFeature("grammar", "sense_mark", grammar_value, tag)
     if _is_construction_tag(tag, construction):
         return SpecialistFeature("construction", "grammar_tag", tag, tag)
@@ -200,7 +240,7 @@ def metadata_accounting(
                 ),
             })
             continue
-        if classify_tag(tag, policy=policy) is None:
+        if classify_tag(tag, sense=sense, policy=policy) is None:
             unclassified.append({
                 "source_field": "tags",
                 "value": tag,
@@ -298,7 +338,7 @@ def extract(
             add("domain", "topic", clean_topic)
 
     for tag in sorted(tags):
-        feature = classify_tag(tag, policy=policy)
+        feature = classify_tag(tag, sense=sense, policy=policy)
         if feature is not None:
             add(feature.family, feature.kind, feature.value)
 

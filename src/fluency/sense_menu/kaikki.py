@@ -320,6 +320,7 @@ def _metadata(
     policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     metadata: dict[str, Any] = {
+        "part_of_speech": row.get("pos"),
         "tags": sorted(_sense_tags(sense)),
         "topics": [value for value in sense.get("topics", []) if isinstance(value, str)],
         "raw_glosses": _glosses(sense, "raw_glosses"),
@@ -350,6 +351,8 @@ def _metadata(
 def _specialist_features(
     sense: dict[str, Any],
     policy: dict[str, Any] | None = None,
+    *,
+    part_of_speech: str | None = None,
 ) -> tuple[SpecialistFeature, ...]:
     """Delegate to the provider-neutral extractor.
 
@@ -358,11 +361,12 @@ def _specialist_features(
     language policy rather than code.
     """
 
+    contextual_sense = {**sense, "part_of_speech": part_of_speech}
     glosses = _glosses(sense)
     inline = project_gloss(glosses[0]).specialist_features if glosses else ()
     return tuple(dict.fromkeys((
         *extract_wiktionary_features(
-            sense, tags=sorted(_sense_tags(sense)), policy=policy
+            contextual_sense, tags=sorted(_sense_tags(sense)), policy=policy
         ),
         *inline,
     )))
@@ -573,11 +577,15 @@ class KaikkiSenseMenuAdapter:
                         source_reference=source_reference,
                         provider_metadata=_metadata(row, sense, self.language_policy),
                         specialist_features=tuple(dict.fromkeys((
-                            *_specialist_features(sense, self.language_policy),
+                            *_specialist_features(
+                                sense,
+                                self.language_policy,
+                                part_of_speech=part_of_speech,
+                            ),
                             *analysis_grammar,
                         ))),
                         metadata_accounting=metadata_accounting(
-                            sense,
+                            {**sense, "part_of_speech": part_of_speech},
                             tags=sorted(_sense_tags(sense)),
                             policy=self.language_policy,
                         ),

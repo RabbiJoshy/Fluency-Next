@@ -61,6 +61,7 @@ def canonicalize_meaning_metadata(
     adapter = str(metadata.get("source_adapter") or "")
     if adapter.startswith("wiktionary-"):
         source = dict(provider)
+        source.setdefault("part_of_speech", meaning.get("part_of_speech"))
         source.setdefault("glosses", [str(meaning.get("translation") or "")])
         tags = [tag for tag in source.get("tags", []) if isinstance(tag, str)]
         # Re-type provider-derived features from source evidence on every

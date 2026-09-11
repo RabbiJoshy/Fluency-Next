@@ -127,6 +127,19 @@
   ],
   "domain_tags": ["Ancient-Rome", "Hinduism", "Internet", "Judaism", "rhetoric"],
   "grammar_tags": {},
+  "contextual_grammar_tags": {
+    "personal": [
+      {
+        "parts_of_speech": ["verb"],
+        "requires_tags": ["infinitive"],
+        "value": "form=personal-infinitive"
+      },
+      {
+        "parts_of_speech": ["pron"],
+        "value": "pronoun-class=personal"
+      }
+    ]
+  },
   "ignored_tags": [
     "abbreviation", "acronym", "alternative", "clipping", "contraction",
     "ellipsis", "empty-gloss", "initialism", "letter", "misspelling",

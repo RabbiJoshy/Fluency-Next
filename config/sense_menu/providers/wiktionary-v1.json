@@ -7,6 +7,7 @@
   "construction_tags": [],
   "domain_tags": [],
   "grammar_tags": {},
+  "contextual_grammar_tags": {},
   "ignored_tags": [],
   "redirects": {
     "require_source_case_match": true,

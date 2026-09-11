@@ -79,6 +79,7 @@
   "construction_tags": ["attributive", "direct-object", "ergative", "in-compounds"],
   "domain_tags": ["Ancient-Rome", "Internet", "Judaism", "rhetoric"],
   "grammar_tags": {"historic": "tense=past-historic"},
+  "contextual_grammar_tags": {},
   "ignored_tags": [
     "abbreviation", "acronym", "alternative", "clipping", "empty-gloss",
     "contraction", "ellipsis", "initialism", "letter", "misspelling",
