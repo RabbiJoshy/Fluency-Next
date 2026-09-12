@@ -40,14 +40,14 @@
             document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#eef2f5' : '#0a0e14';
         })();
     </script>
-    <link rel="stylesheet" href="css/style.css?v=20260912m">
+    <link rel="stylesheet" href="css/style.css?v=20260912o">
     <link rel="stylesheet" href="css/light-theme.css?v=20260828a">
     <!-- Module preloads. Without these the browser waits to discover the
          imports inside main.js before kicking off the per-module fetches,
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260912l">
+    <link rel="modulepreload" href="js/main.js?v=20260912n">
     <link rel="modulepreload" href="js/theme.js?v=20260825ak">
     <link rel="modulepreload" href="js/state.js?v=20260825ak">
     <link rel="modulepreload" href="js/data-contracts.js?v=20260825ak">
@@ -63,7 +63,7 @@
     <link rel="modulepreload" href="js/progress.js?v=20260912c">
     <link rel="modulepreload" href="js/progress-identity.js?v=20260831a">
     <link rel="modulepreload" href="js/knowledge.js?v=20260831a">
-    <link rel="modulepreload" href="js/ui.js?v=20260912j">
+    <link rel="modulepreload" href="js/ui.js?v=20260912l">
     <link rel="modulepreload" href="js/vocab.js?v=20260907a">
     <link rel="modulepreload" href="js/song-sets-core.js?v=20260825ak">
     <link rel="modulepreload" href="js/song-sets.js?v=20260823ae">
@@ -326,7 +326,7 @@
                         <span id="learningContextFlag" class="learning-context-flag" aria-hidden="true"></span>
                         <span class="learning-context-chip-copy">
                             <strong id="learningContextLanguage"></strong>
-                            <small id="learningContextMode">Choose mode</small>
+                            <small id="learningContextMode">Natural speech</small>
                         </span>
                         <span id="learningContextCoverage" class="learning-context-chip-progress"></span>
                         <span class="learning-context-chevron" aria-hidden="true">›</span>
@@ -372,18 +372,24 @@
                     </button>
                     <div class="standard-source-choice" aria-labelledby="standardSourceChoiceTitle">
                         <div class="standard-source-choice-intro">
-                            <span class="standard-source-choice-title" id="standardSourceChoiceTitle">What do you want to learn from?</span>
-                            <p>Build broad vocabulary from dialogue, or learn the language used in music you choose.</p>
+                            <span class="standard-source-choice-title" id="standardSourceChoiceTitle">Choose what to learn from</span>
+                            <p>Your choice decides which words come first. You can change it later.</p>
                         </div>
                         <div class="standard-source-choice-buttons">
                             <button type="button" id="standardSourceSpeechBtn" class="standard-source-choice-btn" data-source="speech">
-                                <span class="standard-source-choice-icon" aria-hidden="true">◖</span>
-                                <span><strong>Everyday speech</strong><small>Common words from real dialogue</small></span>
+                                <span class="standard-source-choice-icon" aria-hidden="true">1</span>
+                                <span>
+                                    <span class="standard-source-option-title"><strong>Natural speech</strong><em>Recommended</em></span>
+                                    <small>Start with useful words from movie subtitles and other translated dialogue.</small>
+                                </span>
                                 <em class="standard-source-choice-arrow" aria-hidden="true">›</em>
                             </button>
                             <button type="button" id="standardSourcePickerBtn" class="standard-source-choice-btn" data-source="lyrics">
-                                <span class="standard-source-choice-icon" aria-hidden="true">♫</span>
-                                <span><strong>Songs &amp; lyrics</strong><small id="standardLyricsAvailability">Choose artists, playlists or songs</small></span>
+                                <span class="standard-source-choice-icon" aria-hidden="true">2</span>
+                                <span>
+                                    <span class="standard-source-option-title"><strong>Music &amp; lyrics</strong></span>
+                                    <small id="standardLyricsAvailability">Choose artists, songs or a playlist to rank words from the music you listen to.</small>
+                                </span>
                                 <em id="standardLyricsStatus" class="standard-source-choice-status" aria-hidden="true">›</em>
                             </button>
                         </div>
@@ -703,10 +709,7 @@
     <div id="learningContextModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="learningContextTitle">
         <div class="modal-content learning-context-sheet">
             <div class="settings-tabs-header">
-                <div>
-                    <span class="progress-modal-eyebrow">Current learning context</span>
-                    <h3 id="learningContextTitle">Your learning</h3>
-                </div>
+                <h3 id="learningContextTitle">Learning context</h3>
                 <button class="modal-close" id="closeLearningContextModal" aria-label="Close learning context">&#10005;</button>
             </div>
             <div class="learning-context-summary">
@@ -723,13 +726,11 @@
                 </div>
                 <div class="learning-context-progress-track"><i id="learningContextProgressFill"></i></div>
             </div>
-            <div class="learning-context-mode-actions" role="group" aria-label="Learning source">
-                <button id="learningContextSpeechBtn" type="button">Everyday speech</button>
-                <button id="learningContextLyricsBtn" type="button">Songs &amp; lyrics</button>
+            <div class="learning-context-actions">
+                <button id="learningContextProgressBtn" class="learning-context-action" type="button"><span>View detailed progress</span><span aria-hidden="true">›</span></button>
+                <button id="learningContextSourceBtn" class="learning-context-action" type="button"><span>Change learning source</span><span aria-hidden="true">›</span></button>
+                <button id="learningContextLanguageBtn" class="learning-context-action" type="button"><span>Change language</span><span aria-hidden="true">›</span></button>
             </div>
-            <p id="learningContextAvailability" class="learning-context-availability"></p>
-            <button id="learningContextProgressBtn" class="learning-context-action" type="button">View detailed progress</button>
-            <button id="learningContextLanguageBtn" class="learning-context-action learning-context-action--secondary" type="button">Change language</button>
         </div>
     </div>
 
@@ -1658,6 +1659,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260912l"></script>
+    <script type="module" src="js/main.js?v=20260912n"></script>
 </body>
 </html>
