@@ -5,7 +5,7 @@ import './sync-queue.js?v=20260825ak';
 import { initOfflineContent } from './offline-content.js?v=20260825ak';
 import './speech.js?v=20260824d';
 import './artist-ui.js?v=20260825ak';
-import './auth.js?v=20260911b';
+import './auth.js?v=20260912a';
 import './about-example.js?v=20260912c';
 import './estimation.js?v=20260825ak';
 import './config.js?v=20260907a';
@@ -54,6 +54,8 @@ function refreshTutorialIntroduction(languageKey) {
 function closeTutorialIntroduction() {
     document.getElementById('tutorialIntroModal')?.classList.add('hidden');
 }
+
+window.openTutorialIntroduction = openTutorialIntroduction;
 
 // Spotify is lyrics-only and its module is sizeable. Start the dynamic import
 // immediately for an artist URL so it races setup/data loading, but keep it

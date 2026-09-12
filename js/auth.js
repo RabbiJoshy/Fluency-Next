@@ -1242,7 +1242,7 @@ function hideAboutProjectModal() {
 
 function startAboutTutorial() {
     hideAboutProjectModal();
-    window.openAboutExample?.();
+    window.openTutorialIntroduction?.();
 }
 
 // ----- About-modal card demos --------------------------------------------------
