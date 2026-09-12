@@ -2917,7 +2917,12 @@ function senseMetadataItems(meaning) {
     const seen = new Set();
     const add = (family, kind, value) => {
         const clean = String(value || '').trim();
+        // Source evidence is preserved in the release for audits, but the
+        // learner card is not a dictionary-inspection surface. Only a concise
+        // sense qualifier can help choose a meaning; etymology and provider
+        // bookkeeping never belong on the card.
         if (!clean || (family === 'grammar' && kind === 'surface_mark')) return;
+        if (family === 'source' && kind !== 'qualifier') return;
         const key = `${family}\u0000${clean.toLocaleLowerCase('en')}`;
         if (seen.has(key)) return;
         seen.add(key);
@@ -2948,7 +2953,6 @@ function senseMetadataItems(meaning) {
         add('register', 'region', label);
     }
     for (const topic of provider.topics || []) add('domain', 'topic', topic);
-    if (provider.etymology_text) add('source', 'etymology', provider.etymology_text);
     if (provider.qualifier) add('source', 'qualifier', provider.qualifier);
     for (const tag of provider.tags || []) {
         const lowered = String(tag || '').toLowerCase();
@@ -2970,6 +2974,23 @@ function senseMetadataItems(meaning) {
             }
         }
     }
+    // Collapse qualifier pairs whose combined reading is unambiguous. This is
+    // presentation-only: the underlying canonical features remain separate.
+    const combine = (leftValue, rightValue, combinedValue) => {
+        const left = items.findIndex(item => item.value === leftValue);
+        const right = items.findIndex(item => item.value === rightValue);
+        if (left < 0 || right < 0) return;
+        const sourceIndex = Math.min(items[left].sourceIndex ?? left, items[right].sourceIndex ?? right);
+        items.splice(Math.max(left, right), 1);
+        items.splice(Math.min(left, right), 1);
+        items.push({ family: 'register', kind: 'combined_qualifier', value: combinedValue, sourceIndex });
+    };
+    combine('Early', 'Modern', 'Early Modern');
+    for (const qualifier of ['usually', 'sometimes', 'often']) {
+        combine(qualifier, 'orthography=capitalized', `${qualifier} capitalized`);
+    }
+    combine('possibly', 'offensive', 'possibly offensive');
+
     const familyOrder = {
         construction: 0,
         companion: 1,
@@ -3033,6 +3054,12 @@ function senseMetadataDisplay(item) {
             'noun-class=collective': 'collective',
             'animacy=animal-not-person': 'animal, not person',
             'tense=past-historic': 'past historic',
+            'orthography=capitalized': 'capitalized',
+            'orthography=lowercase': 'lowercase',
+            'orthography=uppercase': 'uppercase',
+            'inflection=no-first-person-singular-present': 'no 1st-person singular present',
+            'gender=usually-feminine': 'usually feminine',
+            'pronoun-use=standalone': 'standalone pronoun',
         })[item.value];
         if (exact) return { short: exact, full: exact };
         const assignment = /^([^=]+)=(.+)$/u.exec(item.value);
@@ -3070,6 +3097,17 @@ function senseMetadataDisplay(item) {
     };
 }
 
+function isSenseDefiningGrammar(item) {
+    return /^(?:countability|definiteness|formation|function|noun-class|polarity|position|pronoun-class|pronoun-use|verb-class|voice|word-class)=/u.test(item.value)
+        || new Set([
+            'reflexive=true',
+            'form=personal-infinitive',
+            'number=plural-only',
+            'number=no-plural',
+            'number=singular-only',
+        ]).has(item.value);
+}
+
 function senseMetadataHTML(meaning, active) {
     if (!active) return '';
     const items = senseMetadataItems(meaning);
@@ -3081,8 +3119,15 @@ function senseMetadataHTML(meaning, active) {
         return `<span class="sense-metadata-detail" data-family="${family}" title="${family}: ${fullLabel}" aria-label="${fullLabel}">${shortLabel}</span>`;
     }).join('');
     const primary = items.filter(item => ['construction', 'companion', 'register', 'domain'].includes(item.family));
-    const grammar = items.filter(item => item.family === 'grammar');
-    const supporting = items.filter(item => item.family === 'functional' || item.family === 'source');
+    // Grammar that changes which sense applies is a navigation cue. Routine
+    // inflectional detail is still available, but does not compete with the
+    // gloss and example until the learner asks for it.
+    const grammar = items.filter(item => item.family === 'grammar' && isSenseDefiningGrammar(item));
+    const supporting = items.filter(item => (
+        (item.family === 'grammar' && !isSenseDefiningGrammar(item))
+        || item.family === 'functional'
+        || item.family === 'source'
+    ));
     if (!primary.length && !grammar.length && !supporting.length) return '';
     const primaryHTML = primary.length
         ? `<span class="sense-metadata-tier sense-metadata-tier--primary">${renderItems(primary)}</span>`
