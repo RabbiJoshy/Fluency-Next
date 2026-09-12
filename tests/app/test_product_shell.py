@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v356"
+EXPECTED_CACHE_NAME = "flashcards-v357"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -227,6 +227,7 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn('<button id="helpBtn" class="top-bar-text-btn">Tutorial</button>', html)
         self.assertIn("[Start tutorial](example://walkthrough)", about)
         self.assertIn("window.startAboutTutorial = startAboutTutorial", auth)
+        self.assertIn("window.openTutorialIntroduction?.()", auth)
 
     def test_in_app_tutorial_has_a_short_separate_intro_and_top_action(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
@@ -444,7 +445,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260912c", worker)
+        self.assertIn("/js/main.js?v=20260912d", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
@@ -467,9 +468,9 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertIn("config?.publicServices?.progressSyncUrl", auth)
         self.assertIn("secrets.googleScriptUrl || GOOGLE_SCRIPT_URL", auth)
-        self.assertIn('js/auth.js?v=20260911b', html)
-        self.assertIn("auth.js?v=20260911b", main)
-        self.assertIn("/js/auth.js?v=20260911b", worker)
+        self.assertIn('js/auth.js?v=20260912a', html)
+        self.assertIn("auth.js?v=20260912a", main)
+        self.assertIn("/js/auth.js?v=20260912a", worker)
 
     def test_progress_identity_bridges_historical_mode_ids_by_surface(self) -> None:
         progress = (APP_ROOT / "js" / "progress.js").read_text(encoding="utf-8")
