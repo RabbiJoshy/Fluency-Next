@@ -300,10 +300,10 @@ function updateLearningContextUI(snapshot = window.currentCoverageSnapshot) {
     if (!button || !languageConfig) return;
 
     const mode = activeArtist
-        ? `Lyrics · ${activeArtist.name || 'Songs'}`
+        ? `Songs & lyrics · ${activeArtist.name || 'Songs'}`
         : document.getElementById('step1')?.classList.contains('source-speech-active')
-            ? 'Speech'
-            : 'Choose mode';
+            ? 'Everyday speech'
+            : 'Choose source';
     const flag = languageConfig.flag || LEARNING_CONTEXT_FLAGS[selectedLanguage] || selectedLanguage.slice(0, 2).toUpperCase();
     const coverage = Number(snapshot?.percentage || 0);
     const coverageLabel = snapshot?.label || (activeArtist ? 'Lyrics understood' : 'Speech understood');
@@ -323,10 +323,16 @@ function updateLearningContextUI(snapshot = window.currentCoverageSnapshot) {
     const capabilities = languageConfig.capabilities || {};
     const speechButton = document.getElementById('learningContextSpeechBtn');
     const lyricsButton = document.getElementById('learningContextLyricsBtn');
+    const availability = document.getElementById('learningContextAvailability');
     speechButton.disabled = capabilities.speech === false;
     lyricsButton.disabled = capabilities.lyrics === false;
-    speechButton.classList.toggle('selected', mode === 'Speech');
+    speechButton.classList.toggle('selected', mode === 'Everyday speech');
     lyricsButton.classList.toggle('selected', Boolean(activeArtist));
+    if (availability) {
+        availability.textContent = capabilities.lyrics === false
+            ? `Songs & lyrics is not available for ${languageConfig.name || selectedLanguage} yet because no lyrics collection has been published. Everyday speech is ready.`
+            : '';
+    }
 }
 
 function mergeStandardProgressIntoLanguageStep() {
@@ -378,7 +384,7 @@ function unmergeStandardProgressFromLanguageStep() {
 
     title.after(inlinePill);
     cta.after(wrapper);
-    title.textContent = 'Choose language';
+    title.textContent = 'Choose your language';
     step.classList.remove('language-summary-active');
     header.setAttribute('role', 'button');
     header.setAttribute('tabindex', '0');
@@ -521,25 +527,27 @@ function setupLanguageTabs() {
             const languageCapabilities = langConfig?.capabilities || {};
             const speechAvailable = languageCapabilities.speech !== false;
             const lyricsAvailable = languageCapabilities.lyrics !== false;
+            const lyricsStatus = document.getElementById('standardLyricsStatus');
             if (speechSourceButton) {
                 speechSourceButton.disabled = !speechAvailable;
                 speechSourceButton.title = speechAvailable
-                    ? 'Learn from a frequency-ordered Speech deck'
-                    : `Speech is awaiting a fresh run for ${langConfig?.name || newLanguage}`;
+                    ? 'Build broad vocabulary from real dialogue'
+                    : `Everyday speech is not ready for ${langConfig?.name || newLanguage} yet`;
                 const detail = speechSourceButton.querySelector('small');
                 if (detail) detail.textContent = speechAvailable
-                    ? 'Frequency-ordered language'
-                    : 'Awaiting a fresh run';
+                    ? 'Common words from real dialogue'
+                    : 'No dialogue collection has been published yet';
             }
             if (sourceCardButton) {
                 sourceCardButton.disabled = !lyricsAvailable;
                 sourceCardButton.title = lyricsAvailable
-                    ? 'Choose an artist, playlist or collection of songs'
-                    : `Lyrics are not available for ${langConfig?.name || newLanguage} yet`;
+                    ? 'Learn vocabulary from music you choose'
+                    : `No lyrics collection has been published for ${langConfig?.name || newLanguage} yet`;
                 const detail = sourceCardButton.querySelector('small');
                 if (detail) detail.textContent = lyricsAvailable
-                    ? 'Artists, playlists and songs'
-                    : 'Not available for this language yet';
+                    ? 'Choose artists, playlists or songs'
+                    : `No ${langConfig?.name || newLanguage} collection yet`;
+                if (lyricsStatus) lyricsStatus.textContent = lyricsAvailable ? '›' : 'Coming later';
             }
 
             // Hide all subsequent steps while loading
