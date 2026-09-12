@@ -40,7 +40,11 @@ class MetadataContractUITests(unittest.TestCase):
         self.assertIn("'gender=variable-by-person': 'varies by gender'", flashcards)
         self.assertIn("'form=personal-infinitive': 'personal infinitive'", flashcards)
         self.assertIn("'pronoun-class=personal': 'personal pronoun'", flashcards)
-        self.assertIn("if (provider.etymology_text) add('source', 'etymology'", flashcards)
+        self.assertNotIn("if (provider.etymology_text) add('source', 'etymology'", flashcards)
+        self.assertIn("if (family === 'source' && kind !== 'qualifier') return;", flashcards)
+        self.assertIn("function isSenseDefiningGrammar(item)", flashcards)
+        self.assertIn("item.family === 'grammar' && !isSenseDefiningGrammar(item)", flashcards)
+        self.assertIn("combine('Early', 'Modern', 'Early Modern')", flashcards)
         self.assertNotIn("short.slice(0, 31)", flashcards)
         self.assertIn(".sense-metadata-more", styles)
 

@@ -19,7 +19,7 @@ import './fast-mode.js?v=20260908e';
 import './extras.js?v=20260908d';
 import './song-sets.js?v=20260823ae';
 import './vocabulary-import.js?v=20260825ak';
-import './flashcards.js?v=20260911a';
+import './flashcards.js?v=20260912a';
 import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 
 function openTutorialIntroduction() {
