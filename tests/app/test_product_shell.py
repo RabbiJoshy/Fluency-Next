@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v362"
+EXPECTED_CACHE_NAME = "flashcards-v363"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -265,7 +265,7 @@ class ProductShellTests(unittest.TestCase):
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
         css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
         self.assertIn('<span class="step-title">Your next set</span>', html)
-        self.assertIn('<span class="substep-title">Deck options</span>', html)
+        self.assertIn('fast-track-label"><span aria-hidden="true">⚡</span> Fast track', html)
         self.assertIn(".sync-status.is-synced { display: none; }", css)
         self.assertIn(".setup-options-bar #fastModeSelector { display: none; }", css)
         self.assertIn("#step2,\n#step4 {", css)
@@ -298,12 +298,28 @@ class ProductShellTests(unittest.TestCase):
         appearance = html.index('data-tab="appearance"')
         account = html.index('data-tab="account"')
         storage = html.index('data-tab="offline"')
+        vocabulary = html.index('data-tab="vocabulary"')
+        about = html.index('data-tab="about"')
         self.assertLess(study, appearance)
+        self.assertLess(study, vocabulary)
         self.assertLess(appearance, account)
         self.assertLess(account, storage)
+        self.assertLess(storage, about)
         self.assertIn("showSettingsModalWithTab('study')", ui)
         self.assertIn("appearance: 'appearanceTabContent'", ui)
+        self.assertIn("vocabulary: 'vocabularyTabContent'", ui)
+        self.assertIn("about: 'aboutTabContent'", ui)
         self.assertGreater(html.index('id="wsdPublicationRow"'), html.index('id="appDataTabContent"'))
+
+    def test_fast_track_skipped_words_are_browsable_not_a_study_set(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        extras = (APP_ROOT / "js" / "extras.js").read_text(encoding="utf-8")
+        css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
+        self.assertIn('id="extrasSearch"', html)
+        self.assertIn('See ${total} skipped words', extras)
+        self.assertIn("class=\"extras-open-card\"", extras)
+        self.assertIn("globalThis.popupFoundWord", extras)
+        self.assertIn("#settingsModal.product-modal { align-items: flex-start; }", css)
 
     def test_wsd_publication_view_is_user_selectable(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
@@ -502,7 +518,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260912j", worker)
+        self.assertIn("/js/main.js?v=20260912k", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
@@ -700,10 +716,10 @@ class FastModeSurfaceTests(unittest.TestCase):
     def test_a_hand_set_combination_reports_itself_as_custom(self) -> None:
         self.assertIn("return 'custom'", self.script)
 
-    def test_the_summary_only_describes_parts_the_release_supports(self) -> None:
-        # Czech has no lemma mapping; a fixed summary claimed forms were merged.
+    def test_fast_track_state_only_uses_parts_the_release_supports(self) -> None:
+        # Czech has no lemma mapping; the overall state must not depend on it.
         self.assertIn("if (lemmaAvailable()) parts.push(", self.script)
-        self.assertIn("if (cognateAvailable()) {", self.script)
+        self.assertIn("if (cognateAvailable()) parts.push(", self.script)
 
 
 class ReleaseLevelSetsTests(unittest.TestCase):
