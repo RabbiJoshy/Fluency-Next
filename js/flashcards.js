@@ -1749,7 +1749,27 @@ function initializeApp() {
     });
 
     // Deck complete modal buttons
-    document.getElementById('restartAllBtn').addEventListener('click', function() {
+    document.getElementById('restartAllBtn').addEventListener('click', async function() {
+        if (this.dataset.action === 'review-level') {
+            const completedLevel = selectedLevel;
+            hideDeckCompleteModal();
+            await goBackToSetup();
+            const completedLevelButton = Array.from(document.querySelectorAll(
+                '.level-selector-buttons .level-btn, #levelSelector > .level-btn'
+            )).find(button => button.dataset.level === completedLevel);
+            if (completedLevelButton && !completedLevelButton.classList.contains('selected')) {
+                completedLevelButton.click();
+            }
+            for (let attempt = 0; attempt < 30; attempt++) {
+                const reviewButton = document.querySelector('.study-set-review');
+                if (reviewButton && !reviewButton.disabled) {
+                    reviewButton.click();
+                    return;
+                }
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            return;
+        }
         hideDeckCompleteModal();
         restartAllCards();
     });
@@ -7546,7 +7566,7 @@ document.addEventListener('click', (e) => {
 // result cards and conjugation; a stale URL here can keep running an old modal
 // implementation even after the eagerly loaded app has updated.
 const ASSET_VERSION = '20260825ak';
-const MODALS_ASSET_VERSION = '20260907a';
+const MODALS_ASSET_VERSION = '20260912c';
 
 let _modalsModulePromise = null;
 const lazyModals = () => _modalsModulePromise || (_modalsModulePromise =

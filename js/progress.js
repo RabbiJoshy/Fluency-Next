@@ -276,6 +276,41 @@ function _toggleLevelEstimateCTA(hasCoverage) {
 // Personal coverage bar: what % of the lyrics the user has covered,
 // weighted by word frequency (corpus_count). A common word contributes
 // more to coverage than a rare one, matching the "% lyrics coverage" logic.
+function getCurrentCoverageSnapshot(filteredVocab = window.setupVocabularySnapshot || []) {
+    let coveredFreq = 0;
+    let totalFreq = 0;
+    let coveredCount = 0;
+    for (const item of filteredVocab || []) {
+        const freq = item.corpus_count || 1;
+        totalFreq += freq;
+        const progress = getMergedWordProgress(getWordId(item), item.word);
+        if (progress && progress.language === selectedLanguage) {
+            const lastCorrect = progress.lastCorrect ? new Date(progress.lastCorrect).getTime() : 0;
+            const lastWrong = progress.lastWrong ? new Date(progress.lastWrong).getTime() : 0;
+            if (lastCorrect > 0 && lastCorrect >= lastWrong) {
+                coveredFreq += freq;
+                coveredCount++;
+            }
+        }
+    }
+    return {
+        percentage: totalFreq > 0 ? (coveredFreq / totalFreq) * 100 : 0,
+        wordPercentage: filteredVocab?.length ? (coveredCount / filteredVocab.length) * 100 : 0,
+        coveredCount,
+        totalCount: filteredVocab?.length || 0,
+        label: activeArtist
+            ? (artistVocabularyScope === 'extra' ? `${activeArtist.name || 'Artist'} Extra explored` : 'Lyrics understood')
+            : 'Speech understood'
+    };
+}
+
+function publishCoverageSnapshot(snapshot) {
+    window.currentCoverageSnapshot = snapshot;
+    const setupVisible = !document.getElementById('setupPanel')?.classList.contains('hidden');
+    if (setupVisible) window.lastSetupCoverageSnapshot = { ...snapshot };
+    window.updateLearningContextUI?.(snapshot);
+}
+
 function updatePersonalCoverage(filteredVocab) {
     const wrapper = document.getElementById('personalCoverageWrapper');
     const fill = document.getElementById('personalCoverageFill');
@@ -295,31 +330,16 @@ function updatePersonalCoverage(filteredVocab) {
     };
 
     if (!progressData || !filteredVocab || filteredVocab.length === 0) {
+        publishCoverageSnapshot(getCurrentCoverageSnapshot(filteredVocab || []));
         if (activeArtist && artistVocabularyScope === 'main') window.updateArtistExtraUnlock?.(0);
         showEmptyStandardSummary();
         _toggleLevelEstimateCTA(false);
         return;
     }
 
-    // Frequency-weighted coverage: sum corpus_count of mastered words / total corpus_count
-    let coveredFreq = 0;
-    let totalFreq = 0;
-    let coveredCount = 0;
-    for (const item of filteredVocab) {
-        const freq = item.corpus_count || 1;
-        totalFreq += freq;
-        const fullId = getWordId(item);
-        // Check progress in both current mode and cross-mode
-        const progress = getMergedWordProgress(fullId, item.word);
-        if (progress && progress.language === selectedLanguage) {
-            const lastCorrect = progress.lastCorrect ? new Date(progress.lastCorrect).getTime() : 0;
-            const lastWrong = progress.lastWrong ? new Date(progress.lastWrong).getTime() : 0;
-            if (lastCorrect > 0 && lastCorrect >= lastWrong) {
-                coveredFreq += freq;
-                coveredCount++;
-            }
-        }
-    }
+    const snapshot = getCurrentCoverageSnapshot(filteredVocab);
+    const { coveredCount } = snapshot;
+    publishCoverageSnapshot(snapshot);
 
     if (coveredCount === 0) {
         if (activeArtist && artistVocabularyScope === 'main') window.updateArtistExtraUnlock?.(0);
@@ -328,7 +348,7 @@ function updatePersonalCoverage(filteredVocab) {
         return;
     }
 
-    const coveragePct = (coveredFreq / totalFreq) * 100;
+    const coveragePct = snapshot.percentage;
     if (activeArtist && artistVocabularyScope === 'main') {
         window.updateArtistExtraUnlock?.(coveragePct);
     }
@@ -341,10 +361,8 @@ function updatePersonalCoverage(filteredVocab) {
     fill.style.transition = 'none';
     fill.style.width = '0%';
 
-    const coverageType = activeArtist
-        ? (artistVocabularyScope === 'extra' ? `${activeArtist.name || 'Artist'} Extra explored` : 'lyrics understood')
-        : 'speech understood';
-    const wordPct = (coveredCount / filteredVocab.length * 100).toFixed(1);
+    const coverageType = snapshot.label;
+    const wordPct = snapshot.wordPercentage.toFixed(1);
     // Two-column rows so the percentages right-align to the same edge —
     // labels on the left, numbers stacked on the right. Drops the italic
     // styling for a cleaner read.
@@ -361,6 +379,8 @@ function updatePersonalCoverage(filteredVocab) {
         });
     });
 }
+
+window.getCurrentCoverageSnapshot = getCurrentCoverageSnapshot;
 
 // Setup tooltip handlers (needs to run early, before any set is picked)
 
