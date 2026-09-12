@@ -515,9 +515,7 @@ function setupLanguageTabs() {
                     ? 'Start with useful vocabulary from natural dialogue'
                     : `Natural speech is not ready for ${langConfig?.name || newLanguage} yet`;
                 const detail = speechSourceButton.querySelector('small');
-                if (detail) detail.textContent = speechAvailable
-                    ? 'Start with useful words from movie subtitles and other translated dialogue.'
-                    : 'No natural-speech collection has been published yet.';
+                if (detail) detail.textContent = 'Build broad vocabulary from movie subtitles and translated dialogue, starting with the words used most often.';
             }
             if (sourceCardButton) {
                 sourceCardButton.disabled = !lyricsAvailable;
@@ -525,9 +523,7 @@ function setupLanguageTabs() {
                     ? 'Build vocabulary around music you choose'
                     : `Music & lyrics is not available for ${langConfig?.name || newLanguage} yet`;
                 const detail = sourceCardButton.querySelector('small');
-                if (detail) detail.textContent = lyricsAvailable
-                    ? 'Choose artists, songs or a playlist to rank words from the music you listen to.'
-                    : `No ${langConfig?.name || newLanguage} lyrics collection yet.`;
+                if (detail) detail.textContent = 'Choose music you listen to—for example reggaeton—and learn the words used most often in those lyrics.';
                 if (lyricsStatus) lyricsStatus.textContent = lyricsAvailable ? '›' : 'Coming later';
             }
 

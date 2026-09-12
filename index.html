@@ -47,7 +47,7 @@
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260912n">
+    <link rel="modulepreload" href="js/main.js?v=20260912o">
     <link rel="modulepreload" href="js/theme.js?v=20260825ak">
     <link rel="modulepreload" href="js/state.js?v=20260825ak">
     <link rel="modulepreload" href="js/data-contracts.js?v=20260825ak">
@@ -63,7 +63,7 @@
     <link rel="modulepreload" href="js/progress.js?v=20260912c">
     <link rel="modulepreload" href="js/progress-identity.js?v=20260831a">
     <link rel="modulepreload" href="js/knowledge.js?v=20260831a">
-    <link rel="modulepreload" href="js/ui.js?v=20260912l">
+    <link rel="modulepreload" href="js/ui.js?v=20260912m">
     <link rel="modulepreload" href="js/vocab.js?v=20260907a">
     <link rel="modulepreload" href="js/song-sets-core.js?v=20260825ak">
     <link rel="modulepreload" href="js/song-sets.js?v=20260823ae">
@@ -372,15 +372,15 @@
                     </button>
                     <div class="standard-source-choice" aria-labelledby="standardSourceChoiceTitle">
                         <div class="standard-source-choice-intro">
-                            <span class="standard-source-choice-title" id="standardSourceChoiceTitle">Choose what to learn from</span>
-                            <p>Your choice decides which words come first. You can change it later.</p>
+                            <span class="standard-source-choice-title" id="standardSourceChoiceTitle">Choose the vocabulary you want to learn</span>
+                            <p>Choose the kind of language you want to understand. Fluency builds a vocabulary list from it, ranked by frequency.</p>
                         </div>
                         <div class="standard-source-choice-buttons">
                             <button type="button" id="standardSourceSpeechBtn" class="standard-source-choice-btn" data-source="speech">
                                 <span class="standard-source-choice-icon" aria-hidden="true">1</span>
                                 <span>
                                     <span class="standard-source-option-title"><strong>Natural speech</strong><em>Recommended</em></span>
-                                    <small>Start with useful words from movie subtitles and other translated dialogue.</small>
+                                    <small>Build broad vocabulary from movie subtitles and translated dialogue, starting with the words used most often.</small>
                                 </span>
                                 <em class="standard-source-choice-arrow" aria-hidden="true">›</em>
                             </button>
@@ -388,7 +388,7 @@
                                 <span class="standard-source-choice-icon" aria-hidden="true">2</span>
                                 <span>
                                     <span class="standard-source-option-title"><strong>Music &amp; lyrics</strong></span>
-                                    <small id="standardLyricsAvailability">Choose artists, songs or a playlist to rank words from the music you listen to.</small>
+                                    <small id="standardLyricsAvailability">Choose music you listen to—for example reggaeton—and learn the words used most often in those lyrics.</small>
                                 </span>
                                 <em id="standardLyricsStatus" class="standard-source-choice-status" aria-hidden="true">›</em>
                             </button>
@@ -1659,6 +1659,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260912n"></script>
+    <script type="module" src="js/main.js?v=20260912o"></script>
 </body>
 </html>
