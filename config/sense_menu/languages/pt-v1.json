@@ -74,7 +74,10 @@
     "Bahia",
     "Brazil",
     "Brazilian",
+    "Caipira",
+    "Canada",
     "Cape-Verde",
+    "Central",
     "European",
     "Galicia",
     "Guinea-Bissau",
@@ -84,15 +87,20 @@
     "Mozambique",
     "North-Brazil",
     "Northeast-Brazil",
+    "Northeastern-Brazil",
     "Northern",
     "Paraná",
     "Portugal",
     "Rio-de-Janeiro",
     "South-Brazil",
+    "Southern-Brazil",
     "Southern",
     "São-Paulo",
     "São-Tomé",
-    "Timor-Leste"
+    "Timor-Leste",
+    "UK",
+    "US",
+    "Uruguay"
   ],
   "register_tags": [
     "archaic",
@@ -101,21 +109,30 @@
     "dated",
     "endearing",
     "euphemistic",
+    "excessive",
+    "Early",
     "formal",
     "historical",
     "honorific",
+    "hypercorrect",
     "idiomatic",
     "informal",
+    "jargon",
+    "Modern",
     "neologism",
+    "nonce-word",
     "nonstandard",
     "obsolete",
     "offensive",
     "ethnic",
     "poetic",
+    "polite",
+    "possibly",
     "proscribed",
     "sarcastic",
     "slang",
     "slur",
+    "term-of-address",
     "uncommon",
     "vulgar"
   ],
@@ -135,24 +152,42 @@
     "transitive"
   ],
   "domain_tags": [
-    "Ancient-Rome", "Greek", "Hinduism", "Internet", "Judaism", "particle",
-    "rhetoric", "Roman"
+    "Africa", "Ancient-Greek", "Ancient-Rome", "Chinese", "Christian",
+    "Classical", "Egyptian", "English", "European-Union", "French", "German",
+    "Germanic", "Greco-Roman", "Greek", "Hinduism", "India", "Indo-European-studies",
+    "Internet", "Irish", "Jainism", "Japanese", "Jehovah's-Witnesses", "Judaism",
+    "Marxism", "Mormonism", "Nazism", "New-Age", "Nordic", "Norse", "particle",
+    "Persian", "physical", "Provençal", "rhetoric", "Roman", "Sanskrit", "Sikhism",
+    "Tibetan", "World-War-I"
   ],
   "grammar_tags": {
+    "agent": "noun-class=agent",
     "capitalized": "orthography=capitalized",
+    "conjunction": "word-class=conjunction",
+    "conjunctive": "function=conjunctive",
+    "continuative": "aspect=continuative",
     "demonym": "noun-class=demonym",
     "diacritic": "character-class=diacritic",
+    "disjunctive": "pronoun-class=disjunctive",
+    "elative": "case=elative",
+    "feminine-usually": "gender=usually-feminine",
     "in-variation": "inflection=variable",
     "intensifier": "function=intensifier",
     "irregular": "inflection=irregular",
     "lowercase": "orthography=lowercase",
+    "modal": "function=modal",
+    "negative": "polarity=negative",
     "no-first-person-singular-present": "inflection=no-first-person-singular-present",
     "numeral": "word-class=numeral",
     "onomatopoeic": "formation=onomatopoeic",
     "prepositional": "function=prepositional",
     "pronoun": "word-class=pronoun",
+    "sentence-final": "position=sentence-final",
     "short-form": "form=short",
-    "uppercase": "orthography=uppercase"
+    "subordinating": "verb-class=subordinating",
+    "uninflected": "inflection=uninflected",
+    "uppercase": "orthography=uppercase",
+    "without-noun": "pronoun-use=standalone"
   },
   "contextual_grammar_tags": {
     "personal": [
@@ -168,8 +203,10 @@
     ]
   },
   "ignored_tags": [
-    "abbreviation", "acronym", "alternative", "clipping", "contraction",
-    "ellipsis", "empty-gloss", "initialism", "letter", "misspelling",
-    "morpheme", "no-gloss", "pronunciation-spelling"
+    "-i", "abbreviation", "acronym", "adverb", "also", "alternative",
+    "clipping", "contraction", "deliberate", "ellipsis", "empty-gloss",
+    "error-lua-exec", "error-unknown-tag", "initialism", "letter", "misconstruction",
+    "misspelling", "mnemonic", "morpheme", "no-gloss", "noun",
+    "pronunciation-spelling", "retronym", "suffix"
   ]
 }

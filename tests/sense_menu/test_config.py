@@ -65,6 +65,11 @@ class SenseMenuPolicyTests(unittest.TestCase):
             policy["grammar_tags"]["no-first-person-singular-present"],
             "inflection=no-first-person-singular-present",
         )
+        self.assertIn("Early", policy["register_tags"])
+        self.assertIn("Modern", policy["register_tags"])
+        self.assertIn("physical", policy["domain_tags"])
+        self.assertIn("conjunctive", policy["grammar_tags"])
+        self.assertIn("error-unknown-tag", policy["ignored_tags"])
 
 
 if __name__ == "__main__":
