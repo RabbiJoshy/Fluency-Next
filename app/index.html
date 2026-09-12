@@ -40,14 +40,14 @@
             document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#eef2f5' : '#0a0e14';
         })();
     </script>
-    <link rel="stylesheet" href="css/style.css?v=20260912j">
+    <link rel="stylesheet" href="css/style.css?v=20260912k">
     <link rel="stylesheet" href="css/light-theme.css?v=20260828a">
     <!-- Module preloads. Without these the browser waits to discover the
          imports inside main.js before kicking off the per-module fetches,
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260912i">
+    <link rel="modulepreload" href="js/main.js?v=20260912j">
     <link rel="modulepreload" href="js/theme.js?v=20260825ak">
     <link rel="modulepreload" href="js/state.js?v=20260825ak">
     <link rel="modulepreload" href="js/data-contracts.js?v=20260825ak">
@@ -63,7 +63,7 @@
     <link rel="modulepreload" href="js/progress.js?v=20260912c">
     <link rel="modulepreload" href="js/progress-identity.js?v=20260831a">
     <link rel="modulepreload" href="js/knowledge.js?v=20260831a">
-    <link rel="modulepreload" href="js/ui.js?v=20260912g">
+    <link rel="modulepreload" href="js/ui.js?v=20260912h">
     <link rel="modulepreload" href="js/vocab.js?v=20260907a">
     <link rel="modulepreload" href="js/song-sets-core.js?v=20260825ak">
     <link rel="modulepreload" href="js/song-sets.js?v=20260823ae">
@@ -471,32 +471,16 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6"></path><path d="M12 7.5h.01"></path></svg>
                         </button>
                     </div>
-                    <div id="step2Tooltip" class="step-info-tooltip"><div class="step-info-tooltip-inner">
-                        <!-- Tabbed help: Choose Level explainer + the lemma
-                             and cognate explainers that used to live as
-                             separate "?" buttons on each substep. Same tab
-                             pattern used by the settings modal — switching
-                             handled by setupTabSwitching(). -->
-                        <div class="settings-tabs help-tabs">
-                            <button type="button" class="settings-tab active" data-tab="step2Level">Level</button>
-                            <button type="button" class="settings-tab" data-tab="step2Lemma">Lemma</button>
-                            <button type="button" class="settings-tab" data-tab="step2Cognate">Cognates</button>
+                    <div id="step2Tooltip" class="step-info-tooltip setup-info-modal" role="dialog" aria-modal="true" aria-labelledby="levelHelpTitle"><div class="step-info-tooltip-inner">
+                        <div class="info-sheet-header">
+                            <div><span class="info-sheet-eyebrow">Levels</span><h3 id="levelHelpTitle">Choose where to begin</h3></div>
+                            <button type="button" class="info-sheet-close" aria-label="Close level information">&#10005;</button>
                         </div>
-                        <div id="step2LevelTabContent" class="settings-tab-content active">
-                            <p><strong>Choose a numbered level.</strong> Level 1 starts with the most frequent words; each later level extends the vocabulary further into rarer words.</p>
-                            <p>The line above the levels shows that level's vocabulary ranks under your current Merge Lemmas and Cognates settings.</p>
-                            <p>The coverage figure estimates how much speech or lyrics those words account for. The note below states how many words are in the level and how often its least frequent words occur.</p>
-                        </div>
-                        <div id="step2LemmaTabContent" class="settings-tab-content">
-                            <p><strong>Lemma</strong> = the base/dictionary form of a word. For example, "correr" is the lemma for "corre", "corrí", "corriendo"; "casa" is the lemma for "casas".</p>
-                            <p><strong>On</strong> = Merge forms into one card per lemma (e.g., "run", "runs", "ran", and "running" share one card). Examples and frequency are pooled across those forms.</p>
-                            <p><strong>Off</strong> = See all forms including conjugations and declensions (e.g., "run", "runs", "ran", "running"), which helps with recognition of different word forms in context.</p>
-                        </div>
-                        <div id="step2CognateTabContent" class="settings-tab-content">
-                            <p><strong>Transparent cognates</strong> are words that look and mean essentially the same thing in both languages (e.g., "animal", "chocolate", "hotel").</p>
-                            <p><strong>Include</strong> = Show all words, including cognates.</p>
-                            <p><strong>Exclude</strong> = Skip transparent cognates to focus on words that require more effort to learn.</p>
-                            <button class="tooltip-detail-btn" id="cognateRulesBtn">More Detail →</button>
+                        <p class="info-sheet-lead" id="step2LevelDescription">Levels arrange vocabulary from more useful and familiar words to less common ones.</p>
+                        <div class="info-sheet-points">
+                            <div><span>1</span><p><strong>Pick a comfortable level.</strong> You can move up or down at any time.</p></div>
+                            <div><span>2</span><p><strong>Start with the highlighted set.</strong> It is the next small piece of that level.</p></div>
+                            <div><span>3</span><p><strong>Deck options only shorten the set.</strong> They never move words between levels.</p></div>
                         </div>
                     </div></div>
                 </div>
@@ -540,11 +524,17 @@
                     <button class="step-help-btn" data-tooltip="step5Tooltip" title="About study sets" aria-label="About study sets">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6"></path><path d="M12 7.5h.01"></path></svg>
                     </button>
-                    <div id="step5Tooltip" class="step-info-tooltip"><div class="step-info-tooltip-inner">
-                        <p>Each level is divided into small, stable sets of about 20 frequency positions. The first set containing unseen cards is selected automatically.</p>
-                        <p>Merge Lemmas and Cognate exclusions can shorten a set, but cards never move into a different level or set.</p>
-                        <p><strong>Learn new</strong> shows only unseen cards. Mistakes move to a separate review for this level, so they do not hold back the next set.</p>
-                        <p><strong>Example sentences</strong> retain their source, translation and provenance whenever the active release provides them.</p>
+                    <div id="step5Tooltip" class="step-info-tooltip setup-info-modal" role="dialog" aria-modal="true" aria-labelledby="setHelpTitle"><div class="step-info-tooltip-inner">
+                        <div class="info-sheet-header">
+                            <div><span class="info-sheet-eyebrow">Study sets</span><h3 id="setHelpTitle">One finishable set at a time</h3></div>
+                            <button type="button" class="info-sheet-close" aria-label="Close set information">&#10005;</button>
+                        </div>
+                        <p class="info-sheet-lead" id="step5Description">The app highlights the next unfinished set, so you can simply continue.</p>
+                        <div class="info-sheet-points">
+                            <div><span>New</span><p>Learn the unseen words in this small set.</p></div>
+                            <div><span>Review</span><p>Retry words that need another look without holding up new vocabulary.</p></div>
+                            <div><span>Done</span><p>Finishing a set reveals the next clear step and moves your progress forward.</p></div>
+                        </div>
                     </div></div>
                 </div>
                 <div id="rangeSelector" class="range-selector"></div>
@@ -812,23 +802,25 @@
     </div>
 
     <!-- Short learner-facing introduction to the card tutorial. -->
-    <div id="tutorialIntroModal" class="modal hidden">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="settings-tabs-header">
-                <h3 style="margin: 0;">Tutorial</h3>
+    <div id="tutorialIntroModal" class="modal hidden product-modal" role="dialog" aria-modal="true" aria-labelledby="tutorialIntroTitle">
+        <div class="modal-content tutorial-intro-sheet">
+            <div class="product-modal-header">
+                <div><span class="product-modal-eyebrow">A two-minute tour</span><h2 id="tutorialIntroTitle">Tutorial</h2></div>
                 <button class="modal-close" id="closeTutorialIntroModal" aria-label="Close tutorial introduction">&#10005;</button>
             </div>
-            <div class="help-content">
-                <label class="settings-row-label" for="tutorialLanguageSelect">Tutorial language</label>
-                <select class="settings-select" id="tutorialLanguageSelect">
-                    <option value="">Choose a language</option>
-                </select>
-                <p style="margin: 0 0 18px;">
-                    <button class="help-more-info-btn" id="startCardTutorialBtn" type="button" disabled>Start tutorial →</button>
-                </p>
-                <p id="tutorialIntroModes">Speech teaches frequent vocabulary from dialogue. Lyrics applies the same method to songs when it is available for your language.</p>
-                <p>Language is heavily concentrated: a relatively small number of frequent words account for most everyday speech. Your coverage therefore reflects how useful each learned word is, rather than simply counting cards.</p>
-                <p id="tutorialIntroLanguage">The tutorial uses a card from your selected language and only shows features supported by its dictionaries and study modes.</p>
+            <div id="tutorialWelcomeStep" class="tutorial-intro-step">
+                <p class="tutorial-intro-lead">See how speech and lyrics become small, useful vocabulary sets—and how to read the back of a card.</p>
+                <button class="product-primary-action" id="startCardTutorialBtn" type="button">Start tutorial <span aria-hidden="true">→</span></button>
+                <div class="tutorial-principles">
+                    <p><strong>Learn useful words first.</strong> Common words contribute more to your real-world understanding, so progress is weighted by frequency rather than raw card count.</p>
+                    <p><strong>Learn them in context.</strong> Speech and lyrics use the same study flow, while examples and dictionary detail adapt to the language you choose.</p>
+                </div>
+            </div>
+            <div id="tutorialLanguageStep" class="tutorial-intro-step hidden">
+                <button type="button" id="tutorialLanguageBackBtn" class="product-back-action">← Introduction</button>
+                <h3>Which language are you learning?</h3>
+                <p>We’ll use a real card and only show features available for that language.</p>
+                <div id="tutorialLanguageChoices" class="tutorial-language-grid" role="list"></div>
             </div>
         </div>
     </div>
@@ -1285,41 +1277,44 @@
     </div>
 
     <!-- Settings Modal with Tabs -->
-    <div id="settingsModal" class="modal hidden">
+    <div id="settingsModal" class="modal hidden product-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
         <div class="modal-content settings-modal-content">
-            <!-- Tab buttons as header -->
             <div class="settings-tabs-header">
-                <strong class="settings-single-tab-title" id="settingsSingleTabTitle" hidden>Study preferences</strong>
-                <div class="settings-tabs">
-                    <button class="settings-tab active" data-tab="account">Account</button>
-                    <button class="settings-tab" data-tab="study">Study</button>
-                    <button class="settings-tab" data-tab="offline">Offline &amp; sync</button>
-                    <button class="settings-tab" data-tab="appData" id="appDataTabBtn" hidden>App data</button>
+                <div class="settings-title-block">
+                    <span class="product-modal-eyebrow">Make it yours</span>
+                    <h2 id="settingsTitle">Settings</h2>
+                    <strong class="settings-single-tab-title" id="settingsSingleTabTitle" hidden>Study preferences</strong>
                 </div>
-                <button class="modal-close" id="closeSettingsModal">✕</button>
+                <button class="modal-close" id="closeSettingsModal" aria-label="Close settings">✕</button>
             </div>
+            <nav class="settings-tabs" aria-label="Settings sections">
+                    <button class="settings-tab active" data-tab="study">Study</button>
+                    <button class="settings-tab" data-tab="appearance">Appearance</button>
+                    <button class="settings-tab" data-tab="account">Account</button>
+                    <button class="settings-tab" data-tab="offline">Storage</button>
+                    <button class="settings-tab" data-tab="appData" id="appDataTabBtn" hidden>Developer</button>
+            </nav>
             <!-- Settings tab content -->
             <div class="settings-tab-content" id="studyTabContent">
                 <section class="settings-defaults-card" aria-labelledby="studyDefaultsTitle">
                     <div class="settings-defaults-heading">
-                        <strong id="studyDefaultsTitle">Default study setup</strong>
-                        <span>Saved on this device</span>
+                        <strong id="studyDefaultsTitle">Study preferences</strong>
+                        <span>Defaults for new sets</span>
                     </div>
                     <p class="settings-defaults-warning">
-                        These choices apply automatically to every new Speech or Lyrics setup.
-                        Changing them also updates the current setup; continuing an exact saved set keeps that set's original choices.
+                        These choices apply to new sets. A set already in progress keeps the choices it started with.
                     </p>
                     <!-- Deck Settings: everything that changes which cards the
                          deck contains. Each row carries a "?" that reveals a
                          one-line description of what the toggle actually does. -->
                     <div class="settings-group-heading">
-                        <strong>Deck Settings</strong>
-                        <span>What ends up in the deck</span>
+                        <strong>Deck contents</strong>
+                        <span>Choose what to practise</span>
                     </div>
                     <div class="settings-default-row">
                         <span class="settings-row-label-block">
-                            <span class="settings-row-label">Merge Lemmas
-                                <button type="button" class="settings-info-btn" aria-label="Explain Merge Lemmas" aria-expanded="false">?</button>
+                            <span class="settings-row-label">Group word forms
+                                <button type="button" class="settings-info-btn" aria-label="Explain grouping word forms" aria-expanded="false">?</button>
                             </span>
                             <small class="settings-row-explanation" hidden>Collapses every inflected form onto one card for its dictionary form, so a word is studied once instead of once per conjugation.</small>
                         </span>
@@ -1330,7 +1325,7 @@
                     </div>
                     <div class="settings-default-row">
                         <span class="settings-row-label-block">
-                            <span class="settings-row-label">Cognates
+                            <span class="settings-row-label">Familiar cognates
                                 <button type="button" class="settings-info-btn" aria-label="Explain cognate inclusion" aria-expanded="false">?</button>
                             </span>
                             <small class="settings-row-explanation" hidden>Include every word, or exclude words close enough to English to be immediately guessable.</small>
@@ -1338,18 +1333,6 @@
                         <div class="group-size-selector settings-toggle" role="group" aria-label="Default cognate inclusion setting">
                             <button type="button" class="group-size-btn global-study-default-btn selected" data-setting="excludeCognates" data-value="off" aria-pressed="true">Include</button>
                             <button type="button" class="group-size-btn global-study-default-btn" data-setting="excludeCognates" data-value="on" aria-pressed="false">Exclude</button>
-                        </div>
-                    </div>
-                    <div class="settings-default-row" id="wsdPublicationRow">
-                        <span class="settings-row-label-block">
-                            <span class="settings-row-label">Sense confidence
-                                <button type="button" class="settings-info-btn" aria-label="Explain sense confidence" aria-expanded="false">?</button>
-                            </span>
-                            <small class="settings-row-explanation" hidden>Forced leaf always publishes one exact dictionary meaning. Supported only publishes exact-sense percentages when v7 has enough evidence to separate the meanings.</small>
-                        </span>
-                        <div class="group-size-selector settings-toggle" role="group" aria-label="Sense confidence publication">
-                            <button type="button" class="group-size-btn wsd-publication-btn selected" data-wsd-publication="forced_leaf" aria-pressed="true" onclick="event.stopImmediatePropagation();if(window.selectWsdPublicationView){window.selectWsdPublicationView('forced_leaf',this)}else{const u=new URL(location.href);u.searchParams.set('wsdPublication','forced_leaf');location.assign(u)}">Forced leaf</button>
-                            <button type="button" class="group-size-btn wsd-publication-btn" data-wsd-publication="supported_specificity" aria-pressed="false" onclick="event.stopImmediatePropagation();if(window.selectWsdPublicationView){window.selectWsdPublicationView('supported_specificity',this)}else{const u=new URL(location.href);u.searchParams.set('wsdPublication','supported_specificity');location.assign(u)}">Supported</button>
                         </div>
                     </div>
                     <!-- Cognate exclusion sensitivity. Higher threshold = only
@@ -1374,7 +1357,7 @@
                     </div>
                     <div class="settings-default-row">
                         <span class="settings-row-label-block">
-                            <span class="settings-row-label">Spaced repetition
+                            <span class="settings-row-label">Review scheduling
                                 <button type="button" class="settings-info-btn" aria-label="Explain spaced repetition" aria-expanded="false">?</button>
                             </span>
                             <small class="settings-row-explanation" hidden>Returns correct cards to Review once their interval lapses; off keeps due cards Known, while mistakes still go to Review.</small>
@@ -1386,7 +1369,7 @@
                     </div>
                     <div class="settings-default-row">
                         <span class="settings-row-label-block">
-                            <span class="settings-row-label">Extra examples
+                            <span class="settings-row-label">More examples
                                 <button type="button" class="settings-info-btn" aria-label="Explain extra examples" aria-expanded="false">?</button>
                             </span>
                             <small class="settings-row-explanation" hidden>Adds a follow-up card of corpus sentences after the word, so you see it used outside this deck — lyrics decks are often thin even on common words.</small>
@@ -1398,7 +1381,7 @@
                     </div>
                     <div class="settings-default-row">
                         <span class="settings-row-label-block">
-                            <span class="settings-row-label">Phrases mode
+                            <span class="settings-row-label">Practise phrases
                                 <button type="button" class="settings-info-btn" aria-label="Explain phrases mode" aria-expanded="false">?</button>
                             </span>
                             <small class="settings-row-explanation" hidden>Sends Expressions and attached-pronoun forms after the word as their own cards; off leaves them on the word's back.</small>
@@ -1412,8 +1395,8 @@
                     <!-- Learning Settings: how the active card looks and behaves.
                          These never change which cards are in the deck. -->
                     <div class="settings-group-heading">
-                        <strong>Learning Settings</strong>
-                        <span>How cards are presented</span>
+                        <strong>Card experience</strong>
+                        <span>How each card behaves</span>
                     </div>
                     <div class="settings-default-row">
                         <span class="settings-row-label-block">
@@ -1429,7 +1412,7 @@
                     </div>
                     <div class="settings-default-row">
                         <span class="settings-row-label-block">
-                            <span class="settings-row-label">Automatic speech
+                            <span class="settings-row-label">Read answers aloud
                                 <button type="button" class="settings-info-btn" aria-label="Explain automatic speech" aria-expanded="false">?</button>
                             </span>
                             <small class="settings-row-explanation" hidden>Speaks the target-language answer aloud on its own as each card is shown; the speaker icon still works when off.</small>
@@ -1445,12 +1428,12 @@
                     <p><b>Loose</b> excludes only the most obvious look-alikes. <b>Default</b> balances confidence and coverage. <b>Strict</b> also excludes less certain cognate-like words, leaving a smaller study deck.</p>
                 </div>
             </div>
-            <!-- Account tab content -->
-            <div class="settings-tab-content active" id="accountTabContent">
+            <div class="settings-tab-content" id="appearanceTabContent">
+                <p class="settings-section-intro">Choose the appearance that feels most comfortable on this device.</p>
                 <section class="appearance-settings-card" aria-labelledby="appearanceSettingsTitle">
                     <div class="appearance-settings-copy">
-                        <strong id="appearanceSettingsTitle">Appearance</strong>
-                        <small>System follows this device’s light or dark setting.</small>
+                        <strong id="appearanceSettingsTitle">Colour theme</strong>
+                        <small>System changes automatically with this device.</small>
                     </div>
                     <div class="group-size-selector settings-toggle appearance-selector"
                          role="radiogroup" aria-label="App appearance">
@@ -1462,8 +1445,12 @@
                                 data-theme-preference="system" role="radio" aria-checked="false" tabindex="-1">System</button>
                     </div>
                 </section>
+            </div>
+            <!-- Account tab content -->
+            <div class="settings-tab-content" id="accountTabContent">
+                <p class="settings-section-intro">Your profile, learning tools and information about Fluency.</p>
                 <div class="stat-row">
-                    <span>Logged in as</span>
+                    <span>Your profile</span>
                     <span id="accountUserBadge" style="font-weight: 700;">GUEST</span>
                 </div>
                 <button type="button" class="stat-row settings-action-row" id="openVocabularyImportBtn" hidden>
@@ -1496,7 +1483,7 @@
             </div>
             <!-- Offline and synchronization tab content -->
             <div class="settings-tab-content" id="offlineTabContent">
-                <p class="settings-data-intro">Downloaded lessons stay on this device. Progress and notes synchronize with your account.</p>
+                <p class="settings-section-intro">Manage lessons stored on this device and check whether your progress is safely synchronized.</p>
                 <section class="offline-panel" aria-labelledby="syncPanelTitle">
                     <div class="offline-panel-heading">
                         <div><strong id="syncPanelTitle">Progress sync</strong><small><span id="syncPendingCount">0</span> pending · Last synced <span id="syncLastSuccess">Not yet</span></small></div>
@@ -1530,6 +1517,16 @@
             <!-- JST-only app/data deployment audit -->
             <div class="settings-tab-content" id="appDataTabContent">
                 <p class="settings-data-intro">Developer audit for the app build and vocabulary files loaded on this device.</p>
+                <div class="settings-default-row" id="wsdPublicationRow">
+                    <span class="settings-row-label-block">
+                        <span class="settings-row-label">Sense publication</span>
+                        <small class="settings-row-explanation">Choose whether diagnostics force a leaf sense or stop at the specificity supported by evidence.</small>
+                    </span>
+                    <div class="group-size-selector settings-toggle" role="group" aria-label="Sense confidence publication">
+                        <button type="button" class="group-size-btn wsd-publication-btn selected" data-wsd-publication="forced_leaf" aria-pressed="true" onclick="event.stopImmediatePropagation();if(window.selectWsdPublicationView){window.selectWsdPublicationView('forced_leaf',this)}else{const u=new URL(location.href);u.searchParams.set('wsdPublication','forced_leaf');location.assign(u)}">Forced leaf</button>
+                        <button type="button" class="group-size-btn wsd-publication-btn" data-wsd-publication="supported_specificity" aria-pressed="false" onclick="event.stopImmediatePropagation();if(window.selectWsdPublicationView){window.selectWsdPublicationView('supported_specificity',this)}else{const u=new URL(location.href);u.searchParams.set('wsdPublication','supported_specificity');location.assign(u)}">Supported</button>
+                    </div>
+                </div>
                 <!-- Filled on open from the vocab files' Last-Modified headers;
                      an old date here means the service worker served cached data. -->
                 <div id="dataFreshnessFooter" class="data-freshness-footer"></div>
@@ -1626,6 +1623,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260912i"></script>
+    <script type="module" src="js/main.js?v=20260912j"></script>
 </body>
 </html>

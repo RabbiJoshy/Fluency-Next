@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v361"
+EXPECTED_CACHE_NAME = "flashcards-v362"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -276,19 +276,34 @@ class ProductShellTests(unittest.TestCase):
         main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
         intro = html.index('id="tutorialIntroModal"')
         start = html.index('id="startCardTutorialBtn"', intro)
-        picker = html.index('id="tutorialLanguageSelect"', intro)
-        first_paragraph = html.index('id="tutorialIntroModes"', intro)
-        self.assertLess(picker, start)
-        self.assertLess(start, first_paragraph)
+        choices = html.index('id="tutorialLanguageChoices"', intro)
+        self.assertLess(start, choices)
+        self.assertNotIn('id="tutorialLanguageSelect"', html)
 
         self.assertIn("window.openAboutExample?.()", main)
-        self.assertIn("refreshTutorialIntroduction(event.currentTarget.value)", main)
+        self.assertIn("function renderTutorialLanguageChoices()", main)
+        self.assertIn("tutorialLanguageStep')?.classList.remove('hidden')", main)
+        self.assertIn("window.setCardTutorialLanguage?.(key)", main)
 
     def test_cognate_setting_uses_positive_inclusion_copy(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn('<span class="settings-row-label">Cognates', html)
+        self.assertIn('<span class="settings-row-label">Familiar cognates', html)
         self.assertIn('data-setting="excludeCognates" data-value="off" aria-pressed="true">Include</button>', html)
         self.assertIn('data-setting="excludeCognates" data-value="on" aria-pressed="false">Exclude</button>', html)
+
+    def test_settings_are_organised_around_learner_tasks(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        study = html.index('data-tab="study"')
+        appearance = html.index('data-tab="appearance"')
+        account = html.index('data-tab="account"')
+        storage = html.index('data-tab="offline"')
+        self.assertLess(study, appearance)
+        self.assertLess(appearance, account)
+        self.assertLess(account, storage)
+        self.assertIn("showSettingsModalWithTab('study')", ui)
+        self.assertIn("appearance: 'appearanceTabContent'", ui)
+        self.assertGreater(html.index('id="wsdPublicationRow"'), html.index('id="appDataTabContent"'))
 
     def test_wsd_publication_view_is_user_selectable(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
@@ -487,7 +502,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260912i", worker)
+        self.assertIn("/js/main.js?v=20260912j", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:

@@ -11,7 +11,7 @@ import './estimation.js?v=20260825ak';
 import './config.js?v=20260907a';
 import './progress.js?v=20260912c';
 import './knowledge.js?v=20260831a';
-import './ui.js?v=20260912g';
+import './ui.js?v=20260912h';
 import './vocab.js?v=20260909b';
 import './cognates.js?v=20260908d';
 import './coverage.js?v=20260909a';
@@ -23,32 +23,33 @@ import './flashcards.js?v=20260912a';
 import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 
 function openTutorialIntroduction() {
-    const picker = document.getElementById('tutorialLanguageSelect');
-    const languages = window.getCardTutorialLanguages?.() || [];
-    if (picker && picker.options.length === 1) {
-        languages.forEach(({ key, language }) => picker.add(new Option(language, key)));
-    }
-    const inheritedLanguage = window.getCardTutorialLanguageKey?.();
-    if (picker && inheritedLanguage) picker.value = inheritedLanguage;
-    refreshTutorialIntroduction(picker?.value || inheritedLanguage || '');
+    document.getElementById('tutorialWelcomeStep')?.classList.remove('hidden');
+    document.getElementById('tutorialLanguageStep')?.classList.add('hidden');
+    renderTutorialLanguageChoices();
     document.getElementById('tutorialIntroModal')?.classList.remove('hidden');
 }
 
-function refreshTutorialIntroduction(languageKey) {
-    window.setCardTutorialLanguage?.(languageKey || null);
-    const profile = languageKey ? window.getCardTutorialProfile?.(languageKey) : null;
-    const modes = document.getElementById('tutorialIntroModes');
-    const language = document.getElementById('tutorialIntroLanguage');
-    const start = document.getElementById('startCardTutorialBtn');
-    if (start) start.disabled = !profile;
-    if (profile && modes) {
-        modes.textContent = profile.lyrics
-            ? `Speech teaches frequent ${profile.language} vocabulary from dialogue. Lyrics then applies the same method to songs; the tutorial takes you through both in one sequence.`
-            : `Speech teaches frequent ${profile.language} vocabulary from dialogue. Lyrics uses the same method for songs and will join the tutorial when it becomes available for ${profile.language}.`;
-    }
-    if (profile && language) {
-        language.textContent = `The tutorial uses a ${profile.language} card and adapts its sense details to ${profile.provider}, so it only teaches controls and metadata this language actually has.`;
-    }
+function renderTutorialLanguageChoices() {
+    const container = document.getElementById('tutorialLanguageChoices');
+    if (!container || container.childElementCount) return;
+    const flags = { spanish: '🇪🇸', portuguese: '🇧🇷', czech: '🇨🇿', french: '🇫🇷' };
+    const inheritedLanguage = window.getCardTutorialLanguageKey?.();
+    (window.getCardTutorialLanguages?.() || []).forEach(({ key, language }) => {
+        const profile = window.getCardTutorialProfile?.(key);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'tutorial-language-choice';
+        if (key === inheritedLanguage) button.classList.add('is-current');
+        button.innerHTML = `<span class="tutorial-language-flag" aria-hidden="true">${flags[key] || '🌐'}</span>` +
+            `<span><strong>${language}</strong><small>${profile?.lyrics ? 'Speech and lyrics' : 'Speech tutorial'}</small></span>` +
+            '<span class="tutorial-language-arrow" aria-hidden="true">→</span>';
+        button.addEventListener('click', () => {
+            window.setCardTutorialLanguage?.(key);
+            closeTutorialIntroduction();
+            window.openAboutExample?.();
+        });
+        container.appendChild(button);
+    });
 }
 
 function closeTutorialIntroduction() {
@@ -403,12 +404,13 @@ loadConfig().then(async () => {
     // Keep the short learner tutorial separate from the portfolio /about page.
     document.getElementById('helpBtn').addEventListener('click', openTutorialIntroduction);
     document.getElementById('closeTutorialIntroModal')?.addEventListener('click', closeTutorialIntroduction);
-    document.getElementById('tutorialLanguageSelect')?.addEventListener('change', event => {
-        refreshTutorialIntroduction(event.currentTarget.value);
-    });
     document.getElementById('startCardTutorialBtn')?.addEventListener('click', () => {
-        closeTutorialIntroduction();
-        window.openAboutExample?.();
+        document.getElementById('tutorialWelcomeStep')?.classList.add('hidden');
+        document.getElementById('tutorialLanguageStep')?.classList.remove('hidden');
+    });
+    document.getElementById('tutorialLanguageBackBtn')?.addEventListener('click', () => {
+        document.getElementById('tutorialLanguageStep')?.classList.add('hidden');
+        document.getElementById('tutorialWelcomeStep')?.classList.remove('hidden');
     });
     document.getElementById('tutorialIntroModal')?.addEventListener('click', event => {
         if (event.target === event.currentTarget) closeTutorialIntroduction();
