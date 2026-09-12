@@ -15140,6 +15140,7 @@ body {
   font-size: 12px;
   font-weight: 650;
 }
+.settings-modal-content .settings-tab[hidden] { display: none !important; }
 .settings-modal-content .settings-tab:hover { background: var(--bg-tertiary); }
 .settings-modal-content .settings-tab.active {
   border: 0;
@@ -15351,6 +15352,20 @@ body {
   cursor: pointer;
 }
 .settings-feature-note { grid-column: 2 / -1; }
+.review-settings-card { grid-template-columns: auto minmax(0, 1fr); }
+.review-settings-card .settings-default-row--standalone {
+  grid-column: 1 / -1;
+  margin-top: 3px;
+  padding: 14px 0 2px;
+  border-top: 1px solid var(--border-color);
+}
+.settings-default-row--standalone .settings-row-label-block small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.42;
+}
 .settings-feature-card--button { width: 100%; text-align: left; cursor: pointer; }
 .settings-feature-card--button:hover { border-color: rgba(var(--accent-primary-rgb), .45); }
 .settings-feature-arrow { align-self: center; color: var(--text-muted); }

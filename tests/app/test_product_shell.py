@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v363"
+EXPECTED_CACHE_NAME = "flashcards-v364"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -119,6 +119,7 @@ class ProductShellTests(unittest.TestCase):
     def test_language_choice_defers_loading_until_source_choice(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
         ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
         main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
         config = json.loads((APP_ROOT / "config" / "config.json").read_text(encoding="utf-8"))
 
@@ -294,21 +295,29 @@ class ProductShellTests(unittest.TestCase):
     def test_settings_are_organised_around_learner_tasks(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
         ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
         study = html.index('data-tab="study"')
+        review = html.index('data-tab="review"')
         appearance = html.index('data-tab="appearance"')
         account = html.index('data-tab="account"')
         storage = html.index('data-tab="offline"')
         vocabulary = html.index('data-tab="vocabulary"')
         about = html.index('data-tab="about"')
-        self.assertLess(study, appearance)
-        self.assertLess(study, vocabulary)
+        self.assertLess(study, review)
+        self.assertLess(review, vocabulary)
+        self.assertLess(vocabulary, appearance)
         self.assertLess(appearance, account)
-        self.assertLess(account, storage)
-        self.assertLess(storage, about)
+        self.assertLess(account, about)
+        self.assertLess(about, storage)
+        self.assertIn('data-tab="offline" id="storageTabBtn" hidden', html)
         self.assertIn("showSettingsModalWithTab('study')", ui)
+        self.assertIn("review: 'reviewTabContent'", ui)
         self.assertIn("appearance: 'appearanceTabContent'", ui)
         self.assertIn("vocabulary: 'vocabularyTabContent'", ui)
         self.assertIn("about: 'aboutTabContent'", ui)
+        self.assertIn("storageTabBtn.hidden = !isJstAccount", ui)
+        self.assertIn("const adminOnlyTabs = new Set(['offline', 'appData'])", ui)
+        self.assertIn(".settings-modal-content .settings-tab[hidden]", css)
         self.assertGreater(html.index('id="wsdPublicationRow"'), html.index('id="appDataTabContent"'))
 
     def test_fast_track_skipped_words_are_browsable_not_a_study_set(self) -> None:
@@ -518,7 +527,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260912k", worker)
+        self.assertIn("/js/main.js?v=20260912l", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:

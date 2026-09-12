@@ -2457,7 +2457,9 @@ function showSettingsModalWithTab(tabName, { singleTab = false } = {}) {
         }
     }
     const isJstAccount = Boolean(window.isAuditAccount?.());
+    const storageTabBtn = document.getElementById('storageTabBtn');
     const appDataTabBtn = document.getElementById('appDataTabBtn');
+    if (storageTabBtn) storageTabBtn.hidden = !isJstAccount;
     if (appDataTabBtn) appDataTabBtn.hidden = !isJstAccount;
 
     // Show/hide clear level estimate row
@@ -2470,21 +2472,23 @@ function showSettingsModalWithTab(tabName, { singleTab = false } = {}) {
         clearRow.style.display = 'none';
     }
 
-    // Switch to the requested settings surface. App data is a developer audit
-    // and must never be exposed outside the JST account.
+    // Switch to the requested settings surface. Storage and app data are
+    // operational audits and must never be exposed outside the JST account.
     const settingsModal = document.getElementById('settingsModal');
     const tabContentIds = {
         account: 'accountTabContent',
         study: 'studyTabContent',
+        review: 'reviewTabContent',
         vocabulary: 'vocabularyTabContent',
         appearance: 'appearanceTabContent',
         offline: 'offlineTabContent',
         about: 'aboutTabContent',
         appData: 'appDataTabContent'
     };
-    const requestedTab = tabContentIds[tabName] && (tabName !== 'appData' || isJstAccount)
+    const adminOnlyTabs = new Set(['offline', 'appData']);
+    const requestedTab = tabContentIds[tabName] && (!adminOnlyTabs.has(tabName) || isJstAccount)
         ? tabName
-        : 'account';
+        : 'study';
     const showOnlyStudy = singleTab && requestedTab === 'study';
     settingsModal.classList.toggle('settings-single-tab', showOnlyStudy);
     const singleTabTitle = document.getElementById('settingsSingleTabTitle');

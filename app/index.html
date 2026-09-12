@@ -40,14 +40,14 @@
             document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#eef2f5' : '#0a0e14';
         })();
     </script>
-    <link rel="stylesheet" href="css/style.css?v=20260912l">
+    <link rel="stylesheet" href="css/style.css?v=20260912m">
     <link rel="stylesheet" href="css/light-theme.css?v=20260828a">
     <!-- Module preloads. Without these the browser waits to discover the
          imports inside main.js before kicking off the per-module fetches,
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260912k">
+    <link rel="modulepreload" href="js/main.js?v=20260912l">
     <link rel="modulepreload" href="js/theme.js?v=20260825ak">
     <link rel="modulepreload" href="js/state.js?v=20260825ak">
     <link rel="modulepreload" href="js/data-contracts.js?v=20260825ak">
@@ -63,7 +63,7 @@
     <link rel="modulepreload" href="js/progress.js?v=20260912c">
     <link rel="modulepreload" href="js/progress-identity.js?v=20260831a">
     <link rel="modulepreload" href="js/knowledge.js?v=20260831a">
-    <link rel="modulepreload" href="js/ui.js?v=20260912i">
+    <link rel="modulepreload" href="js/ui.js?v=20260912j">
     <link rel="modulepreload" href="js/vocab.js?v=20260907a">
     <link rel="modulepreload" href="js/song-sets-core.js?v=20260825ak">
     <link rel="modulepreload" href="js/song-sets.js?v=20260823ae">
@@ -1299,11 +1299,12 @@
             </div>
             <nav class="settings-tabs" aria-label="Settings sections">
                     <button class="settings-tab active" data-tab="study">Study</button>
+                    <button class="settings-tab" data-tab="review">Review</button>
                     <button class="settings-tab" data-tab="vocabulary">Vocabulary</button>
                     <button class="settings-tab" data-tab="appearance">Appearance</button>
                     <button class="settings-tab" data-tab="account">Account</button>
-                    <button class="settings-tab" data-tab="offline">Storage</button>
                     <button class="settings-tab" data-tab="about">About</button>
+                    <button class="settings-tab" data-tab="offline" id="storageTabBtn" hidden>Storage</button>
                     <button class="settings-tab" data-tab="appData" id="appDataTabBtn" hidden>Developer</button>
             </nav>
             <!-- Settings tab content -->
@@ -1371,20 +1372,8 @@
                     </div>
                     <div class="settings-preference-group">
                     <div class="settings-group-heading">
-                        <strong>Study routine</strong>
-                        <span>Review and context</span>
-                    </div>
-                    <div class="settings-default-row">
-                        <span class="settings-row-label-block">
-                            <span class="settings-row-label">Review scheduling
-                                <button type="button" class="settings-info-btn" aria-label="Explain spaced repetition" aria-expanded="false">?</button>
-                            </span>
-                            <small class="settings-row-explanation" hidden>Returns correct cards to Review once their interval lapses; off keeps due cards Known, while mistakes still go to Review.</small>
-                        </span>
-                        <div class="group-size-selector settings-toggle" role="group" aria-label="Spaced repetition setting">
-                            <button type="button" class="group-size-btn global-study-default-btn selected" data-setting="spacedRepetitionEnabled" data-value="off" aria-pressed="true">Off</button>
-                            <button type="button" class="group-size-btn global-study-default-btn" data-setting="spacedRepetitionEnabled" data-value="on" aria-pressed="false">On</button>
-                        </div>
+                        <strong>Practice</strong>
+                        <span>Examples and phrases</span>
                     </div>
                     <div class="settings-default-row">
                         <span class="settings-row-label-block">
@@ -1449,6 +1438,27 @@
                     <strong>How sensitivity works</strong>
                     <p><b>Loose</b> excludes only the most obvious look-alikes. <b>Default</b> balances confidence and coverage. <b>Strict</b> also excludes less certain cognate-like words, leaving a smaller study deck.</p>
                 </div>
+            </div>
+            <div class="settings-tab-content" id="reviewTabContent">
+                <p class="settings-section-intro">Choose whether learned cards should return automatically when it is time to review them.</p>
+                <section class="settings-feature-card review-settings-card" aria-labelledby="reviewSettingsTitle">
+                    <span class="settings-feature-icon" aria-hidden="true">↻</span>
+                    <div>
+                        <strong id="reviewSettingsTitle">Scheduled review</strong>
+                        <p>When this is on, recalled cards return after increasingly longer gaps. A mistake brings a card back sooner.</p>
+                    </div>
+                    <div class="settings-default-row settings-default-row--standalone">
+                        <span class="settings-row-label-block">
+                            <span class="settings-row-label">Use scheduled review</span>
+                            <small>Turn it off to keep due cards in Known; mistakes still move cards into Review.</small>
+                        </span>
+                        <div class="group-size-selector settings-toggle" role="group" aria-label="Spaced repetition setting">
+                            <button type="button" class="group-size-btn global-study-default-btn selected" data-setting="spacedRepetitionEnabled" data-value="off" aria-pressed="true">Off</button>
+                            <button type="button" class="group-size-btn global-study-default-btn" data-setting="spacedRepetitionEnabled" data-value="on" aria-pressed="false">On</button>
+                        </div>
+                    </div>
+                    <p class="settings-feature-note">More scheduling controls will live here as the review system develops.</p>
+                </section>
             </div>
             <div class="settings-tab-content" id="vocabularyTabContent">
                 <p class="settings-section-intro">Bring words you already know into Fluency so your progress and study sets start in the right place.</p>
@@ -1648,6 +1658,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260912k"></script>
+    <script type="module" src="js/main.js?v=20260912l"></script>
 </body>
 </html>
