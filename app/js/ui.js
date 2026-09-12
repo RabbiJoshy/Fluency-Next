@@ -2198,7 +2198,7 @@ async function renderRangeSelector() {
         <div class="study-set-panel">
             <div class="study-set-overview">
                 <strong>${completedCount} of ${availableCount} sets seen</strong>
-                <span>New cards stay separate from due and unfinished review</span>
+                <span>Continue with the highlighted set, or choose another</span>
             </div>
             <div class="study-set-legend" aria-label="Set progress colours">
                 <span><i class="is-known"></i>Known</span>

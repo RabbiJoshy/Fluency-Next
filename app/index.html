@@ -40,14 +40,14 @@
             document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#eef2f5' : '#0a0e14';
         })();
     </script>
-    <link rel="stylesheet" href="css/style.css?v=20260912g">
+    <link rel="stylesheet" href="css/style.css?v=20260912j">
     <link rel="stylesheet" href="css/light-theme.css?v=20260828a">
     <!-- Module preloads. Without these the browser waits to discover the
          imports inside main.js before kicking off the per-module fetches,
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260912g">
+    <link rel="modulepreload" href="js/main.js?v=20260912i">
     <link rel="modulepreload" href="js/theme.js?v=20260825ak">
     <link rel="modulepreload" href="js/state.js?v=20260825ak">
     <link rel="modulepreload" href="js/data-contracts.js?v=20260825ak">
@@ -63,7 +63,7 @@
     <link rel="modulepreload" href="js/progress.js?v=20260912c">
     <link rel="modulepreload" href="js/progress-identity.js?v=20260831a">
     <link rel="modulepreload" href="js/knowledge.js?v=20260831a">
-    <link rel="modulepreload" href="js/ui.js?v=20260912f">
+    <link rel="modulepreload" href="js/ui.js?v=20260912g">
     <link rel="modulepreload" href="js/vocab.js?v=20260907a">
     <link rel="modulepreload" href="js/song-sets-core.js?v=20260825ak">
     <link rel="modulepreload" href="js/song-sets.js?v=20260823ae">
@@ -331,7 +331,9 @@
                         <span id="learningContextCoverage" class="learning-context-chip-progress"></span>
                         <span class="learning-context-chevron" aria-hidden="true">›</span>
                     </button>
-                    <button id="helpBtn" class="top-bar-text-btn">Tutorial</button>
+                    <button id="helpBtn" class="top-bar-icon-btn" type="button" title="Tutorial" aria-label="Open tutorial">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.8 9a2.3 2.3 0 0 1 4.45.8c0 1.7-2.25 1.95-2.25 3.45"></path><path d="M12 17h.01"></path></svg>
+                    </button>
                     <!-- Offline / sync-pending status pill. Hidden when online with an empty queue. -->
                     <button id="syncStatusIndicator" class="sync-status is-synced" type="button" title="Open synchronization details" onclick="showSettingsModalWithTab('offline')">Synced</button>
                     <button class="gear-btn top-bar-find" id="findWordBtn" title="Find a word">
@@ -516,13 +518,13 @@
                      release supports neither part. -->
                 <div id="setupOptions" class="setup-options" style="display: none;">
                     <div class="setup-options-bar">
-                        <span class="substep-title">Fewer cards</span>
+                        <span class="substep-title">Deck options</span>
                         <div id="fastModeSelector" class="group-size-selector fast-mode-selector">
                             <button type="button" class="fast-mode-btn" data-fast="off">Off</button>
                             <button type="button" class="fast-mode-btn" data-fast="on">On</button>
                         </div>
                         <span id="fastModeSummary" class="level-info-line fast-mode-summary"></span>
-                        <button type="button" id="fastModeDetailBtn" class="fast-mode-detail-btn">
+                        <button type="button" id="fastModeDetailBtn" class="fast-mode-detail-btn" onclick="window.openFastModePage?.()">
                             Adjust
                         </button>
                         <button type="button" id="extrasBtn" class="extras-btn" style="display: none;"></button>
@@ -534,7 +536,7 @@
             <div id="step4" class="setup-step" style="display: none;">
                 <div class="step-header step-header-with-help">
                     <span class="step-number" id="rangeStepNumber">3</span>
-                    <span class="step-title">Continue Level</span>
+                    <span class="step-title">Your next set</span>
                     <button class="step-help-btn" data-tooltip="step5Tooltip" title="About study sets" aria-label="About study sets">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6"></path><path d="M12 7.5h.01"></path></svg>
                     </button>
@@ -989,7 +991,7 @@
                 </div>
 
                 <p class="fast-mode-note" id="fastModeAvailability"></p>
-                <p class="fast-mode-note">Nothing is lost either way. Words fast mode sets aside stay
+                <p class="fast-mode-note">Nothing is lost. Words excluded by these options remain
                 available under <strong>Set aside</strong> on the setup screen.</p>
             </div>
         </div>
@@ -1624,6 +1626,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260912g"></script>
+    <script type="module" src="js/main.js?v=20260912i"></script>
 </body>
 </html>

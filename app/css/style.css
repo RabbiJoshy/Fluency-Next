@@ -14343,6 +14343,9 @@
    trying to understand. `.fullscreen-modal` caps at 600px for the other
    walkthroughs; this overrides that deliberately. */
 .fast-mode-page {
+  --accent-primary: #8795ff;
+  --accent-primary-rgb: 135, 149, 255;
+  --accent-primary-text: #10141b;
   max-width: none;
   width: 100%;
   min-height: 100%;
@@ -14351,6 +14354,12 @@
   margin: 0;
   background: var(--bg-primary, var(--bg-card));
   overflow-y: auto;
+}
+#fastModeModal .substep-title {
+  color: var(--text-secondary);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
 }
 #fastModeModal.modal { padding: 0; align-items: stretch; justify-content: stretch; }
 
@@ -14750,4 +14759,147 @@
   margin-bottom: 8px;
   color: var(--text-muted);
   font: 600 11px/1.2 var(--font-emphasis);
+}
+
+/* ── Calm product shell ──────────────────────────────────────────────────
+   A stable neutral shell keeps the language itself—not changing chrome and
+   nested panels—as the visual subject. Language colours still belong to the
+   flashcards; setup uses one quiet product accent. */
+:root {
+  --bg-primary: #0b0f14;
+  --bg-secondary: #10161d;
+  --bg-tertiary: #161d26;
+  --bg-card: #1a222c;
+  --bg-card-hover: #202a35;
+  --text-secondary: #d1d7df;
+  --text-muted: #8e99a8;
+  --border-color: #28323e;
+  --border-light: #3a4654;
+}
+body {
+  background-color: var(--bg-primary);
+  background-image: radial-gradient(circle at 50% -18%, rgba(125, 143, 166, .13), transparent 42%);
+}
+#setupPanel,
+.auth-modal-content {
+  --accent-primary: #8795ff;
+  --accent-primary-rgb: 135, 149, 255;
+  --accent-secondary: #9ccfbe;
+  --accent-secondary-rgb: 156, 207, 190;
+  --accent-primary-text: #10141b;
+  --accent-secondary-text: #10141b;
+}
+
+#topBar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding: 8px 10px;
+  border-color: color-mix(in srgb, var(--border-color) 82%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .16);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.top-bar-header { min-height: 36px; gap: 7px; }
+.top-bar-icon-btn {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease;
+}
+.top-bar-icon-btn:hover,
+.top-bar-icon-btn:focus-visible {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  outline: none;
+}
+.top-bar-icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sync-status.is-synced { display: none; }
+#topBar .gear-btn { width: 34px; height: 34px; border-radius: 9px; }
+#topBar .top-bar-find { margin-left: auto; }
+#topBar .top-bar-gear { margin-left: 0; }
+
+/* One level surface and one set surface, rather than a card wrapped around
+   another card. Spacing now supplies most of the hierarchy. */
+#step2,
+#step4 {
+  padding: 12px 2px 4px;
+  border: 0;
+  background: transparent;
+}
+#step2 > .step-header,
+#step4 > .step-header { padding: 0 4px; }
+#step2 .level-selector {
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-tertiary) 78%, transparent);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, .10);
+}
+#step4 .study-set-panel {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .13);
+}
+.study-set-dot.is-current {
+  animation: none;
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 2px rgba(var(--accent-primary-rgb), .42);
+}
+
+/* Advanced choices read as one quiet disclosure row. The modal contains the
+   two actual choices; a second master switch on the home screen was redundant. */
+.setup-options {
+  margin-top: 12px;
+  padding: 10px 11px;
+  border: 1px solid var(--border-color);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--bg-tertiary) 66%, transparent);
+}
+.setup-options-bar { gap: 8px; }
+.setup-options-bar #fastModeSelector { display: none; }
+.setup-options-bar .substep-title {
+  color: var(--text-secondary);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.fast-mode-summary {
+  font-family: var(--font-reading);
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 1;
+}
+.fast-mode-detail-btn,
+.extras-btn {
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: transparent;
+}
+
+/* Reserve loud type for actual headings. Eyebrows stay useful but no longer
+   resemble technical dashboard labels. */
+.progress-modal-eyebrow,
+.deck-complete-eyebrow,
+.artist-source-eyebrow {
+  letter-spacing: .06em;
+  opacity: .8;
+}
+
+@media (max-width: 560px) {
+  .container { padding: 10px 12px; }
+  #topBar { margin-bottom: 10px; }
+  .learning-context-chip { border-color: transparent; background: transparent; padding-left: 4px; }
+  .setup-options-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; }
+  .fast-mode-detail-btn { grid-column: 3; grid-row: 1; }
+  .extras-btn { grid-column: 1 / -1; justify-self: start; }
 }

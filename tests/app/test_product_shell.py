@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v360"
+EXPECTED_CACHE_NAME = "flashcards-v361"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -255,10 +255,21 @@ class ProductShellTests(unittest.TestCase):
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
         about = (APP_ROOT / "content" / "about.md").read_text(encoding="utf-8")
         auth = (APP_ROOT / "js" / "auth.js").read_text(encoding="utf-8")
-        self.assertIn('<button id="helpBtn" class="top-bar-text-btn">Tutorial</button>', html)
+        self.assertIn('id="helpBtn" class="top-bar-icon-btn"', html)
+        self.assertIn('aria-label="Open tutorial"', html)
         self.assertIn("[Start tutorial](example://walkthrough)", about)
         self.assertIn("window.startAboutTutorial = startAboutTutorial", auth)
         self.assertIn("window.openTutorialIntroduction?.()", auth)
+
+    def test_setup_shell_uses_a_quiet_single_surface_hierarchy(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
+        self.assertIn('<span class="step-title">Your next set</span>', html)
+        self.assertIn('<span class="substep-title">Deck options</span>', html)
+        self.assertIn(".sync-status.is-synced { display: none; }", css)
+        self.assertIn(".setup-options-bar #fastModeSelector { display: none; }", css)
+        self.assertIn("#step2,\n#step4 {", css)
+        self.assertIn("--accent-primary: #8795ff;", css)
 
     def test_in_app_tutorial_has_a_short_separate_intro_and_top_action(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
@@ -476,7 +487,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260912g", worker)
+        self.assertIn("/js/main.js?v=20260912i", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
