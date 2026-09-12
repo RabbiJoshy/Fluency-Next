@@ -76,10 +76,9 @@ function collectExtras() {
     // a local in both, never a global.
     const vocab = g().setupVocabularySnapshot || g().cachedVocabularyData;
     if (!Array.isArray(vocab) || vocab.length === 0) return empty;
-    // Artist mode has its own Extra scope with its own categories; showing a
-    // second, differently-defined Extras panel there would be two answers to
-    // the same question.
-    if (g().activeArtist) return empty;
+    // Artist releases may also have a pipeline-defined Extra scope, but that
+    // is a different concept. This list reports only the learner's Fast track
+    // choices and therefore stays available in both Speech and Lyrics.
 
     const hosts = representativesByLemma(vocab);
     const cognates = [];
@@ -130,10 +129,11 @@ function renderRows(entries, kind) {
         const note = kind === 'cognate'
             ? cognateNote(item)
             : `merged into <strong>${escapeHtml(mergedInto.word)}</strong>`;
-        return `<li class="extras-row">
+        return `<li class="extras-row" data-search-text="${escapeHtml(`${item.word} ${translation} ${note.replace(/<[^>]+>/g, '')}`.toLocaleLowerCase())}">
             <span class="extras-word">${escapeHtml(item.word)}</span>
             <span class="extras-translation">${escapeHtml(translation)}</span>
             <span class="extras-note${kind === 'cognate' ? ' extras-score' : ''}">${note}</span>
+            <button type="button" class="extras-open-card" data-card-id="${escapeHtml(item.id || '')}">Open card</button>
         </li>`;
     }).join('');
 }
@@ -146,24 +146,21 @@ function renderExtras() {
     const sections = [];
     if (cognates.length > 0) {
         sections.push(`<section class="extras-section">
-            <h4>Cognates <span class="extras-count">${cognates.length}</span></h4>
-            <p class="extras-blurb">Excluded because they resemble their translation closely enough to
-            recognise for free. Switch Cognates to Include to study them.</p>
+            <h4>Familiar words <span class="extras-count">${cognates.length}</span></h4>
+            <p class="extras-blurb">Set aside because they closely resemble a word with the same meaning in a language you already know.</p>
             <ul class="extras-list">${renderRows(cognates, 'cognate')}</ul>
         </section>`);
     }
     if (lemmas.length > 0) {
         sections.push(`<section class="extras-section">
             <h4>Merged forms <span class="extras-count">${lemmas.length}</span></h4>
-            <p class="extras-blurb">Still in the deck, on the card for their base form. Switch Merge
-            Lemmas off to study each form as its own card.</p>
+            <p class="extras-blurb">Included on the shared card for their dictionary form rather than repeated as separate cards.</p>
             <ul class="extras-list">${renderRows(lemmas, 'lemma')}</ul>
         </section>`);
     }
     body.innerHTML = sections.length > 0
         ? sections.join('')
-        : `<p class="extras-empty">Nothing is being excluded. Both Merge Lemmas and Cognates are
-           set to keep every word in the deck.</p>`;
+        : `<p class="extras-empty">Nothing is being skipped. Fast track is currently showing every word as its own card.</p>`;
     return { cognates, lemmas };
 }
 
@@ -176,11 +173,20 @@ function refreshExtrasButton() {
     const { cognates, lemmas } = collectExtras();
     const total = cognates.length + lemmas.length;
     button.style.display = total > 0 ? 'inline-flex' : 'none';
-    button.textContent = total === 1 ? '1 word set aside' : `${total} words set aside`;
+    button.textContent = total === 1 ? 'See 1 skipped word' : `See ${total} skipped words`;
+}
+
+function filterExtras(query) {
+    const needle = String(query || '').trim().toLocaleLowerCase();
+    document.querySelectorAll('#extrasBody .extras-row').forEach(row => {
+        row.hidden = Boolean(needle) && !String(row.dataset.searchText || '').includes(needle);
+    });
 }
 
 function openExtras() {
     renderExtras();
+    const search = document.getElementById('extrasSearch');
+    if (search) search.value = '';
     document.getElementById('extrasModal')?.classList.remove('hidden');
 }
 
@@ -193,6 +199,14 @@ function initExtras() {
     document.getElementById('closeExtrasModal')?.addEventListener('click', closeExtras);
     document.getElementById('extrasModal')?.addEventListener('click', event => {
         if (event.target?.id === 'extrasModal') closeExtras();
+    });
+    document.getElementById('extrasSearch')?.addEventListener('input', event => filterExtras(event.currentTarget.value));
+    document.getElementById('extrasBody')?.addEventListener('click', async event => {
+        const button = event.target.closest('.extras-open-card');
+        const id = button?.dataset.cardId;
+        if (!id || !globalThis.popupFoundWord) return;
+        closeExtras();
+        await globalThis.popupFoundWord({ id }, { reopenSearchOnBack: false, startFlipped: true });
     });
     document.addEventListener('keydown', event => {
         if (event.key === 'Escape') closeExtras();

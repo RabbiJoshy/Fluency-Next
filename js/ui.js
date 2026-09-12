@@ -2446,8 +2446,15 @@ function showSettingsModalWithTab(tabName, { singleTab = false } = {}) {
     const userBadge = currentUser ? (currentUser.isGuest ? 'GUEST' : currentUser.initials) : 'GUEST';
     document.getElementById('accountUserBadge').textContent = userBadge;
     const vocabularyImportButton = document.getElementById('openVocabularyImportBtn');
+    const vocabularyImportAvailability = document.getElementById('vocabularyImportAvailability');
     if (vocabularyImportButton) {
-        vocabularyImportButton.hidden = !(currentUser && !currentUser.isGuest);
+        const canImport = Boolean(currentUser && !currentUser.isGuest);
+        vocabularyImportButton.hidden = !canImport;
+        if (vocabularyImportAvailability) {
+            vocabularyImportAvailability.textContent = canImport
+                ? 'Currently available for Spanish everyday speech.'
+                : 'Continue with initials to import and save vocabulary.';
+        }
     }
     const isJstAccount = Boolean(window.isAuditAccount?.());
     const appDataTabBtn = document.getElementById('appDataTabBtn');
@@ -2469,8 +2476,10 @@ function showSettingsModalWithTab(tabName, { singleTab = false } = {}) {
     const tabContentIds = {
         account: 'accountTabContent',
         study: 'studyTabContent',
+        vocabulary: 'vocabularyTabContent',
         appearance: 'appearanceTabContent',
         offline: 'offlineTabContent',
+        about: 'aboutTabContent',
         appData: 'appDataTabContent'
     };
     const requestedTab = tabContentIds[tabName] && (tabName !== 'appData' || isJstAccount)

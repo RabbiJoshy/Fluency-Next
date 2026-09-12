@@ -60,15 +60,9 @@ function currentState() {
 function summaryText() {
     const state = currentState();
     if (state === 'unavailable') return '';
-    const parts = [];
-    if (lemmaAvailable()) parts.push(`forms ${lemmaOn() ? 'merged' : 'separate'}`);
-    if (cognateAvailable()) {
-        parts.push(`familiar words ${cognatesExcluded() ? 'set aside' : 'included'}`);
-    }
-    const described = parts.join(', ');
-    if (state === 'on') return `Fewer cards — ${described}`;
-    if (state === 'off') return described;
-    return `Custom — ${described}`;
+    if (state === 'on') return 'On · less repetition';
+    if (state === 'off') return 'Off · full deck';
+    return 'Custom';
 }
 
 // Turning fast mode on or off drives the real controls, so every side effect

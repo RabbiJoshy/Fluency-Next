@@ -40,14 +40,14 @@
             document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#eef2f5' : '#0a0e14';
         })();
     </script>
-    <link rel="stylesheet" href="css/style.css?v=20260912k">
+    <link rel="stylesheet" href="css/style.css?v=20260912l">
     <link rel="stylesheet" href="css/light-theme.css?v=20260828a">
     <!-- Module preloads. Without these the browser waits to discover the
          imports inside main.js before kicking off the per-module fetches,
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260912j">
+    <link rel="modulepreload" href="js/main.js?v=20260912k">
     <link rel="modulepreload" href="js/theme.js?v=20260825ak">
     <link rel="modulepreload" href="js/state.js?v=20260825ak">
     <link rel="modulepreload" href="js/data-contracts.js?v=20260825ak">
@@ -63,7 +63,7 @@
     <link rel="modulepreload" href="js/progress.js?v=20260912c">
     <link rel="modulepreload" href="js/progress-identity.js?v=20260831a">
     <link rel="modulepreload" href="js/knowledge.js?v=20260831a">
-    <link rel="modulepreload" href="js/ui.js?v=20260912h">
+    <link rel="modulepreload" href="js/ui.js?v=20260912i">
     <link rel="modulepreload" href="js/vocab.js?v=20260907a">
     <link rel="modulepreload" href="js/song-sets-core.js?v=20260825ak">
     <link rel="modulepreload" href="js/song-sets.js?v=20260823ae">
@@ -502,7 +502,7 @@
                      release supports neither part. -->
                 <div id="setupOptions" class="setup-options" style="display: none;">
                     <div class="setup-options-bar">
-                        <span class="substep-title">Deck options</span>
+                        <span class="substep-title fast-track-label"><span aria-hidden="true">⚡</span> Fast track</span>
                         <div id="fastModeSelector" class="group-size-selector fast-mode-selector">
                             <button type="button" class="fast-mode-btn" data-fast="off">Off</button>
                             <button type="button" class="fast-mode-btn" data-fast="on">On</button>
@@ -945,30 +945,35 @@
         <div class="modal-content fullscreen-modal fast-mode-page">
             <button class="modal-close fast-mode-close" id="closeFastModeModal" aria-label="Close">✕</button>
             <div class="fast-mode-page-body">
-                <h2>Fewer cards</h2>
-                <p class="fast-mode-lede">Choose either option—or both—to shorten a deck without
-                changing which part of the language the level covers.</p>
+                <span class="product-modal-eyebrow">A shorter route</span>
+                <h2>Fast track</h2>
+                <p class="fast-mode-lede">Move through each level faster by reducing repetition.
+                Nothing is deleted.</p>
 
                 <div class="fast-mode-controls">
                     <div id="lemmaToggleContainer" class="setup-substep" style="display: none;">
                         <div class="substep-header">
-                            <span class="substep-title">Merge word forms</span>
+                            <span class="substep-title">Group word forms</span>
                         </div>
-                        <p class="fast-mode-explainer">One card per dictionary word. "run", "runs",
-                        "ran" and "running" share a card, and their examples pool together.</p>
+                        <p class="fast-mode-explainer">Study related forms together on one card.</p>
+                        <div class="fast-mode-example" aria-label="Example of grouped word forms"><span>hablo</span><span>habló</span><span>hablar</span><b>→ hablar</b></div>
                         <div id="lemmaToggleSelector" class="group-size-selector">
                             <button class="lemma-toggle-btn selected" data-lemma="off" data-short="Off" data-full="Off">Off</button>
                             <button class="lemma-toggle-btn" data-lemma="on" data-short="On" data-full="On">On</button>
                         </div>
                         <span id="lemmaInfoLine" class="level-info-line substep-info-below" style="display: none;"></span>
+                        <details class="fast-mode-details">
+                            <summary>Technical details</summary>
+                            <p>Inflected forms are grouped by their lemma—the dictionary form of the word. Their frequency and examples are pooled on the shared card.</p>
+                        </details>
                     </div>
 
                     <div id="cognateToggleContainer" class="setup-substep" style="display: none;">
                         <div class="substep-header">
                             <span class="substep-title">Skip familiar words</span>
                         </div>
-                        <p class="fast-mode-explainer">Words close enough to a language you already
-                        read that you would recognise them without study.</p>
+                        <p class="fast-mode-explainer">Set aside words that closely resemble an English word with the same meaning.</p>
+                        <div class="fast-mode-example" aria-label="Examples of familiar words"><span>animal</span><span>hotel</span><span>chocolate</span></div>
                         <div id="cognateToggleSelector" class="group-size-selector">
                             <button class="cognate-toggle-btn" data-cognate="exclude" data-short="Exclude" data-full="Exclude">Exclude</button>
                             <button class="cognate-toggle-btn selected" data-cognate="include" data-short="Include" data-full="Include">Include</button>
@@ -978,13 +983,16 @@
                             <span>Compare with</span>
                             <div id="knownLanguagesSelector" class="group-size-selector known-languages-selector"></div>
                         </div>
+                        <details class="fast-mode-details">
+                            <summary>How words are identified</summary>
+                            <p>The app compares spelling and meaning across languages, with adjustable sensitivity. Its rules aim to keep misleading look-alikes in the study deck.</p>
+                        </details>
                     </div>
 
                 </div>
 
                 <p class="fast-mode-note" id="fastModeAvailability"></p>
-                <p class="fast-mode-note">Nothing is lost. Words excluded by these options remain
-                available under <strong>Set aside</strong> on the setup screen.</p>
+                <p class="fast-mode-note">Grouped forms remain on their shared card. Familiar words can be restored at any time.</p>
             </div>
         </div>
     </div>
@@ -995,9 +1003,11 @@
     <div id="extrasModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Set aside</h3>
+                <div><span class="product-modal-eyebrow">Fast track</span><h3>Skipped words</h3></div>
                 <button class="modal-close" id="closeExtrasModal" aria-label="Close">✕</button>
             </div>
+            <p class="extras-intro">Words not shown as separate cards, with the reason for each choice.</p>
+            <input type="search" id="extrasSearch" class="extras-search" placeholder="Search skipped words" autocomplete="off">
             <div class="extras-body" id="extrasBody"></div>
         </div>
     </div>
@@ -1289,9 +1299,11 @@
             </div>
             <nav class="settings-tabs" aria-label="Settings sections">
                     <button class="settings-tab active" data-tab="study">Study</button>
+                    <button class="settings-tab" data-tab="vocabulary">Vocabulary</button>
                     <button class="settings-tab" data-tab="appearance">Appearance</button>
                     <button class="settings-tab" data-tab="account">Account</button>
                     <button class="settings-tab" data-tab="offline">Storage</button>
+                    <button class="settings-tab" data-tab="about">About</button>
                     <button class="settings-tab" data-tab="appData" id="appDataTabBtn" hidden>Developer</button>
             </nav>
             <!-- Settings tab content -->
@@ -1307,9 +1319,10 @@
                     <!-- Deck Settings: everything that changes which cards the
                          deck contains. Each row carries a "?" that reveals a
                          one-line description of what the toggle actually does. -->
+                    <div class="settings-preference-group settings-preference-group--primary">
                     <div class="settings-group-heading">
-                        <strong>Deck contents</strong>
-                        <span>Choose what to practise</span>
+                        <strong>Fast track</strong>
+                        <span>Reduce repetition</span>
                     </div>
                     <div class="settings-default-row">
                         <span class="settings-row-label-block">
@@ -1355,6 +1368,12 @@
                             <button class="cognate-sens-btn group-size-btn" data-threshold="0.75" title="Skip more cognate-like words">Strict</button>
                         </div>
                     </div>
+                    </div>
+                    <div class="settings-preference-group">
+                    <div class="settings-group-heading">
+                        <strong>Study routine</strong>
+                        <span>Review and context</span>
+                    </div>
                     <div class="settings-default-row">
                         <span class="settings-row-label-block">
                             <span class="settings-row-label">Review scheduling
@@ -1391,9 +1410,11 @@
                             <button type="button" class="group-size-btn global-study-default-btn selected" data-setting="phrasesMode" data-value="on" aria-pressed="true">On</button>
                         </div>
                     </div>
+                    </div>
 
                     <!-- Learning Settings: how the active card looks and behaves.
                          These never change which cards are in the deck. -->
+                    <div class="settings-preference-group">
                     <div class="settings-group-heading">
                         <strong>Card experience</strong>
                         <span>How each card behaves</span>
@@ -1422,11 +1443,24 @@
                             <button type="button" class="group-size-btn global-study-default-btn selected" data-setting="speechEnabled" data-value="on" aria-pressed="true">On</button>
                         </div>
                     </div>
+                    </div>
                 </section>
                 <div class="settings-inline-explanation" id="cognateSensitivityExplanation" hidden>
                     <strong>How sensitivity works</strong>
                     <p><b>Loose</b> excludes only the most obvious look-alikes. <b>Default</b> balances confidence and coverage. <b>Strict</b> also excludes less certain cognate-like words, leaving a smaller study deck.</p>
                 </div>
+            </div>
+            <div class="settings-tab-content" id="vocabularyTabContent">
+                <p class="settings-section-intro">Bring words you already know into Fluency so your progress and study sets start in the right place.</p>
+                <section class="settings-feature-card" aria-labelledby="vocabularySettingsTitle">
+                    <span class="settings-feature-icon" aria-hidden="true">Aa</span>
+                    <div>
+                        <strong id="vocabularySettingsTitle">Import known vocabulary</strong>
+                        <p>Paste a list or upload a text, CSV or TSV file. Fluency matches exact Spanish word forms, previews every change, and preserves newer answers already saved here.</p>
+                    </div>
+                    <button type="button" class="settings-feature-action" id="openVocabularyImportBtn">Import words</button>
+                    <p id="vocabularyImportAvailability" class="settings-feature-note"></p>
+                </section>
             </div>
             <div class="settings-tab-content" id="appearanceTabContent">
                 <p class="settings-section-intro">Choose the appearance that feels most comfortable on this device.</p>
@@ -1448,27 +1482,10 @@
             </div>
             <!-- Account tab content -->
             <div class="settings-tab-content" id="accountTabContent">
-                <p class="settings-section-intro">Your profile, learning tools and information about Fluency.</p>
+                <p class="settings-section-intro">Manage the profile used to save progress on this device.</p>
                 <div class="stat-row">
                     <span>Your profile</span>
                     <span id="accountUserBadge" style="font-weight: 700;">GUEST</span>
-                </div>
-                <button type="button" class="stat-row settings-action-row" id="openVocabularyImportBtn" hidden>
-                    <span>
-                        <strong>Import vocabulary</strong>
-                        <small>Mark Spanish Speech cards from a text, CSV or TSV list</small>
-                    </span>
-                    <span class="settings-row-action">Open</span>
-                </button>
-                <div class="stat-row" style="cursor: pointer;" id="aboutProjectSettingsRow">
-                    <span>About this project</span>
-                    <span style="color: var(--text-muted);">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                    </span>
                 </div>
                 <div class="stat-row" style="cursor: pointer;" id="logoutBtn">
                     <span>Logout</span>
@@ -1480,6 +1497,14 @@
                         </svg>
                     </span>
                 </div>
+            </div>
+            <div class="settings-tab-content" id="aboutTabContent">
+                <p class="settings-section-intro">Learn why Fluency is organised around frequency, context and finishable sets.</p>
+                <button type="button" class="settings-feature-card settings-feature-card--button" id="aboutProjectSettingsRow">
+                    <span class="settings-feature-icon" aria-hidden="true">F</span>
+                    <span><strong>About Fluency</strong><small>The thinking, data and design behind the project</small></span>
+                    <span class="settings-feature-arrow" aria-hidden="true">→</span>
+                </button>
             </div>
             <!-- Offline and synchronization tab content -->
             <div class="settings-tab-content" id="offlineTabContent">
@@ -1623,6 +1648,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260912j"></script>
+    <script type="module" src="js/main.js?v=20260912k"></script>
 </body>
 </html>
