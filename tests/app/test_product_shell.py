@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v354"
+EXPECTED_CACHE_NAME = "flashcards-v355"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -155,7 +155,7 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn('class="meaning-row-check"', walkthrough)
         self.assertIn('class="compact-example-counter"', walkthrough)
         self.assertIn('class="compact-example-counter-label"', walkthrough)
-        self.assertIn("card: 'tem'", walkthrough)
+        self.assertIn("speechCard: 'tem'", walkthrough)
         self.assertIn('class="sense-metadata-tier sense-metadata-tier--primary"', walkthrough)
         self.assertIn('class="sense-metadata-more"', walkthrough)
         self.assertIn('class="sense-cross-reference"', walkthrough)
@@ -205,7 +205,14 @@ class ProductShellTests(unittest.TestCase):
         main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
         self.assertGreaterEqual(auth.count("window.openFirstRunAboutExample?.()"), 2)
         self.assertIn("function openFirstRunAboutExample()", walkthrough)
-        self.assertIn("const TUTORIAL_DECK_SEQUENCE = [1, 0]", walkthrough)
+        self.assertIn("const TUTORIAL_LANGUAGE_ADAPTERS", walkthrough)
+        self.assertIn("function tutorialDeckSequence()", walkthrough)
+        self.assertIn("Step ${progress.current} of ${progress.total}", walkthrough)
+        self.assertNotIn("TUTORIAL_DECK_SEQUENCE", walkthrough)
+        self.assertIn("spanish: { language: 'Spanish'", walkthrough)
+        self.assertIn("portuguese: { language: 'Portuguese'", walkthrough)
+        self.assertIn("czech: { language: 'Czech'", walkthrough)
+        self.assertIn("french: { language: 'French'", walkthrough)
         self.assertNotIn("function renderTabs()", walkthrough)
         self.assertIn("fluencyCardWalkthroughSeenV1", walkthrough)
         self.assertIn("fluencyCardWalkthroughSeenV1", flashcards)
@@ -224,7 +231,7 @@ class ProductShellTests(unittest.TestCase):
         main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
         intro = html.index('id="tutorialIntroModal"')
         start = html.index('id="startCardTutorialBtn"', intro)
-        first_paragraph = html.index("Fluency teaches vocabulary", intro)
+        first_paragraph = html.index('id="tutorialIntroModes"', intro)
         self.assertLess(start, first_paragraph)
 
         self.assertIn("window.openAboutExample?.()", main)
@@ -432,7 +439,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260911c", worker)
+        self.assertIn("/js/main.js?v=20260912b", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:

@@ -6,7 +6,7 @@ import { initOfflineContent } from './offline-content.js?v=20260825ak';
 import './speech.js?v=20260824d';
 import './artist-ui.js?v=20260825ak';
 import './auth.js?v=20260911b';
-import './about-example.js?v=20260911b';
+import './about-example.js?v=20260912b';
 import './estimation.js?v=20260825ak';
 import './config.js?v=20260907a';
 import './progress.js?v=20260908d';
@@ -23,6 +23,17 @@ import './flashcards.js?v=20260912a';
 import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 
 function openTutorialIntroduction() {
+    const profile = window.getCardTutorialProfile?.();
+    const modes = document.getElementById('tutorialIntroModes');
+    const language = document.getElementById('tutorialIntroLanguage');
+    if (profile && modes) {
+        modes.textContent = profile.lyrics
+            ? `Speech teaches frequent ${profile.language} vocabulary from dialogue. Lyrics then applies the same method to songs; the tutorial takes you through both in one sequence.`
+            : `Speech teaches frequent ${profile.language} vocabulary from dialogue. Lyrics uses the same method for songs and will join the tutorial when it becomes available for ${profile.language}.`;
+    }
+    if (profile && language) {
+        language.textContent = `The tutorial uses a ${profile.language} card and adapts its sense details to ${profile.provider}, so it only teaches controls and metadata this language actually has.`;
+    }
     document.getElementById('tutorialIntroModal')?.classList.remove('hidden');
 }
 

@@ -184,7 +184,88 @@ const ABOUT_EXAMPLE_CARDS = {
             },
         ],
     },
+    queSpeech: {
+        mode: 'speech', word: 'que', pos: 'CCONJ', rank: 1, corpusCount: 60,
+        frequencyLabel: 'Frequency from the Spanish release',
+        meanings: [
+            {
+                pos: 'CCONJ', translation: 'that', context: 'introduces a subordinate clause', pct: 34,
+                metadata: [{ short: 'subordinate clause', full: 'used to introduce a subordinate clause', family: 'functional' }],
+                examples: [{ target: 'Es sólo que no es sutil.', english: "It’s just that it isn’t subtle.", sourceLabel: 'Speech example' }],
+            },
+            {
+                pos: 'CCONJ', translation: 'than; to', context: 'used in comparisons', pct: 33,
+                metadata: [{ short: 'comparison', full: 'used in comparisons', family: 'construction' }],
+                examples: [{ target: 'Prefiero las tiendas pequeñas que los grandes supermercados.', english: 'I prefer small stores to big supermarkets.', sourceLabel: 'SpanishDict example' }],
+            },
+            {
+                pos: 'PRON', translation: 'that; which', context: 'defines the object', pct: 33,
+                examples: [{ target: 'Ese es el teléfono que yo quiero.', english: 'That is the phone that I want.', sourceLabel: 'SpanishDict example' }],
+            },
+        ],
+    },
+    jeSpeech: {
+        mode: 'speech', word: 'je', pos: 'VERB', rank: 3, corpusCount: 60,
+        frequencyLabel: 'Frequency from the Czech release',
+        meanings: [
+            {
+                pos: 'VERB', translation: 'to be (to exist)', pct: 40,
+                metadata: [{ short: 'impf.', full: 'imperfective', family: 'grammar' }],
+                examples: [{ target: 'A co myslíš, že to je?', english: 'And what do you think it is?', sourceLabel: 'Speech example' }],
+            },
+            {
+                pos: 'VERB', translation: 'to be', pct: 60,
+                metadata: [{ short: '3rd sg. present', full: 'third-person singular present', family: 'grammar' }],
+                examples: [{ target: 'Ten kabát je vlhký.', english: 'The coat is wet.', sourceLabel: 'Wiktionary example' }],
+            },
+        ],
+    },
+    deSpeech: {
+        mode: 'speech', word: 'de', pos: 'PREP', rank: 1, corpusCount: 3,
+        frequencyLabel: 'Frequency from the French release',
+        meanings: [
+            {
+                pos: 'PREP', translation: 'of', context: 'possession, association or relationship',
+                metadata: [{ short: 'relationship', full: 'indicates possession, association or relationship', family: 'functional' }],
+                examples: [{ target: 'Paris est la capitale de la France.', english: 'Paris is the capital of France.', sourceLabel: 'Wiktionary example' }],
+            },
+            {
+                pos: 'PREP', translation: 'from; of', context: 'after a negation',
+                metadata: [{ short: 'after negation', full: 'used with an object in a negated sentence', family: 'construction' }],
+                examples: [{ target: 'Elle n’a pas de mère.', english: 'She does not have a mother.', sourceLabel: 'Wiktionary example' }],
+            },
+        ],
+    },
 };
+
+// Each language selects its own representative card and dictionary wording.
+// The controller below remains shared, so another language needs only a card
+// and one adapter entry instead of a forked tutorial.
+const TUTORIAL_LANGUAGE_ADAPTERS = {
+    spanish: { language: 'Spanish', speechCard: 'queSpeech', provider: 'SpanishDict', lyrics: true, usageShares: true },
+    portuguese: { language: 'Portuguese', speechCard: 'tem', provider: 'Wiktionary', lyrics: false, usageShares: true, crossReferences: true },
+    czech: { language: 'Czech', speechCard: 'jeSpeech', provider: 'Wiktionary', lyrics: false, usageShares: true },
+    french: { language: 'French', speechCard: 'deSpeech', provider: 'Wiktionary', lyrics: false },
+};
+
+function tutorialLanguageKey() {
+    const candidate = window.activeArtist?.language || window.selectedLanguage || 'spanish';
+    return TUTORIAL_LANGUAGE_ADAPTERS[candidate] ? candidate : 'spanish';
+}
+
+function tutorialAdapter() {
+    const key = tutorialLanguageKey();
+    const adapter = TUTORIAL_LANGUAGE_ADAPTERS[key];
+    const configuredLyrics = window.config?.languages?.[key]?.capabilities?.lyrics;
+    return { ...adapter, lyrics: adapter.lyrics && configuredLyrics !== false };
+}
+
+function tutorialText(value) {
+    const adapter = tutorialAdapter();
+    return String(value || '')
+        .replaceAll('{language}', adapter.language)
+        .replaceAll('{provider}', adapter.provider);
+}
 
 const CARD_WALKTHROUGH_SEEN_KEY = 'fluencyCardWalkthroughSeenV1';
 const LEGACY_CARD_WALKTHROUGH_PROMPT_KEY = 'fluencyCardWalkthroughPromptV1';
@@ -354,12 +435,12 @@ const ABOUT_EXAMPLE_DECKS = [
 
     {
         id: 'speech',
-        card: 'tem',
+        card: null,
         tab: 'Speech',
         faces: {
             back: {
                 title: 'A dictionary-rich card without the dictionary clutter',
-                blurb: 'This Portuguese speech card has several Wiktionary senses. The overview '
+                blurb: 'This {language} speech card has several {provider} senses. The overview '
                      + 'stays brief; the selected sense reveals its full wording and compact '
                      + 'grammar, register and region details beside the matching sentence.',
                 notes: [
@@ -367,8 +448,8 @@ const ABOUT_EXAMPLE_DECKS = [
                         side: 'left',
                         anchor: '.back-headword',
                         title: 'The surface form',
-                        text: '<em>tem</em> is shown as it actually appears in speech. The card can '
-                            + 'still connect its senses to the dictionary headword <em>ter</em>.',
+                        text: 'The word is shown as it actually appears in {language} speech. The card '
+                            + 'can still connect the surface form to its dictionary analysis.',
                     },
                     {
                         side: 'left',
@@ -389,8 +470,9 @@ const ABOUT_EXAMPLE_DECKS = [
                     {
                         side: 'left',
                         anchor: '.sense-cross-reference',
+                        requires: 'crossReferences',
                         title: 'References become navigation',
-                        text: 'A Wiktionary “See” target is a real card link in the app, instead '
+                        text: 'A {provider} “See” target is a real card link in the app, instead '
                             + 'of dead editorial text.',
                     },
                     {
@@ -404,6 +486,7 @@ const ABOUT_EXAMPLE_DECKS = [
                     {
                         side: 'right',
                         anchor: '.about-example-pct',
+                        requires: 'usageShares',
                         title: 'Usage share stays separate',
                         text: 'Dictionary examples and metadata do not change these percentages; '
                             + 'they describe the speech evidence assigned to each sense.',
@@ -438,7 +521,7 @@ const ABOUT_EXAMPLE_DECKS = [
                         side: 'left',
                         anchor: '.card-rank-label',
                         title: 'How common it is',
-                        text: 'The 47th most-used form in Portuguese film and TV dialogue.',
+                        text: 'Its rank shows where this form sits in the {language} speech deck.',
                     },
                     {
                         side: 'right',
@@ -520,7 +603,9 @@ function renderFront(card) {
     const rankLabel = `<span class="card-rank-label">Vocabulary rank: `
         + `<strong class="card-stat-value">${card.rank.toLocaleString()}</strong></span>`;
     const count = `<strong class="card-stat-value">${card.corpusCount.toLocaleString()}</strong>`;
-    const freqLabel = card.mode === 'lyrics'
+    const freqLabel = card.frequencyLabel
+        ? `<span class="card-freq-label">${esc(card.frequencyLabel)}</span>`
+        : card.mode === 'lyrics'
         ? `<span class="card-freq-label">Lyric lines: ${count}</span>`
         : `<span class="card-freq-label">Frequency: ${count}/million</span>`;
 
@@ -707,7 +792,9 @@ const state = {
 // The source order is intentional: first teach the everyday Speech card,
 // then reveal that the same study model works with Lyrics and live playback.
 // ABOUT_EXAMPLE_DECKS retains its data order; this owns the tutorial story.
-const TUTORIAL_DECK_SEQUENCE = [1, 0];
+function tutorialDeckSequence() {
+    return tutorialAdapter().lyrics ? [1, 0] : [1];
+}
 
 const MOBILE_WALKTHROUGH_QUERY = '(max-width: 700px)';
 
@@ -716,7 +803,8 @@ function isMobileWalkthrough() {
 }
 
 function currentDeck() {
-    return ABOUT_EXAMPLE_DECKS[TUTORIAL_DECK_SEQUENCE[state.chapterIndex]];
+    const deck = ABOUT_EXAMPLE_DECKS[tutorialDeckSequence()[state.chapterIndex]];
+    return deck.id === 'speech' ? { ...deck, card: tutorialAdapter().speechCard } : deck;
 }
 
 function currentCard() {
@@ -732,11 +820,33 @@ function currentFace() {
 // Left column first, then right, so the numbers run in reading order and each
 // badge sits on the same side as the note explaining it.
 function orderedNotes() {
-    const notes = currentFace().notes;
+    const notes = currentFace().notes.filter(note => !note.requires || tutorialAdapter()[note.requires]);
     return [
         ...notes.filter(n => n.side !== 'right'),
         ...notes.filter(n => n.side === 'right'),
     ];
+}
+
+function tutorialFaceNotes(deck, faceName) {
+    const notes = deck.faces[faceName].notes;
+    if (deck.id !== 'speech') return notes;
+    return notes.filter(note => !note.requires || tutorialAdapter()[note.requires]);
+}
+
+function tutorialStepPosition(noteIndex = state.activeNote) {
+    const sequence = tutorialDeckSequence();
+    let before = 0;
+    let total = 0;
+    sequence.forEach((deckIndex, chapterIndex) => {
+        const deck = ABOUT_EXAMPLE_DECKS[deckIndex];
+        const backCount = tutorialFaceNotes(deck, 'back').length;
+        const frontCount = tutorialFaceNotes(deck, 'front').length;
+        total += backCount + frontCount;
+        if (chapterIndex < state.chapterIndex) before += backCount + frontCount;
+    });
+    if (!state.flipped) before += tutorialFaceNotes(currentDeck(), 'back').length;
+    const withinFace = Math.max(0, Math.min(noteIndex, orderedNotes().length - 1));
+    return { current: before + withinFace + 1, total };
 }
 
 // Full rebuild — used when the deck changes.
@@ -915,7 +1025,7 @@ function syncContinueButton() {
     const ready = !isMobileWalkthrough() && !state.flipped;
     btn.hidden = !ready;
     if (!ready) return;
-    btn.textContent = state.chapterIndex < TUTORIAL_DECK_SEQUENCE.length - 1
+    btn.textContent = state.chapterIndex < tutorialDeckSequence().length - 1
         ? 'Continue to Lyrics →'
         : 'Finish tutorial';
 }
@@ -988,6 +1098,7 @@ function placeMarkers() {
 // Hovering either a badge or its note lights up both, plus the element itself.
 function setActiveNote(index) {
     state.activeNote = index;
+    renderSequenceProgress();
     const root = document.getElementById('aboutExampleModal');
     if (!root) return;
     root.querySelectorAll('.about-example-marker').forEach((m) => {
@@ -1012,12 +1123,12 @@ function renderMobileCoach() {
     coach.hidden = !mobile || !note;
     if (coach.hidden) return;
 
+    const progress = tutorialStepPosition(index);
     document.getElementById('aboutExampleMobileProgress').textContent =
-        `${currentDeck().tab} · ${state.chapterIndex + 1} of ${TUTORIAL_DECK_SEQUENCE.length}`
-        + ` · ${state.flipped ? 'Back' : 'Front'} · ${index + 1} of ${notes.length}`;
+        `Step ${progress.current} of ${progress.total} · ${currentDeck().tab} · ${state.flipped ? 'back' : 'front'}`;
     document.getElementById('aboutExampleMobileTitle').innerHTML =
         `${esc(note.title)}${note.interactive ? '<span class="about-example-try">tap it</span>' : ''}`;
-    document.getElementById('aboutExampleMobileText').innerHTML = note.text;
+    document.getElementById('aboutExampleMobileText').innerHTML = tutorialText(note.text);
     const back = document.getElementById('aboutExampleMobileBack');
     const next = document.getElementById('aboutExampleMobileNext');
     back.disabled = state.chapterIndex === 0 && state.flipped && index === 0;
@@ -1025,7 +1136,7 @@ function renderMobileCoach() {
         ? 'Next'
         : (state.flipped
             ? 'Show front'
-            : (state.chapterIndex < TUTORIAL_DECK_SEQUENCE.length - 1 ? 'Continue to Lyrics' : 'Finish'));
+            : (state.chapterIndex < tutorialDeckSequence().length - 1 ? 'Continue' : 'Finish'));
 }
 
 function moveMobileTour(direction) {
@@ -1059,8 +1170,8 @@ function renderFaceCopy() {
     // which side you are looking at.
     host.innerHTML = `
         <p class="about-example-blurb">
-            <strong class="about-example-lede">${face.title}</strong>
-            ${face.blurb}
+            <strong class="about-example-lede">${tutorialText(face.title)}</strong>
+            ${tutorialText(face.blurb)}
         </p>`;
 }
 
@@ -1070,7 +1181,7 @@ function noteHTML(note, index) {
             <span class="about-example-note-num">${index + 1}</span>
             <div>
                 <strong>${note.title}${note.interactive ? '<span class="about-example-try">try it</span>' : ''}</strong>
-                <span>${note.text}</span>
+                <span>${tutorialText(note.text)}</span>
             </div>
         </li>`;
 }
@@ -1106,11 +1217,14 @@ function renderNotes() {
 function renderSequenceProgress() {
     const host = document.getElementById('aboutExampleSequence');
     if (!host) return;
-    host.innerHTML = `<strong>${esc(currentDeck().tab)}</strong><span>${state.chapterIndex + 1} of ${TUTORIAL_DECK_SEQUENCE.length}</span>`;
+    const modes = tutorialAdapter().lyrics ? 'Speech → Lyrics' : 'Speech';
+    const progress = tutorialStepPosition();
+    const status = isMobileWalkthrough() ? `${modes} · step ${progress.current} of ${progress.total}` : modes;
+    host.innerHTML = `<strong>${esc(tutorialAdapter().language)} tutorial</strong><span>${status}</span>`;
 }
 
 function showTutorialChapter(index, flipped = true, mobileNote = 0) {
-    if (index < 0 || index >= TUTORIAL_DECK_SEQUENCE.length) return;
+    if (index < 0 || index >= tutorialDeckSequence().length) return;
     state.chapterIndex = index;
     state.flipped = flipped;
     state.meaningIndex = currentCard().defaultMeaningIndex || 0;
@@ -1127,7 +1241,7 @@ function showTutorialChapter(index, flipped = true, mobileNote = 0) {
 }
 
 function advanceChapterOrFinish() {
-    if (state.chapterIndex < TUTORIAL_DECK_SEQUENCE.length - 1) {
+    if (state.chapterIndex < tutorialDeckSequence().length - 1) {
         showTutorialChapter(state.chapterIndex + 1);
     } else {
         closeAboutExample();
@@ -1213,3 +1327,4 @@ if (document.readyState !== 'loading') setupAboutExample();
 window.openAboutExample = openAboutExample;
 window.openFirstRunAboutExample = openFirstRunAboutExample;
 window.closeAboutExample = closeAboutExample;
+window.getCardTutorialProfile = tutorialAdapter;
