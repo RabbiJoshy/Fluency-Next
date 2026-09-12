@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v355"
+EXPECTED_CACHE_NAME = "flashcards-v356"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -208,6 +208,8 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("const TUTORIAL_LANGUAGE_ADAPTERS", walkthrough)
         self.assertIn("function tutorialDeckSequence()", walkthrough)
         self.assertIn("Step ${progress.current} of ${progress.total}", walkthrough)
+        self.assertIn("function explicitTutorialLanguageKey()", walkthrough)
+        self.assertIn("if (!explicitTutorialLanguageKey()) return false", walkthrough)
         self.assertNotIn("TUTORIAL_DECK_SEQUENCE", walkthrough)
         self.assertIn("spanish: { language: 'Spanish'", walkthrough)
         self.assertIn("portuguese: { language: 'Portuguese'", walkthrough)
@@ -231,10 +233,13 @@ class ProductShellTests(unittest.TestCase):
         main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
         intro = html.index('id="tutorialIntroModal"')
         start = html.index('id="startCardTutorialBtn"', intro)
+        picker = html.index('id="tutorialLanguageSelect"', intro)
         first_paragraph = html.index('id="tutorialIntroModes"', intro)
+        self.assertLess(picker, start)
         self.assertLess(start, first_paragraph)
 
         self.assertIn("window.openAboutExample?.()", main)
+        self.assertIn("refreshTutorialIntroduction(event.currentTarget.value)", main)
 
     def test_cognate_setting_uses_positive_inclusion_copy(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
@@ -439,7 +444,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260912b", worker)
+        self.assertIn("/js/main.js?v=20260912c", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:

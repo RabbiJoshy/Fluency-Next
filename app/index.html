@@ -47,7 +47,7 @@
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260912b">
+    <link rel="modulepreload" href="js/main.js?v=20260912c">
     <link rel="modulepreload" href="js/theme.js?v=20260825ak">
     <link rel="modulepreload" href="js/state.js?v=20260825ak">
     <link rel="modulepreload" href="js/data-contracts.js?v=20260825ak">
@@ -57,7 +57,7 @@
     <link rel="modulepreload" href="js/speech.js?v=20260824d">
     <link rel="modulepreload" href="js/artist-ui.js?v=20260825ak">
     <link rel="modulepreload" href="js/auth.js?v=20260911b">
-    <link rel="modulepreload" href="js/about-example.js?v=20260912b">
+    <link rel="modulepreload" href="js/about-example.js?v=20260912c">
     <link rel="modulepreload" href="js/estimation.js?v=20260825ak">
     <link rel="modulepreload" href="js/config.js?v=20260907a">
     <link rel="modulepreload" href="js/progress.js?v=20260831a">
@@ -771,8 +771,12 @@
                 <button class="modal-close" id="closeTutorialIntroModal" aria-label="Close tutorial introduction">&#10005;</button>
             </div>
             <div class="help-content">
+                <label class="settings-row-label" for="tutorialLanguageSelect">Tutorial language</label>
+                <select class="settings-select" id="tutorialLanguageSelect">
+                    <option value="">Choose a language</option>
+                </select>
                 <p style="margin: 0 0 18px;">
-                    <button class="help-more-info-btn" id="startCardTutorialBtn" type="button">Start tutorial →</button>
+                    <button class="help-more-info-btn" id="startCardTutorialBtn" type="button" disabled>Start tutorial →</button>
                 </p>
                 <p id="tutorialIntroModes">Speech teaches frequent vocabulary from dialogue. Lyrics applies the same method to songs when it is available for your language.</p>
                 <p>Language is heavily concentrated: a relatively small number of frequent words account for most everyday speech. Your coverage therefore reflects how useful each learned word is, rather than simply counting cards.</p>
@@ -1586,6 +1590,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260912b"></script>
+    <script type="module" src="js/main.js?v=20260912c"></script>
 </body>
 </html>
