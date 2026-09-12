@@ -222,24 +222,18 @@ function setupTooltipHandlers() {
         tooltip.addEventListener('click', function(e) {
             if (e.target === this) this.classList.remove('visible');
         });
+        tooltip.querySelector('.info-sheet-close')?.addEventListener('click', () => {
+            tooltip.classList.remove('visible');
+        });
     });
 
-    // Cognate rules modal — opens from the "More Detail →" button inside
-    // the Cognates tab of the step2 help tooltip. The standalone
-    // #cognateTooltip element is gone (its content was folded into
-    // step2Tooltip's tabbed layout), so we close step2Tooltip instead.
-    document.getElementById('cognateRulesBtn').addEventListener('click', function(e) {
+    // Legacy detail entry point retained for builds that still include it.
+    document.getElementById('cognateRulesBtn')?.addEventListener('click', function(e) {
         e.stopPropagation();
         const step2Tip = document.getElementById('step2Tooltip');
         if (step2Tip) step2Tip.classList.remove('visible');
         document.getElementById('cognateRulesModal').classList.remove('hidden');
     });
-
-    // Wire tab switching inside the step2 help tooltip (Choose Level /
-    // Cards per Lemma / Cognates). Reuses the generic setupTabSwitching
-    // helper used by the settings + help modals.
-    const step2Tip = document.getElementById('step2Tooltip');
-    if (step2Tip) setupTabSwitching(step2Tip);
 
     document.getElementById('closeCognateRulesModal').addEventListener('click', function() {
         document.getElementById('cognateRulesModal').classList.add('hidden');
@@ -666,41 +660,23 @@ function updatePercentModeButton() {
 function updateStep2Tooltip() {
     const tooltip = document.getElementById('step2Tooltip');
     if (!tooltip) return;
+    const description = document.getElementById('step2LevelDescription');
     if (activeArtist) {
-        // Artist mode is always % coverage of lyrics. Keep the TABBED help
-        // (Level / Lemma / Cognates) intact — only swap the Level tab's copy
-        // to the lyrics-coverage explanation (no CEFR/% toggle reference).
-        // Overwriting the whole tooltip here used to delete the Lemma and
-        // Cognate tabs entirely, so artist mode lost those explanations.
         const name = activeArtist.name;
-        const levelTab = document.getElementById('step2LevelTabContent');
-        if (levelTab) {
-            levelTab.innerHTML = `
-                <p><strong>Choose a numbered level.</strong> Level 1 starts with ${name}'s most frequent words; each later level adds rarer vocabulary.</p>
-                <p>The summary shows the vocabulary ranks and share of the lyrics covered under your current settings.</p>
-                <p>The note below says how many words are in that level and how often its least frequent words appear, followed by a few examples.</p>
-            `;
-        }
+        if (description) description.textContent = `Levels arrange ${name}'s vocabulary from the words used most in these lyrics to the words used least.`;
+    } else if (description) {
+        description.textContent = 'Levels arrange vocabulary from more useful and familiar words to less common ones.';
     }
-    // Non-artist modes: leave the static HTML in place (it explains both
-    // CEFR and % alongside the toggle that switches between them).
 }
 
 function updateStep5Tooltip() {
-    const tooltip = document.getElementById('step5Tooltip');
+    const description = document.getElementById('step5Description');
+    if (!description) return;
     if (activeArtist) {
         const name = activeArtist.name;
-        tooltip.innerHTML = `
-            <p>Each level is divided into stable sets of about 20 frequency positions in ${name}'s lyrics. The first set with unseen cards is selected automatically.</p>
-            <p>Settings may shorten a set, but they never move a card into a different level or set.</p>
-            <p><strong>Examples</strong> come from the active Lyrics release and retain song/source evidence whenever it is available.</p>
-        `;
+        description.textContent = `The app highlights the next unfinished set from ${name}'s lyrics, so you can simply continue.`;
     } else {
-        tooltip.innerHTML = `
-            <p>Each level is divided into stable sets of about 20 frequency positions. The first set with unseen cards is selected automatically.</p>
-            <p>Settings may shorten a set, but they never move a card into a different level or set.</p>
-            <p><strong>Examples</strong> retain their source, translation and provenance whenever the active Speech release provides them.</p>
-        `;
+        description.textContent = 'The app highlights the next unfinished set, so you can simply continue.';
     }
 }
 
@@ -2450,7 +2426,7 @@ function hideStatsModal() {
 }
 
 function showSettingsModal() {
-    showSettingsModalWithTab('account');
+    showSettingsModalWithTab('study');
 }
 
 function showSettingsModalWithTab(tabName, { singleTab = false } = {}) {
@@ -2493,6 +2469,7 @@ function showSettingsModalWithTab(tabName, { singleTab = false } = {}) {
     const tabContentIds = {
         account: 'accountTabContent',
         study: 'studyTabContent',
+        appearance: 'appearanceTabContent',
         offline: 'offlineTabContent',
         appData: 'appDataTabContent'
     };
