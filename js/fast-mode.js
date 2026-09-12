@@ -107,7 +107,7 @@ function refresh() {
     if (availability) {
         const missing = [];
         if (!lemmaAvailable()) missing.push('merging word forms');
-        if (!cognateAvailable()) missing.push('setting cognates aside');
+        if (!cognateAvailable()) missing.push('skipping familiar words');
         // Absence is stated rather than left as a control that silently is not
         // there, so a learner is not left wondering what they are missing.
         availability.textContent = missing.length
