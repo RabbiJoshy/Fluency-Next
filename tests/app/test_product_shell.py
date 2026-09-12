@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v359"
+EXPECTED_CACHE_NAME = "flashcards-v360"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -160,6 +160,10 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("Review this level", modals)
         self.assertIn("this.dataset.action === 'review-level'", flashcards)
         self.assertNotIn("% accuracy`,", modals)
+        self.assertIn("Everyday speech", html)
+        self.assertIn("Songs &amp; lyrics", html)
+        self.assertIn("no lyrics collection has been published", ui)
+        self.assertNotIn('<span class="step-number">1</span>', html)
 
     def test_merge_lemmas_remains_a_declared_learner_feature(self) -> None:
         ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
@@ -472,7 +476,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260912f", worker)
+        self.assertIn("/js/main.js?v=20260912g", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
@@ -653,11 +657,12 @@ class FastModeSurfaceTests(unittest.TestCase):
         # The toggles a learner cannot judge before seeing a card belong behind
         # the explanation, not beside the level picker.
         page_start = self.html.index('id="fastModeModal"')
-        for control in ("lemmaToggleContainer", "cognateToggleContainer", "knownLanguagesContainer"):
+        for control in ("lemmaToggleContainer", "cognateToggleContainer"):
             self.assertGreater(
                 self.html.index(f'id="{control}"'), page_start,
                 f"{control} must sit inside the Fast mode page",
             )
+        self.assertNotIn('id="coverageModeContainer"', self.html)
 
     def test_turning_fast_mode_on_drives_the_real_controls(self) -> None:
         # Setting the state directly would be a second implementation of what
@@ -711,10 +716,9 @@ class LevelCoverageTests(unittest.TestCase):
     def test_the_switch_hides_when_a_language_ships_no_shares(self) -> None:
         self.assertIn("container.style.display = coverageAvailable() ? 'block' : 'none';", self.script)
 
-    def test_the_switch_is_on_the_page_that_explains_the_deck(self) -> None:
+    def test_the_display_switch_is_not_mixed_into_fast_mode(self) -> None:
         html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
-        page_start = html.index('id="fastModeModal"')
-        self.assertGreater(html.index('id="coverageModeContainer"'), page_start)
+        self.assertNotIn('id="coverageModeContainer"', html)
 
 
 class CognateAvailabilityTests(unittest.TestCase):

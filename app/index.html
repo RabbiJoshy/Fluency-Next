@@ -40,14 +40,14 @@
             document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#eef2f5' : '#0a0e14';
         })();
     </script>
-    <link rel="stylesheet" href="css/style.css?v=20260912e">
+    <link rel="stylesheet" href="css/style.css?v=20260912g">
     <link rel="stylesheet" href="css/light-theme.css?v=20260828a">
     <!-- Module preloads. Without these the browser waits to discover the
          imports inside main.js before kicking off the per-module fetches,
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260912f">
+    <link rel="modulepreload" href="js/main.js?v=20260912g">
     <link rel="modulepreload" href="js/theme.js?v=20260825ak">
     <link rel="modulepreload" href="js/state.js?v=20260825ak">
     <link rel="modulepreload" href="js/data-contracts.js?v=20260825ak">
@@ -63,7 +63,7 @@
     <link rel="modulepreload" href="js/progress.js?v=20260912c">
     <link rel="modulepreload" href="js/progress-identity.js?v=20260831a">
     <link rel="modulepreload" href="js/knowledge.js?v=20260831a">
-    <link rel="modulepreload" href="js/ui.js?v=20260912e">
+    <link rel="modulepreload" href="js/ui.js?v=20260912f">
     <link rel="modulepreload" href="js/vocab.js?v=20260907a">
     <link rel="modulepreload" href="js/song-sets-core.js?v=20260825ak">
     <link rel="modulepreload" href="js/song-sets.js?v=20260823ae">
@@ -352,8 +352,7 @@
             <!-- Step 1: Language Selection (non-Bad-Bunny mode) -->
             <div id="step1" class="setup-step">
                 <div class="step-header step-header-with-help" id="step1Header">
-                    <span class="step-number">1</span>
-                    <span class="step-title" id="step1Title">Choose language</span>
+                    <span class="step-title" id="step1Title">Choose your language</span>
                     <span id="selectedLanguageInline" class="selection-pill-inline" style="display: none;"></span>
                     <span id="step1PromptArrow" class="language-step-prompt-arrow" aria-hidden="true">›</span>
                 </div>
@@ -370,15 +369,20 @@
                         <span class="language-picker-btn-arrow" aria-hidden="true">›</span>
                     </button>
                     <div class="standard-source-choice" aria-labelledby="standardSourceChoiceTitle">
-                        <span class="standard-source-choice-title" id="standardSourceChoiceTitle">Learn from</span>
+                        <div class="standard-source-choice-intro">
+                            <span class="standard-source-choice-title" id="standardSourceChoiceTitle">What do you want to learn from?</span>
+                            <p>Build broad vocabulary from dialogue, or learn the language used in music you choose.</p>
+                        </div>
                         <div class="standard-source-choice-buttons">
                             <button type="button" id="standardSourceSpeechBtn" class="standard-source-choice-btn" data-source="speech">
                                 <span class="standard-source-choice-icon" aria-hidden="true">◖</span>
-                                <span><strong>Speech</strong><small>Frequency-ordered language</small></span>
+                                <span><strong>Everyday speech</strong><small>Common words from real dialogue</small></span>
+                                <em class="standard-source-choice-arrow" aria-hidden="true">›</em>
                             </button>
                             <button type="button" id="standardSourcePickerBtn" class="standard-source-choice-btn" data-source="lyrics">
                                 <span class="standard-source-choice-icon" aria-hidden="true">♫</span>
-                                <span><strong>Lyrics</strong><small>Artists, playlists and songs</small></span>
+                                <span><strong>Songs &amp; lyrics</strong><small id="standardLyricsAvailability">Choose artists, playlists or songs</small></span>
+                                <em id="standardLyricsStatus" class="standard-source-choice-status" aria-hidden="true">›</em>
                             </button>
                         </div>
                     </div>
@@ -512,14 +516,14 @@
                      release supports neither part. -->
                 <div id="setupOptions" class="setup-options" style="display: none;">
                     <div class="setup-options-bar">
-                        <span class="substep-title">Fast mode</span>
+                        <span class="substep-title">Fewer cards</span>
                         <div id="fastModeSelector" class="group-size-selector fast-mode-selector">
                             <button type="button" class="fast-mode-btn" data-fast="off">Off</button>
                             <button type="button" class="fast-mode-btn" data-fast="on">On</button>
                         </div>
                         <span id="fastModeSummary" class="level-info-line fast-mode-summary"></span>
                         <button type="button" id="fastModeDetailBtn" class="fast-mode-detail-btn">
-                            How it works
+                            Adjust
                         </button>
                         <button type="button" id="extrasBtn" class="extras-btn" style="display: none;"></button>
                     </div>
@@ -709,7 +713,7 @@
             <div class="settings-tabs-header">
                 <div>
                     <span class="progress-modal-eyebrow">Current learning context</span>
-                    <h3 id="learningContextTitle">Language and source</h3>
+                    <h3 id="learningContextTitle">Your learning</h3>
                 </div>
                 <button class="modal-close" id="closeLearningContextModal" aria-label="Close learning context">&#10005;</button>
             </div>
@@ -728,9 +732,10 @@
                 <div class="learning-context-progress-track"><i id="learningContextProgressFill"></i></div>
             </div>
             <div class="learning-context-mode-actions" role="group" aria-label="Learning source">
-                <button id="learningContextSpeechBtn" type="button">Speech</button>
-                <button id="learningContextLyricsBtn" type="button">Lyrics</button>
+                <button id="learningContextSpeechBtn" type="button">Everyday speech</button>
+                <button id="learningContextLyricsBtn" type="button">Songs &amp; lyrics</button>
             </div>
+            <p id="learningContextAvailability" class="learning-context-availability"></p>
             <button id="learningContextProgressBtn" class="learning-context-action" type="button">View detailed progress</button>
             <button id="learningContextLanguageBtn" class="learning-context-action learning-context-action--secondary" type="button">Change language</button>
         </div>
@@ -946,15 +951,14 @@
         <div class="modal-content fullscreen-modal fast-mode-page">
             <button class="modal-close fast-mode-close" id="closeFastModeModal" aria-label="Close">✕</button>
             <div class="fast-mode-page-body">
-                <h2>Fast mode</h2>
-                <p class="fast-mode-lede">Fewer cards for the same coverage. Fast mode merges the
-                different forms of a word onto one card, and sets aside words you can already
-                recognise from a language you read.</p>
+                <h2>Fewer cards</h2>
+                <p class="fast-mode-lede">Choose either option—or both—to shorten a deck without
+                changing which part of the language the level covers.</p>
 
                 <div class="fast-mode-controls">
                     <div id="lemmaToggleContainer" class="setup-substep" style="display: none;">
                         <div class="substep-header">
-                            <span class="substep-title">Merge Lemmas</span>
+                            <span class="substep-title">Merge word forms</span>
                         </div>
                         <p class="fast-mode-explainer">One card per dictionary word. "run", "runs",
                         "ran" and "running" share a card, and their examples pool together.</p>
@@ -967,7 +971,7 @@
 
                     <div id="cognateToggleContainer" class="setup-substep" style="display: none;">
                         <div class="substep-header">
-                            <span class="substep-title">Cognates</span>
+                            <span class="substep-title">Skip familiar words</span>
                         </div>
                         <p class="fast-mode-explainer">Words close enough to a language you already
                         read that you would recognise them without study.</p>
@@ -976,33 +980,12 @@
                             <button class="cognate-toggle-btn selected" data-cognate="include" data-short="Include" data-full="Include">Include</button>
                         </div>
                         <span id="cognateInfoLine" class="level-info-line substep-info-below" style="display: none;"></span>
-                    </div>
-
-                    <div id="knownLanguagesContainer" class="setup-substep" style="display: none;">
-                        <div class="substep-header">
-                            <span class="substep-title">Languages you read</span>
+                        <div id="knownLanguagesContainer" class="known-languages-context" style="display: none;">
+                            <span>Compare with</span>
+                            <div id="knownLanguagesSelector" class="group-size-selector known-languages-selector"></div>
                         </div>
-                        <p class="fast-mode-explainer">Each language is judged on its own: a word is
-                        set aside if any language you read already gives it to you.</p>
-                        <div id="knownLanguagesSelector" class="group-size-selector known-languages-selector"></div>
                     </div>
-                </div>
 
-                <!-- How the level figure reads. Share is the honest headline
-                     and decays to under a percent by the last level; gain keeps
-                     a legible number by measuring against what is left. Same
-                     data either way. -->
-                <div id="coverageModeContainer" class="setup-substep" style="display: none;">
-                    <div class="substep-header">
-                        <span class="substep-title">Level percentage</span>
-                    </div>
-                    <p class="fast-mode-explainer">Whether a level's figure is its share of
-                    all speech, or its share of what you have not covered yet.</p>
-                    <div id="coverageModeSelector" class="group-size-selector">
-                        <button type="button" class="coverage-mode-btn" data-coverage="share">Of all speech</button>
-                        <button type="button" class="coverage-mode-btn" data-coverage="gain">Of what's left</button>
-                    </div>
-                    <span class="level-info-line substep-info-below" id="coverageModeExample"></span>
                 </div>
 
                 <p class="fast-mode-note" id="fastModeAvailability"></p>
@@ -1641,6 +1624,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260912f"></script>
+    <script type="module" src="js/main.js?v=20260912g"></script>
 </body>
 </html>
