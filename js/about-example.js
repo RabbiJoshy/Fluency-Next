@@ -248,13 +248,23 @@ const TUTORIAL_LANGUAGE_ADAPTERS = {
     french: { language: 'French', speechCard: 'deSpeech', provider: 'Wiktionary', lyrics: false },
 };
 
-function tutorialLanguageKey() {
-    const candidate = window.activeArtist?.language || window.selectedLanguage || 'spanish';
-    return TUTORIAL_LANGUAGE_ADAPTERS[candidate] ? candidate : 'spanish';
+let tutorialLanguageOverride = null;
+
+function explicitTutorialLanguageKey() {
+    const activeTab = document.querySelector('.lang-tab.active')?.dataset.lang;
+    const hasLanguageSummary = document.getElementById('step1')?.classList.contains('language-summary-active');
+    const candidate = window.activeArtist?.language
+        || activeTab
+        || (hasLanguageSummary ? window.selectedLanguage : null);
+    return TUTORIAL_LANGUAGE_ADAPTERS[candidate] ? candidate : null;
 }
 
-function tutorialAdapter() {
-    const key = tutorialLanguageKey();
+function tutorialLanguageKey() {
+    return tutorialLanguageOverride || explicitTutorialLanguageKey() || 'spanish';
+}
+
+function tutorialAdapter(requestedKey = tutorialLanguageKey()) {
+    const key = TUTORIAL_LANGUAGE_ADAPTERS[requestedKey] ? requestedKey : 'spanish';
     const adapter = TUTORIAL_LANGUAGE_ADAPTERS[key];
     const configuredLyrics = window.config?.languages?.[key]?.capabilities?.lyrics;
     return { ...adapter, lyrics: adapter.lyrics && configuredLyrics !== false };
@@ -1218,9 +1228,7 @@ function renderSequenceProgress() {
     const host = document.getElementById('aboutExampleSequence');
     if (!host) return;
     const modes = tutorialAdapter().lyrics ? 'Speech → Lyrics' : 'Speech';
-    const progress = tutorialStepPosition();
-    const status = isMobileWalkthrough() ? `${modes} · step ${progress.current} of ${progress.total}` : modes;
-    host.innerHTML = `<strong>${esc(tutorialAdapter().language)} tutorial</strong><span>${status}</span>`;
+    host.innerHTML = `<strong>${esc(tutorialAdapter().language)} tutorial</strong><span>${modes}</span>`;
 }
 
 function showTutorialChapter(index, flipped = true, mobileNote = 0) {
@@ -1274,6 +1282,9 @@ function openAboutExample() {
 
 function openFirstRunAboutExample() {
     if (hasSeenCardWalkthrough()) return false;
+    // The setup screen has a technical default before the learner chooses a
+    // language. Do not mistake that for interest and launch the wrong tour.
+    if (!explicitTutorialLanguageKey()) return false;
     // Never stack the automatic tour over authentication, About, settings, or
     // another onboarding sheet. Permanent replay links remain available.
     if (document.querySelector('.modal:not(.hidden), .knowledge-overview-modal:not([hidden])')) {
@@ -1328,3 +1339,9 @@ window.openAboutExample = openAboutExample;
 window.openFirstRunAboutExample = openFirstRunAboutExample;
 window.closeAboutExample = closeAboutExample;
 window.getCardTutorialProfile = tutorialAdapter;
+window.getCardTutorialLanguageKey = explicitTutorialLanguageKey;
+window.getCardTutorialLanguages = () => Object.entries(TUTORIAL_LANGUAGE_ADAPTERS)
+    .map(([key, adapter]) => ({ key, language: adapter.language }));
+window.setCardTutorialLanguage = key => {
+    tutorialLanguageOverride = TUTORIAL_LANGUAGE_ADAPTERS[key] ? key : null;
+};

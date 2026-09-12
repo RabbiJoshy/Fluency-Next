@@ -6,7 +6,7 @@ import { initOfflineContent } from './offline-content.js?v=20260825ak';
 import './speech.js?v=20260824d';
 import './artist-ui.js?v=20260825ak';
 import './auth.js?v=20260911b';
-import './about-example.js?v=20260912b';
+import './about-example.js?v=20260912c';
 import './estimation.js?v=20260825ak';
 import './config.js?v=20260907a';
 import './progress.js?v=20260908d';
@@ -23,9 +23,24 @@ import './flashcards.js?v=20260912a';
 import { validateArtistCatalog } from './data-contracts.js?v=20260825ak';
 
 function openTutorialIntroduction() {
-    const profile = window.getCardTutorialProfile?.();
+    const picker = document.getElementById('tutorialLanguageSelect');
+    const languages = window.getCardTutorialLanguages?.() || [];
+    if (picker && picker.options.length === 1) {
+        languages.forEach(({ key, language }) => picker.add(new Option(language, key)));
+    }
+    const inheritedLanguage = window.getCardTutorialLanguageKey?.();
+    if (picker && inheritedLanguage) picker.value = inheritedLanguage;
+    refreshTutorialIntroduction(picker?.value || inheritedLanguage || '');
+    document.getElementById('tutorialIntroModal')?.classList.remove('hidden');
+}
+
+function refreshTutorialIntroduction(languageKey) {
+    window.setCardTutorialLanguage?.(languageKey || null);
+    const profile = languageKey ? window.getCardTutorialProfile?.(languageKey) : null;
     const modes = document.getElementById('tutorialIntroModes');
     const language = document.getElementById('tutorialIntroLanguage');
+    const start = document.getElementById('startCardTutorialBtn');
+    if (start) start.disabled = !profile;
     if (profile && modes) {
         modes.textContent = profile.lyrics
             ? `Speech teaches frequent ${profile.language} vocabulary from dialogue. Lyrics then applies the same method to songs; the tutorial takes you through both in one sequence.`
@@ -34,7 +49,6 @@ function openTutorialIntroduction() {
     if (profile && language) {
         language.textContent = `The tutorial uses a ${profile.language} card and adapts its sense details to ${profile.provider}, so it only teaches controls and metadata this language actually has.`;
     }
-    document.getElementById('tutorialIntroModal')?.classList.remove('hidden');
 }
 
 function closeTutorialIntroduction() {
@@ -345,6 +359,9 @@ loadConfig().then(async () => {
     // Keep the short learner tutorial separate from the portfolio /about page.
     document.getElementById('helpBtn').addEventListener('click', openTutorialIntroduction);
     document.getElementById('closeTutorialIntroModal')?.addEventListener('click', closeTutorialIntroduction);
+    document.getElementById('tutorialLanguageSelect')?.addEventListener('change', event => {
+        refreshTutorialIntroduction(event.currentTarget.value);
+    });
     document.getElementById('startCardTutorialBtn')?.addEventListener('click', () => {
         closeTutorialIntroduction();
         window.openAboutExample?.();
