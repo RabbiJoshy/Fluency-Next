@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v366"
+EXPECTED_CACHE_NAME = "flashcards-v367"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -165,8 +165,9 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("this.dataset.action === 'review-level'", flashcards)
         self.assertNotIn("% accuracy`,", modals)
         self.assertIn("Natural speech", html)
-        self.assertIn("movie subtitles and other translated dialogue", html)
-        self.assertIn("rank words from the music you listen to", html)
+        self.assertIn("movie subtitles and translated dialogue", html)
+        self.assertIn("for example reggaeton", html)
+        self.assertIn("ranked by frequency", html)
         self.assertIn("Recommended", html)
         self.assertIn("Music &amp; lyrics", html)
         self.assertIn("lyrics collection is available yet", main)
@@ -546,7 +547,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260912n", worker)
+        self.assertIn("/js/main.js?v=20260912o", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:

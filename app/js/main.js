@@ -11,7 +11,7 @@ import './estimation.js?v=20260825ak';
 import './config.js?v=20260907a';
 import './progress.js?v=20260912c';
 import './knowledge.js?v=20260831a';
-import './ui.js?v=20260912l';
+import './ui.js?v=20260912m';
 import './vocab.js?v=20260909b';
 import './cognates.js?v=20260908d';
 import './coverage.js?v=20260909a';
@@ -1169,7 +1169,7 @@ function openLearningSourcePicker() {
         entries: [
             {
                 label: 'Natural speech',
-                description: 'Useful words from movie subtitles and other translated dialogue.',
+                description: 'Broad vocabulary from movie subtitles and translated dialogue, ranked by frequency.',
                 fallbackText: '1',
                 selected: !activeArtist,
                 onSelect: () => {
@@ -1185,8 +1185,8 @@ function openLearningSourcePicker() {
             {
                 label: 'Music & lyrics',
                 description: lyricsAvailable
-                    ? 'Build a list from artists and songs you choose.'
-                    : `No ${languageConfig.name || language} lyrics collection is available yet.`,
+                    ? 'Learn the most frequent words in artists and songs you choose.'
+                    : `Learn the most frequent words in music you choose. No ${languageConfig.name || language} lyrics collection is available yet.`,
                 fallbackText: '2',
                 selected: Boolean(activeArtist),
                 disabled: !lyricsAvailable,
