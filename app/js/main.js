@@ -9,9 +9,9 @@ import './auth.js?v=20260912a';
 import './about-example.js?v=20260912c';
 import './estimation.js?v=20260825ak';
 import './config.js?v=20260907a';
-import './progress.js?v=20260908d';
+import './progress.js?v=20260912c';
 import './knowledge.js?v=20260831a';
-import './ui.js?v=20260909b';
+import './ui.js?v=20260912e';
 import './vocab.js?v=20260909b';
 import './cognates.js?v=20260908d';
 import './coverage.js?v=20260909a';
@@ -339,9 +339,15 @@ loadConfig().then(async () => {
     const isResumeNavigation = new URLSearchParams(window.location.search).get('resume') === '1';
     perfMark('after loadConfig');
     renderLanguageTabs();
-    // Set first language with data as default (but don't auto-select it)
+    // A language is a durable learning context, not a choice learners should
+    // have to repeat on every visit. First-time visitors still see the picker.
     const firstLang = Object.keys(config.languages).find(lang => config.languages[lang].hasData !== false) || Object.keys(config.languages)[0];
-    selectedLanguage = firstLang;
+    let preferredLanguage = null;
+    try { preferredLanguage = localStorage.getItem('fluencyPreferredLanguageV1'); } catch (_) {}
+    const preferredIsReady = preferredLanguage
+        && config.languages[preferredLanguage]
+        && config.languages[preferredLanguage].hasData !== false;
+    selectedLanguage = preferredIsReady ? preferredLanguage : firstLang;
     // Exact Speech resumes bypass the language/source chooser, so restore the
     // small Spanish-only helpers here for that route. Ordinary language choice
     // deliberately fetches neither: ui.js starts them only after Speech is
@@ -357,6 +363,42 @@ loadConfig().then(async () => {
     setupPercentModeButton();
     setupEstimationModal();
     setupTooltipHandlers();
+
+    const learningContextModal = document.getElementById('learningContextModal');
+    const closeLearningContext = () => learningContextModal?.classList.add('hidden');
+    document.getElementById('learningContextBtn')?.addEventListener('click', () => {
+        window.updateLearningContextUI?.();
+        learningContextModal?.classList.remove('hidden');
+    });
+    document.getElementById('closeLearningContextModal')?.addEventListener('click', closeLearningContext);
+    learningContextModal?.addEventListener('click', event => {
+        if (event.target === event.currentTarget) closeLearningContext();
+    });
+    document.getElementById('learningContextProgressBtn')?.addEventListener('click', () => {
+        closeLearningContext();
+        showTotalStatsModal();
+    });
+    document.getElementById('learningContextLanguageBtn')?.addEventListener('click', () => {
+        closeLearningContext();
+        if (activeArtist) {
+            try { localStorage.removeItem('fluencyPreferredLanguageV1'); } catch (_) {}
+            window.location.href = window.location.pathname;
+        } else {
+            window.reopenLanguagePicker?.();
+        }
+    });
+    document.getElementById('learningContextSpeechBtn')?.addEventListener('click', () => {
+        closeLearningContext();
+        if (activeArtist) {
+            document.getElementById('artistSourceSpeechBtn')?.click();
+        } else {
+            document.getElementById('standardSourceSpeechBtn')?.click();
+        }
+    });
+    document.getElementById('learningContextLyricsBtn')?.addEventListener('click', () => {
+        closeLearningContext();
+        if (!activeArtist) document.getElementById('standardSourcePickerBtn')?.click();
+    });
 
     // Keep the short learner tutorial separate from the portfolio /about page.
     document.getElementById('helpBtn').addEventListener('click', openTutorialIntroduction);
@@ -381,15 +423,7 @@ loadConfig().then(async () => {
     });
     setupFindWord();
     document.getElementById('topBarUserName').addEventListener('click', () => {
-        if (currentUser && !currentUser.isGuest && selectedLanguage) {
-            // In flashcard mode, show set stats; on setup page, show total stats
-            const appContent = document.getElementById('appContent');
-            if (appContent && !appContent.classList.contains('hidden')) {
-                showStatsModal();
-            } else {
-                showTotalStatsModal();
-            }
-        }
+        if (currentUser && !currentUser.isGuest) showSettingsModalWithTab('account');
     });
     document.getElementById('closeHelpModal').addEventListener('click', () => {
         document.getElementById('helpModal').classList.add('hidden');
@@ -489,6 +523,8 @@ loadConfig().then(async () => {
             await updateCognateToggleVisibility();
             await renderLevelSelector(activeArtist.language || 'spanish');
             await updateExclusionBars();
+            document.body.classList.add('has-learning-context');
+            window.updateLearningContextUI?.();
         } finally {
             if (!isResumeNavigation) hideAppLoading();
         }
@@ -500,7 +536,12 @@ loadConfig().then(async () => {
             ? document.querySelector(`.lang-tab[data-lang="${pendingSpeechLanguage}"]`)
             : null;
         if (pendingTab && !pendingTab.disabled) pendingTab.click();
-        else if (!isResumeNavigation) hideAppLoading();
+        else {
+            if (preferredIsReady && !isResumeNavigation) {
+                document.querySelector(`.lang-tab[data-lang="${preferredLanguage}"]`)?.click();
+            }
+            if (!isResumeNavigation) hideAppLoading();
+        }
     }
 
     // Cached progress is already loaded synchronously by

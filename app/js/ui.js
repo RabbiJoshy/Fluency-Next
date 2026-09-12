@@ -288,6 +288,47 @@ function setActiveSetupStep(stepId) {
         .forEach(number => number.classList.toggle('--active', number.closest('.setup-step')?.id === stepId));
 }
 
+const PREFERRED_LANGUAGE_KEY = 'fluencyPreferredLanguageV1';
+const LEARNING_CONTEXT_FLAGS = {
+    spanish: '🇪🇸', portuguese: '🇧🇷', french: '🇫🇷', italian: '🇮🇹',
+    swedish: '🇸🇪', dutch: '🇳🇱', polish: '🇵🇱', russian: '🇷🇺', czech: '🇨🇿'
+};
+
+function updateLearningContextUI(snapshot = window.currentCoverageSnapshot) {
+    const button = document.getElementById('learningContextBtn');
+    const languageConfig = config.languages?.[selectedLanguage];
+    if (!button || !languageConfig) return;
+
+    const mode = activeArtist
+        ? `Lyrics · ${activeArtist.name || 'Songs'}`
+        : document.getElementById('step1')?.classList.contains('source-speech-active')
+            ? 'Speech'
+            : 'Choose mode';
+    const flag = languageConfig.flag || LEARNING_CONTEXT_FLAGS[selectedLanguage] || selectedLanguage.slice(0, 2).toUpperCase();
+    const coverage = Number(snapshot?.percentage || 0);
+    const coverageLabel = snapshot?.label || (activeArtist ? 'Lyrics understood' : 'Speech understood');
+
+    button.hidden = false;
+    document.getElementById('learningContextFlag').textContent = flag;
+    document.getElementById('learningContextLanguage').textContent = languageConfig.name || selectedLanguage;
+    document.getElementById('learningContextMode').textContent = mode;
+    document.getElementById('learningContextCoverage').textContent = coverage > 0 ? `${coverage.toFixed(1)}%` : '';
+    document.getElementById('learningContextSheetFlag').textContent = flag;
+    document.getElementById('learningContextSheetLanguage').textContent = languageConfig.name || selectedLanguage;
+    document.getElementById('learningContextSheetMode').textContent = mode;
+    document.getElementById('learningContextProgressLabel').textContent = coverageLabel;
+    document.getElementById('learningContextProgressValue').textContent = `${coverage.toFixed(1)}%`;
+    document.getElementById('learningContextProgressFill').style.width = `${Math.min(coverage, 100)}%`;
+
+    const capabilities = languageConfig.capabilities || {};
+    const speechButton = document.getElementById('learningContextSpeechBtn');
+    const lyricsButton = document.getElementById('learningContextLyricsBtn');
+    speechButton.disabled = capabilities.speech === false;
+    lyricsButton.disabled = capabilities.lyrics === false;
+    speechButton.classList.toggle('selected', mode === 'Speech');
+    lyricsButton.classList.toggle('selected', Boolean(activeArtist));
+}
+
 function mergeStandardProgressIntoLanguageStep() {
     if (activeArtist) return;
     const step = document.getElementById('step1');
@@ -410,10 +451,11 @@ function setupLanguageTabs() {
 
     // The compact language summary reopens the radial picker directly.
     const reopenLanguagePicker = function(event) {
-        event.stopPropagation();
+        event?.stopPropagation?.();
         window.closeRadialPicker?.('artistRadialPicker');
         unmergeStandardProgressFromLanguageStep();
-        document.getElementById('step1')?.classList.remove('source-speech-active');
+        document.getElementById('step1')?.classList.remove('source-speech-active', 'context-ready');
+        document.body.classList.remove('has-learning-context');
         speechSourceButton?.classList.remove('is-selected');
         sourceCardButton?.classList.remove('is-selected');
         inlinePill.style.display = 'none';
@@ -427,6 +469,7 @@ function setupLanguageTabs() {
         setActiveSetupStep('step1');
         window.showLanguagePicker?.(config.languages);
     };
+    window.reopenLanguagePicker = reopenLanguagePicker;
     inlinePill.onclick = reopenLanguagePicker;
     languageCardButton.onclick = reopenLanguagePicker;
 
@@ -455,6 +498,7 @@ function setupLanguageTabs() {
             }
 
             selectedLanguage = newLanguage;
+            try { localStorage.setItem(PREFERRED_LANGUAGE_KEY, newLanguage); } catch (_) {}
             selectedLevel = null;
             _setupLevelSelectionWasManual = false;
             applyGlobalStudyDefaults();
@@ -469,6 +513,7 @@ function setupLanguageTabs() {
             sourceLabel.textContent = 'Choose source';
             sourcePill.classList.add('source-pill-inline--pending');
             mergeStandardProgressIntoLanguageStep();
+            updateLearningContextUI();
             document.getElementById('step1')?.classList.remove('source-speech-active');
             speechSourceButton?.classList.remove('is-selected');
             sourceCardButton?.classList.remove('is-selected');
@@ -549,6 +594,9 @@ function setupLanguageTabs() {
                     await updateCognateToggleVisibility();
                     await updateExclusionBars();
                     updateIncorrectButtonVisibility();
+                    document.getElementById('step1')?.classList.add('context-ready');
+                    document.body.classList.add('has-learning-context');
+                    updateLearningContextUI();
 
                     progressRefresh.then(changed => {
                         const setupPanel = document.getElementById('setupPanel');
@@ -570,6 +618,7 @@ function setupLanguageTabs() {
                 if (sourceCardButton?.disabled) return;
                 speechSourceButton?.classList.remove('is-selected');
                 sourceCardButton?.classList.add('is-selected');
+                updateLearningContextUI();
                 window.showLyricsPicker?.(newLanguage, sourceCardButton);
             };
             sourcePill.onclick = openLyrics;
@@ -588,6 +637,8 @@ function setupLanguageTabs() {
         });
     });
 }
+
+window.updateLearningContextUI = updateLearningContextUI;
 
 function hideAllSelectionPills() {
     document.querySelectorAll('.selection-pill').forEach(pill => {

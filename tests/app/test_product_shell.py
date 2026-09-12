@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v357"
+EXPECTED_CACHE_NAME = "flashcards-v359"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -133,6 +133,33 @@ class ProductShellTests(unittest.TestCase):
         self.assertTrue(config["languages"]["french"]["capabilities"]["speech"])
         self.assertFalse(config["languages"]["french"]["capabilities"]["lyrics"])
         self.assertIn("if (speechSourceButton.disabled) return", ui)
+
+    def test_learning_context_replaces_repeated_language_setup(self) -> None:
+        html = (APP_ROOT / "index.html").read_text(encoding="utf-8")
+        main = (APP_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
+        progress = (APP_ROOT / "js" / "progress.js").read_text(encoding="utf-8")
+        modals = (APP_ROOT / "js" / "flashcards-modals.js").read_text(encoding="utf-8")
+        flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
+
+        for required_id in (
+            "learningContextBtn",
+            "learningContextModal",
+            "learningContextSpeechBtn",
+            "learningContextLyricsBtn",
+            "levelCompleteCelebration",
+        ):
+            self.assertIn(f'id="{required_id}"', html)
+        self.assertIn("fluencyPreferredLanguageV1", main)
+        self.assertIn("fluencyPreferredLanguageV1", ui)
+        self.assertIn("context-ready", ui)
+        self.assertIn("showSettingsModalWithTab('account')", main)
+        self.assertIn("getCurrentCoverageSnapshot", progress)
+        self.assertIn("window.lastSetupCoverageSnapshot", progress)
+        self.assertIn("isLevelCompletion", modals)
+        self.assertIn("Review this level", modals)
+        self.assertIn("this.dataset.action === 'review-level'", flashcards)
+        self.assertNotIn("% accuracy`,", modals)
 
     def test_merge_lemmas_remains_a_declared_learner_feature(self) -> None:
         ui = (APP_ROOT / "js" / "ui.js").read_text(encoding="utf-8")
@@ -445,7 +472,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260912d", worker)
+        self.assertIn("/js/main.js?v=20260912f", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:

@@ -970,22 +970,51 @@ function showEndOfDeckOptions({ autoContinue = true } = {}) {
     // A completed deck is no longer resumable. Starting a follow-up or redo
     // set will create a fresh snapshot on its first rendered card.
     window.clearStudySessionSnapshot?.();
-    const totalAttempts = stats.correct + stats.incorrect;
-    const accuracy = totalAttempts > 0 ? Math.round((stats.correct / totalAttempts) * 100) : 0;
+    const nextLevel = !stats.nextRange ? window.getNextStudyLevelMeta?.() : null;
+    const isLevelCompletion = Boolean(
+        stats.studyMode === 'new' && !stats.nextRange && stats.levelNumber);
+    document.getElementById('deckCompleteEyebrow').textContent = isLevelCompletion ? 'Milestone' : 'Study set';
 
     // Update modal content. Ordinary decks are intentionally small stable
     // sets, so completion is a frequent reward inside the larger level.
     const titleEl = document.getElementById('deckCompleteTitle');
     if (titleEl) {
-        titleEl.textContent = stats.studyMode === 'review'
-            ? 'Review Complete!'
+        titleEl.textContent = isLevelCompletion
+            ? `Level ${stats.levelNumber} complete`
+            : stats.studyMode === 'review'
+            ? 'Review complete'
             : stats.setNumber
-            ? `Set ${stats.setNumber} Complete!`
-            : 'Set Complete!';
+            ? `Set ${stats.setNumber} complete`
+            : 'Set complete';
     }
-    document.getElementById('completeCorrect').textContent = stats.correct;
-    document.getElementById('completeIncorrect').textContent = stats.incorrect;
-    document.getElementById('completeAccuracy').textContent = `${accuracy}% accuracy`;
+
+    const celebration = document.getElementById('levelCompleteCelebration');
+    const restartButton = document.getElementById('restartAllBtn');
+    restartButton.dataset.action = isLevelCompletion ? 'review-level' : 'redo-set';
+    restartButton.querySelector('span').textContent = isLevelCompletion ? 'Review this level' : 'Redo set';
+    celebration.hidden = !isLevelCompletion;
+    if (isLevelCompletion) {
+        const before = window.lastSetupCoverageSnapshot || window.currentCoverageSnapshot || {};
+        const after = window.getCurrentCoverageSnapshot?.() || window.currentCoverageSnapshot || before;
+        const beforePct = Number(before.percentage || 0);
+        const afterPct = Math.max(beforePct, Number(after.percentage || 0));
+        document.getElementById('levelCompleteCoverageLabel').textContent = after.label || 'Speech understood';
+        document.getElementById('levelCoverageBefore').textContent = `${beforePct.toFixed(1)}%`;
+        document.getElementById('levelCoverageAfter').textContent = `${afterPct.toFixed(1)}%`;
+        document.getElementById('levelCompleteDescription').textContent = afterPct > beforePct
+            ? `That level added ${(afterPct - beforePct).toFixed(1)} percentage points to your real-world coverage.`
+            : 'This level is now secure and ready to build on.';
+        const fill = document.getElementById('levelCompleteFill');
+        fill.style.transition = 'none';
+        fill.style.width = `${Math.min(beforePct, 100)}%`;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            fill.style.transition = 'width 1.4s cubic-bezier(.2,.8,.2,1)';
+            fill.style.width = `${Math.min(afterPct, 100)}%`;
+            celebration.classList.add('is-celebrating');
+        }));
+    } else {
+        celebration.classList.remove('is-celebrating');
+    }
 
     const messageEl = document.getElementById('completeMessage');
     const finishBtn = document.getElementById('markCompleteBtn');
@@ -997,7 +1026,6 @@ function showEndOfDeckOptions({ autoContinue = true } = {}) {
         // A level can be exhausted before its final physical dot when every
         // later set was completed previously. In that case advance directly
         // to the next actionable level instead of hiding the continuation.
-        const nextLevel = !stats.nextRange ? window.getNextStudyLevelMeta?.() : null;
         finishBtn.dataset.action = '';
         if (stats.nextRange) {
             finishLabel.textContent = `Start Set ${stats.nextSetNumber}`;
@@ -1026,10 +1054,14 @@ function showEndOfDeckOptions({ autoContinue = true } = {}) {
     // works immediately; Main menu or Redo set cancel this timer through the
     // normal hide path.
     const shouldAutoContinue = Boolean(
-        autoContinue && hasContinuation && stats.studyMode === 'new');
+        autoContinue && hasContinuation && stats.studyMode === 'new' && !isLevelCompletion);
     messageEl.textContent = shouldAutoContinue
         ? `${finishLabel.textContent} automatically…`
-        : '';
+        : isLevelCompletion
+            ? 'Take the win, or keep the momentum going.'
+            : stats.levelSetCount && stats.setNumber
+                ? `Set ${stats.setNumber} of ${stats.levelSetCount} finished.`
+                : '';
 
     // Show the modal
     const modal = document.getElementById('deckCompleteModal');

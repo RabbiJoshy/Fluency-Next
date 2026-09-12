@@ -40,14 +40,14 @@
             document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#eef2f5' : '#0a0e14';
         })();
     </script>
-    <link rel="stylesheet" href="css/style.css?v=20260911b">
+    <link rel="stylesheet" href="css/style.css?v=20260912e">
     <link rel="stylesheet" href="css/light-theme.css?v=20260828a">
     <!-- Module preloads. Without these the browser waits to discover the
          imports inside main.js before kicking off the per-module fetches,
          which serializes ~11 round trips behind the main.js parse step.
          Preload starts them all in parallel during HTML parse. Versions
          must stay in lockstep with main.js's import URLs. -->
-    <link rel="modulepreload" href="js/main.js?v=20260912d">
+    <link rel="modulepreload" href="js/main.js?v=20260912f">
     <link rel="modulepreload" href="js/theme.js?v=20260825ak">
     <link rel="modulepreload" href="js/state.js?v=20260825ak">
     <link rel="modulepreload" href="js/data-contracts.js?v=20260825ak">
@@ -60,10 +60,10 @@
     <link rel="modulepreload" href="js/about-example.js?v=20260912c">
     <link rel="modulepreload" href="js/estimation.js?v=20260825ak">
     <link rel="modulepreload" href="js/config.js?v=20260907a">
-    <link rel="modulepreload" href="js/progress.js?v=20260831a">
+    <link rel="modulepreload" href="js/progress.js?v=20260912c">
     <link rel="modulepreload" href="js/progress-identity.js?v=20260831a">
     <link rel="modulepreload" href="js/knowledge.js?v=20260831a">
-    <link rel="modulepreload" href="js/ui.js?v=20260831a">
+    <link rel="modulepreload" href="js/ui.js?v=20260912e">
     <link rel="modulepreload" href="js/vocab.js?v=20260907a">
     <link rel="modulepreload" href="js/song-sets-core.js?v=20260825ak">
     <link rel="modulepreload" href="js/song-sets.js?v=20260823ae">
@@ -322,6 +322,15 @@
             <div id="topBar" class="setup-step">
                 <div class="step-header top-bar-header">
                     <span id="topBarUserName" class="top-bar-user-name"></span>
+                    <button id="learningContextBtn" class="learning-context-chip" type="button" hidden aria-haspopup="dialog" aria-label="Open learning context">
+                        <span id="learningContextFlag" class="learning-context-flag" aria-hidden="true"></span>
+                        <span class="learning-context-chip-copy">
+                            <strong id="learningContextLanguage"></strong>
+                            <small id="learningContextMode">Choose mode</small>
+                        </span>
+                        <span id="learningContextCoverage" class="learning-context-chip-progress"></span>
+                        <span class="learning-context-chevron" aria-hidden="true">›</span>
+                    </button>
                     <button id="helpBtn" class="top-bar-text-btn">Tutorial</button>
                     <!-- Offline / sync-pending status pill. Hidden when online with an empty queue. -->
                     <button id="syncStatusIndicator" class="sync-status is-synced" type="button" title="Open synchronization details" onclick="showSettingsModalWithTab('offline')">Synced</button>
@@ -695,6 +704,38 @@
         </div>
     </div>
 
+    <div id="learningContextModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="learningContextTitle">
+        <div class="modal-content learning-context-sheet">
+            <div class="settings-tabs-header">
+                <div>
+                    <span class="progress-modal-eyebrow">Current learning context</span>
+                    <h3 id="learningContextTitle">Language and source</h3>
+                </div>
+                <button class="modal-close" id="closeLearningContextModal" aria-label="Close learning context">&#10005;</button>
+            </div>
+            <div class="learning-context-summary">
+                <span id="learningContextSheetFlag" class="learning-context-sheet-flag" aria-hidden="true"></span>
+                <div>
+                    <strong id="learningContextSheetLanguage"></strong>
+                    <span id="learningContextSheetMode"></span>
+                </div>
+            </div>
+            <div class="learning-context-progress">
+                <div class="learning-context-progress-copy">
+                    <span id="learningContextProgressLabel">Speech understood</span>
+                    <strong id="learningContextProgressValue">0%</strong>
+                </div>
+                <div class="learning-context-progress-track"><i id="learningContextProgressFill"></i></div>
+            </div>
+            <div class="learning-context-mode-actions" role="group" aria-label="Learning source">
+                <button id="learningContextSpeechBtn" type="button">Speech</button>
+                <button id="learningContextLyricsBtn" type="button">Lyrics</button>
+            </div>
+            <button id="learningContextProgressBtn" class="learning-context-action" type="button">View detailed progress</button>
+            <button id="learningContextLanguageBtn" class="learning-context-action learning-context-action--secondary" type="button">Change language</button>
+        </div>
+    </div>
+
     <!-- Authentication Modal -->
     <div id="authModal" class="modal">
         <div class="modal-content auth-modal-content">
@@ -843,15 +884,15 @@
     <div id="deckCompleteModal" class="modal hidden">
         <div class="modal-content deck-complete-content">
             <div class="deck-complete-header">
-                <span class="deck-complete-eyebrow">Study set</span>
+                <span class="deck-complete-eyebrow" id="deckCompleteEyebrow">Study set</span>
                 <div class="deck-complete-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"></path></svg>
                 </div>
                 <h3 id="deckCompleteTitle">Set Complete!</h3>
-                <div id="completeAccuracy" class="deck-complete-accuracy"></div>
+                <div id="completeAccuracy" class="deck-complete-accuracy" hidden></div>
             </div>
             <div class="deck-complete-body">
-                <div class="deck-complete-stats">
+                <div class="deck-complete-stats" hidden>
                     <div class="deck-stat correct-stat">
                         <span class="deck-stat-emoji">✓</span>
                         <span class="deck-stat-value" id="completeCorrect">0</span>
@@ -863,6 +904,16 @@
                         <span class="deck-stat-label">Missed</span>
                     </div>
                 </div>
+                <section id="levelCompleteCelebration" class="level-complete-celebration" hidden aria-live="polite">
+                    <span class="level-complete-kicker" id="levelCompleteCoverageLabel">Speech understood</span>
+                    <div class="level-complete-values">
+                        <span id="levelCoverageBefore">0%</span>
+                        <span aria-hidden="true">→</span>
+                        <strong id="levelCoverageAfter">0%</strong>
+                    </div>
+                    <div class="level-complete-track"><i id="levelCompleteFill"></i></div>
+                    <p id="levelCompleteDescription"></p>
+                </section>
                 <div id="completeMessage" class="deck-complete-message"></div>
                 <button class="deck-complete-btn exit-btn" id="markCompleteBtn">
                     <span class="btn-icon" id="markCompleteIcon">↩</span>
@@ -1590,6 +1641,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260912d"></script>
+    <script type="module" src="js/main.js?v=20260912f"></script>
 </body>
 </html>
