@@ -11,7 +11,7 @@ import './estimation.js?v=20260825ak';
 import './config.js?v=20260907a';
 import './progress.js?v=20260912c';
 import './knowledge.js?v=20260831a';
-import './ui.js?v=20260912j';
+import './ui.js?v=20260912l';
 import './vocab.js?v=20260909b';
 import './cognates.js?v=20260908d';
 import './coverage.js?v=20260909a';
@@ -388,17 +388,9 @@ loadConfig().then(async () => {
             window.reopenLanguagePicker?.();
         }
     });
-    document.getElementById('learningContextSpeechBtn')?.addEventListener('click', () => {
+    document.getElementById('learningContextSourceBtn')?.addEventListener('click', () => {
         closeLearningContext();
-        if (activeArtist) {
-            document.getElementById('artistSourceSpeechBtn')?.click();
-        } else {
-            document.getElementById('standardSourceSpeechBtn')?.click();
-        }
-    });
-    document.getElementById('learningContextLyricsBtn')?.addEventListener('click', () => {
-        closeLearningContext();
-        if (!activeArtist) document.getElementById('standardSourcePickerBtn')?.click();
+        window.openLearningSourcePicker?.();
     });
 
     // Keep the short learner tutorial separate from the portfolio /about page.
@@ -984,10 +976,9 @@ function closeRadialPicker(id) {
 window.showRadialPicker = showRadialPicker;
 window.closeRadialPicker = closeRadialPicker;
 
-// Stable choice surfaces for lists that can grow. A radial remains useful for
-// the small, visual artist picker; languages and commands need discoverable
-// scrolling and positions that never move underneath the learner.
-function showChoiceSheet({ id, ariaLabel, title, entries, variant = 'list' }) {
+// Stable choice surfaces for lists that can grow. Options keep a fixed place,
+// remain discoverable, and can briefly explain the consequence of a choice.
+function showChoiceSheet({ id, ariaLabel, title, intro = '', entries, variant = 'list' }) {
     const existing = document.getElementById(id);
     if (existing) { closeChoiceSheet(id); return; }
     if (!entries.length) return;
@@ -1003,14 +994,22 @@ function showChoiceSheet({ id, ariaLabel, title, entries, variant = 'list' }) {
     panel.className = 'choice-sheet-panel';
     const header = document.createElement('div');
     header.className = 'choice-sheet-header';
+    const headingGroup = document.createElement('div');
+    headingGroup.className = 'choice-sheet-heading';
     const heading = document.createElement('h2');
     heading.textContent = title;
+    headingGroup.appendChild(heading);
+    if (intro) {
+        const introduction = document.createElement('p');
+        introduction.textContent = intro;
+        headingGroup.appendChild(introduction);
+    }
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'choice-sheet-close';
     close.setAttribute('aria-label', `Close ${ariaLabel}`);
     close.textContent = '×';
-    header.append(heading, close);
+    header.append(headingGroup, close);
 
     const body = document.createElement('div');
     body.className = 'choice-sheet-body';
@@ -1028,6 +1027,10 @@ function showChoiceSheet({ id, ariaLabel, title, entries, variant = 'list' }) {
         icon.className = 'choice-sheet-icon';
         icon.style.setProperty('--choice-accent', entry.accent || 'var(--accent-primary)');
         if (entry.iconHTML) icon.innerHTML = entry.iconHTML;
+        else if (entry.image) {
+            icon.classList.add('choice-sheet-icon--image');
+            icon.style.backgroundImage = `url('${entry.image}')`;
+        }
         else icon.textContent = entry.fallbackText || '•';
 
         const copy = document.createElement('span');
@@ -1037,7 +1040,7 @@ function showChoiceSheet({ id, ariaLabel, title, entries, variant = 'list' }) {
         copy.appendChild(label);
         if (entry.disabled || entry.description) {
             const detail = document.createElement('small');
-            detail.textContent = entry.disabled ? 'Coming soon' : entry.description;
+            detail.textContent = entry.description || (entry.disabled ? 'Coming soon' : '');
             copy.appendChild(detail);
         }
 
@@ -1084,11 +1087,11 @@ function closeChoiceSheet(id) {
 window.showChoiceSheet = showChoiceSheet;
 window.closeChoiceSheet = closeChoiceSheet;
 
-// Artist adapter: album art around the shared radial component.
-function showArtistPicker(anchorBtn, artists) {
+function showAvailableMusicPicker(artists) {
     const pickerLanguage = Object.values(artists)[0]?.language || 'spanish';
     const entries = Object.entries(artists).map(([slug, cfg]) => ({
         label: cfg.name,
+        description: 'Build a set from this artist’s available songs.',
         image: artistPickerImage(cfg),
         fallbackText: artistInitials(cfg.name),
         accent: (cfg.colorTheme && cfg.colorTheme.primary) || 'var(--accent-primary)',
@@ -1099,7 +1102,8 @@ function showArtistPicker(anchorBtn, artists) {
     }));
     if (Object.values(artists).some(cfg => cfg.songsPath)) {
         entries.push({
-            label: 'Choose your own',
+            label: 'Choose individual songs',
+            description: 'Build a mix from the songs currently available in Fluency.',
             iconHTML: customSongsIcon(),
             accent: '#10B981',
             onSelect: () => {
@@ -1108,13 +1112,99 @@ function showArtistPicker(anchorBtn, artists) {
             }
         });
     }
-    showRadialPicker({
-        id: 'artistRadialPicker',
-        ariaLabel: 'Choose a Lyrics source',
-        hubHTML: 'Lyrics<br>source',
+    showChoiceSheet({
+        id: 'artistChoiceSheet',
+        ariaLabel: 'Choose artists or songs',
+        title: 'Choose artists or songs',
+        intro: 'Pick one artist, or combine individual songs into your own collection.',
+        variant: 'list',
         entries
     });
 }
+
+// Music setup begins with the source method, then opens the growing catalogue.
+// Playlist import is deliberately visible so the intended workflow is clear,
+// but disabled until its data connection exists.
+function showArtistPicker(anchorBtn, artists) {
+    const hasAvailableMusic = Object.keys(artists || {}).length > 0;
+    showChoiceSheet({
+        id: 'lyricsSourceSheet',
+        ariaLabel: 'Choose how to add music',
+        title: 'Build from music',
+        intro: 'Choose how you want to create a vocabulary list from music you listen to.',
+        variant: 'list',
+        entries: [
+            {
+                label: 'Choose available music',
+                description: hasAvailableMusic
+                    ? 'Pick from the artists and songs already available in Fluency.'
+                    : 'No music collection has been published for this language yet.',
+                fallbackText: '♫',
+                accent: 'var(--accent-primary)',
+                disabled: !hasAvailableMusic,
+                onSelect: () => showAvailableMusicPicker(artists)
+            },
+            {
+                label: 'Use a playlist',
+                description: 'Connect or upload a playlist — coming later.',
+                fallbackText: '＋',
+                accent: '#10B981',
+                disabled: true,
+                onSelect: () => {}
+            }
+        ]
+    });
+}
+
+function openLearningSourcePicker() {
+    const language = activeArtist?.language || selectedLanguage || 'spanish';
+    const languageConfig = config.languages?.[language] || {};
+    const lyricsAvailable = languageConfig.capabilities?.lyrics !== false;
+    showChoiceSheet({
+        id: 'learningSourceChoiceSheet',
+        ariaLabel: 'Change learning source',
+        title: 'Change learning source',
+        intro: 'Choose which kind of language should shape your vocabulary list.',
+        variant: 'list',
+        entries: [
+            {
+                label: 'Natural speech',
+                description: 'Useful words from movie subtitles and other translated dialogue.',
+                fallbackText: '1',
+                selected: !activeArtist,
+                onSelect: () => {
+                    if (activeArtist) {
+                        showAppLoading('Switching to natural speech', 'Preparing your language and progress…', true);
+                        sessionStorage.setItem('fluencyPendingSpeechLanguage', language);
+                        window.location.href = window.location.pathname;
+                    } else {
+                        document.getElementById('standardSourceSpeechBtn')?.click();
+                    }
+                }
+            },
+            {
+                label: 'Music & lyrics',
+                description: lyricsAvailable
+                    ? 'Build a list from artists and songs you choose.'
+                    : `No ${languageConfig.name || language} lyrics collection is available yet.`,
+                fallbackText: '2',
+                selected: Boolean(activeArtist),
+                disabled: !lyricsAvailable,
+                onSelect: () => {
+                    if (!activeArtist) {
+                        document.getElementById('standardSourcePickerBtn')?.click();
+                        return;
+                    }
+                    const matchingArtists = Object.fromEntries(Object.entries(allArtistsConfig || {}).filter(([, cfg]) =>
+                        (cfg.language || 'spanish') === language));
+                    showArtistPicker(null, matchingArtists);
+                }
+            }
+        ]
+    });
+}
+
+window.openLearningSourcePicker = openLearningSourcePicker;
 
 // Language is chosen first; this lightweight picker is the Lyrics branch of
 // the subsequent source choice. It loads only catalogue metadata until the
@@ -1140,7 +1230,7 @@ async function showLyricsPicker(language, anchorBtn = null) {
 
     const matchingArtists = Object.fromEntries(Object.entries(artists || {}).filter(([, cfg]) =>
         (cfg.language || 'spanish') === language));
-    if (Object.keys(matchingArtists).length) showArtistPicker(anchorBtn, matchingArtists);
+    showArtistPicker(anchorBtn, matchingArtists);
 }
 
 window.showLyricsPicker = showLyricsPicker;

@@ -11,7 +11,7 @@ APP_ROOT = REPOSITORY_ROOT / "app"
 # The service worker's cache name, pinned so that bumping an asset version
 # without bumping the cache fails here rather than silently serving a stale
 # shell. Update alongside app/service-worker.js.
-EXPECTED_CACHE_NAME = "flashcards-v364"
+EXPECTED_CACHE_NAME = "flashcards-v366"
 
 
 class ProductShellTests(unittest.TestCase):
@@ -146,14 +146,17 @@ class ProductShellTests(unittest.TestCase):
         for required_id in (
             "learningContextBtn",
             "learningContextModal",
-            "learningContextSpeechBtn",
-            "learningContextLyricsBtn",
+            "learningContextSourceBtn",
             "levelCompleteCelebration",
         ):
             self.assertIn(f'id="{required_id}"', html)
         self.assertIn("fluencyPreferredLanguageV1", main)
         self.assertIn("fluencyPreferredLanguageV1", ui)
         self.assertIn("context-ready", ui)
+        self.assertIn("id: 'learningSourceChoiceSheet'", main)
+        self.assertNotIn("Current learning context", html)
+        self.assertNotIn('<h3 id="learningContextTitle">Your learning</h3>', html)
+        self.assertNotIn("learningContextAction--secondary", html)
         self.assertIn("showSettingsModalWithTab('account')", main)
         self.assertIn("getCurrentCoverageSnapshot", progress)
         self.assertIn("window.lastSetupCoverageSnapshot", progress)
@@ -161,9 +164,12 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("Review this level", modals)
         self.assertIn("this.dataset.action === 'review-level'", flashcards)
         self.assertNotIn("% accuracy`,", modals)
-        self.assertIn("Everyday speech", html)
-        self.assertIn("Songs &amp; lyrics", html)
-        self.assertIn("no lyrics collection has been published", ui)
+        self.assertIn("Natural speech", html)
+        self.assertIn("movie subtitles and other translated dialogue", html)
+        self.assertIn("rank words from the music you listen to", html)
+        self.assertIn("Recommended", html)
+        self.assertIn("Music &amp; lyrics", html)
+        self.assertIn("lyrics collection is available yet", main)
         self.assertNotIn('<span class="step-number">1</span>', html)
 
     def test_merge_lemmas_remains_a_declared_learner_feature(self) -> None:
@@ -408,8 +414,21 @@ class ProductShellTests(unittest.TestCase):
         self.assertIn("variant: 'grid'", main)
         self.assertIn("id: 'studyChoiceSheet'", flashcards)
         self.assertIn("variant: 'list'", flashcards)
+        self.assertIn("id: 'lyricsSourceSheet'", main)
+        self.assertIn("id: 'artistChoiceSheet'", main)
+        self.assertIn("label: 'Use a playlist'", main)
+        self.assertIn("Connect or upload a playlist — coming later.", main)
+        self.assertNotIn("id: 'artistRadialPicker'", main)
         self.assertIn(".choice-sheet-grid .choice-sheet-body", css)
         self.assertIn(".choice-sheet-list .choice-sheet-item", css)
+
+    def test_mobile_modals_share_a_top_edge(self) -> None:
+        css = (APP_ROOT / "css" / "style.css").read_text(encoding="utf-8")
+        self.assertIn("Mobile overlays all follow one spatial rule", css)
+        self.assertIn("align-items: flex-start !important", css)
+        self.assertIn("border-radius: 0 0 24px 24px", css)
+        self.assertIn(".choice-sheet-overlay {\n    align-items: flex-start", css)
+        self.assertIn("transform: translateY(-28px)", css)
 
     def test_multi_pos_controls_use_bounded_grid_without_reordering_senses(self) -> None:
         flashcards = (APP_ROOT / "js" / "flashcards.js").read_text(encoding="utf-8")
@@ -527,7 +546,7 @@ class ProductShellTests(unittest.TestCase):
         )
         self.assertNotIn("sdk.scdn.co/spotify-player.js", html)
         self.assertIn("/js/spotify.js?v=20260831a", worker)
-        self.assertIn("/js/main.js?v=20260912l", worker)
+        self.assertIn("/js/main.js?v=20260912n", worker)
         self.assertIn(f"const CACHE_NAME = '{EXPECTED_CACHE_NAME}'", worker)
 
     def test_progress_sync_uses_deployable_public_configuration(self) -> None:
