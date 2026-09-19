@@ -26,6 +26,12 @@ wsd-es = [
   "torch>=2.5",
   "transformers>=4.48",
 ]
+# Test/dev tooling. `scikit-learn` backs the research WSD probes that a few
+# tests import; `pytest` is the runner named in CLAUDE.md and REPO_MAP.md.
+dev = [
+  "pytest>=8.0",
+  "scikit-learn>=1.4",
+]
 
 [project.scripts]
 fluency = "fluency.cli:main"

@@ -1,0 +1,11 @@
+{
+  "name": "Fluency-Next",
+  "install": "bash .cursor/install.sh",
+  "terminals": [
+    {
+      "name": "fluency-dev",
+      "command": "FLUENCY_WORKSPACE=$HOME/Fluency-Workspace PYTHONPATH=src .venv/bin/python -m fluency dev --workspace $HOME/Fluency-Workspace"
+    }
+  ],
+  "ports": [4173]
+}
