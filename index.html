@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fluency has moved</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+// Fluency moved from /Fluency-Next/ to /Fluency-App/. Keep the rest of the
+// address (deep path, query, #/ route) so every old link lands where it meant.
+(function () {
+    var path = location.pathname.replace(/^\/Fluency-Next(?=\/|$)/i, '/Fluency-App');
+    location.replace(path + location.search + location.hash);
+})();
+</script>
+</head>
+<body>
+<p>Fluency has moved to <a href="https://rabbijoshy.github.io/Fluency-App/">rabbijoshy.github.io/Fluency-App</a>.</p>
+</body>
+</html>
